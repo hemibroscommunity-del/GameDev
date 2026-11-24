@@ -4,7 +4,7 @@
  * made the line from the state and kept the record behind `__btSightLine`.
  * Main's leaves guard (v2.3.6521/6526) holds a leaf to no module state, no
  * page global and no state handed to a non-leaf, so those three moved here,
- * a small module beside the renderers: it asks game/sight.js sightLine for
+ * a small module beside the renderers: it asks game/latch.js latchLine (v2.3.6546; it was sight.js sightLine) for
  * the line (the sight's own clock: sightStep runs on Date.now()), hands it
  * to the leaf's sightStream to draw, and notes what happened.
  *
@@ -15,7 +15,7 @@
  * was drawn on the last frame, to which monster and how long -- a scenario
  * cannot read a polygon (mp-twobuttons reads it).  Written in place, one
  * object (no garbage a frame). */
-import { sightLine } from '../game/sight.js';   /* relative: node imports this (server/test/sight.test.mjs 9) */
+import { latchLine, sightLineEarly } from '../game/latch.js';   /* relative: node imports this (server/test/sight.test.mjs 9); v2.3.6546: the line is combat's (latchLine: the lock's, or the sighting's only with `?sightline=1`) */
 import { sightStream } from './leaves/effects-sight.js';
 
 const _drawn = { drawn: false, id: null, len: 0, at: 0, skipped: null };
@@ -25,9 +25,12 @@ if (typeof window !== 'undefined') {
 
 /** The two buttons' sight line, into the overlay graphic, once a frame.
  *  `beamDrawn` the bow's own beam drawn this frame (then nothing).  True
- *  when drawn. */
-export function drawSightLine(gfx, S, now, beamDrawn) {
-  const ln = sightLine(S, Date.now());
+ *  when drawn.  v2.3.6546: `early` the line before the press (`?sightline=1`;
+ *  the page's switch, read once, when not given: tests give it). */
+let _early = null;
+export function drawSightLine(gfx, S, now, beamDrawn, early) {
+  if (_early === null) _early = sightLineEarly();
+  const ln = latchLine(S, Date.now(), typeof early === 'boolean' ? early : _early);
   const how = sightStream(gfx, ln, now, beamDrawn);
   _drawn.drawn = how === 'drawn';
   if (!ln) { _drawn.id = null; _drawn.skipped = null; return false; }

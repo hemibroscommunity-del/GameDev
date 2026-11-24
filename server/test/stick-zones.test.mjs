@@ -33,6 +33,26 @@
  *   8. v2.3.6541 THE FRAME'S STEP `input`, stickFrame (moved whole out of
  *      gameLoop): the stick read, the gates, the keys, the idle clock (a thumb
  *      held turning is a player), the name tag's facing; one object a page.
+ *  10. v2.3.6545 (card CT item 6) SPRINT FROM THE RIM, played through
+ *      stickDrive and sprint.js's own frame (updateSprint): at the rim (share
+ *      1.0) full walking speed, no sprint, stamina still; past SPRINT_AT 1.25
+ *      the sprint (the move's `sp`, stamina falling); between the two lines it
+ *      holds (no flutter); back inside SPRINT_OFF 1.05, or the thumb lifted,
+ *      it ends; at 0 stamina it ends and starts again only once the thumb
+ *      came back; refused for stamina once a push (the button's words);
+ *      never started with the shield up, dead, in the water or attacking;
+ *      it stops only its own sprint (Shift's stays); `?rimsprint=0` and mode
+ *      4 as today; BroTown hands the button's words to the one call.
+ *      Plants, each red by what the code does (tried by hand, 2026-11-24):
+ *      SPRINT_OFF = SPRINT_AT -> FAIL 10c (flutter); the rule fed the clamped
+ *      share (Math.min(share, 1)) -> FAIL 10b, 10j; `rim.ready = false`
+ *      dropped (a restart with the thumb still out) -> FAIL 10d, 10e; rimHeld
+ *      dropped -> FAIL 10f; toggleSprint in place of startSprint -> FAIL 10c
+ *      (the return inside leaves a 'tap' sprint running), 10g.
+ *      Survivor, listed: stickLift's `if (S._rimSprint)` taken away -- the
+ *      call runs on every lift and does nothing without a push (rimSprint
+ *      makes no state below SPRINT_AT): the same behaviour, the guard only
+ *      saves a call.
  *
  * Break proof, tried by hand: `S._stickPhase = 'walk';` added to
  * stickZones.js stickRead -> FAIL 5 (and the guard's §2); TURN: 0.30 -> 0.10
@@ -69,7 +89,9 @@
  * prints the writes as the guard reads them (to take a row out).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';   /* v2.3.6542: + the stick's one writer in every mode */
+import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';
+import { rimPast, rimSprintOn, rimSprintLive, rimSprinting, rimSprint } from '../../src/game/stickZones.js';   /* v2.3.6545: the rim's sprint (card CT item 6) */
+import { updateSprint, isSprinting, sprintStepFlag, stopSprint, startSprint } from '../../src/game/sprint.js';   /* v2.3.6542: + the stick's one writer in every mode */
 import { findIn, readSystem, systemNames } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6541 (sitting 57's mend): the call read off the syntax tree */
 import { manualMode, manualOn, tapLockOn, twoButtonsOn, setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
@@ -615,6 +637,138 @@ function writesOutside(prop, doorFile, doorFn) {
     const far = w.outside.filter((x) => !x.startsWith('src/game/stickZones.js:'));
     check(`9. no write of S.${prop} in src/ outside stickZones.js (its one owner, system input)`, far.length === 0, far);
   }
+}
+
+/* ── 10. v2.3.6545: sprint from the rim (card CT item 6) ── */
+{
+  const R = 37.5;
+  const mk = (st) => ({ _serverCaps: { sprint: true }, rpg: { stamina: st == null ? 100 : st, maxStamina: 100, hp: 50 }, player: { x: 0, y: 0 } });
+  const says = [];
+  const say = (S, now) => says.push(now);
+  const push = (S, share) => stickDrive(S, share * R, 0, R, null, null, null, say);
+  /* a frame of sprint.js's own, the walk pushed (the game loop's call) */
+  const frame = (S, f) => updateSprint(S, Date.now(), Object.assign({ moving: true, dtMs: 100 }, f || {}));
+  check('10. the lines: on at 1.25, off below 1.05 (trial numbers)', STICK_ZONES.SPRINT_AT === 1.25 && STICK_ZONES.SPRINT_OFF === 1.05);
+  check('10. rimPast: the band, both edges exact', rimPast(1.25, false) === true && rimPast(1.2499, false) === false && rimPast(1.05, true) === true && rimPast(1.0499, true) === false && rimPast(1.1, false) === false && rimPast(1.1, true) === true);
+  /* 10a. at the rim: full walking speed, no sprint, stamina still */
+  let S = mk();
+  let r = push(S, 1.0);
+  frame(S); frame(S);
+  check('10a. at the rim (share 1.0): full walking speed, no sprint, stamina still, no state made', r.rim === null && near(S.stickX, 1) && !isSprinting(S) && sprintStepFlag(S) === 0 && S.rpg.stamina === 100 && !('_rimSprint' in S), { r, S });
+  r = push(S, 1.2499);
+  check('10a. ...and just short of 1.25, still none', r.rim === null && !(S._sprint && S._sprint.on));
+  /* 10b. past 1.25: the sprint, the move's sp, stamina falling */
+  r = push(S, 1.25);
+  frame(S);
+  check('10b. past the rim (1.25): the sprint starts, how "rim", the move marked sp, stamina falling', r.rim === 'start' && S._sprint.how === 'rim' && isSprinting(S) && sprintStepFlag(S) === 1 && S.rpg.stamina < 100 && rimSprinting(S) && near(S.stickX, 1), { r, sp: S._sprint, st: S.rpg.stamina });
+  /* 10c. between the lines it holds; inside 1.05 it ends */
+  r = push(S, 1.15);
+  check('10c. back to 1.15 (between the lines): it holds, no flutter', r.rim === null && rimSprinting(S) && isSprinting(S));
+  r = push(S, 1.05);
+  check('10c. ...at 1.05 still', r.rim === null && rimSprinting(S));
+  r = push(S, 1.0499);
+  frame(S);
+  check('10c. inside 1.05: it ends ("rim"), the walk on at full speed, sp 0', r.rim === 'stop' && !S._sprint.on && S._sprint.why === 'rim' && !isSprinting(S) && sprintStepFlag(S) === 0 && near(S.stickX, 1), S._sprint);
+  r = push(S, 1.3);
+  check('10c. out again: a new sprint', r.rim === 'start' && rimSprinting(S));
+  /* 10d. stamina 0 ends it; no restart until the thumb came back */
+  S.rpg.stamina = 0.5;
+  const ev = frame(S);
+  r = push(S, 1.4);
+  const r2 = push(S, 1.6);
+  check('10d. at 0 stamina it ends, and the thumb still out starts nothing', ev === 'stop' && S._sprint.why === 'empty' && r.rim === null && r2.rim === null && !S._sprint.on, { ev, sp: S._sprint });
+  S.rpg.stamina = 60;
+  r = push(S, 1.1);
+  check('10d. ...nor between the lines', r.rim === null && !S._sprint.on);
+  push(S, 0.9);
+  r = push(S, 1.3);
+  check('10d. back inside, then out: it starts again', r.rim === 'start' && rimSprinting(S));
+  /* the other ends of today's sprint end it too, and none restarts while out */
+  for (const [why, f] of [['shield', { shield: true }], ['attack', { attacking: true }], ['swim', { swimming: true }], ['dead', { dead: true }]]) {
+    const T = mk(); push(T, 1.3); frame(T, f);
+    const again = push(T, 1.5);
+    check('10d. the ' + why + ' ends it (today\'s end), and the thumb still out does not restart it', T._sprint.why === why && !T._sprint.on && again.rim === null, T._sprint);
+  }
+  /* 10e. refused for stamina: the words and the tick, once a push */
+  says.length = 0;
+  S = mk(2);
+  r = push(S, 1.3);
+  const r3 = push(S, 1.5); push(S, 1.2);
+  check('10e. too tired: refused ("tired"), the button\'s words said once a push', r.rim === 'tired' && r3.rim === null && says.length === 1 && !(S._sprint && S._sprint.on), { r, says });
+  push(S, 0.5); r = push(S, 1.3);
+  check('10e. ...back inside and out again: said again', r.rim === 'tired' && says.length === 2);
+  S.rpg.stamina = 100; push(S, 0.5); r = push(S, 1.3);
+  check('10e. rested: the next push sprints', r.rim === 'start' && rimSprinting(S));
+  says.length = 0;
+  const N = mk(2); r = stickDrive(N, 1.3 * R, 0, R, null, null, null);
+  check('10e. no words handed in (a test): refused all the same, nothing thrown', r.rim === 'tired' && says.length === 0);
+  /* 10f. never started with the shield up, dead, in the water or attacking; the push kept */
+  for (const [what, set] of [['the shield up', (T) => { T._shieldUp = true; }], ['dying', (T) => { T._dying = true; }], ['at 0 hp', (T) => { T.rpg.hp = 0; }],
+    ['in the water', (T) => { T._wheelSwim = { on: true }; }], ['the latch attacking', (T) => { T.autoAttack = true; }], ['mid-swing', (T) => { T.isSwinging = true; }], ['in a bash', (T) => { T._bashDash = true; }]]) {
+    const T = mk(); set(T);
+    const a = push(T, 1.3);
+    check('10f. ' + what + ': no sprint starts', a.rim === null && !(T._sprint && T._sprint.on), T._sprint);
+    const U = mk(); set(U); push(U, 1.3);
+    delete U._shieldUp; delete U._dying; delete U._wheelSwim; delete U.autoAttack; delete U.isSwinging; delete U._bashDash; U.rpg.hp = 50;
+    const b = push(U, 1.35);
+    check('10f. ' + what + ', then clear with the thumb still out: the push was kept, it sprints', b.rim === 'start' && rimSprinting(U));
+  }
+  const H1 = mk(); H1.rpg.hp = 1;
+  check('10f. at 1 hp it sprints', push(H1, 1.3).rim === 'start');
+  /* 10g. the lift ends it; it stops only its own sprint */
+  S = mk(); push(S, 1.3);
+  stickLift(S);
+  check('10g. the thumb lifted: the rim\'s sprint ends, the stick at rest', !S._sprint.on && S._sprint.why === 'rim' && S.stickX === 0 && S._stickPhase === 'rest');
+  r = push(S, 1.3);
+  check('10g. ...a new touch out past the rim sprints again', r.rim === 'start');
+  const K = mk();
+  frame(K, { key: true });
+  r = push(K, 1.3);
+  check('10g. Shift held: the rim starts nothing over it (still Shift\'s)', r.rim === null && K._sprint.how === 'key' && !rimSprinting(K));
+  r = push(K, 0.5); stickLift(K);
+  check('10g. ...and the thumb coming back in or lifting leaves Shift\'s sprint running', r.rim === null && K._sprint.on && K._sprint.how === 'key');
+  const B = mk(); startSprint(B, Date.now(), 'tap'); push(B, 1.3); r = push(B, 0.5);
+  check('10g. a button\'s sprint (a tap) is not the rim\'s to stop', r.rim === null && B._sprint.on && B._sprint.how === 'tap');
+  /* 10h. no worker sprint: nothing, no state */
+  const O = { rpg: { stamina: 100 } };
+  r = push(O, 1.5);
+  check('10h. a worker without caps.sprint: nothing, no state made, no words', r.rim === null && !('_rimSprint' in O) && !(O._sprint && O._sprint.on) && says.length === 0);
+  check('10h. no state: null', rimSprint(null, 2, 1) === null);
+  /* 10i. ?rimsprint=0: the edge does nothing; the button's place (rimSprintLive) */
+  const hadLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const hadWin = globalThis.window;
+  try {
+    Object.defineProperty(globalThis, 'location', { value: { search: '?rimsprint=0' }, configurable: true, writable: true });
+    const Z = mk(); const z = push(Z, 2);
+    check('10i. ?rimsprint=0: past the rim full walking speed and no sprint, no state', z.rim === null && near(Z.stickX, 1) && !(Z._sprint && Z._sprint.on) && !('_rimSprint' in Z) && rimSprintOn() === false);
+    setManualCombat(5);
+    check('10i. ?rimsprint=0 in mode 5 on a touch screen: the button is back (rimSprintLive false)', rimSprintLive() === false);
+    globalThis.location.search = '';
+    check('10i. no address: on, and live in mode 5 on a touch screen', rimSprintOn() === true && rimSprintLive() === true);
+    if (typeof globalThis.window === 'undefined') globalThis.window = {};
+    const mq = { matches: true };   /* deviceProfile keeps the list it is given (live): latch.test H1's way */
+    globalThis.window.matchMedia = () => mq;
+    check('10i. mode 5 with a mouse: not live (the one gate, twoButtonsLive)', rimSprintLive() === false);
+    mq.matches = false;
+    check('10i. ...the touch pointer again: live', rimSprintLive() === true);
+    delete globalThis.window.matchMedia;
+    setManualCombat(4);
+    check('10i. mode 4: not live (the button as today)', rimSprintLive() === false);
+    check('10i. the switch read off an address', rimSprintOn('?rimsprint=0') === false && rimSprintOn('?rimsprint=1') === true && rimSprintOn('') === true);
+  } finally {
+    if (hadLoc) Object.defineProperty(globalThis, 'location', hadLoc); else delete globalThis.location;
+    if (hadWin === undefined) delete globalThis.window; else globalThis.window = hadWin;
+    setManualCombat(4);
+  }
+  /* 10j. the share is the thumb's own, unclamped: three radii out sprints */
+  const J = mk(); r = stickDrive(J, 0, -3 * R, R, null, null, null, say);
+  check('10j. a thumb three radii out (the walk clamped to 1): the share is unclamped, it sprints', r.rim === 'start' && near(r.share, 3) && near(Math.hypot(J.stickX, J.stickY), 1));
+  /* 10k. mode 4 untouched: its analog read and lift make no rim state */
+  const M = mk(); stickAnalog(M, 200, 0, 17.5); stickLift(M);
+  check('10k. mode 4: the analog read far past its travel, then the lift: no sprint, no state', !('_rimSprint' in M) && !(M._sprint && M._sprint.on));
+  /* 10l. BroTown hands the button's words to the one call (off the source:
+     the handler's only stickDrive call, the 8th argument sprintTiredSay) */
+  check('10l. BroTown\'s one stickDrive call hands it sprintTiredSay', findIn('ui', /stickDrive\(stateRef\.current, rawDx, rawDy, rect\.width \/ 2, knobRef\.current, lStickRef\.current, base\.style\.opacity, sprintTiredSay\); return; \}/).length === 1);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

@@ -243,6 +243,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `?rimsprint` | page | switch | v2.3.6545 | 2026-11-24 | =0 | logic |  | no | In the two buttons (?manual=5) the left stick pushed past its rim walks at full speed and sprints nothing, and the sprint button is back beside the stick, as before (game/stickZones.js rimSprint; card CT item 6). |
+| `?sightline` | page | switch | v2.3.6546 | 2026-11-24 | =1 | logic |  | no | In the two buttons (?manual=5) the sight line is drawn to the monster in sight before Attack is pressed, as before (game/latch.js latchLine; card CT item 7). Without it the line is drawn only while combat is on, on the locked monster (the owner, 2026-11-24: "It's only the line drawn that snaps"). |
 | `?tapthrough` | page | switch | v2.3.3560 | 2026-10-22 | present | logic |  | no | A tap that closes a window lets its click through, as before. |
 | `?turnzone` | page | value | v2.3.6540 |  | =<percent> (15 to 70) | logic |  | no | Moves the left stick's turn border in the two buttons (?manual=5): a thumb inside it turns the body, past it walks (game/stickZones.js; 30 when not given). |
 

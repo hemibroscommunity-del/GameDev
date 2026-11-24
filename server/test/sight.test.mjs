@@ -43,6 +43,22 @@
  *      renderer calls drawSightLine once, in its overlays, after the bow's
  *      beam, with `shouldDraw && isBow`.
  *
+ *  11. (v2.3.6546, the owner: "It's only the line drawn that snaps") THE
+ *      LINE IS COMBAT'S: walked past three monsters with the latch idle,
+ *      each sighted in turn, no line on any frame; Attack pressed, the line
+ *      on the LOCKED monster (not the one the sighting moves to), every
+ *      frame of the fight; the latch's end (a press, the range, the death),
+ *      the line gone the same frame; `?sightline=1` (sightLineEarly) draws
+ *      the sighting's line before the press again, and only that address;
+ *      drawSightLine, the renderer's call, the same.
+ *      Plants (each FAILs 11): `return early === true ? ...` -> `return
+ *      sightLine(S, now)` (the line before the press); `lineTo(S,
+ *      S._latchId)` -> `sightLine(S, now)` (the line follows the sighting,
+ *      not the lock); the `latchPhase(S) === 'active'` row dropped (no line
+ *      in combat); `early === true` -> `early` (a truthy non-switch draws);
+ *      sightLineEarly reading `swHas` (any `?sightline=` draws); lineTo's
+ *      `id == null` dropped (a kept id of none finds a monster called "null").
+ *
  * Break proof, tried by hand: `if (d > (kept ? range.out : range.in))` ->
  * `if (d > range.in)` -> FAIL 2 and 5; `S._sightPhase = 'none';` in
  * sightClear -> FAIL 6 (and the guard's §2).
@@ -57,7 +73,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
 import { combatButtonsShown, combatReach } from '../../src/game/controlVisibility.js';   /* v2.3.6543 */
-import { latchTo, latchFrame, latchReach } from '../../src/game/latch.js';   /* v2.3.6543 */
+import { latchTo, latchFrame, latchReach, latchLine, sightLineEarly, latchPress, latchCheck } from '../../src/game/latch.js';   /* v2.3.6543; v2.3.6546: the line is combat's */
 import { beamStream, sightStream } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543; v2.3.6544: the leaf only draws (main's leaves guard) */
 import { drawSightLine } from '../../src/rendering/sightLineDraw.js';   /* v2.3.6544: the line made from the state, and its QA record, off the leaf */
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6543: the callers off the syntax tree */
@@ -281,15 +297,15 @@ function writesOutside(prop, doorFile, doorFn) {
   const now = Date.now();
   const S = { player: { x: 100, y: 100 }, monsters: [{ id: 3, x: 100, y: 400, alive: true }], _sightPhase: 'sighted', _sightId: 3, _sightAt: now + 60000 };
   const g1 = rec();
-  check('9. drawSightLine: sighted, drawn', drawSightLine(g1, S, 0, false) === true && g1.ops.length > 0);
+  check('9. drawSightLine: sighted, drawn (v2.3.6546: with `?sightline=1`, the line before the press)', drawSightLine(g1, S, 0, false, true) === true && g1.ops.length > 0);
   const ys = g1.ops.filter((o) => o[0] === 'lineTo').map((o) => o[2]);
   check('9. ...from the body, south to the monster', near(g1.ops[0][2], 100) && Math.abs(g1.ops[0][1] - 100) < 4, g1.ops[0]);
   check('9. ...reaching the monster', Math.abs(Math.max(...ys) - 400) < 4, Math.max(...ys));
   const g2 = rec();
-  check('9. the bow\'s own beam drawn this frame: nothing', drawSightLine(g2, S, 0, true) === false && g2.ops.length === 0);
+  check('9. the bow\'s own beam drawn this frame: nothing', drawSightLine(g2, S, 0, true, true) === false && g2.ops.length === 0);
   const g3 = rec();
-  check('9. nothing in sight: nothing', drawSightLine(g3, Object.assign({}, S, { _sightPhase: 'none' }), 0, false) === false && g3.ops.length === 0);
-  check('9. no graphic, or on the body: nothing, no throw', drawSightLine(null, S, 0, false) === false && drawSightLine(rec(), Object.assign({}, S, { monsters: [{ id: 3, x: 100, y: 100, alive: true }] }), 0, false) === false);
+  check('9. nothing in sight: nothing', drawSightLine(g3, Object.assign({}, S, { _sightPhase: 'none' }), 0, false, true) === false && g3.ops.length === 0);
+  check('9. no graphic, or on the body: nothing, no throw', drawSightLine(null, S, 0, false, true) === false && drawSightLine(rec(), Object.assign({}, S, { monsters: [{ id: 3, x: 100, y: 100, alive: true }] }), 0, false, true) === false);
   /* v2.3.6544: the leaf alone, handed the line (it reads no state): what it says it did */
   const ln = { id: 3, x0: 100, y0: 100, x1: 100, y1: 400, d: 300 };
   const g4 = rec();
@@ -377,6 +393,56 @@ function writesOutside(prop, doorFile, doorFn) {
     reach['src/ui/panels/ShieldButton.jsx'] === 1 && reach['src/ui/panels/SpecialButton.jsx'] === 1 && reachBad.length === 0, { reach, reachBad });
   check('10. the renderer draws the sight line once, in its overlays, with `gfx, S, now, shouldDraw && isBow`',
     draws.length === 1 && /\/systems\/effects[A-Z]\w+\.js$/.test(draws[0].f) && draws[0].in === '_updateOverlays' && draws[0].args, draws);   /* the effects renderer, by its folder (tests-by-system: no suite names a big file by its path) */
+}
+
+/* ── 11. the line is combat's (v2.3.6546) ── */
+{
+  const rec = () => { const g = { ops: [] }; for (const k of ['moveTo', 'lineTo', 'closePath', 'fill']) g[k] = (...a) => { g.ops.push([k, ...a]); return g; }; return g; };   /* section 9's recording graphic */
+  const T = 5000;
+  const S = { player: { x: 1000, y: 1000 }, monsters: [mon(1, 300, 0), mon(2, 300, 90), mon(3, 300, 180)], _sightPhase: 'none', _sightId: null, _sightAt: 0 };
+  /* walking by: each monster sighted in turn (the sight's own step), the latch idle */
+  let lines = 0, sightings = 0;
+  for (let i = 0; i < 3; i++) {
+    sightStep(S, { id: i + 1, d: 300 }, T + i * 100);
+    if (sightPhase(S) === 'sighted') sightings++;
+    if (latchLine(S, T + i * 100, false) !== null) lines++;
+    if (latchLine(S, T + i * 100) !== null) lines++;   /* no switch given: none */
+  }
+  check('11. run by three monsters, each sighted, the latch idle: no line on any frame', sightings === 3 && lines === 0, { sightings, lines });
+  check('11. ...a truthy word that is not the switch draws nothing', latchLine(S, T + 200, 1) === null && latchLine(S, T + 200, 'yes') === null);
+  check('11. ...with `?sightline=1` (early) the sighting\'s line, as PR 4', !!latchLine(S, T + 200, true) && String(latchLine(S, T + 200, true).id) === '3');
+  /* Attack pressed with monster 3 in sight: combat on, the line on the lock */
+  check('11. Attack pressed: the latch locks the one in sight', latchPress(S, S._sightId) === 'lock' && String(S._latchId) === '3');
+  let onLock = 0;
+  for (let i = 0; i < 4; i++) {
+    sightStep(S, { id: 1, d: 300 }, T + 300 + i * 100);   /* the sighting moves to another monster mid-fight */
+    const ln = latchLine(S, T + 300 + i * 100, false);
+    if (ln && String(ln.id) === '3' && near(ln.x1, S.monsters[2].x) && near(ln.d, 300)) onLock++;
+  }
+  check('11. in combat: the line on the LOCKED monster every frame, never the one the sighting moved to', onLock === 4, onLock);
+  check('11. ...with `?sightline=1` too: the lock\'s, not the sighting\'s', String((latchLine(S, T + 700, true) || {}).id) === '3');
+  /* the ends */
+  const S2 = JSON.parse(JSON.stringify(S));
+  check('11. the end by a press: the line gone that frame', latchPress(S2, null) === 'unlock' && latchLine(S2, T + 800, false) === null);
+  const S3 = JSON.parse(JSON.stringify(S));
+  check('11. the end by the range: the line gone that frame', latchCheck(S3, { alive: true, d: 900 }, 550, []) === 'range' && latchLine(S3, T + 800, false) === null);
+  const S4 = JSON.parse(JSON.stringify(S));
+  S4.monsters[2].alive = false;
+  check('11. the lock\'s monster dead: no line to it (dead, before the frame ends the latch)', latchLine(S4, T + 800, false) === null);
+  check('11. ...and the death ends the latch, the line stays gone', latchCheck(S4, null, 550, []) === 'killed' && latchLine(S4, T + 800, false) === null);
+  check('11. combat on with no id kept: nothing (not a monster whose id reads "null")', latchLine({ player: { x: 0, y: 0 }, _latchPhase: 'active', _latchId: null, monsters: [{ id: 'null', x: 10, y: 0, alive: true }] }, T, false) === null);
+  check('11. no state, no body: nothing, no throw', latchLine(null, T, true) === null && latchLine({ _latchPhase: 'active', _latchId: 3, monsters: S.monsters }, T, false) === null);
+  /* the switch: `?sightline=1` only */
+  check('11. sightLineEarly: `?sightline=1` only', sightLineEarly('?sightline=1') === true && sightLineEarly('') === false && sightLineEarly('?sightline=0') === false && sightLineEarly('?manual=5') === false, [sightLineEarly('?sightline=1'), sightLineEarly('?sightline=0')]);
+  /* the renderer's call: sighted, the latch idle, no switch: nothing; latched: drawn on the lock */
+  const now = Date.now();
+  const R = { player: { x: 100, y: 100 }, monsters: [{ id: 3, x: 100, y: 400, alive: true }, { id: 4, x: 400, y: 100, alive: true }], _sightPhase: 'sighted', _sightId: 4, _sightAt: now + 60000 };
+  const r1 = rec();
+  check('11. drawSightLine: sighted, the latch idle, no `?sightline`: nothing drawn', drawSightLine(r1, R, 0, false, false) === false && r1.ops.length === 0);
+  R._latchPhase = 'active'; R._latchId = 3;
+  const r2 = rec();
+  const ys2 = () => r2.ops.filter((o) => o[0] === 'lineTo').map((o) => o[2]);
+  check('11. drawSightLine: combat on, drawn to the LOCK (south, 300 px), not the sighting (east)', drawSightLine(r2, R, 0, false, false) === true && Math.abs(Math.max(...ys2()) - 400) < 4, r2.ops.slice(0, 2));
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

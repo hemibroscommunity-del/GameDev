@@ -8,6 +8,7 @@ import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -
 import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6544: the two buttons' one gate (a touch screen's; card CT PR 5) */
+import { rimSprintOn } from '@/game/stickZones.js';   /* v2.3.6545: the stick's rim sprints (card CT item 6) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -37,7 +38,7 @@ import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6544: the two button
 const STEPS = [
   { key: 'move', shape: 'circle', sels: ['.bt-joystick-zone'],
     get label() { return say(SAY, 'controlsTutorial.moveLabel'); }, get body() { return say(SAY, 'controlsTutorial.moveBody'); },
-    get bodyTwo() { return say(SAY, 'controlsTutorial.moveBodyTwo'); } },   /* v2.3.6544: the two buttons' turn and walk */
+    get bodyTwo() { return say(SAY, rimSprintOn() ? 'controlsTutorial.moveBodyRim' : 'controlsTutorial.moveBodyTwo'); } },   /* v2.3.6544: the two buttons' turn and walk; v2.3.6545: and the rim's sprint */
   /* v2.3.1667: this said "hold for special", and it was WRONG — there is
      no hold gesture.  The special fires on a FLICK: BroTown.jsx's right-
      stick release handler measures the release speed and triggers when it

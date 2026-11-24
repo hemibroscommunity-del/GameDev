@@ -20,6 +20,13 @@
  *       its four touches sent to the zone's listeners in one task: see 1f);
  *   1g. no page errors.
  *
+ * PART 6 (tag 6546, the owner's mends of 2026-11-24): 6a in part 2 (the
+ *   latch wears the plain sword, raised and pressed in, never the
+ *   crosshair), 6b in 2f (mode 4 keeps the crosshair), 6d to 6f in part 2
+ *   (the owner: "It's only the line drawn that snaps": no line before the
+ *   press, the line on the lock, gone at combat's end), 6c at the end (the
+ *   left stick's zones in CSS px on the owner's iPhone, 430x775 at 3x).
+ *
  * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
  *   (the character first let past the Mayor's gate, tut_1: a new one is
  *   held in BroTown's safe circle, and the nearest monster is outside it)
@@ -57,8 +64,9 @@
  *   goes, each change of the DOM, and every change of the sight's phase)
  *   3a. far off (700 px), nothing in sight: the right side is Attack and
  *       Jump only (no Block, no Special, no Whirlwind) and no line drawn;
- *   3b. walked in to 435 px (inside the sword's 440): sighted, the line
- *       drawn to that monster, Block and Special on screen around Attack;
+ *   3b. walked in to 435 px (inside the sword's 440): sighted, Block and
+ *       Special on screen around Attack (v2.3.6546: and NO line: the latch
+ *       is idle, and the line is combat's, 6d to 6f);
  *   3c. walked back and forth between 435 and 520 px (past the 440 a new
  *       sighting needs, inside the 550 the sight is held to) six times: the buttons and the phase never
  *       changed (no flicker at the edge);
@@ -81,6 +89,29 @@
  *       two buttons' words (src/data/say/controlsTutorial.js, questCoach.js);
  *   4c. the row again, reading two buttons: a tap loads mode 4 (manual=4,
  *       the key forgotten), today's words back.
+ *
+ * PART 5 (item 6, tag 6545): SPRINT FROM THE STICK'S RIM, upright and
+ *   sideways (after part 1, stamina full), timed by the renderer's own
+ *   frames (S._frameCount; TRAPS 200), the worker's bar read through its
+ *   admin view:
+ *   5a. in mode 5 the sprint button is not drawn (its probe: not shown, the
+ *       rim live, the worker's sprint supported);
+ *   5b. the thumb AT the rim (share 1.0, west): full walking speed, no
+ *       sprint, the stamina still on the phone and on the worker;
+ *   5c. pushed past it (1.4): the rim's sprint (how 'rim'), running, the
+ *       turn ring lit (data-rimsprint), and the worker bills the moves
+ *       marked `sp` (its stamina falls);
+ *   5d. back to the rim (1.0): it ends ('rim'), the ring dark, the walk on;
+ *   5e. out again, then the worker's stamina set to 2: it runs dry
+ *       ('empty'), and with the thumb still out (moved about past the rim,
+ *       the bar mended) it does not start again; back inside, then out: it
+ *       starts;
+ *   5f. the thumb lifted: it ends ('rim'), the stick at rest;
+ *   5g. the mode off (part 2f's page, mode 4): the button drawn as today,
+ *       and a thumb far past the left disc's rim sprints nothing;
+ *   5h. `?rimsprint=0` in mode 5 (part 4's page loaded again): the button
+ *       back, a thumb past the rim walks at full speed and sprints nothing,
+ *       the tour's words without the rim's line.
  *
  * Today's stick with the mode off is played by mp-sprint (the thumb and the
  * button together) and mp-heldcombat (the default, mode 4).
@@ -136,6 +167,38 @@ const STICK = (P) => H.readState(P, (S) => ({
   ang: S._facingAngle, roll: !!S._dodgeRoll,
 }));
 
+const LINE = (P) => P.page.evaluate(() => (window.__btSightLine ? window.__btSightLine() : null));   /* v2.3.6546: the sight line's QA record (rendering/sightLineDraw.js) */
+/* v2.3.6546: what the Attack disc wears: the plain sword (bt-rjoy-strike, mode 5)
+   and the crosshair (bt-rjoy-aim), each drawn or not, and the latch's look */
+const FACE_ICON = (P) => P.page.evaluate(() => {
+  const base = document.querySelector('.bt-rjoy-base');
+  const on = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return getComputedStyle(el).display !== 'none' && r.width > 4 && r.height > 4; };
+  const st = base && base.querySelector('.bt-rjoy-strike');
+  return { latch: base ? base.getAttribute('data-latch') : null, ricon: base ? base.getAttribute('data-ricon') : null,
+    strike: on(st), aim: on(base && base.querySelector('.bt-rjoy-aim')), src: st ? st.getAttribute('src') : null };
+});
+
+/* ═══ v2.3.6545: PART 5's helpers ═══ */
+/* the sprint as the phone and its button see it, the ring, the frame */
+const RIMV = (P) => H.readState(P, (S) => {
+  const sp = S._sprint || {};
+  const b = window.__btSprintBtn ? window.__btSprintBtn() : null;
+  return { on: !!sp.on, how: sp.how || null, why: sp.why || null, running: !!(sp.on && sp.moving), st: S.rpg ? S.rpg.stamina : null,
+    sx: S.stickX || 0, sy: S.stickY || 0, phase: S._stickPhase || 'rest', f: S._frameCount || 0,
+    ring: !!document.querySelector('[data-rimsprint="on"]'), btn: b, dom: !!document.querySelector('[data-sprint]') };
+});
+/* `n` of the renderer's own frames (TRAPS 200: never a clock's window) */
+async function frames(P, n) {
+  const f0 = await H.readState(P, (S) => S._frameCount || 0);
+  await H.waitFor(P, (S) => S._frameCount || 0, (v) => v >= f0 + n, { timeout: 90000, label: n + ' frames' }).catch(() => null);
+}
+const srvSt = async (wsPort, id) => { const v = await H.serverPlayer(wsPort, id).catch(() => null); return v && typeof v.stamina === 'number' ? v.stamina : null; };
+/* the thumb out from the disc's centre `c` to `share` of the drawn radius `R`, west, in slow steps (never a swipe) */
+async function thumbTo(P, touch, c, R, from, share) {
+  const n = Math.max(1, Math.round(Math.abs(share - from) / 0.1));
+  for (let k = 1; k <= n; k++) { await touch('touchMove', [{ x: c.x - (from + (share - from) * k / n) * R, y: c.y, id: 5 }]); await P.page.waitForTimeout(40); }
+}
+
 /* ═══ v2.3.6544: PART 4's helpers ═══ */
 const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
 /* the Test panel: a 1.2 s hold on the zone's name (ZoneHeader), held until it is up (mp-soundstudio's) */
@@ -178,7 +241,7 @@ const coachIs = (w, m, a, sp) => !!w.coach && (w.coach.move || []).length === 1 
 const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBody'] && w.attack === TOUR['controlsTutorial.attackBody']
   && w.targetLabel === TOUR['controlsTutorial.targetLabel'] && w.target === TOUR['controlsTutorial.targetBodyNoLock'] && w.shield === TOUR['controlsTutorial.shieldBody']
   && coachIs(w, 'Drag to move.', 'Hold to attack the nearest enemy.', 'A quick swipe on the Attack button.');
-const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyTwo'] && w.attack === TOUR['controlsTutorial.attackBodyTwo']
+const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyTwo']
   && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyTwo'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
   && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackTwo'], COACH['questCoach.specialTwo']);
 /* the row: open the panel, read it, tap its button at its centre (a real touch), wait for the page to load again and the world */
@@ -295,6 +358,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`1f. ${label}: a fast flick is the dodge roll (the swipe judged first)`, f.flash >= before, { before, ...f });
       await P.page.waitForTimeout(800);
 
+      /* ── PART 5 (v2.3.6545): sprint from the stick's rim ── */
+      {
+        const me5 = await H.readState(P, (S) => S.myId);
+        await H.devOp(wsPort, 'vitals', me5, { heal: true });
+        await frames(P, 3);
+        const a = await RIMV(P);
+        rec.ok(`5a. ${label}: in mode 5 the sprint button is not drawn (shown ${a.btn && a.btn.shown}, the rim ${a.btn && a.btn.rim}, the worker's sprint ${a.btn && a.btn.supported})`,
+          !!a.btn && a.btn.shown === false && a.btn.rim === true && a.btn.supported === true && !a.dom, a);
+        /* 5b: at the rim */
+        await touch('touchStart', [{ x: c.x, y: c.y, id: 5 }]);
+        await P.page.waitForTimeout(80);
+        await thumbTo(P, touch, c, R, 0, 1.0);
+        await frames(P, 4);
+        const b0 = await RIMV(P), s0 = await srvSt(wsPort, me5);
+        await frames(P, 8);
+        const b1 = await RIMV(P), s1 = await srvSt(wsPort, me5);
+        rec.ok(`5b. ${label}: the thumb at the rim walks at full speed (${b1.sx.toFixed(2)}) and does not sprint (${b1.on}); stamina still (phone ${b0.st} -> ${b1.st}, worker ${s0} -> ${s1})`,
+          b1.phase === 'walk' && b1.sx < -0.99 && !b0.on && !b1.on && b0.st === b1.st && s0 != null && s0 === s1, { b0, b1, s0, s1 });
+        /* 5c: past it */
+        await thumbTo(P, touch, c, R, 1.0, 1.4);
+        const on = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.moving), (v) => v, { timeout: 20000, label: 'the rim sprint' }).catch(() => null);
+        const c0 = await RIMV(P);
+        /* the worker's bill, and its bar back on the phone: a page drawing a frame
+           every 800 ms (this box sideways) reads the worker's echo many frames
+           late, so wait on both, by frames (the helper's first run: 100 -> 89 on
+           the worker while the phone still read a late full bar) */
+        let s2 = null, c1 = null;
+        for (let k = 0; k < 40; k++) {
+          await frames(P, 2);
+          s2 = await srvSt(wsPort, me5); c1 = await RIMV(P);
+          if (s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1) break;
+        }
+        rec.ok(`5c. ${label}: pushed past the rim (1.4) it sprints (how ${c1.how}, running ${c1.running}), the ring lit (${c1.ring}); the worker bills the sp moves (${s1} -> ${s2}), the phone's bar falls (${c0.st} -> ${c1.st} of ${s1})`,
+          !!on && c1.on && c1.how === 'rim' && c1.running && c1.ring && s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1, { c0, c1, s1, s2 });
+        /* 5d: back to the rim */
+        await thumbTo(P, touch, c, R, 1.4, 1.0);
+        const off = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => !v, { timeout: 20000, label: 'the rim sprint ends' }).catch(() => null);
+        await frames(P, 3);
+        const d1 = await RIMV(P);
+        rec.ok(`5d. ${label}: back at the rim it ends (${d1.why}), the ring dark (${d1.ring}), the walk on (${d1.sx.toFixed(2)})`,
+          off === false && !d1.on && d1.why === 'rim' && !d1.ring && d1.sx < -0.99, d1);
+        /* 5e: out, run dry, no restart with the thumb out; back in and out: again */
+        await thumbTo(P, touch, c, R, 1.0, 1.4);
+        const on2 = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => v, { timeout: 20000, label: 'the rim sprint again' }).catch(() => null);
+        await H.devOp(wsPort, 'vitals', me5, { stamina: 2 });
+        const dry = await H.waitFor(P, (S) => (S._sprint ? S._sprint.why : null), (v) => v === 'empty', { timeout: 120000, label: 'run dry (the worker\'s bar reaches a slow page late)' }).catch(() => null);
+        await H.devOp(wsPort, 'vitals', me5, { heal: true });
+        await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 50, { timeout: 120000, label: 'the bar mended on the phone' }).catch(() => null);
+        let restarted = false;
+        for (const sh of [1.5, 1.3, 1.6, 1.35]) {
+          await thumbTo(P, touch, c, R, sh === 1.5 ? 1.4 : 1.45, sh);
+          await frames(P, 2);
+          const e = await RIMV(P);
+          if (e.on) restarted = true;
+        }
+        const e1 = await RIMV(P);
+        await thumbTo(P, touch, c, R, 1.35, 0.9);
+        await frames(P, 2);
+        await thumbTo(P, touch, c, R, 0.9, 1.4);
+        const back = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.how === 'rim'), (v) => v, { timeout: 20000, label: 'the rim sprint after coming back' }).catch(() => null);
+        rec.ok(`5e. ${label}: out again it sprints (${!!on2}); at 0 stamina it ends (${dry}); with the thumb still out and the bar mended (${e1.st}) it does not start again (${restarted}); back inside, then out: it starts (${!!back})`,
+          !!on2 && dry === 'empty' && !restarted && !e1.on && e1.st >= 5 && !!back, { e1, restarted });
+        /* 5f: lifted */
+        await touch('touchEnd', [{ x: c.x - 1.4 * R, y: c.y, id: 5 }]);
+        const lift = await H.waitFor(P, (S) => ({ on: !!(S._sprint && S._sprint.on), why: S._sprint && S._sprint.why, phase: S._stickPhase || 'rest' }), (v) => !v.on, { timeout: 20000, label: 'lifted' }).catch(() => null);
+        rec.ok(`5f. ${label}: the thumb lifted, the sprint ends (${lift && lift.why}), the stick at rest (${lift && lift.phase})`, !!lift && lift.why === 'rim' && lift.phase === 'rest', lift);
+        await frames(P, 3);
+      }
+
       /* ── PART 2: the right side ── */
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 8 });
@@ -355,11 +487,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
           lock: lt && lt.ref ? String(lt.id) : null, latchLock: !!(lt && lt.latch), auto: !!S.autoAttack,
           look: el ? el.getAttribute('data-latch') : null, taps: S._tapAttacks || 0 };
       });
+      const i0 = await FACE_ICON(P);   /* v2.3.6546: raised, before the press */
+      /* 6d (v2.3.6546, the owner: "It's only the line drawn that snaps"): sighted, the latch idle: NO line yet */
+      await frames(P, 2);
+      const ln0 = await LINE(P);
+      rec.ok(`6d. ${label}: the monster in sight, Attack not pressed: no sight line (drawn ${ln0 && ln0.drawn})`, !!ln0 && !ln0.drawn, ln0);
       await press();
       const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
       const l1 = await LATCH(P);
       rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
         !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', { ...l1, target, b1: !!b1 });
+      /* 6a (v2.3.6546): the latch wears the plain sword, raised and pressed in, never the crosshair */
+      const i1 = await FACE_ICON(P);
+      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and pressed in and lit (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
+        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'on' && i1.strike && !i1.aim && i1.src, { i0, i1 });
+      const ln1 = await H.waitFor(P, () => (window.__btSightLine ? window.__btSightLine() : null), (v) => !!v && v.drawn && v.id === target, { timeout: 8000, label: 'the line on the lock' }).catch(() => null);
+      rec.ok(`6e. ${label}: Attack pressed: the line drawn to the LOCKED monster (${ln1 && ln1.id}, ${ln1 && ln1.len} px)`, !!ln1, { ln1: ln1 || (await LINE(P)), target });
 
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
@@ -484,6 +627,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (lockMoved) await press();
       else await P.page.waitForTimeout(400);
       const l3 = await LATCH(P);
+      await frames(P, 2);
+      const ln3 = await LINE(P);
+      rec.ok(`6f. ${label}: combat over (${l3.phase}, ${l3.end}): the line gone (drawn ${ln3 && ln3.drawn})`, l3.phase === 'idle' && !!ln3 && !ln3.drawn, { l3, ln3 });
       rec.ok(`2d. ${label}: ${lockMoved ? 'the second press lets go' : 'the kill let go by itself'}: idle (${l3.end}), the held attack off, the disc raised (${l3.look})`,
         l3.phase === 'idle' && l3.end === (lockMoved ? 'press' : 'killed') && !l3.auto && l3.look === 'off' && !l3.latchLock, l3);
 
@@ -549,7 +695,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]') });
         let was = JSON.stringify(shown());
         w.dom.push({ t: Date.now(), v: JSON.parse(was) });
-        const mo = w.mo = new MutationObserver(() => { const n = JSON.stringify(shown()); if (n !== was) { was = n; w.dom.push({ t: Date.now(), v: JSON.parse(n), d: Math.round(w.at) }); } });
+        /* v2.3.6546 (part 12's Found: Block and Special changed 8 times in 3c upright while the phase held): each change says what the buttons' rules read then -- the sight, the latch, the nearest live monster, the last hurt, the shield, the frame */
+        const why = () => { const S = window._gameState && window._gameState.current; if (!S || !S.player) return null; let near = null; for (const m of S.monsters || []) { if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0)) continue; const d = Math.hypot(m.x - S.player.x, m.y - S.player.y); if (near == null || d < near) near = d; }
+          return { p: S._sightPhase || 'none', sAge: S._sightAt ? Date.now() - S._sightAt : null, l: S._latchPhase || 'idle', near: near == null ? null : Math.round(near), hurt: S.lastDamageTaken ? Date.now() - S.lastDamageTaken : null, up: !!S._shieldUp, f: S._frameCount || 0, sh: window.__btShieldBtn ? window.__btShieldBtn().shown : null, sp: window.__btSpecialBtn ? window.__btSpecialBtn().shown : null }; };
+        const mo = w.mo = new MutationObserver(() => { const n = JSON.stringify(shown()); if (n !== was) { was = n; w.dom.push({ t: Date.now(), v: JSON.parse(n), d: Math.round(w.at), why: why() }); } });
         mo.observe(document.body, { childList: true, subtree: true });
         let ph = null;
         clearInterval(window.__ctEdgeT);
@@ -604,10 +753,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await walkTo(435, 0);
       const s1 = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 15000, label: 'sighted at 435' }).catch(() => null);
       await H.waitFor(P, () => !!document.querySelector('[data-shield]') && !!document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special' }).catch(() => null);
-      await H.waitFor(P, () => !!(window.__btSightLine && window.__btSightLine().drawn), (v) => v, { timeout: 8000, label: 'the line' }).catch(() => null);
+      await frames(P, 2);
       const q1 = await EDGE(P);
-      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, the line drawn to it (${q1.line && q1.line.len} px), Block and Special around Attack`,
-        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && q1.line.drawn && q1.line.id === mon3.id && Math.abs(q1.line.len - 435) < 60 && q1.block && q1.special && q1.attack && q1.jump, q1);
+      /* v2.3.6546: no line before the press (the owner: "It's only the line drawn that snaps"); the line is combat's (6d to 6f) */
+      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, Block and Special around Attack, and no line before the press (drawn ${q1.line && q1.line.drawn})`,
+        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && !q1.line.drawn && q1.block && q1.special && q1.attack && q1.jump, q1);
       /* 3c: back and forth across the edge, inside the held 550.  v2.3.6543:
          out to 520, not 545 (the helper's run on 9af138bb, sideways: a frame
          every 767 ms, and the monster's wander past 550 on ONE frame is more
@@ -616,9 +766,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const mid = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length, g: window._ctEdge.gaps.length }));
       for (let k = 0; k < 6; k++) { await walkTo(520, 300); await walkTo(435, 300); }
       const q2 = await EDGE(P);
-      const w2 = await P.page.evaluate((g0) => { const gs = window._ctEdge.gaps.slice(g0).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(-6), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, mid.g);
-      const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`;
-      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost;
+      const w2 = await P.page.evaluate((o) => { const gs = window._ctEdge.gaps.slice(o.g).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(o.d), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, { g: mid.g, d: mid.d });
+      if (w2.dom.length) console.log(`  3c ${label}: the buttons changed ${w2.dom.length} times (v2.3.6546: each with what their rules read): ${JSON.stringify(w2.dom)}`);   /* v2.3.6546: every change in 3c, not the last six */
+      const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted, no line before the press`;
+      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && !q2.line.drawn && !q2.lost;   /* v2.3.6546: no line before the press */
       /* v2.3.6544 (TRAPS 200): the sight holds 400 ms past its last sighting (sight.js SIGHT.HOLD_MS), counted on the
          game's own clock and stepped once a frame.  A page that draws a frame wider than that (this box sideways: 767
          to 1117 ms) drops the sight on ONE frame that misses (the monster's wander past the held 550 between two
@@ -674,6 +825,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         rec.ok(`2f. the mode off (mode ${after && after.mode}): the right half is the held attack again (held: ${!!held}; lifted: ${after && after.auto}), no data-latch`,
           !!z && !!held && after && !after.auto && after.mode === 4 && after.look === null, { z, held, after });
+        const iq = await FACE_ICON(Q);
+        rec.ok(`6b. the mode off: the disc wears the crosshair as today (${iq.aim}), no sword drawn on it (${iq.strike}, in the page: ${iq.src})`,
+          iq.aim && !iq.strike && !iq.src, iq);
         /* 3e (v2.3.6543): the mode off, nothing in sight: the resolver hides
            nothing (Block and Special by their own rules alone) and no sight
            line is drawn */
@@ -681,6 +835,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
           line: window.__btSightLine ? window.__btSightLine().drawn : 'no probe', phase: (window._gameState.current || {})._sightPhase || 'none' }));
         rec.ok(`3e. the mode off: the two buttons' resolver hides nothing (Block ${off.shield}, Special ${off.special}), no sight line (${off.line})`,
           off.shield === true && off.special === true && off.line === false && off.phase === 'none', off);
+
+        /* 5g (v2.3.6545): the mode off: the sprint button as today, and the
+           left disc pushed far past its rim sprints nothing */
+        {
+          const D4 = await DISC(Q);
+          const g0 = await RIMV(Q);
+          let g1 = null;
+          if (D4.base) {
+            const c4 = { x: D4.base.x, y: D4.base.y }, R4 = D4.base.w / 2;
+            await tq('touchStart', [{ x: c4.x, y: c4.y, id: 5 }]);
+            await Q.page.waitForTimeout(80);
+            await thumbTo(Q, tq, c4, R4, 0, 1.6);
+            await frames(Q, 6);
+            g1 = await RIMV(Q);
+            await tq('touchEnd', [{ x: c4.x - 1.6 * R4, y: c4.y, id: 5 }]);
+            await frames(Q, 3);
+          }
+          rec.ok(`5g. the mode off: the sprint button drawn as today (${g0.btn && g0.btn.shown}, rim ${g0.btn && g0.btn.rim}); the left disc pushed far past its rim walks (${g1 && g1.sx.toFixed(2)}) and sprints nothing (${g1 && g1.on})`,
+            !!g0.btn && g0.btn.shown === true && g0.btn.rim === false && g0.dom && !!g1 && g1.sx < -0.9 && !g1.on && !g1.ring, { g0, g1 });
+        }
 
         /* PART 4 (v2.3.6544): the Test panel's row, and the words in each mode */
         await Q.page.waitForFunction(() => !!(window.__btCoach && window.__btTourWords), null, { timeout: 20000 }).catch(() => null);
@@ -696,8 +870,82 @@ export async function run({ browser, wsPort, webPort, rec }) {
           rec.ok(`4c. the row read ${r2.reads}; its tap loaded mode ${w6 && w6.mode} (manual=${w6 && w6.manual}, the key ${w6 && w6.key}), today's words back`,
             r2.reads === 'buttons' && r2.went && r2.inW && !!w6 && w6.manual === '4' && w6.key === null && todayWords(w6), { r2, w6 });
         } else rec.ok('4c. the row back to two sticks (4b first)', false, r1);
+
+        /* 5h (v2.3.6545): `?rimsprint=0` in mode 5: the button back, the rim does nothing, the tour without its line */
+        {
+          const u = new URL(Q.page.url());
+          u.searchParams.set('manual', '5');
+          u.searchParams.set('rimsprint', '0');
+          await Q.page.goto(u.toString()).catch(() => null);
+          await H.enterWorld(Q);
+          const inH = await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel, ?rimsprint=0' }).catch(() => null);
+          let h0 = null, h1 = null, wh = null;
+          if (inH) {
+            const ch = await Q.ctx.newCDPSession(Q.page);
+            const th = (type, pts) => ch.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+            await Q.page.waitForFunction(() => !!(window.__btCoach && window.__btTourWords && window.__btSprintBtn), null, { timeout: 20000 }).catch(() => null);
+            await frames(Q, 3);
+            h0 = await RIMV(Q);
+            wh = await WORDS(Q);
+            const DH = await DISC(Q);
+            if (DH.base) {
+              const ch5 = { x: DH.base.x, y: DH.base.y }, RH = DH.base.w / 2;
+              await th('touchStart', [{ x: ch5.x, y: ch5.y, id: 5 }]);
+              await Q.page.waitForTimeout(80);
+              await thumbTo(Q, th, ch5, RH, 0, 1.6);
+              await frames(Q, 6);
+              h1 = await RIMV(Q);
+              await th('touchEnd', [{ x: ch5.x - 1.6 * RH, y: ch5.y, id: 5 }]);
+            }
+          }
+          rec.ok(`5h. \`?rimsprint=0\` in mode ${wh && wh.mode}: the sprint button back (${h0 && h0.btn && h0.btn.shown}); a thumb past the rim walks at full speed (${h1 && h1.sx.toFixed(2)}) and sprints nothing (${h1 && h1.on}); the tour says the walk without the rim's line`,
+            !!inH && !!wh && wh.mode === 5 && !!h0 && h0.btn && h0.btn.shown === true && h0.btn.rim === false && h0.dom && !!h1 && h1.sx < -0.99 && !h1.on && !h1.ring
+              && wh.move === TOUR['controlsTutorial.moveBodyTwo'], { h0, h1, move: wh && wh.move });
+        }
       } else rec.ok('2f. the mode off: in the Wheel (guard)', false, inQ);
     }
+    /* ── PART 6 (v2.3.6546): THE LEFT STICK'S ZONES ON THE OWNER'S PHONE ──
+       The owner, 2026-11-24, on an iPhone 14 Pro (430x775 CSS px at 3x):
+       "directional facing (no movement) isn't working with left joystick based
+       on press distance".  A slow push west, one CSS px a touch move, from
+       where the thumb landed (the disc's centre), upright and sideways, and
+       upright again with `?turnzone=50`: where the dead zone ends, where TURN
+       ends and where the rim is, in CSS px, read off the page's own phase
+       (S._stickPhase) after each move.  The numbers are stickZones.js's
+       (DEAD 12%, TURN 30% of the disc's DRAWN radius): this checks the page
+       keeps them, and prints them for the owner. */
+    for (const [label, viewport, q] of [['upright', { width: 430, height: 775 }, 'manual=5'], ['sideways', { width: 775, height: 430 }, 'manual=5'], ['upright, ?turnzone=50', { width: 430, height: 775 }, 'manual=5&turnzone=50']]) {
+      const Z = await H.newPlayer(browser, { name: 'Zonebro' + players.length, wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: q });
+      players.push(Z);
+      Z.page.on('pageerror', (e) => errs.push('6 ' + label + ': ' + String((e && e.message) || e).slice(0, 200)));
+      await H.enterWorld(Z);
+      const inZ = await H.waitFor(Z, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
+      if (!inZ) { rec.ok(`6c. ${label}: in the Wheel (guard)`, false, null); continue; }
+      await Z.page.waitForTimeout(1500);
+      const cz = await Z.ctx.newCDPSession(Z.page);
+      const tz = (type, pts) => cz.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+      const DZ = await DISC(Z);
+      if (!DZ.base) { rec.ok(`6c. ${label}: the left disc on screen (guard)`, false, DZ); continue; }
+      const RZ = DZ.base.w / 2, cc = { x: DZ.base.x, y: DZ.base.y, id: 6 };
+      const turn = q.indexOf('turnzone=50') >= 0 ? 0.5 : 0.3;
+      let deadEnd = null, turnEnd = null, last = 'rest';
+      await tz('touchStart', [cc]);
+      await Z.page.waitForTimeout(80);
+      for (let px = 1; px <= Math.ceil(RZ) + 2; px++) {
+        await tz('touchMove', [{ x: cc.x - px, y: cc.y, id: 6 }]);
+        const ph = await H.readState(Z, (S) => S._stickPhase || 'rest');
+        if (last === 'rest' && ph !== 'rest') deadEnd = px - 1;
+        if (last !== 'walk' && ph === 'walk') turnEnd = px - 1;
+        last = ph;
+      }
+      await tz('touchEnd', [{ x: cc.x - Math.ceil(RZ) - 2, y: cc.y, id: 6 }]);
+      /* a CSS px a step: each border read to the whole px at or below it */
+      const okDead = deadEnd === Math.floor(0.12 * RZ), okTurn = turnEnd === Math.floor(turn * RZ);
+      console.log(`  6c ${label} (${viewport.width}x${viewport.height}, 3x): the dead zone ends at ${deadEnd} px, TURN ends at ${turnEnd} px (a band of ${turnEnd != null && deadEnd != null ? turnEnd - deadEnd : '?'} px), the rim at ${RZ} px; the ring drawn at ${DZ.ring && DZ.ring.w / 2} px`);
+      rec.ok(`6c. ${label}: a slow push from where the thumb landed: nothing to ${deadEnd} px, TURN to ${turnEnd} px, walking past it, the rim at ${RZ} px (the drawn radius; ${Math.round(turn * 100)}% of it ${(turn * RZ).toFixed(1)} px)`,
+        okDead && okTurn && last === 'walk' && !!DZ.ring && Math.abs(DZ.ring.w / 2 - turn * RZ) < 1.5, { deadEnd, turnEnd, RZ, ring: DZ.ring, last });
+    }
+
     rec.ok('1g/2g. no page errors', errs.length === 0, errs.slice(0, 4));
   } finally {
     for (const P of players) await P.ctx.close().catch(() => {});

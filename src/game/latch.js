@@ -42,10 +42,11 @@
  * BroTown writes what latchFrame and latchAttackPress return, and a lifted
  * thumb (handleRBtnRelease) leaves it as latchHolds says.
  *
- * Three imports, sight.js, and manualCombat.js and deviceProfile.js for the one gate (twoButtonsLive; v2.3.6542): node tests it
+ * Four imports, sight.js, and manualCombat.js and deviceProfile.js for the one gate (twoButtonsLive; v2.3.6542), and switches.js (v2.3.6546: `?sightline`): node tests it
  * (server/test/latch.test.mjs).
  */
-import { sightPick, sightStep, sightClear, sightRange, drawnFace } from './sight.js';   /* v2.3.6542 */
+import { sightPick, sightStep, sightClear, sightRange, drawnFace, sightLine, lineTo } from './sight.js';   /* v2.3.6542; v2.3.6546: the line, latchLine */
+import { readerFor, sw } from './switches.js';   /* v2.3.6546: `?sightline=1` (switches.js imports nothing) */
 import { twoButtonsOn } from './manualCombat.js';   /* v2.3.6542 (sitting 60): the one gate, twoButtonsLive, below */
 import { fineInput } from './deviceProfile.js';
 
@@ -199,6 +200,34 @@ export function latchFrame(S, now, dead, slot, mult) {
   const end = latchCheck(S, m ? _T : null, _range.out, others);
   if (end && end !== 'moved') return false;
   return latchHolds(S);
+}
+
+/* ═══ v2.3.6546: THE LINE IS COMBAT'S, NOT THE SIGHT'S (card CT item 7) ═══
+ * The owner, 2026-11-24, after playing the trial: "For new controls some
+ * things need fixed like it's snapping to a monster target when you run by.
+ * It's supposed to be just free movement until you tap attack and it'll lock
+ * on", and asked what snapped: "It's only the line drawn that snaps."  (A
+ * probe walked a sword past a monster in mode 5: the body faced the stick
+ * every frame, no aim, no lock, no held attack, the camera led by the walk
+ * alone; only the line jumped from monster to monster as each came into the
+ * cone.)  So the line is drawn while combat is ON (the latch active), from
+ * the body to the LOCKED monster, and goes when combat ends.  Before the
+ * press nothing is drawn: the sighting stays, unseen, as the rule of what
+ * Attack will lock, and Block and the specials still come with it
+ * (controlVisibility.js).  `early` (`?sightline=1`, sightLineEarly) draws the
+ * sighting's line before the press again, as PR 4 did.  The renderer's one
+ * call (rendering/sightLineDraw.js) asks this; node tests it
+ * (server/test/sight.test.mjs 11). */
+export function latchLine(S, now, early) {
+  if (!S || typeof S !== 'object') return null;
+  if (latchPhase(S) === 'active') return lineTo(S, S._latchId);
+  return early === true ? sightLine(S, now) : null;
+}
+
+/** `?sightline=1`: the sight line before the press (PR 4's).  `search` is
+ *  for tests. */
+export function sightLineEarly(search) {
+  return typeof search === 'string' ? readerFor(search).sw('sightline') : sw('sightline');
 }
 
 /** v2.3.6543: the weapon's sight range held out (sightRange's `out`), as the

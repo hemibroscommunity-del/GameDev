@@ -161,7 +161,15 @@ const _LINE = { id: null, x0: 0, y0: 0, x1: 0, y1: 0, d: 0 };
 export function sightLine(S, now) {
   if (!S || sightPhase(S) !== 'sighted' || S._sightId == null || !S.player) return null;
   if (!(now - (S._sightAt || 0) <= SIGHT.HOLD_MS)) return null;   /* written so a clock that is not a number draws nothing */
-  const k = String(S._sightId);   /* String() both sides: ids are numbers in some spawn paths (latch.js findMon) */
+  return lineTo(S, S._sightId);
+}
+
+/** v2.3.6546: the line from the body to the monster `id` (alive, in the
+ *  list, both somewhere), or null: sightLine's, and the latch's lock's
+ *  (latch.js latchLine).  The same one object. */
+export function lineTo(S, id) {
+  if (!S || id == null || !S.player) return null;
+  const k = String(id);   /* String() both sides: ids are numbers in some spawn paths (latch.js findMon) */
   const mons = Array.isArray(S.monsters) ? S.monsters : [];
   for (let i = 0; i < mons.length; i++) {
     const m = mons[i];

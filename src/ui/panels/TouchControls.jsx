@@ -4,9 +4,41 @@ import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
 import { RideButton } from './RideButton.jsx'; /* v2.3.3776: the skateboard */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
-import { Skin, RDISC_ICONS, AimReticle } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
+import { Skin, RDISC_ICONS, AimReticle, WPN_PILL_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control; v2.3.6546: the plain sword, the two buttons' Attack */
 import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
-import { turnRingRadius } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call) */
+import { turnRingRadius, rimSprintOn, rimSprinting } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call); v2.3.6545: the rim's sprint lights it */
+
+/* ═══ v2.3.6545: THE TURN RING SAYS "SPRINTING" (card CT item 6) ═══
+ * In the two buttons the thumb pushed past the disc's rim sprints
+ * (game/stickZones.js rimSprint), and the sprint button is not drawn.  So
+ * the turn ring is lit in the sprint's own colour, solid and warm, while a
+ * sprint the rim started runs: no new art, no new sound.  Mounted only in
+ * the ring (mode 5) with the rim on; it asks the state every RIM_POLL_MS
+ * and redraws only on a change, the redraw a transition (a redraw on a
+ * timer never holds a frame). */
+const RIM_POLL_MS = 100;
+export const RIM_SPRINT_COLOR = 'rgba(255,186,73,.95)';
+function RimGlow(props) {
+  var stateRef = props.stateRef;
+  var _s = React.useState(false), on = _s[0], setOn = _s[1];
+  React.useEffect(function () {
+    var was = false;
+    var id = setInterval(function () {
+      var now = rimSprinting(stateRef && stateRef.current);
+      if (now === was) return;
+      was = now;
+      React.startTransition(function () { setOn(now); });
+    }, RIM_POLL_MS);
+    return function () { clearInterval(id); };
+  }, [stateRef]);
+  /* drawn always and shown by its opacity: the poll runs for the ring's life
+     either way (TRAPS 299: no `return null` with a live poll beside it) */
+  return React.createElement('div', {
+    'data-rimsprint': on ? 'on' : 'off', 'aria-hidden': 'true',
+    style: { position: 'absolute', inset: -1.5, borderRadius: '50%', border: '2.5px solid ' + RIM_SPRINT_COLOR,
+      boxShadow: '0 0 6px ' + RIM_SPRINT_COLOR, boxSizing: 'border-box', pointerEvents: 'none', opacity: on ? 1 : 0 },
+  });
+}
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
  * Owner: "Make the on screen buttons look more like the improved mockup."
@@ -250,7 +282,7 @@ export function TouchControls(props) {
     style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
       transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',
       boxSizing: 'border-box', pointerEvents: 'none' },
-  }) : null, /*#__PURE__*/React.createElement("div", {
+  }, rimSprintOn() ? React.createElement(RimGlow, { stateRef: stateRef }) : null) : null, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
        knob when dragged.  transform-origin at left-centre so rotation
        pivots at the disc centre; width set dynamically by
@@ -497,6 +529,24 @@ export function TouchControls(props) {
   }, /* v2.3.3920: an attack wears the aiming reticle (controlSkin AimReticle),
      not the weapon in hand -- that is the weapon triangle's now */
   React.createElement(AimReticle, { key: 'aim', className: 'bt-rjoy-icon bt-rjoy-aim', size: rIcon }),
+  /* ═══ v2.3.6546: THE TWO BUTTONS' ATTACK WEARS THE PLAIN SWORD (card CT, the owner's mends) ═══
+     The owner, 2026-11-24, after playing mode 5: "attack button needs to
+     change icon to general attack icon right now it's a crosshair."  The
+     reticle is the aiming STICK's face (v2.3.3920, v2.3.4130), and in the two
+     buttons nothing is aimed by the finger: Attack is a latch.  So in mode 5
+     (twoButtonsLive) the latch wears the game's own plain sword, the Character
+     sheet's Melee drawing the weapon pill already shows (controlSkin
+     WPN_PILL_ICONS.melee.on, 96 px, 256 colours, warmed on the loading screen
+     by controlsPreload.js: no new art, nothing new to load), whatever weapon is
+     in hand -- the attack, not the weapon.  game.css shows it, and hides the
+     reticle, only on a disc wearing data-latch (latch.js latchLook, set in no
+     other mode); its bevel and its pressed-in, lit state are the latch's own.
+     Any other mode: not rendered, the reticle as today. */
+  twoButtonsLive() ? React.createElement('img', {
+    key: 'strike', className: 'bt-rjoy-icon bt-rjoy-strike', 'data-strike': '1',
+    src: WPN_PILL_ICONS.melee.on, alt: '', draggable: false, width: rIcon, height: rIcon,
+    style: { width: rIcon, height: rIcon, objectFit: 'contain', pointerEvents: 'none' },
+  }) : null,
   RDISC_ICONS.map(function (ic) {
     return React.createElement('img', {
       key: ic[0], className: 'bt-rjoy-icon', 'data-ricon-img': ic[0],
