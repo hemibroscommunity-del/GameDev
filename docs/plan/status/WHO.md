@@ -1,5 +1,5 @@
 card: WHO
-branch: claude/plan-who-1-actor (#2285, 6480, mended for sitting 58); claude/plan-who-2-sitting (6481) and claude/plan-who-3-trace (6482, stacked on it), committed here, not pushed
+branch: claude/plan-who-1-actor (#2285, 6480, mended for sitting 58); claude/plan-who-2-sitting (6481) and claude/plan-who-3-trace (6482, stacked on it): committed in this session, not pushed yet
 prs: #2285 6480 (mended, for sitting 58), 6481 (built, waits on #2283), 6482 (built, stacked on 6481)
 state: working
 
