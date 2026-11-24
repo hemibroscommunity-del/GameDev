@@ -4,7 +4,7 @@ prs: none open (this notes branch never has a PR)
 state: working
 part 6 (session_01LccHanKxudynkwdrcZewcK, depth 1, started by part 5 at 04:29 UTC 2026-11-24; the owner told to talk to it) is the orchestrator; every running session below was told its id at 04:30. Its sweep: a send_later every 90 minutes (next 06:01), no other check. Never message parts 1 to 5, nor the duplicate "part 5" session_01LccHamjiNtLpRMK9GZpvoK (it stood down).
 
-## Sitting 58: 2026-11-25 UTC (two a day), or sooner if the owner says "run another round today" (asked 02:55, recommended yes once the mends are green; NOT answered). A NEW gatekeeper session (strong, high). Queue, every re-push reviewed fresh:
+## Sitting 58: RUNNING today (the owner, passed on by part 5: "And yea keep going recommended"). Gatekeeper session_01LccHamr9a27z4nhhnVAzW1 (strong, high; started 04:34 UTC 11-24) was given the queue below as read at 04:33: all `test` success and clean EXCEPT #2300 (`test` running), #2312 and #2308 (drafts), #2306 (`playable` cancelled). It sends ONE list to part 6. #2307's owner words were checked in part 4's transcript (typed from iOS, 02:23:58 UTC). Queue:
 - CK #2305 (6425, 69c7b1e8) THEN #2307 (6424, `.github/`, 4261a46b; the owner's own words quoted in its body: "Yes to GitHub check settings. Do whatever works best.")
 - BK #2299 (3c4322c8), #2301 (f40b578f), #2309 (6465, 670ec724; stacked on #2301). WHO #2285 (dcf8ca12). LS #2311 (6560, d0ba2e30). RR/LF #2273 (c896360d, seven plants red, DEPLOYS)
 - DG #2283 (a98fff04), #2295 (00f3ee8f, holds a98fff04) and #2300 (0fb31866, holds #2295; its `test` awaited at 04:30; read by a lane, DG part 5 still to confirm), #2310 (6443, 02fff173; BEHAVIOUR, deploys: a line of its own), #2312 (6444, ba398efa, a draft until DG part 6 marks it), PR 6 (6445) coming
@@ -29,7 +29,7 @@ After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #227
 
 ## The owner (on a phone; silent since 02:49 UTC, when they started part 5)
 - ANSWERED earlier: call 2 YES (#2307); sprint option 1; call 5: the sword stays, rows over 1.5 stay KNOWN.
-- ASKED 03:33 and again by part 6 at 04:32 (with "run another round today?"), NOT ANSWERED (SEND the answer to PH part 5): from their own Speed test (28 fps as played), on phones draw at 2x (37) and metal shine off (36) by default, each with its switch; water and shadows stay; all off was 45 and FELT smoothest. The alternative: the ladder drops shine and sharpness first. And: was Low Power Mode on (the phone said a 30-a-second screen, yet drew 45)?
+- ANSWERED 04:40 to 04:50 (in part 5's session, passed on; sent to PH part 5): extras YES as recommended (phones draw at 2x, metal shine off, each with its switch); "Might even be able to go further with that cause the art is not great anyway": they were asked to try ?res=2, 1.5, 1 and name the lowest that looks fine (NOT yet); "Low power mode was not on during test" (so the 30-a-second reading was wrong: PH's to mend or Found). Another round today: YES.
 - Mentioned, not answered: call 4 (every phone test once; recommended after 58 lands), call 6 (Cloudflare's cap). Call 7 after #2308 lands (to feel: no lunge on the latch's press; the right half's tap does not attack in mode 5; a latched attack halves the walk).
 - Read to them: the two "decided while away" (120 MB `?memalarm=0` #2291; `?thawjudge=0` #2273). Told: the duplicate part 5 stood down.
 
