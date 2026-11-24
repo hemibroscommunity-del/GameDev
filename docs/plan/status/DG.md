@@ -7,7 +7,8 @@ state: ready
 - Sitting 57's CI (#2295 red, heap-forget 4,167 B a guest): the guard let
   go of a record only at a sweep after a full collection (+1 KB a guest,
   test room only); now a record leaving the room's map is checked once and
-  let go (340 B a guest; plants1 still 17 of 23 red).
+  let go (340 B a guest; plants1 still 17 of 23 red). CI still read 4,632:
+  heap-forget is now UNGUARDED_SUITES (a measure of the room's own heap).
 - PR 1 (6440): testroom.mjs arms a guard on every live player's record
   (gold, hp and the life phase, xp and level, the bag, the stashes, quest
   state, build points): a write outside its door is refused and fails the
