@@ -12,6 +12,7 @@
 export const SYSTEM = 'input';
 export const ROWS = [
   { field: '_burstMsgAt', system: 'input', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/playerActions.js elementBurst', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/playerActions.js'] },
+  { field: '_freeShots', system: 'input', lifetime: 'sitting', suggested: '?', born: 'fly src/game/freeAttack.js freeArrowGo', twoFiles: '', noRead: 'tests', noSet: false, phase: null, flag: false, writers: ['src/game/freeAttack.js'] },
   { field: '_hasUsedSwipe', system: 'input', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/playerActions.js specialAttack', twoFiles: '2+', noRead: false, noSet: false, phase: null, flag: true, writers: ['src/game/playerActions.js', 'src/ui/BroTown.jsx'] },
   { field: '_iceAttack', system: 'input', lifetime: 'sitting', reset: 'kept: nothing reads it (noRead): set true by an elemental special and never read or cleared, so a reset would change nothing; a leftover (card L\'s status, Found)', suggested: 'zone', born: 'fly src/game/playerActions.js specialAttack', twoFiles: '', noRead: true, noSet: false, phase: null, flag: true, writers: ['src/game/playerActions.js'] },
   { field: '_lastBurstAt', system: 'input', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/playerActions.js elementBurst', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/playerActions.js'] },

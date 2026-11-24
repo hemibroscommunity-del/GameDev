@@ -559,3 +559,7 @@ shot at a target nothing covers.
     (the owner's call).
 - On main after #1040 (gems in weapons): `mp-groundline`, `mp-sightrock`,
   `mp-bowprops` and `mp-weapongem`, 53/53.
+
+## v2.3.6547: the two buttons' free arrow (card CT item 8)
+
+In the two buttons (`?manual=5`, a touch screen) a press of Attack with nothing sighted looses its arrow on the body's facing even when the line meets nothing (the gate's `!_sightOn && !_mcFire` now also asks `freeArrowGo`, `src/game/freeAttack.js`, as a flick passes it); the owner, 2026-11-24: "I want arrows to be able to shoot whenever the line of site is aimed at". Everything above stands for every other scheme, and `?freefire=0` restores the wait (`tools/guards/free-attack.test.mjs`; `mp-twobuttons` part 7).

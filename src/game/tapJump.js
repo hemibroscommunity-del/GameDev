@@ -22,6 +22,7 @@
  */
 import { jumpAirborne } from './jump.js';   /* v2.3.3712: a tap in the air attacks nothing */
 import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
+export { freeArrowGo } from './freeAttack.js';   /* v2.3.6547: the tap's one attack with a bow in the two buttons, an arrow with nothing on its line (card CT item 8): the loop asks it where it asks the tap */
 
 /* ═══ v2.3.3712: THE TAP ATTACKS NOW -- THE JUMP IS THE BUTTON'S ═══
  *

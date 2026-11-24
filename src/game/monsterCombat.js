@@ -60,7 +60,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { climbRefused } from '@/game/climbActions.js';   /* v2.3.6080: nor on the vines, as the tap (TRAPS §293) */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
-import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
+import { tapAttackWaiting, tapAttackDone, tapSwingAim, freeArrowGo } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack; v2.3.6547: + its free arrow in the two buttons (game/freeAttack.js, card CT item 8) */
 import { swordFeelContact } from '@/game/swordFeel.js';   /* v2.3.4800: the cut's weight at contact */
 import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol, mcHitPitch } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { staffFeelCycle, staffFireWaiting, staffFireTake, staffShotLife, STAFF_FEEL } from '@/game/staffFeel.js'; /* v2.3.4803: the staff's feel -- a bolt for each lift, carrying its gather */
@@ -1831,7 +1831,7 @@ export function updateMonsterCombat(S, deps) {
                     /* v2.3.4395: ...but a FLICK is an arrow, on a line or not: the hand asked
                        for this one shot, and "I flicked and nothing happened" is worse than
                        a miss (the held bow waited for its line; a flick cannot) */
-                    _mayLoose = false;         /* no line, no arrow, and no spent cadence */
+                    _mayLoose = freeArrowGo(S, _tapAtkNow);   /* no line, no arrow, and no spent cadence; v2.3.6547: but in the two buttons Attack's press with nothing sighted is an arrow the way you face (game/freeAttack.js; card CT item 8) */
                   }
                   /* v2.3.3712: a tap's one attack is had either way -- the
                      special that went, or a line on nothing (the bow looses

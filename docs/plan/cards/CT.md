@@ -85,12 +85,26 @@ the switch table.
   has today, 440 held out to 550, so the edge does not flicker), or when it
   dies with no other monster sighted. If another is sighted as it dies, the
   lock moves to the nearest with no new press. A press with nothing sighted
-  is one attack the way the body faces, as a tap is today.
+  is one attack the way the body faces, as a tap is today, and with a bow
+  that is an arrow on the body's facing, line or no line (item 8, the owner
+  2026-11-24: *"I want free form attacks when you press the attack button
+  prior to entering any combat situation. So I want arrows to be able to
+  shoot whenever the line of site is aimed at (instead of the current
+  behavior of only firing when something is in front to fire at like props
+  or monsters)"*; `?freefire=0` gives the old wait back). With a sword the
+  locked press swings WHERE THE BODY STANDS: nothing walks, steps or dashes
+  it to the monster, the left stick alone moves it, a swing that cannot
+  reach misses (item 8, the owner: *"I want to change the melee behavior so
+  that it doesn't jump to every monster. Instead you must press an attack
+  charge button to get that behavior."*; the Charge button is a later
+  item's; `?meleestay=0` lets the sword dash lunge at the lock).
 - **Each job of the old right side has a home.** The specials and Block are
   their buttons (no flick in this mode). A staff's bolt and a bow's arrow
-  fly at the locked target (nothing is steered by the finger in this mode;
-  *"the bow only looses when the line is on something"* stays true: the
-  line is on the lock). Near a node the Attack button is the harvest button,
+  fly at the locked target (nothing is steered by the finger in this mode).
+  *"The bow only looses when the line is on something"* holds for the
+  lock's arrows (the line is on the lock); a press with nothing sighted
+  looses its arrow free (item 8, above): it hits what it meets and starts
+  the fight as any arrow does. Near a node the Attack button is the harvest button,
   as the disc is today. A tap on the world's right half still opens a door
   and talks to a townsperson.
 - **PvP is not this card.** In a duel, a spar or No man's land the scheme
