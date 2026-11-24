@@ -310,8 +310,6 @@ function writesOutside(prop, doorFile, doorFn) {
   const calls = Object.create(null), bad = [], gates = Object.create(null), draws = [], reach = Object.create(null), reachBad = [];
   /* v2.3.6542 (the gatekeeper's sitting 60): the one gate, latch.js twoButtonsLive() (latch.test H2 holds every caller of twoButtonsOn) */
   const isTwoOn = (e) => !!e && e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'twoButtonsLive' && e.arguments.length === 0;
-    && e.left.type === 'CallExpression' && e.left.callee.type === 'Identifier' && e.left.callee.name === 'twoButtonsOn' && e.left.arguments.length === 0
-    && e.right.type === 'UnaryExpression' && e.right.operator === '!' && e.right.argument.type === 'CallExpression' && e.right.argument.callee.type === 'Identifier' && e.right.argument.callee.name === 'fineInput' && e.right.argument.arguments.length === 0;
   for (const f of walk('src/', [])) {
     const src = readFileSync(new URL(f, ROOT), 'utf8');
     if (!src.includes('combatButtonsShown') && !src.includes('drawSightLine')) continue;
