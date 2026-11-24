@@ -17,6 +17,16 @@
  *      the spends are numbers.  Today no row's spend is measured (each is
  *      null), and the guard says so: a number nobody measured is not
  *      written here (scoreboard rule: it never guesses).
+ *      v2.3.6525 (card WL PR 6, "paper marked as paper"): the check summed
+ *      nothing and printed `ok`.  Now a spend is MEASURED only when it is
+ *      a finite number at or over 0; `null` says "not measured", and a row
+ *      whose `spends` is empty is listed as not measured too (it was never
+ *      asked, which is not "spends nothing").  A thing with a line and no
+ *      measured spender prints "not measured: no sum checked", never `ok`;
+ *      the sum is over the measured rows alone, and says how many of its
+ *      spenders it holds.  A spend that is neither null nor a measure (a
+ *      string, NaN, Infinity, a negative that would hide another row's
+ *      ms) FAILS 4b: before, each passed, uncounted.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   1. delete the `vendor:` row                                        -> FAIL 1
@@ -24,6 +34,10 @@
  *   3. a second `c('tick-rate', 'server/src/tick.js')` in server-core     -> FAIL 3
  *      (and KNOWN_SECOND_LINE 16 -> 15                                   -> FAIL 3)
  *   4. `spends: { 'page-ms': 17 }` on `ui`                               -> FAIL 4
+ * v2.3.6525 (card WL PR 6), each tried by hand, 2026-11-24 (green before):
+ *   5. `spends: { 'page-ms': NaN }` on `ui`                              -> FAIL 4b
+ *   6. `spends: { 'page-ms': '17' }` on `ui`                             -> FAIL 4b
+ *   7. `'page-ms': 17` on `ui`, `'page-ms': -10` on `audio`         -> FAIL 4b (and 4)
  *
  * Run from the repository's root: node tools/guards/budgets.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -78,23 +92,31 @@ const check = (name, ok, detail) => {
   console.log(`     signals with one controller: ${one.join(', ') || 'none'}`);
 }
 
-/* ── 4. a sum of spends over its line ── */
+/* ── 4. a sum of spends over its line, of the rows that measured one ── */
 {
-  const over = [];
-  const unmeasured = [];
+  const measure = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+  const over = [], notMeasure = [], partial = [], none = [];
+  for (const [sys, row] of Object.entries(ROWS)) for (const [thing, v] of Object.entries(row.spends)) {
+    if (v !== null && !measure(v)) notMeasure.push(`${sys}: ${thing} = ${typeof v === 'string' ? JSON.stringify(v) : String(v)}`);
+  }
   for (const [thing, sh] of Object.entries(SHARED)) {
     if (sh.line === null) continue;
-    let sum = 0, nums = 0, nulls = 0;
+    let sum = 0, nums = 0, spenders = 0;
     for (const row of Object.values(ROWS)) {
       if (!Object.hasOwn(row.spends, thing)) continue;
-      const v = row.spends[thing];
-      if (typeof v === 'number') { sum += v; nums++; } else nulls++;
+      spenders++;
+      if (measure(row.spends[thing])) { sum += row.spends[thing]; nums++; }
     }
-    if (sum > sh.line) over.push(`${thing}: ${sum} ${sh.unit} over its line ${sh.line}`);
-    if (nulls) unmeasured.push(`${thing} (${nulls} spender(s) not measured, ${nums} measured)`);
+    if (!nums) { none.push(`${thing} (${spenders} spender(s), none measured)`); continue; }
+    if (sum > sh.line) over.push(`${thing}: ${sum} ${sh.unit} over its line ${sh.line} (${nums} of ${spenders} spenders measured)`);
+    else partial.push(`${thing}: ${sum} of ${sh.line} ${sh.unit}, ${nums} of ${spenders} spenders measured`);
   }
-  check('4: no sum of measured spends over its line', over.length === 0, over);
-  if (unmeasured.length) console.log(`     not measured yet: ${unmeasured.join('; ')}`);
+  check('4b: every spend is null (not measured) or a measure (a finite number, 0 or more)', notMeasure.length === 0, notMeasure);
+  if (partial.length || over.length) check(`4: no sum of measured spends over its line (${partial.length + over.length} sum(s))`, over.length === 0, over);
+  for (const p of partial) console.log(`     ${p}`);
+  if (none.length) console.log(`     not measured: no sum checked: ${none.join('; ')}`);
+  const empty = Object.entries(ROWS).filter(([, row]) => !Object.keys(row.spends).length).map(([sys]) => sys);
+  if (empty.length) console.log(`     rows that name no spend (not measured, which is not "spends nothing"): ${empty.length} of ${Object.keys(ROWS).length}: ${empty.join(', ')}`);
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
