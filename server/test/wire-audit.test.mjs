@@ -26,6 +26,7 @@
  * loudly instead of the audit rotting into a vacuous pass.           */
 import { readFileSync } from 'node:fs';
 import { srcFiles } from './src-walk.mjs';
+import { visit, wordsAt } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the census reads the syntax tree (card DG PR 2) */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { PRIVILEGED_EVENTS } from '../src/index.js';
@@ -52,24 +53,34 @@ const RELAY_ECHO_ALLOWLIST = RELAY_ECHOES;
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const files = srcFiles().filter((f) => f !== 'data.js');   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
 
+/* v2.3.6441 (card DG PR 2): read off the syntax tree, never a pattern of
+   text: a `type` written out, or held in a name the tree can follow (`const T
+   = 'quest_' + 'bonus'`, plants2 SEND-3: a new type with no out row that the
+   pattern walked past), a ternary of two; and a send helper's second
+   argument the same way. */
 const extracted = new Map(); // type -> [file:line, ...]
-const RE_A = /\btype:\s*'([a-z_0-9]+)'/g;
-const RE_B = /_[A-Za-z0-9]+Send\([^,)]+,\s*'([a-z_0-9]+)'/g;
+const note = (t, at) => { if (!/^[a-z_0-9]+$/.test(t)) return; if (!extracted.has(t)) extracted.set(t, []); extracted.get(t).push(at); };
 for (const f of files) {
-  const lines = readFileSync(join(srcDir, f), 'utf8').split('\n');
-  lines.forEach((line, i) => {
-    for (const re of [RE_A, RE_B]) {
-      re.lastIndex = 0;
-      let m;
-      while ((m = re.exec(line))) {
-        if (!extracted.has(m[1])) extracted.set(m[1], []);
-        extracted.get(m[1]).push(f + ':' + (i + 1));
-      }
-    }
+  visit(readFileSync(join(srcDir, f), 'utf8'), {
+    ObjectProperty(path) {
+      const k = path.node.key;
+      if (path.node.computed || (k.name || k.value) !== 'type') return;
+      /* a `type` inside a payload (`payload: { type: BURST_ABILITY_KIND }`, an
+         ability's kind) or a row's trust (`trust: { type: 'request' }`) is no frame's */
+      const holder = path.parentPath.parentPath;
+      if (holder && holder.isObjectProperty() && !holder.node.computed && ['payload', 'trust'].includes(holder.node.key.name || holder.node.key.value)) return;
+      for (const t of wordsAt(path.node.value, path) || []) note(t, f + ':' + path.node.loc.start.line);
+    },
+    CallExpression(path) {
+      const c = path.node.callee;
+      const n = (c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed ? c.property.name : (c.type === 'Identifier' ? c.name : null);
+      if (!n || !/^_[A-Za-z0-9]+Send$/.test(n) || path.node.arguments.length < 2) return;
+      for (const t of wordsAt(path.node.arguments[1], path) || []) note(t, f + ':' + path.node.loc.start.line);
+    },
   });
 }
 
-// ── 1. regex-rot floor ──
+// ── 1. the census's floor (it was the regex's; the tree's since v2.3.6441) ──
 check('extraction found a plausible type population (>=40)', extracted.size >= 40, extracted.size);
 
 // ── 2. THE audit: every emitted type is privileged or allowlisted ──

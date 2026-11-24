@@ -462,6 +462,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
+import { stickDrive, stickFrame, stickTo } from '@/game/stickZones.js';   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input` */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -472,7 +473,7 @@ import { renderDpr, noteCanvasCss } from '@/game/renderRes.js';   /* v2.3.3339: 
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { manualOn, tapLockOn, mcSwipes, mcPressIdle, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
+import { twoButtonsOn, manualOn, tapLockOn, mcSwipes, mcPressIdle, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
 import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult } from '@/data/gameSystems.js';   /* v2.3.4395: how far a quick flick's help reaches */
 import { lockShotPoint as mcShotPoint } from '@/game/combatHelpers.js';
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
@@ -5359,44 +5360,9 @@ export var BroTown = function BroTown(_ref0) {
           S._bashDash = null;
           S._dashStrike = null;
         }
-        /* Movement gated by REAL stuns only (hexer / brute charge).
-           The 250 ms hit-react lockout (_hitLockActive) no longer
-           freezes movement -- in projectile-heavy zones like meadow
-           a slime hit every few seconds stacked 250 ms freezes that
-           read as "frame stutter" even at 60 fps.  Visual hit-react
-           sprite + screen shake + particles still play; the player
-           just keeps their dodge ability mid-hit.
-           Death also freezes — no walking around as a corpse. */
-        var dx = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickX,
-          dy = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickY;
-        /* ═══ v2.3.3034: A THUMB HELD ON THE STICK IS A PLAYER ═══
-           The idle clock (_lastInputAt, IDLE_LOGOUT_MS) is stamped by a
-           touchstart / pointerdown / keydown, and a thumb that pressed the
-           stick once and is still steering fires none of them -- so two
-           minutes of walking across the Wheel logged you out mid-stride, and
-           the game played on behind the banner with nothing settling (a
-           key held down repeats its keydown; the stick has no repeat). */
-        if (S.stickX || S.stickY) S._lastInputAt = Date.now();
-        /* Keyboard overrides if no stick input — same gating:
-           real stuns + death + loot-pickup freeze block, hit-react lockout does not. */
-        if (!_realStunned && !_playerDead && !_playerLootFrozen && dx === 0 && dy === 0) {
-          if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
-          if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
-          if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
-          if (K['ArrowRight'] || K['d'] || K['D']) dx = 1;
-          /* Normalize diagonal keyboard input */
-          if (dx && dy) {
-            var len = Math.sqrt(dx * dx + dy * dy);
-            dx /= len;
-            dy /= len;
-          }
-        }
-        /* Direction for name tag / facing — locked to 'down' (camera-facing) during loot freeze */
-        if (_playerLootFrozen) {
-          P.dir = 'down';
-        } else if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-          if (Math.abs(dx) > Math.abs(dy)) P.dir = dx > 0 ? 'right' : 'left';else P.dir = dy > 0 ? 'down' : 'up';
-        }
+        /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2; sitting 58: its idle clock its own, the walk read only through _in) */
+        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); if (_steps) _steps.to(2, 0);
+        var dx = _in.dx, dy = _in.dy;
 
         /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══
            Owner: "add swimming and just use the characters head poking out
@@ -5414,12 +5380,12 @@ export var BroTown = function BroTown(_ref0) {
            same frame, with the water's own splash. */
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
-        if (_steps) _steps.to(0, 2); tickWaterAmbience(S, _jNow);   /* v2.3.5341: the step `sound`, to tickDanceMusic; v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
+        if (_steps) _steps.to(0, 3); tickWaterAmbience(S, _jNow);   /* v2.3.5341: the step `sound`, to tickDanceMusic; v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
         tickRideSound(S, _jNow);   /* v2.3.3791: your skateboard's wheels while you ride (game/rideSound.js) */
         tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
-        tickDanceMusic(S); if (_steps) _steps.to(2, 0);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
+        tickDanceMusic(S); if (_steps) _steps.to(3, 0);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5703,7 +5669,7 @@ export var BroTown = function BroTown(_ref0) {
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
-        if (_steps) _steps.to(0, 3); rideStepped(S, P.x, P.y, nx, ny); if (_steps) _steps.to(3, 0);   /* v2.3.5341: the step `ride`; v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
+        if (_steps) _steps.to(0, 4); rideStepped(S, P.x, P.y, nx, ny); if (_steps) _steps.to(4, 0);   /* v2.3.5341: the step `ride`; v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
 
         /* Store velocity for facing/mirroring code */
         P.vx = dx * finalSpd;
@@ -5980,7 +5946,7 @@ export var BroTown = function BroTown(_ref0) {
            Phase 6, behavior-frozen). ptx/pty/_zone are intentionally the
            PRE-transition values and stay in this scope — the water check
            below keeps reading them, same as the inline code. */
-        if (_steps) _steps.to(0, 4); handleZoneTransitions(S, ptx, pty, _zone, W, H);   /* v2.3.5341: the step `zone`, to updateDungeonWaves */
+        if (_steps) _steps.to(0, 5); handleZoneTransitions(S, ptx, pty, _zone, W, H);   /* v2.3.5341: the step `zone`, to updateDungeonWaves */
 
         /* v2.3.788: the WASTELAND fence-climb block that lived here was
            removed with the rest of the Lawless Land content (owner decision,
@@ -5997,7 +5963,7 @@ export var BroTown = function BroTown(_ref0) {
         /* §14.1 Dungeon wave progression — v2.3.810: moved verbatim to
            src/game/dungeonWaves.js (REBUILD-PLAN Phase 8, slice 2). Custom
            §DNG dungeons are live; the standard tile-10 path is dormant. */
-        updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState }); if (_steps) _steps.to(4, 0);
+        updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState }); if (_steps) _steps.to(5, 0);
 
         /* ═══ v2.3.1778: THE ENTRANCES ARE BACK, BECAUSE THE ART SHIPPED ═══
            v2.3.823 removed them: "the town buildings have no in-game art yet,
@@ -6082,7 +6048,7 @@ export var BroTown = function BroTown(_ref0) {
            The one your boots stand in reach of and its next step (the stick's
            picture, E, a tap), and a step under way -- its sounds, its end, or
            your walking away from it (game/farmWalk.js) */
-        if (_steps) _steps.to(0, 5); tickFarmWalk(S, Date.now()); if (_steps) _steps.to(5, 0);   /* v2.3.5341: the step `farm` */
+        if (_steps) _steps.to(0, 6); tickFarmWalk(S, Date.now()); if (_steps) _steps.to(6, 0);   /* v2.3.5341: the step `farm` */
 
 
         /* Revive harvested gather nodes whose respawnAt has elapsed.
@@ -7429,14 +7395,14 @@ export var BroTown = function BroTown(_ref0) {
 
         /* v2.3.3525: Lil Bro's race -- the countdown's beats, the gun, the end
            (game/race.js) */
-        if (_steps) _steps.to(0, 6); raceTick(S, Date.now());   /* v2.3.5341: the step `townsfolk`, to townsfolkFrame */
+        if (_steps) _steps.to(0, 7); raceTick(S, Date.now());   /* v2.3.5341: the step `townsfolk`, to townsfolkFrame */
         /* v2.3.4058: the townsfolk's day in the Wheel's BroTown -- where each is
            on his loop, by the clock (game/townsfolkDay.js) */
         var _fwZone = ZONES[S.currentZone];
         townsfolkFrame(S, Date.now(), { on: isWheelTrialZone(S.currentZone) && folkWalkWanted() && lookFolkOn(), chains: QUEST_CHAINS,
           feetX: P.x, feetY: P.y + playerGroundDy(S.currentZone, P.x, P.y), talking: !!S._uiBusy,
           grid: (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null, worldW: _fwZone ? _fwZone.w * TILE : 0, worldH: _fwZone ? _fwZone.h * TILE : 0,
-          boxes: zoneBlockers(S.currentZone) }); if (_steps) _steps.to(6, 0);
+          boxes: zoneBlockers(S.currentZone) }); if (_steps) _steps.to(7, 0);
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
         var _npcTown = null;   /* v2.3.4040: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
@@ -7633,18 +7599,18 @@ export var BroTown = function BroTown(_ref0) {
            verbatim to src/game/monsterCombat.js (REBUILD-PLAN Phase 8,
            slice 3). activeWpn is the outer game-loop weapon (distinct from
            the block-internal _activeWpn); React setters via deps. */
-        if (_steps) _steps.to(0, 7); updateMonsterCombat(S, { activeWpn: activeWpn, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(7, 8);   /* v2.3.5341: the steps `monsters`, then `weaponFeel` */
+        if (_steps) _steps.to(0, 8); updateMonsterCombat(S, { activeWpn: activeWpn, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(8, 9);   /* v2.3.5341: the steps `monsters`, then `weaponFeel` */
         /* v2.3.4800: the sword's feel, once a frame after the combat step: the
            blade's readiness (the glint), the cut's arc once the swing has its
            angle (game/swordFeel.js; the timing bar's call stood here) */
         swordFeelFrame(S, Date.now());
         staffFeelFrame(S, Date.now(), BT_AUDIO);   /* v2.3.4803: the staff's gather -- its stage, its hum, the orb the renderer draws */
-        bowFeelFrame(S, Date.now()); if (_steps) _steps.to(8, 9);   /* v2.3.5341: then `loot`; v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
+        bowFeelFrame(S, Date.now()); if (_steps) _steps.to(9, 10);   /* v2.3.5341: then `loot`; v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
 
         /* Pick up ground loot — walk over it */
         /* v2.3.812: the ~347-line ground-loot pickup block moved verbatim to
            src/game/groundLoot.js (REBUILD-PLAN Phase 8, slice 4). */
-        updateGroundLootPickup(S, { pixiRef: pixiRef, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(9, 0);
+        updateGroundLootPickup(S, { pixiRef: pixiRef, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(10, 0);
 
         /* §3.2 HP regeneration — OOC: 1.5%/s after 5s no damage. Restoration scales. */
         if (S.rpg && S.lastDamageTaken && Date.now() - S.lastDamageTaken > 5000) {
@@ -7717,7 +7683,7 @@ export var BroTown = function BroTown(_ref0) {
            frame.  Date.now() is hoisted out of the inner loop. */
         /* Release any queued peer damage numbers at a live cadence before
            the TTL prune (smooth-peer-damage-numbers.md). */
-        if (_steps) _steps.to(0, 10); releasePeerDamage(S, Date.now()); if (_steps) _steps.to(10, 0);   /* v2.3.5341: the step `peers` */
+        if (_steps) _steps.to(0, 11); releasePeerDamage(S, Date.now()); if (_steps) _steps.to(11, 0);   /* v2.3.5341: the step `peers` */
         if (S.dmgNumbers && S.dmgNumbers.length) {
           var _dn = S.dmgNumbers;
           var _dnNow = Date.now();
@@ -8433,19 +8399,19 @@ export var BroTown = function BroTown(_ref0) {
         /* ── Screen-shake / facing / footstep / interp / remote-projectile:
            v2.3.814: moved verbatim to src/game/visualSystems.js
            (REBUILD-PLAN Phase 8, slice 6). ── */
-        if (_steps) { _steps.end(0); _steps.begin(11); } updateVisualSystems(S); if (_steps) _steps.end(11);   /* v2.3.5340: legacy ends; the steps */
+        if (_steps) { _steps.end(0); _steps.begin(12); } updateVisualSystems(S); if (_steps) _steps.end(12);   /* v2.3.5340: legacy ends; the steps */
 
         /* ── Arrow projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        if (_steps) _steps.begin(12); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(12);
+        if (_steps) _steps.begin(13); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(13);
 
         /* ── Slime projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        if (_steps) _steps.begin(13); updateSlimeProjectiles(S); if (_steps) _steps.end(13);
+        if (_steps) _steps.begin(14); updateSlimeProjectiles(S); if (_steps) _steps.end(14);
 
         /* ── State cleanup flags — v2.3.815: moved verbatim to
            src/game/stateCleanup.js (REBUILD-PLAN Phase 8, slice 7). ── */
-        if (_steps) _steps.begin(14); updateStateCleanup(S); if (_steps) _steps.end(14);
+        if (_steps) _steps.begin(15); updateStateCleanup(S); if (_steps) _steps.end(15);
 
         /* ══════════════════════════════════════════════════════════
            ── RENDER ── PixiJS only.  The Canvas 2D fallback path was
@@ -8462,11 +8428,11 @@ export var BroTown = function BroTown(_ref0) {
            src/game/renderFrame.js (v2.3.816, REBUILD-PLAN Phase 8 slice 8).
            Frame-timing values (_perfNow/_perfDelta) computed at loop top
            are passed in; perfTracker recording lives in the module now. */
-        if (_steps) _steps.begin(15); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(15);
+        if (_steps) _steps.begin(16); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(16);
         /* v2.3.4360: the page's marks on things IN the world (the first
            steps' box and arrow on Mayor Bro) are moved now, from the camera
            this frame was drawn with (ui/afterFrame.js) */
-        if (_steps) _steps.begin(16); runAfterFrame(S); if (_steps) _steps.end(16);
+        if (_steps) _steps.begin(17); runAfterFrame(S); if (_steps) _steps.end(17);
       } catch (gameLoopErr) {
         /* v2.3.5340: the step that was open threw: counted, its first throw to the ring */
         var _stepThrew = _steps ? _steps.fault(gameLoopErr) : null;
@@ -10248,6 +10214,8 @@ export var BroTown = function BroTown(_ref0) {
     var bcy = (_lts && _lts.startY != null) ? _lts.startY : (rect.top + rect.height / 2);
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
+    /* v2.3.6541: the two buttons (`?manual=5`, a trial): the stick's three zones, rest, turn and walk, by the thumb's share of the disc's DRAWN radius; the knob, the walk, the turn's facing and the phase are stickDrive's (game/stickZones.js; card CT PR 2) */
+    if (twoButtonsOn()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity); return; }
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
     var maxR = rect.width / 2 - 20;
     var clampDist = Math.min(dist, maxR);
@@ -10303,7 +10271,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Dodge roll disabled on joystick — use screen swipe instead */
     lTrail.current = [];
     S.stickX = 0;
-    S.stickY = 0;
+    S.stickY = 0; stickTo(S, 'rest');   /* v2.3.6541: a lifted thumb is the stick at rest (game/stickZones.js; written only when the two buttons moved it) */
   }, []);
 
   /* ═══ v2.3.2242: THE RIGHT CONTROL IS A BUTTON ═══

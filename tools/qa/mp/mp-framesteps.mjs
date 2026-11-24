@@ -22,7 +22,8 @@ import * as H from './harness.mjs';
 export const lane = 'full';
 
 /* v2.3.5341 (card M PR 2): + the ten steps inside legacy, in their places */
-const WANT = ['legacy', 'tap', 'sound', 'ride', 'zone', 'farm', 'townsfolk', 'monsters', 'weaponFeel', 'loot', 'peers',
+/* v2.3.6541: + 'input' (card CT PR 2) */
+const WANT = ['legacy', 'tap', 'input', 'sound', 'ride', 'zone', 'farm', 'townsfolk', 'monsters', 'weaponFeel', 'loot', 'peers',
   'visual', 'arrows', 'slime', 'cleanup', 'render', 'afterFrame'];
 const UPRIGHT = { width: 390, height: 844 };
 const SIDEWAYS = { width: 844, height: 390 };
