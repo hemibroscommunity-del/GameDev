@@ -1,9 +1,10 @@
 card: PH
 branch: claude/plan-ph-2-memalarm (PR 1's branch merged in: sitting 57)
 prs: #2279 (PR 1, 6500, DEPLOYS: sitting 57's hold mended), #2291 (PR 2, 6501: this branch, sitting 57's hold mended), #2297 (PR 3, 6502), #2306 (PR 5, 6504)
-state: working (part 4: mending sitting 57's holds, one push per PR when the chain is mended)
+state: working (part 6: mending sitting 58's holds on #2279 and #2291, one push each, then up the stack; PR 4 on claude/plan-ph-4-governor)
 
 ## Done
+- Sitting 58 (review-z58) on #2291, mended (part 6): frame-pacer.test 23j, the PAGE's pacer reading its own address (`?memalarm=0` on a stand-in page, then none): `memFull(ts, search = '')` and the call as `memFull(ts, '')` both red, tried by hand 2026-11-24.
 - PR 1 (6500) #2279: the report sees heat, the board and the ramps.
   Sitting 57: 15.8c's fraction now positive; 15.8e/f the up row's late
   and below the kept verdict's (plants red, 2026-11-24, test box).
