@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c03d4bd376852d0026d2a94236deb8081afb870b",
+  "tree": "89d96e07161b6796afaad9dbe4fa45bac37a61e4",
+  "committedAt": "2026-11-24T13:33:26-08:00",
+  "subject": "Merge pull request #2337 from hemibroscommunity-del/claude/plan-vw-2-tests",
+  "files": 8552,
+  "bytes": 965674998,
+  "listingSha256": "1b79828af051337c260ef6423e40c3ad16eabaa7c87957f4f210055357491618",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
