@@ -37,22 +37,31 @@ state: working
 - `open-hand` 5: the import graph to a fixed point whatever the order (the
   reverse order checked; the reviewer's three files in six orders); 6: the
   getter's importers, IMPORTERS: 37 rows, 37 edges.
-- `phase-table`: waits on the orchestrator's answer (Needs).
+- `phase-table` 2d: a FENCE on a literal key, not a wall (the
+  orchestrator's answer (a)): every object-literal key naming a door's
+  field, in a function, outside the door's files, not an http status
+  (`new Response`, `Response.json`), is a row of KEYS by field and file:
+  63 rows, 118 keys (rows by field: alive 19, z 11, status 10, blocking 4,
+  phase 4, state 3, the rest 1 or 2).  NOT guarded: `x[k] = v` (2,111),
+  spreads of a non-literal (776), Object.assign from a non-literal (434).
 
 ## Next
 - The card's six PRs are open: done when they are on `main`.
 
 ## Found
+- THE WALL FOR PHASES (the card's next PR, not built): the tree cannot hold
+  a phase, the running room can.  Each door keeps a shadow of what it last
+  set (in its transition function); the test room compares each door's
+  field with its shadow after every message and tick; a difference is red
+  whatever the spelling.  Today 17 worker doors (17 machines) each have
+  ONE transition function, defined once in its file (by grep).
 - `tools/dev/state-census.mjs` --json leaves out WHOLE writes and
   const-key, `Reflect.set`, `defineProperty` writes (card D's).
 - `S._extraction` has no owner: skills, social, render and ui write it.
 - `switch-reader` does not follow `document` itself (only its URL).
 
 ## Needs
-- ASKED the orchestrator (2026-11-24, once): phase-table's allow list
-  starts far over 40 rows (`x[k] = v` 2111 in 391 files; non-literal
-  spreads 776 in 244; Object.assign non-literal sources 434 in 85; the
-  narrowest, the key side, 141 keys in 44 files): (a) the key side, (b) the
-  full list, or (c) out of this mend?
+- Answered by the orchestrator (2026-11-24): phase-table is (a), the
+  key-side fence, said as a fence; the wall is the card's next PR (Found).
 - Answered by the orchestrator: the four lines' rule; OWNED's set; BK's
   restart words (PR 6524, with #2281); CT's fields join OWNED as they land.
