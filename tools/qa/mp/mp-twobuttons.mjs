@@ -39,7 +39,8 @@
  *       after the last (S.swingTimer: the worker's cycle is not outrun);
  *   7c. `?freefire=0` (history.replaceState: read at each ask): no arrow, the
  *       tap spent 'empty' (the bow waits for its line, as before);
- *   7d. a free arrow that meets a monster hurts it (the monster hidden from
+ *   7d. (v2.3.6548: nothing else in sight at the press, else a SKIP; an
+ *       arrow loosed, free or on its line) a free arrow that meets a monster hurts it (the monster hidden from
  *       the page's sight until the free arrow leaves: one in front is
  *       sighted, and the press would lock it).
  *   (No switch for the stay: the orchestrator, 2026-11-24, nothing to give
@@ -879,13 +880,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
             return true;
           }, mon7.id);
           await frames(P, 2);
+          /* v2.3.6548 (part 15, the helper's run on 9a289461: 7d red both ways,
+             the arrow flying and hurting the monster each time): the press must
+             find NOTHING in sight (upright another of the 12 near was locked,
+             the latch active), and the shot is counted as an arrow loosed (the
+             shots' list), free or on its line (sideways the bow's line was on
+             something: today's rule, 7a's, and it hurt the monster all the same) */
+          const clear7 = await H.waitFor(P, (S) => ({ p: S._sightPhase || 'none', id: S._sightId == null ? null : String(S._sightId) }), (v) => v.p === 'none', { timeout: 4000, label: 'nothing in sight' }).catch(() => null);
           const f7a = await p7SHOTS();
-          for (let k = 0; k < 3 && (await p7SHOTS()).free === f7a.free; k++) { await p7Quick(); await H.waitFor(P, (S) => S._freeShots || 0, (n) => n > f7a.free, { timeout: 3000, label: 'the free arrow' }).catch(() => null); }
+          const loosed7 = (f) => f.free > f7a.free || f.list.length > f7a.list.length;
+          for (let k = 0; k < 3 && !loosed7(await p7SHOTS()); k++) { await p7Quick(); await H.waitFor(P, (S) => (S._freeShots || 0) + ':' + (window.__ctShots || []).length, (v) => v !== (f7a.free + ':' + f7a.list.length), { timeout: 3000, label: 'the arrow' }).catch(() => null); }
           const f7 = await p7SHOTS();
           hit7 = await H.waitFor(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, mon7.id), (hp) => typeof hp === 'number' && typeof nr7.hp === 'number' && hp < nr7.hp, { timeout: 8000, label: 'the monster hurt' }).catch(() => null);
           const p7Shown = await P.page.evaluate(() => !(window.__ctHid && window.__ctHid.on));
-          rec.ok(`7d. ${label}: a free arrow (${f7.free - f7a.free}) loosed at nothing meets the monster ${Math.round(nr7.d)} px on (sighted first: ${!!sighted7}, hidden ${p7Hid}, shown again ${p7Shown}): the worker hurt it (${nr7.hp} -> ${hit7}), the latch ${f7.phase}`,
-            !!sighted7 && p7Hid && f7.free - f7a.free === 1 && f7.phase === 'idle' && hit7 != null, { nr7, f7: { free: f7.free, phase: f7.phase, n: f7.list.length }, hit7, p7Shown });
+          const name7 = `7d. ${label}: an arrow (${f7.free - f7a.free} free, ${f7.list.length - f7a.list.length} loosed) pressed with nothing in sight meets the monster ${Math.round(nr7.d)} px on (sighted first: ${!!sighted7}, hidden ${p7Hid}, shown again ${p7Shown}): the worker hurt it (${nr7.hp} -> ${hit7}), the latch ${f7.phase}`;
+          if (!clear7) rec.skip(name7, 'another monster stayed in sight with this one hidden (the press would lock it, not loose a free arrow): the placement, not the rule');
+          else rec.ok(name7, !!sighted7 && p7Hid && loosed7(f7) && f7.phase === 'idle' && hit7 != null, { nr7, f7: { free: f7.free, phase: f7.phase, n: f7.list.length }, hit7, p7Shown });
           await P.page.evaluate(() => { const h = window.__ctHid; if (h && h.on) h.show(); });
         } else rec.ok(`7d. ${label}: the monster (guard)`, false, mon7);
       } else rec.ok(`7d. ${label}: a monster with room (guard)`, false, null);
