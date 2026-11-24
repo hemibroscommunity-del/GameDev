@@ -395,7 +395,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   /* the old tap to swing for this page (`?manual=0`): the tour's fight is scripted with it */
   const A = await H.newPlayer(browser, { name: 'Sweeper', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', query: 'manual=0' + (process.env.BT_HS_QUERY ? '&' + process.env.BT_HS_QUERY : '') });
-  let B = null;
+  let B = null, browserB = null;   /* v2.3.6505: the rider's own browser (the peer station) */
   const stopA = H.keepAlive(A, 15000);
   let stopB = null;
   const report = { profile: H.PROFILE ? H.PROFILE.name : null, stations: [] };   /* v2.3.5861: the slow profile it ran under (card O2 PR 2) */
@@ -503,7 +503,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     if (WANT.includes('peer')) {
       const here = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
-      B = await H.newPlayer(browser, { name: 'Rider', wsPort, webPort, viewport: { width: 390, height: 600 }, touch: false, world: 'wheel', query: 'manual=0',
+      /* v2.3.6505 (card PH PR 6; TRAPS 177, the test first): the rider gets A BROWSER OF ITS OWN.  In the one
+         browser both pages drew on one software graphics chip, so the phone's black-screen check (its read at the
+         top of the frame) waited for the rider's frames too: `screen-check` 281 to 307 ms here (census/HB-holds.md
+         row 1), over its line, red on main.  Two players are never on one phone: two browsers are two chips, as two
+         phones are.  It is closed after this station: `armour` is the phone's own. */
+      browserB = await H.launch();
+      B = await H.newPlayer(browserB, { name: 'Rider', wsPort, webPort, viewport: { width: 390, height: 600 }, touch: false, world: 'wheel', query: 'manual=0',
         init: dress({ skin: 'ebony', pants: 'red', shoes: 'blue', hair: 'long', haircolor: 'red', headwear: 'red-cap' }) });
       stopB = H.keepAlive(B, 15000);
       await H.enterWorld(B);
@@ -525,6 +531,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await A.page.waitForTimeout(2000);
         return { seen: await A.page.evaluate(() => Object.keys(window._gameState.current.others || {}).length).catch(() => 0) };
       });
+      /* v2.3.6505: the rider leaves before `armour` (the phone's own; it met the rider's frames before) */
+      if (stopB) { stopB(); stopB = null; }
+      await B.ctx.close().catch(() => {});
+      await browserB.close().catch(() => {});
+      B = null; browserB = null;
     }
 
     await station('armour', "the phone's own armour on, a walk round, and off", async () => {
@@ -568,5 +579,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (stopB) stopB();
     await A.ctx.close().catch(() => {});
     if (B) await B.ctx.close().catch(() => {});
+    if (browserB) await browserB.close().catch(() => {});
   }
 }

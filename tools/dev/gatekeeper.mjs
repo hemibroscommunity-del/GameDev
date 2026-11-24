@@ -23,6 +23,10 @@
  *                                    throws only what it can break)
  *                                  npm run build
  *                                  node tools/qa/mp/run.mjs questline
+ *                                  the sweep's unminified build, and
+ *                                  mp-heldsweep's stand, town and ride
+ *                                    (v2.3.6505, card PH PR 6: the held-
+ *                                    page budget judged every sitting)
  *   4. prints each command's result and the merged tree's hash, and takes
  *      the worktree away.
  *
@@ -91,6 +95,15 @@ const STEPS = [
   { id: 'thrown', say: 'node tools/guards/switches-thrown.test.mjs --whole', cmd: 'node', argv: ['tools/guards/switches-thrown.test.mjs', '--whole'], mins: 40, withPrecheck: true },
   { id: 'build', say: 'npm run build', cmd: 'npm', argv: ['run', 'build'], mins: 15 },
   { id: 'questline', say: 'node tools/qa/mp/run.mjs questline', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'questline'], mins: 40 },
+  /* v2.3.6505 (card PH PR 6): THE DEBT LIST AT THE GATE.  The held-page budget (tools/qa/mp/held-budget.mjs) was
+     judged only when someone ran the whole sweep, for hours, by hand: a new hold past its line could sit on main
+     for days.  Each sitting now plays a short sample of the sweep on the merged tree -- standing in the town, the
+     ride through it, the board's ring round the safe ground (mp-heldsweep's `stand`, `town`, `ride`) -- held to
+     the same lines.  It wants the sweep's own unminified build (every function read by its name), made beside the
+     tree's `dist` in `dist-prof` (about 20 s on a session's box, 2026-11-24); the sample about ten minutes.  The
+     two pages' stations (`peer`, `armour`, where `screen-check` is the box's) are not in it. */
+  { id: 'profbuild', say: 'npx vite build --minify false --outDir ../dist-prof --emptyOutDir (the sweep\'s unminified build)', cmd: 'npx', argv: ['vite', 'build', '--minify', 'false', '--outDir', '../dist-prof', '--emptyOutDir'], mins: 15, env: { NODE_OPTIONS: '--max-old-space-size=8192' } },
+  { id: 'heldsample', say: 'BT_HS_STATIONS=stand,town,ride QA_DIST=dist-prof node tools/qa/mp/run.mjs heldsweep', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'heldsweep'], mins: 40, env: { BT_HS_STATIONS: 'stand,town,ride', QA_DIST: 'dist-prof' } },
 ];
 if (heapMode ? (branches.length || !sittingArg) : (!branches.length || (untilArg && !['precheck', 'build'].includes(untilArg)))) {
   console.error('usage: node tools/dev/gatekeeper.mjs <branch> [<branch> ...] [--until=precheck|build] [--keep]\n'
