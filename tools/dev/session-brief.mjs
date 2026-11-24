@@ -68,6 +68,11 @@ try { blocks = JSON.parse(readFileSync(join(root, 'tools/dev/tag-blocks.json'), 
 if (blocks && blocks.blocks) {
   console.log('\nTAG BLOCKS (tools/dev/tag-blocks.json) -- take your tags from YOUR CARD\'s block, one a PR, in order.  No tag is suggested here: every new session would be offered the same one.');
   console.log('  card  block        free');
+  /* v2.3.6423 (card CK PR 4): a block whose every number is merged is left
+     out, named on one line after the table (it was 80% of the brief).  A
+     card that finds only its merged blocks there takes a second block from
+     nextBlock, as before. */
+  const allMerged = [];
   for (const [card, list] of Object.entries(blocks.blocks)) {
     for (const [first, last] of list) {
       const free = [], onBranch = [];
@@ -79,12 +84,13 @@ if (blocks && blocks.blocks) {
       const span = first === last ? String(first) : first + ' to ' + last;
       const few = (a) => (a.length <= 6 ? a.join(', ') : a.slice(0, 3).join(', ') + ' ... ' + a[a.length - 1]);
       const merged = size - free.length - onBranch.length;
+      if (merged === size) { allMerged.push(card + ' ' + span); continue; }
       const say = (free.length === size ? 'all ' + size : free.length ? free.length + ' of ' + size + ': ' + few(free) : 'none')
-        + (onBranch.length ? '   (on a branch, not merged: ' + few(onBranch) + ')' : '')
-        + (merged === size ? '   (all merged: a second block from nextBlock, see _rules)' : '');
+        + (onBranch.length ? '   (on a branch, not merged: ' + few(onBranch) + ')' : '');
       console.log('  ' + card.padEnd(6) + span.padEnd(13) + say);
     }
   }
+  if (allMerged.length) console.log(`  all merged, not shown (${allMerged.length}): ${allMerged.join(', ')}.  A card with no block above takes a second from nextBlock (see _rules).`);
   console.log(`  a new card's block starts at ${blocks.nextBlock} (twenty numbers).  A tag only has to be UNUSED on main, never higher than it; precheck says if yours was taken.`);
 } else {
   console.log('\nTAG BLOCKS: tools/dev/tag-blocks.json could not be read -- take your tag from your card (docs/plan/cards/), never a number of your own choosing.');

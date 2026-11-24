@@ -701,3 +701,42 @@ export const LINES = Object.freeze({
      inside; the plan said 89) */
   STATE_WRITES_FROM_RENDERING: 114,
 });
+
+/* v2.3.6520 (card WL, after sitting 57's hold): THE CODE LINES STAY HELD TOO.
+   By statements alone, one statement folded over forty lines (an object
+   literal, a long chain) passed: the review's plant in monsterCombat.js
+   went green, where the code-line guard on `main` failed it.  So both
+   measures hold: a file or a function stays at or under its statement line
+   (LINES) AND its code-line line (CODE_LINES).  These are `main`'s own
+   code-line lines on the day the statements came in (sitting 56's two
+   renderer lines included), not set again: they only fall, and only the
+   gatekeeper lowers them, as LINES. */
+export const CODE_LINES = Object.freeze({
+  FILE: Object.freeze({
+    'src/rendering/systems/effectsRenderer.js': 9450,
+    'src/rendering/systems/entityRenderer.js': 7984,
+    'src/ui/BroTown.jsx': 8370,
+    'src/data/gameSystems.js': 5622,
+    'src/data/gameDisplay.js': 4268,
+    'src/networking/wsClient.js': 3039,
+    'src/networking/gameEvents.js': 2639,
+    'src/game/monsterCombat.js': 1785,
+  }),
+  OTHER_FILE: 1500,
+  FUNCTION: Object.freeze({
+    'src/ui/BroTown.jsx#BroTown': 7800,
+    'src/networking/wsClient.js#setupWebSocket': 2839,
+    'src/networking/gameEvents.js#processGameEvent': 2500,
+    'src/ui/BroTown.jsx#(anonymous)': 2132,
+    'src/networking/wsClient.js#connect': 2055,
+    'src/game/monsterCombat.js#updateMonsterCombat': 1724,
+    'src/ui/BroTown.jsx#gameLoop': 1583,
+    'src/networking/wsClient.js#onmessage': 1466,
+    'src/rendering/systems/entityRenderer.js#_updatePlayer': 1369,
+    'src/ui/mobile/sheet/HeroExpanded.jsx#HeroExpanded': 1266,
+    'src/rendering/systems/entityRenderer.js#_updateMonsters': 1086,
+    'src/ui/panels/DungeonCreatorPanel.jsx#DungeonCreatorPanel': 1060,
+    'src/ui/panels/buildings/ExchangePanel.jsx#ExchangePanel': 1029,
+  }),
+  OTHER_FUNCTION: 1000,
+});
