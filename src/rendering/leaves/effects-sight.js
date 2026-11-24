@@ -9,16 +9,16 @@
  * effectsRenderer.js's overlays (the bow's sight beam, v2.3.938 to
  * v2.3.2448): its body byte for byte, its comments with it; only the
  * function's line is new, its parameters the names the body read there.
- * The renderer calls it where the body was, and drawSightLine calls it too.
+ * The renderer calls it where the body was, and sightStream calls it too.
  *
- * WHAT is drawn is game/sight.js sightLine's (a node suite tests it); this
- * only draws.  Nothing while the bow's own beam is drawn this frame
+ * WHAT is drawn is game/sight.js sightLine's (a node suite tests it), made
+ * by the caller (../sightLineDraw.js, v2.3.6544); this only draws.
+ * Nothing while the bow's own beam is drawn this frame
  * (`beamDrawn`): the bow's line already points at the lock, and two
  * streams over each other would double its light.
  *
  * A leaf imports nothing from the renderers (four-lines' IMPORT_CYCLE_FILES
  * has no room). */
-import { sightLine } from '../../game/sight.js';   /* relative: node imports this leaf (server/test/sight.test.mjs 9) */
 
 /* the bow's stream between a point and a heading, `lineLen` long, into `gfx`
    (one closed polygon, white at 0.2: the overlay graphic's, cleared each
@@ -70,28 +70,19 @@ export function beamStream(gfx, _beamOrigin, aimA, lineLen, now) {
         gfx.closePath();
         gfx.fill({ color: 0xffffff, alpha: 0.2 });}
 
-/* QA (house style: __btSightBeam beside the bow's): whether the sight line
-   was drawn on the last frame, to which monster and how long -- a scenario
-   cannot read a polygon.  Written in place, one object (no garbage a frame). */
-const _drawn = { drawn: false, id: null, len: 0, at: 0, skipped: null };
-const _O = { x: 0, y: 0 };   /* the line's start, reused */
-if (typeof window !== 'undefined') {
-  window.__btSightLine = function () { return { drawn: _drawn.drawn, id: _drawn.id == null ? null : String(_drawn.id), len: Math.round(_drawn.len), at: _drawn.at, skipped: _drawn.skipped }; };
-}
-
-/** The two buttons' sight line, into the overlay graphic, once a frame.
- *  `beamDrawn` the bow's own beam drawn this frame (then nothing). */
-export function drawSightLine(gfx, S, now, beamDrawn) {
-  const ln = sightLine(S, Date.now());   /* the sight's own clock (sight.js sightStep runs on Date.now()) */
-  _drawn.drawn = false;
-  if (!ln) { _drawn.id = null; _drawn.skipped = null; return false; }
-  _drawn.id = ln.id; _drawn.at = Date.now();
-  if (beamDrawn) { _drawn.skipped = 'bow-beam'; return false; }
-  if (!gfx || !(ln.d > 1)) { _drawn.skipped = 'none'; return false; }
-  _drawn.skipped = null;
-  _drawn.len = ln.d;
-  _O.x = ln.x0; _O.y = ln.y0;
-  beamStream(gfx, _O, Math.atan2(ln.y1 - ln.y0, ln.x1 - ln.x0), ln.d, now);
-  _drawn.drawn = true;
-  return true;
+/** The two buttons' sight line `ln` (game/sight.js sightLine's, or null),
+ *  into the overlay graphic, once a frame.  `beamDrawn` the bow's own beam
+ *  drawn this frame (then nothing).  Returns what happened, for the QA
+ *  record its caller keeps: 'drawn', 'bow-beam', 'none' (no graphic, or on
+ *  the body), or null (nothing in sight).
+ *  v2.3.6544 (main's leaves guard, card CT PR 5): a leaf keeps no record,
+ *  writes no page global and is handed no state, so the line comes in
+ *  already made and the record and `__btSightLine` live with the caller
+ *  (../sightLineDraw.js); the drawing itself is unchanged. */
+export function sightStream(gfx, ln, now, beamDrawn) {
+  if (!ln) return null;
+  if (beamDrawn) return 'bow-beam';
+  if (!gfx || !(ln.d > 1)) return 'none';
+  beamStream(gfx, { x: ln.x0, y: ln.y0 }, Math.atan2(ln.y1 - ln.y0, ln.x1 - ln.x0), ln.d, now);
+  return 'drawn';
 }

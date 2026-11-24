@@ -16,6 +16,7 @@ import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: eve
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
 import { expoAddressFlags, expoAddressWords } from '../../game/expoAddress.js';   /* v2.3.4158: the expo's one-Wi-Fi switch */
 import { twoButtonsOn, twoButtonsChoose } from '../../game/manualCombat.js';   /* v2.3.6544: the two buttons' row (card CT PR 5) */
+import { pageAddress } from '../../game/switches.js';   /* v2.3.6544: the page's address through the one reader (switch-reader check 3), for the two buttons' row */
 import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4152: the row is its off switch) */
 import { loadAdminKey, saveAdminKey, forgetAdminKey, pageStores } from '../../game/adminKeyStore.js';   /* v2.3.5718: the key for the session, or remembered on this device */
 
@@ -969,7 +970,8 @@ export const DevPanel = ({ onClose }) => {
             The owner, 2026-11-23: "there's just an attack and jump button".
             Keyless, as the row above: the installed app has no address bar
             for ?manual=5.  It sets the same remembered choice (manualCombat.js
-            twoButtonsChoose) and the page reloads into it.  A touch screen's:
+            twoButtonsChoose, handed switches.js pageAddress: v2.3.6544) and the
+            page reloads into it.  A touch screen's:
             a computer's keys and mouse do not change. */}
         <div style={label}>Controls: two sticks / two buttons</div>
         <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
@@ -980,7 +982,7 @@ export const DevPanel = ({ onClose }) => {
           switch it back here.
         </div>
         <button type="button" style={btn(twoButtonsOn())} data-dev-controls={twoButtonsOn() ? 'buttons' : 'sticks'}
-          onClick={() => { location.replace(twoButtonsChoose(!twoButtonsOn(), location.href)); }}>
+          onClick={() => { location.replace(twoButtonsChoose(!twoButtonsOn(), pageAddress())); }}>
           {twoButtonsOn() ? 'Back to two sticks' : 'Play with two buttons'}
         </button>
 

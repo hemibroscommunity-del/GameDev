@@ -551,8 +551,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const S = window._gameState && window._gameState.current;
           if (!S || !S.player) return;
           const p = S._sightPhase || 'none';
-          if (p !== ph) { ph = p; w.phase.push({ t: Date.now(), p, d: Math.round(w.at) }); }
           const m = (S.monsters || []).find((x) => x && String(x.id) === id);
+          /* v2.3.6544: each change of the phase says why (the gap, the facing and where it came from, the angle off it): the helper's run on PR 5 and #2327's run 5 saw the phase change twice at the edge, sideways */
+          if (p !== ph) { ph = p; const fa = FACE[S._renderFacing]; w.phase.push({ t: Date.now(), p, d: Math.round(w.at), real: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null, f: S._renderFacing, src: S._facingSrc, off: m && typeof fa === 'number' ? Math.round(Math.abs(((Math.atan2(m.y - S.player.y, m.x - S.player.x) - fa + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) * 180 / Math.PI) : null }); }
           if (!m || !m.alive) { w.lost = true; return; }
           w.ticks++;
           /* v2.3.6543: stepped by the time since the last step (400 px/s,

@@ -284,14 +284,17 @@ export function twoButtonsOn() {
  *  back to the default, not to its old choice.  Returns the address to load
  *  with `manual` set to match and every other part kept: the mode is read
  *  once a page (manualMode), so the page loads again into it.  `store` is
- *  for tests (localStorage). */
-export function twoButtonsChoose(on, href, store) {
+ *  for tests (localStorage).
+ *  v2.3.6544 (main's switch-reader check 3): handed the page's `search`
+ *  (switches.js pageAddress, the one reader), it returns the `?...` to load:
+ *  the path stays, the rest of the address is kept, one `manual`. */
+export function twoButtonsChoose(on, search, store) {
   var ls = store;
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
   try { if (ls) { if (on) ls.setItem(MANUAL.KEY, '5'); else ls.removeItem(MANUAL.KEY); } } catch (e) { /* a private window: the address carries it */ }
-  var u = new URL(href);
-  u.searchParams.set('manual', on ? '5' : '4');
-  return u.toString();
+  var q = new URLSearchParams(String(search || ''));   /* a leading ? is its own to drop */
+  q.set('manual', on ? '5' : '4');
+  return '?' + q.toString();
 }
 
 /** One device's remembered on/off: `?<name>=0` turns it off and is

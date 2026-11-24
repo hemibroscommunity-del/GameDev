@@ -30,7 +30,9 @@
  *      resolver): any other mode, every button's own rule; the two buttons,
  *      on screen while sighted, latched, or in a fight between players, and
  *      nothing else; the fight asked last;
- *   9. THE LEAF (rendering/leaves/effects-sight.js): drawSightLine draws the
+ *   9. THE LEAF (rendering/leaves/effects-sight.js sightStream, handed the
+ *      line; v2.3.6544: drawSightLine, rendering/sightLineDraw.js, makes it
+ *      from the state and keeps the QA record): drawSightLine draws the
  *      bow's stream to the monster, from the body, its length the gap;
  *      nothing while the bow's own beam is drawn; beamStream draws one closed
  *      polygon as the renderer's did;
@@ -56,7 +58,8 @@ import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
 import { combatButtonsShown, combatReach } from '../../src/game/controlVisibility.js';   /* v2.3.6543 */
 import { latchTo, latchFrame, latchReach } from '../../src/game/latch.js';   /* v2.3.6543 */
-import { beamStream, drawSightLine } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543 */
+import { beamStream, sightStream } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543; v2.3.6544: the leaf only draws (main's leaves guard) */
+import { drawSightLine } from '../../src/rendering/sightLineDraw.js';   /* v2.3.6544: the line made from the state, and its QA record, off the leaf */
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6543: the callers off the syntax tree */
 
 let failures = 0, passes = 0;
@@ -287,6 +290,13 @@ function writesOutside(prop, doorFile, doorFn) {
   const g3 = rec();
   check('9. nothing in sight: nothing', drawSightLine(g3, Object.assign({}, S, { _sightPhase: 'none' }), 0, false) === false && g3.ops.length === 0);
   check('9. no graphic, or on the body: nothing, no throw', drawSightLine(null, S, 0, false) === false && drawSightLine(rec(), Object.assign({}, S, { monsters: [{ id: 3, x: 100, y: 100, alive: true }] }), 0, false) === false);
+  /* v2.3.6544: the leaf alone, handed the line (it reads no state): what it says it did */
+  const ln = { id: 3, x0: 100, y0: 100, x1: 100, y1: 400, d: 300 };
+  const g4 = rec();
+  check('9. sightStream: a line, drawn, and says so', sightStream(g4, ln, 0, false) === 'drawn' && g4.ops.length > 0 && near(g4.ops[0][2], 100));
+  const g5 = rec();
+  check('9. sightStream: the bow\'s beam this frame, none, nothing in sight: each said, nothing drawn',
+    sightStream(g5, ln, 0, true) === 'bow-beam' && sightStream(null, ln, 0, false) === 'none' && sightStream(g5, Object.assign({}, ln, { d: 1 }), 0, false) === 'none' && sightStream(g5, null, 0, false) === null && g5.ops.length === 0);
 }
 
 /* ── 10. the callers, off the syntax tree: an ALLOW list (v2.3.6543) ── */

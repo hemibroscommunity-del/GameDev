@@ -1,15 +1,17 @@
 /* ═══ v2.3.6544: THE TEST PANEL'S ROW FOR THE TWO BUTTONS, PLAYED (card CT PR 5) ═══
  *
  * The row "Controls: two sticks / two buttons" (src/ui/panels/DevPanel.jsx)
- * calls manualCombat.js twoButtonsChoose and loads the address it returns.
+ * calls manualCombat.js twoButtonsChoose with the page's search (switches.js
+ * pageAddress, v2.3.6544) and loads the `?...` it returns.
  * This plays that rule in node: what it remembers, what address it makes,
  * and what manualMode then reads.  It lives here, not in server/test/, because
  * it tests the page's code: a new file in server/test/ deploys the worker
  * (TRAPS §277).  The row on a phone (the panel, the tap, the reload, the
  * words in each mode) is mp-twobuttons part 4.
  *
- *   1. on: the device remembers '5'; the address's manual is 5, every other
- *      part kept, no second `manual`; manualMode reads 5 from the address and
+ *   1. on: the device remembers '5'; the `?...` made has manual 5, every
+ *      other part kept, no second `manual`, and starts with `?` (a load
+ *      that keeps the page's path); manualMode reads 5 from the address and
  *      from the store alone;
  *   2. off: the key forgotten (from 5, and from a device that had chosen 3);
  *      the address's manual is 4; manualMode reads 4 from both;
@@ -24,6 +26,8 @@
  *   - twoButtonsChoose: removeItem dropped (`else {}`)                 -> FAIL 2
  *   - twoButtonsChoose: the try round the store removed                -> FAIL 3
  *   - twoButtonsChoose: searchParams.append for .set                   -> FAIL 1
+ *   v2.3.6544 (handed the search, returns `?...`), on scratch edits, 2026-11-24:
+ *   - `'?' + q` -> `'' + q` (a load of a bare string: a path)  -> FAIL 1b, 1c, 1e, 2b, 3a, 3b
  * SURVIVORS, and why: `if (ls)` -> `if (true)` (a null store's write throws
  * inside the same try: the same address, nothing written, so no test can
  * tell); the line that finds localStorage when no store is handed in (node
@@ -44,25 +48,27 @@ const store = (init) => {
   const m = new Map(Object.entries(init || {}));
   return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: (k) => { m.delete(k); }, m };
 };
-const HREF = 'https://brotown.example/play/?qa=1&manual=4&wheelwhole#x';
+const HREF = '?qa=1&manual=4&wheelwhole';   /* v2.3.6544: the page's search, as pageAddress gives it */
+const at = (q) => new URL(q, 'https://brotown.example/play/');   /* where the browser loads the `?...` (the path kept) */
 
 /* 1 */
 {
   const s = store();
   const out = twoButtonsChoose(true, HREF, s);
-  const u = new URL(out);
+  const u = at(out);
   check('1a on: the device remembers 5', s.m.get(MANUAL.KEY) === '5', [...s.m]);
   check('1b on: the address\'s manual is 5, one of it, the rest kept', u.searchParams.getAll('manual').join() === '5' && u.searchParams.get('qa') === '1'
-    && u.searchParams.has('wheelwhole') && u.pathname === '/play/' && u.hash === '#x', out);
+    && u.searchParams.has('wheelwhole') && u.pathname === '/play/' && out.charAt(0) === '?', out);
   check('1c on: manualMode reads 5 from the address made', manualMode(u.search, store()) === 5);
   check('1d on: manualMode reads 5 from the store alone (the installed app, no address)', manualMode('', s) === 5);
-  const bare = new URL(twoButtonsChoose(true, 'https://brotown.example/', store()));
-  check('1e on: an address with no manual gains manual=5', bare.searchParams.get('manual') === '5', bare.toString());
+  const bareQ = twoButtonsChoose(true, '', store());
+  const bare = at(bareQ);
+  check('1e on: an address with no search gains ?manual=5, nothing else', bareQ === '?manual=5' && bare.pathname === '/play/', bareQ);
 }
 /* 2 */
 for (const had of ['5', '3']) {
   const s = store({ [MANUAL.KEY]: had, other: 'kept' });
-  const u = new URL(twoButtonsChoose(false, HREF.replace('manual=4', 'manual=' + had), s));
+  const u = at(twoButtonsChoose(false, HREF.replace('manual=4', 'manual=' + had), s));
   check(`2a off (the device had ${had}): the key forgotten, nothing else`, !s.m.has(MANUAL.KEY) && s.m.get('other') === 'kept', [...s.m]);
   check(`2b off (the device had ${had}): the address's manual is 4`, u.searchParams.getAll('manual').join() === '4', u.toString());
   check(`2c off (the device had ${had}): manualMode reads 4 from the address and from the store`, manualMode(u.search, store()) === 4 && manualMode('', s) === 4);
@@ -72,10 +78,10 @@ for (const had of ['5', '3']) {
   const bad = { getItem: () => { throw new Error('no'); }, setItem: () => { throw new Error('no'); }, removeItem: () => { throw new Error('no'); } };
   let on = null, off = null;
   try { on = twoButtonsChoose(true, HREF, bad); off = twoButtonsChoose(false, HREF, bad); } catch (e) { on = 'threw: ' + e.message; }
-  check('3a a store that throws: the address is still made', typeof on === 'string' && new URL(on).searchParams.get('manual') === '5' && new URL(off).searchParams.get('manual') === '4', { on, off });
+  check('3a a store that throws: the address is still made', typeof on === 'string' && at(on).searchParams.get('manual') === '5' && at(off).searchParams.get('manual') === '4', { on, off });
   let none = null;
   try { none = twoButtonsChoose(true, HREF, null); } catch (e) { none = 'threw: ' + e.message; }
-  check('3b no store: the address is still made', new URL(none).searchParams.get('manual') === '5', none);
+  check('3b no store: the address is still made', at(none).searchParams.get('manual') === '5', none);
 }
 /* 4 */
 {
