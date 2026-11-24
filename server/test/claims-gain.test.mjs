@@ -48,6 +48,8 @@
  * (`room._swordReach`, SWORD_SWING.REACH_PX 150 -> 300: shape-books.md's
  * plant C1) in the reach and free-swing liars' rooms: 3b FAILS on one seed
  * and on six (the numbers are in the PR's words and KNOWN's comment).
+ * And (v2.3.6462, sitting 57's hold): the reach liar's first words reworded
+ * (`399 px` -> `149 px`) moves its dice: check 0 FAILS (a new fingerprint).
  *
  * A gain run is GAIN_MIN simulated minutes (the cook's a whole hour, to meet
  * its hourly cap), a disturbance run DIST_S seconds; the fights tick every
@@ -154,7 +156,8 @@ const CLAIMS = [
   { id: 'reach', what: 'the sword\'s reach', judge: 'a melee hit is taken from the worker\'s copy within `_swordReach()` (150 px, SWORD_SWING.REACH_PX with `swordswing` ON; v2.3.6462: it said PVE_MELEE_RANGE\'s 400, read only with it off), one counted swing at the sword\'s rate (swordswing.js), and a miss never reaches the worker',
     take: 'kills', world: COMBAT,
     honest: [['the honest sword: in to 90 px, a swing every 600 ms', B.honestSword]],
-    liar: ['every monster within the judge\'s reach (149 px), each every 210 ms (its lane), unshoved (`noKb`)', B.liarSword],
+    /* v2.3.6462: the first words are this run's SEED NAME, as measured (they said 399 px, the old judge's reach); `say` is what a reader is shown (the review of sitting 57: rewording the seed name moved the dice) */
+    liar: ['every monster within 399 px, each every 210 ms (its lane), unshoved (`noKb`)', B.liarSword, { say: 'every monster within the judge\'s reach (149 px), each every 210 ms (its lane), unshoved (`noKb`)' }],
     plant: PLANT === 'reach' ? REACH_PLANT : null },
   /* v2.3.6462 (card BK PR 3): the reach liar whose join says `fs: 1` (the
      free-swing trial, join.js): its swings skip the swing's count
@@ -223,7 +226,16 @@ const UNREACHED = [
 
 /* one bot's run: its world, its phone (on a disturbance), its take */
 const blank = () => ({ kills: 0, xp: 0, ore: 0, cooked: 0, gold: 0, px: 0, points: 0, hurt: 0 });
+/* v2.3.6462 (the review of sitting 57): A RUN'S DICE ARE SEEDED BY ITS NAME
+   (a bot's first words), so its words are its seed: rewording one moves its
+   numbers, and every line, KNOWN row and spread read off it goes stale.  So
+   a bot's first words are never reworded; what a reader is shown is its
+   `say` when it has one (sayOf).  Check 0 holds the names to the ones
+   measured: a fingerprint of every seed name a run used. */
+const SEED_NAMES = new Set();
+const sayOf = (h) => (h[2] && h[2].say) || h[0];
 async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags = undefined, seed = SEED } = {}) {
+  SEED_NAMES.add(c.id + '|' + who);
   const w = c.world || {};
   const clock = seededClock({ seed: seedOf(seed + c.id + '|' + who + '|' + (d ? d.id : 'gain')) }).install();
   try { return await runIn(clock, c, w, bot, opts, { d, ms, plant, flags }); } finally { clock.restore(); }
@@ -252,9 +264,9 @@ const rows = bySeed[seed] = [];
 for (const c of CLAIMS) {
   const ms = (c.minutes || GAIN_MIN) * B.MIN;
   const hon = [];
-  for (const h of c.honest) { const r = await runBot(c, h, { ms, seed }); hon.push({ who: h[0], v: perHour(c, valueOf(c, r.take), r.ms), refusals: r.refusals }); }
+  for (const h of c.honest) { const r = await runBot(c, h, { ms, seed }); hon.push({ who: sayOf(h), v: perHour(c, valueOf(c, r.take), r.ms), refusals: r.refusals }); }
   const lr = await runBot(c, c.liar, { ms, plant: c.plant || null, seed });
-  const liar = { who: c.liar[0], v: perHour(c, valueOf(c, lr.take), lr.ms) };
+  const liar = { who: sayOf(c.liar), v: perHour(c, valueOf(c, lr.take), lr.ms) };
   const best = c.less ? hon.reduce((a, b) => (b.v < a.v ? b : a)) : hon.reduce((a, b) => (b.v > a.v ? b : a));
   let gain;
   if (c.less) gain = best.v / Math.max(liar.v, 1);
@@ -273,13 +285,19 @@ for (const c of GAINS_ONLY ? [] : CLAIMS) {
     if (h[1] === B.honestSword && !h[2] && c.id !== 'reach') continue;   /* the same bot as the reach's: run once (v2.3.6462: a sword with its own opts, `fs: 1`, is another) */
     for (const d of DISTURBANCES) {
       const r = await runBot(c, h, { d, ms: DIST_S * 1000 });
-      dist.push({ claim: c.id, who: h[0], d: d.id, refusals: r.refusals });
+      dist.push({ claim: c.id, who: sayOf(h), d: d.id, refusals: r.refusals });
     }
   }
 }
 const secs = ((performance.now() - t0) / 1000).toFixed(1);
 
 /* ══════════ THE CHECKS ══════════ */
+/* 0 (v2.3.6462): the seed names are the ones measured.  A fingerprint of the
+   sorted names each kind of run plays; a new bot adds a name and its run's
+   fingerprint here, in the PR that measures it */
+const SEED_FP = { pr: '4e21a6c8', whole: '4e21a6c8' };   /* the same 31 names: the whole run's own runs (2b to 2j) reuse the rows' bots */
+const fp = seedOf([...SEED_NAMES].sort().join('\n')).toString(16).padStart(8, '0');
+check(`0: every run is seeded by the name it was measured under (${SEED_NAMES.size} names, fingerprint ${fp}): a bot's first words are its dice, reworded only with a new measurement (its words for a reader are its \`say\`)`, fp === SEED_FP[WHOLE ? 'whole' : 'pr'], fp);
 check(`1: every claim of step 4.2 has its number (${CLAIMS.length}) or its why (${UNREACHED.length})`, CLAIMS.length + UNREACHED.length === 13);   /* v2.3.6462: 11 -> 13, the free-swing reach and the staff */
 const refused = dist.filter((x) => x.refusals.length);
 check(`2: the honest bots meet no refusal on any disturbance (${dist.length} runs, ${DISTURBANCES.length} disturbances)`, refused.length === 0,
