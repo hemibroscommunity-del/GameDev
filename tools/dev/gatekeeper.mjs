@@ -33,6 +33,19 @@
  *   --until=precheck|build   stop after that command (a red build needs no browser)
  *   --keep                   leave the worktree, to look at a failure in it
  *
+ * v2.3.6504 (card PH PR 5): THE HEAP AS A TREND, once a sitting, apart from
+ * the rehearsal (it takes no branches):
+ *
+ *   node tools/dev/gatekeeper.mjs --heap --sitting=N [--trim]
+ *
+ * builds origin/main in a scratch worktree, runs mp-membudget three times,
+ * and adds the three highest heap readings and their middle as a row of
+ * docs/plan/baseline.md's "The heap at each sitting" (in THIS checkout: the
+ * sitting commits it with its notes).  A rise of over 1.0 MB since the last
+ * row marked `trim` is printed for the list with the PRs merged between
+ * (`--trim` marks this row: the sitting after a trim landed).  The heap line
+ * is no longer raised to follow main (tools/dev/heap-trend.mjs).
+ *
  * The tree's hash is git's name for the merged files themselves: two orders
  * that print the same hash made the same tree.  Exit code: 0 all green, 1 a
  * command failed, 2 a merge conflicted or a branch was not found.
@@ -49,6 +62,8 @@ const args = process.argv.slice(2);
 const branches = args.filter((a) => !a.startsWith('--'));
 const keep = args.includes('--keep');
 const untilArg = (args.find((a) => a.startsWith('--until=')) || '').slice(8);
+const heapMode = args.includes('--heap');
+const sittingArg = (args.find((a) => a.startsWith('--sitting=')) || '').slice(10);
 const STEPS = [
   /* v2.3.6307 (card RR PR 3): 15 minutes was under precheck's own run (it
      timed out at sittings 47 and 48 with nothing red).  Precheck now caps its
@@ -65,10 +80,12 @@ const STEPS = [
   { id: 'build', say: 'npm run build', cmd: 'npm', argv: ['run', 'build'], mins: 15 },
   { id: 'questline', say: 'node tools/qa/mp/run.mjs questline', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'questline'], mins: 40 },
 ];
-if (!branches.length || (untilArg && !['precheck', 'build'].includes(untilArg))) {
+if (heapMode ? (branches.length || !sittingArg) : (!branches.length || (untilArg && !['precheck', 'build'].includes(untilArg)))) {
   console.error('usage: node tools/dev/gatekeeper.mjs <branch> [<branch> ...] [--until=precheck|build] [--keep]\n'
     + '  merges the branches, in that order, in a scratch worktree from origin/main and runs the checks on the whole.\n'
-    + '  It merges nothing for real.');
+    + '  It merges nothing for real.\n'
+    + '       node tools/dev/gatekeeper.mjs --heap --sitting=N [--trim]\n'
+    + '  main\'s heap, three mp-membudget runs, a row of docs/plan/baseline.md (v2.3.6504).');
   process.exit(2);
 }
 /* v2.3.6420: a step `withPrecheck` runs whenever precheck does (--until=precheck
@@ -103,6 +120,49 @@ const git = (argv, cwd) => execFileSync('git', argv, { cwd, encoding: 'utf8', ma
 const tryGit = (argv, cwd) => { try { return git(argv, cwd); } catch { return ''; } };
 const root = tryGit(['rev-parse', '--show-toplevel'], process.cwd());
 if (!root) { console.error('gatekeeper: not in a git repository'); process.exit(2); }
+if (heapMode) await recordHeap();
+
+/* v2.3.6504 (card PH PR 5): main's heap, the middle of three runs, one row a
+   sitting; the rise since the last trim named with the PRs between */
+async function recordHeap() {
+  const T = await import('./heap-trend.mjs');
+  console.log('=== main\'s heap at sitting ' + sittingArg + ' (the test box) ===');
+  spawnSync('git', ['fetch', 'origin', 'main', '--quiet'], { cwd: root, timeout: 60000, stdio: 'ignore' });
+  const main = tryGit(['rev-parse', '--verify', '--quiet', 'origin/main'], root);
+  if (!main) { console.error('gatekeeper: there is no origin/main here'); process.exit(2); }
+  console.log(`origin/main is ${main.slice(0, 10)}`);
+  const work = mkdtempSync(join(tmpdir(), 'gatekeeper-heap-'));
+  const tree = join(work, 'tree');
+  git(['worktree', 'add', '--detach', '--quiet', tree, main], root);
+  const done = (code) => { try { git(['worktree', 'remove', '--force', tree], root); } catch { /* best effort */ } rmSync(work, { recursive: true, force: true }); process.exit(code); };
+  for (const dir of ['', 'server']) {
+    const have = join(root, dir, 'node_modules');
+    if (existsSync(have)) symlinkSync(have, join(tree, dir, 'node_modules'), 'dir');
+  }
+  const b = await runGroup('npm', ['run', 'build'], { cwd: tree, capS: 15 * 60 });
+  if (b.status !== 0) { console.log('FAIL  npm run build on main: no heap recorded\n' + b.out.trim().split('\n').slice(-8).join('\n')); done(1); }
+  const json = join(tree, 'tools', 'qa', 'mp', 'out', 'membudget.json');
+  const reads = [];
+  for (let i = 1; i <= 3; i++) {
+    rmSync(json, { force: true });
+    const r = await runGroup('node', ['tools/qa/mp/run.mjs', 'membudget'], { cwd: tree, capS: 40 * 60 });
+    let v = null;
+    try { v = JSON.parse(readFileSync(json, 'utf8')).peaks.heap.v; } catch { /* unread */ }
+    console.log(`  run ${i}: heap ${v == null ? 'NOT READ' : v + ' MB'} (mp-membudget exit ${r.status})`);
+    if (typeof v === 'number') reads.push(v);
+  }
+  if (reads.length !== 3) { console.log('FAIL  three heap readings wanted: no row recorded'); done(1); }
+  const middle = T.middleOf(reads);
+  const file = join(root, 'docs', 'plan', 'baseline.md');
+  const md = readFileSync(file, 'utf8');
+  const v = T.verdict(T.parseRows(md), middle);
+  const base = v.base && tryGit(['rev-parse', '--verify', '--quiet', v.base.main + '^{commit}'], root);
+  const prs = base ? T.prsIn(tryGit(['log', '--first-parent', '--format=%s', `${base}..${main}`], root)) : [];
+  writeFileSync(file, T.addRow(md, { sitting: sittingArg, date: new Date().toISOString().slice(0, 10), main, reads, middle, trim: args.includes('--trim') }));
+  console.log('\n' + T.say(v, middle, prs));
+  console.log('row added to docs/plan/baseline.md: commit it with the sitting\'s notes.');
+  done(0);
+}
 
 console.log('=== the gatekeeper\'s rehearsal: nothing here is merged for real ===');
 const fetched = spawnSync('git', ['fetch', 'origin', '--prune', '--quiet'], { cwd: root, timeout: 60000, stdio: 'ignore' }).status === 0;
