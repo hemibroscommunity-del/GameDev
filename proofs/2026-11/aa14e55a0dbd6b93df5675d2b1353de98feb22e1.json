@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "aa14e55a0dbd6b93df5675d2b1353de98feb22e1",
+  "tree": "2a32755420092a000f4f2b89f10de24c5e61dc35",
+  "committedAt": "2026-11-24T13:32:59-08:00",
+  "subject": "Merge pull request #2335 from hemibroscommunity-del/claude/plan-bk-mend61",
+  "files": 8552,
+  "bytes": 965612725,
+  "listingSha256": "bd9158a44c8af0ebebbb91c7035d7f15d86ed626c00302839b3572cc49fbfe9f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
