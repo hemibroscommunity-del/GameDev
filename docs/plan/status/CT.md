@@ -1,20 +1,20 @@
 card: CT
 branch: claude/plan-ct-3-right
-prs: #2282 (6540, ready), #2293 (6541, ready), PR 3 (6542, working)
+prs: #2282 (6540, merged), #2293 (6541, ready), PR 3 (6542, working)
 state: working
 
 ## Done
-- PR 1 (6540, #2282): stickZones, sight, latch, their suites, the phase and
-  ledger rows, mode 5, the switch rows; mended at sitting 56 (plants red).
-- PR 2 (6541, #2293): the left stick in mode 5 (turn, walk, the ring); the
-  frame's step `input` (1531 -> 1513 in legacy); `mp-twobuttons` part 1.
+- PR 1 (6540, #2282, merged at sitting 57): the three rules, their suites.
+- PR 2 (6541, #2293): the left stick in mode 5, the step `input`, part 1;
+  mended for sitting 58 (stick-zones 8 by what stickFrame does, the call
+  off the syntax tree: five plants red). Card item 6 (6545) added.
 - PR 3 (6542, stacked on 6541): the right side in mode 5. latch.js wired
   (latchFrame in the step `input`, latchAttackPress, latchHolds, latchLook:
   the disc's bevel, game.css); targeting.js locks the latch's monster and
   nothing else (touch only); the right half the world's taps only; no flick;
   S.stickX/Y given one owner (the orchestrator's addition): every mode's
   analog read and lift moved whole to stickZones.js (stickAnalog,
-  stickLift; the same values to the last bit, stick-zones 8);
+  stickLift; the same values to the last bit, stick-zones 9);
   BroTown 15911 -> 15901.
 
 ## Next
