@@ -36,6 +36,19 @@ none, whatever unit the reader chooses: the PR that turns one up builds its
 reader and says its unit there, and it is the owner's call, never decided
 while away.
 
+**Not wired, and marked so** (v2.3.6463, card BK PR 4). `LEVERS` in
+`playerroads.js` marks each of the three `wired: false`, with what it `means`: a
+`fee: 0` means no fee is ever looked at, not a fee of nothing charged. A
+lever is wired by the PR that builds its reader and a test that sets it and
+sees it applied (a fee set, then charged), on the owner's word, and that PR
+turns its mark to `wired: true`. `tools/guards/road-levers.test.mjs` holds
+the marks to the source, off the syntax tree: it fails a file of
+`server/src` that holds the rows (it imports `PLAYER_ROADS`, or the module
+whole) and reads a lever marked not wired, a lever marked wired that
+nothing reads, and a file that passes `PLAYER_ROADS` on. Break proofs, tried
+by hand: `PLAYER_ROADS.market.fee` read in `xfer.js` fails its §1, and
+`fee` marked `wired: true` fails its §2.
+
 | Row | What it is | Carries | Ledger |
 |---|---|---|---|
 | `trade_window` | the trade window: both sides staged and confirmed, swapped in one write | gold, bag, weapon, pet | `xfer` |
@@ -131,7 +144,8 @@ registry: nothing in it reaches another account).
 `server/test/player-roads.test.mjs`, strict from the start (the plan's rule
 3: a set that value hangs on). It fails:
 
-1. a `fee`, `hold` or `pace` that is not 0;
+1. a `fee`, `hold` or `pace` that is not 0; the three levers not each marked
+   in `LEVERS` with what it means; a lever marked not wired that is not 0 (v2.3.6463);
 2. a row that is not whole (no `at` or `why`, a kind off the list, a ledger
    off its list or `none` with no why, no road, a road no door has, a `mint`
    or `burn` road, a kind with a door and no road of that door);
