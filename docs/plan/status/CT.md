@@ -26,7 +26,7 @@ state: working
   red: beside it (25 px), swinging, the monster at 1 hp 90 s; the socket
   probe saw nothing sent. A probe on claude/plan-ct-3-probe (no PR, no CI)
   reads the swing's hit test (drawn place vs true, aim); the helper runs it.
-- Then PR 4 (6543), PR 5 (6544), item 6 (6545).
+  Then PR 4 (6543), PR 5 (6544), item 6 (6545).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
