@@ -61,6 +61,17 @@
  * imported getter given a new name (`const gs = getState`); a named
  * re-export (`export { getState } from`, renamed too) and `export * from`,
  * read by a third file.
+ * v2.3.6523, sitting 58's spellings, each green before (the scan knew
+ * spellings; it now FOLLOWS a namespace and judges every use of a getter,
+ * and a form it cannot follow is a reach, lib/openHand.mjs's 'g'): `await
+ * import()` (a name, taken apart, `.then`), a namespace taken apart,
+ * `getState.bind` / `.call`, `{ getState }`, `useMemo(getState, [])`, a
+ * namespace handed to a function or read by a key it cannot read, and an
+ * `import(u)` of a path it cannot read: each played by check 3 every run.
+ * The new reading finds two reaches that were there all along, so the
+ * census is set by it in this PR (225 -> 227 lines, 84 -> 85 files):
+ * debugBus.js 4 -> 5 (its `getState` put in the debug bus's object) and
+ * lazyPanel.js 1 (its `import(url)` of a panel by a path it cannot read).
  *
  *   node tools/guards/open-hand.test.mjs            the verdict
  *   node tools/guards/open-hand.test.mjs --write    lowers the list to what is
@@ -171,7 +182,25 @@ let ACROSS_N = 0;
     ['a namespace import, its getter called', GET, "import * as C from '@/zzHandA.js';\nexport function p() {\n  return C.getState().rpg;\n}"],
     ['a namespace import, its alias read', 'export const HAND = window._gameFns;', "import * as C from '../zzHandA.js';\nexport const p = () => C.HAND.say();"],
     ['an imported getter given a new name', GET, "import { getState } from '@/zzHandA.js';\nconst gs = getState;\nexport function p() {\n  return gs().rpg;\n}"],
+    /* v2.3.6523: sitting 58's (each green before): the namespace and the getter followed as a class */
+    ['await import(), its getter called', GET, "export async function p() {\n  const C = await import('@/zzHandA.js');\n  return C.getState().rpg;\n}"],
+    ['await import(), taken apart', GET, "export async function p() {\n  const { getState } = await import('../zzHandA.js');\n  return getState().rpg;\n}"],
+    ['import().then, taken apart', GET, "export const p = () => import('@/zzHandA.js').then(({ getState }) => getState());"],
+    ['a namespace taken apart', GET, "import * as C from '@/zzHandA.js';\nconst { getState } = C;\nexport const p = () => getState().rpg;"],
+    ['getState.bind', GET, "import { getState } from '@/zzHandA.js';\nexport const p = getState.bind(null);"],
+    ['getState.call', GET, "import { getState } from '@/zzHandA.js';\nexport const p = () => getState.call(null).rpg;"],
+    ['a getter in an object', GET, "import { getState } from '@/zzHandA.js';\nexport const p = { getState };"],
+    ['useMemo(getState)', GET, "import { useMemo } from 'react';\nimport { getState } from '@/zzHandA.js';\nexport function P() {\n  return useMemo(getState, []);\n}"],
+    ['a namespace handed on', GET, "import * as C from '@/zzHandA.js';\nimport { use } from './zzElse.js';\nexport const p = use(C);"],
+    ['a namespace by a key it cannot read', GET, "import * as C from '@/zzHandA.js';\nexport const p = (k) => C[k];"],
   ];
+  /* a dynamic import whose path it cannot read: a form it cannot follow */
+  {
+    const r = two(GET, 'export const p = (u) => import(u);');
+    if (!(r.has(B) && r.get(B).size >= 1)) { missed++; bad('3 the plant "import() of a path it cannot read" adds no reach'); }
+    const ok2 = two(GET, "import * as C from '@/zzHandA.js';\nexport const p = () => C.other;");
+    if (ok2.has(B)) { missed++; bad('3 a namespace read for a name that holds no hand is counted (it should not be)'); }
+  }
   for (const [name, a, b] of ACROSS) {
     const r = two(a, b);
     if (!(r.has(B) && r.get(B).size >= 1)) { missed++; bad(`3 the plant "${name}" adds no reach in the importer`); }
@@ -184,7 +213,7 @@ let ACROSS_N = 0;
     const r = openHandCensus(babel, new Map([[A, GET], [M, mid], [C3, `import { ${call} } from './zzHandM.js';\nexport const p = () => ${call}().rpg;`]]));
     if (!(r.has(C3) && r.get(C3).size >= 1)) { missed++; bad(`3 the plant "${name}" adds no reach in the reader`); }
   }
-  ACROSS_N = ACROSS.length + 3;
+  ACROSS_N = ACROSS.length + 4;
 }
 if (!missed) ok(`3 every plant (${PLANTS.length + 2 + ACROSS_N}) adds a reach`);
 
