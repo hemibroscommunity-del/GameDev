@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f50f7e22e290bee4b4024fb85fb3dad73fba926f",
+  "tree": "32dfc4ce458394d2e3443d26b93231ecf991b296",
+  "committedAt": "2026-11-24T06:56:16-08:00",
+  "subject": "Merge pull request #2295 from hemibroscommunity-del/claude/dg-scans",
+  "files": 8523,
+  "bytes": 964158505,
+  "listingSha256": "d22d80be5930f8293580828f43185712029728f8e4182c06897f458bf577539c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

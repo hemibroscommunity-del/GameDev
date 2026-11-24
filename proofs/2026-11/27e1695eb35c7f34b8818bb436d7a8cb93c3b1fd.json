@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "27e1695eb35c7f34b8818bb436d7a8cb93c3b1fd",
+  "tree": "891603fef88930bdc320296062d2b20e2813d710",
+  "committedAt": "2026-11-24T06:56:10-08:00",
+  "subject": "Merge pull request #2293 from hemibroscommunity-del/claude/plan-ct-2-stick",
+  "files": 8521,
+  "bytes": 964062208,
+  "listingSha256": "5d45ee832f7e2d53cac3775fa89eb66f6e9efdd15ad3df6d1531cd8d40ded859",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

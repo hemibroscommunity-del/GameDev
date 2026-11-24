@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1dd573bbdd528f30166dda21fc3d4bf410f8895e",
+  "tree": "5d04e05fa5270c732c7d500b0af97398d2681b41",
+  "committedAt": "2026-11-24T06:55:46-08:00",
+  "subject": "Merge pull request #2290 from hemibroscommunity-del/claude/plan-wl-3-owned",
+  "files": 8509,
+  "bytes": 963944907,
+  "listingSha256": "293fa999f3a5f7e4a602e68fd47a7dda9220ff4e6dbef86648622d0d94ccd993",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

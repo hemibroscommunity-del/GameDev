@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "99a2ac358448f3a235b629f2ecb53ca52289a9a9",
+  "tree": "c3f05e50dc0037b21b9a807cbd409fe9448feb3e",
+  "committedAt": "2026-11-24T06:56:04-08:00",
+  "subject": "Merge pull request #2303 from hemibroscommunity-del/claude/plan-wl-6-paper",
+  "files": 8520,
+  "bytes": 964019760,
+  "listingSha256": "6e2b91a736993c5a8a4712403b4fc76655070e9bdb11dcb42c2bc2ed7bc07871",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

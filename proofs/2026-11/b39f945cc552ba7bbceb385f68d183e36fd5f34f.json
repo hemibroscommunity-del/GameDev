@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b39f945cc552ba7bbceb385f68d183e36fd5f34f",
+  "tree": "af41564b1ee7b8ba388e1eff7f6a7264d92a1e5f",
+  "committedAt": "2026-11-24T06:55:58-08:00",
+  "subject": "Merge pull request #2302 from hemibroscommunity-del/claude/plan-wl-5-scoreboard",
+  "files": 8520,
+  "bytes": 964015330,
+  "listingSha256": "6d4f996cad0f1f927e86768983e626a599ae9158c99961a4a6bdcae78c4b208e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
