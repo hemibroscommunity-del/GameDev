@@ -33,6 +33,10 @@
  *      or an escrow books nothing; a payout by the mail books its own class.
  *      BREAK PROOF: `econGold(rec, row.class, d)` removed from _goldGive ->
  *      FAIL 9 (a reward books nothing).
+ *  10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3): every road
+ *      of GOLD_ROADS and every mail word runs on a blank record and a
+ *      carried one; the record's `_econ` and the day's book moved exactly
+ *      what the purse moved (mint, burn) or nothing (move, escrow, a load).
  *
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
@@ -45,7 +49,8 @@ import { ECON_V, GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, whol
 import { BAG_ROADS } from '../src/bag.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
-import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
+import { playTour, roomGuard } from './testroom.mjs';
+import { doorWrites, doorCalls, doorHolders, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */   /* v2.3.6440: the running room refuses (card DG PR 1) */
 const NOW_SET = (t) => { Date.now = () => t; };
 
 let failures = 0, passes = 0;
@@ -194,80 +199,71 @@ const lineOf = (s, i) => s.slice(0, i).split('\n').length;
     files.includes('gold.js') && files.includes('index.js') && !files.some((f) => Object.keys(LEFT_OUT).some((d) => f.startsWith(d + '/'))), files.filter((f) => f.includes('/')));
 }
 
-/* What writes a `.coins` that is NOT a purse, and why.  Each is matched by
-   its file and the text of its write; anything else is a second door. */
+/* v2.3.6441 (card DG PR 2): both scans read the syntax tree
+   (tools/guards/lib/writesOf.mjs), never a pattern of text.  A write is an
+   assignment of any operator (`||=`, `??=`), `delete`, `Object.assign`, a key
+   held in a variable, a destructured alias; a door's call counts by any
+   receiver (`room._goldGive`), and a `bind`, `.call` or a name made of it is
+   no plain call (plants1 GOLD-1..4, plants4 PAY2-1: tools/dev/plants/). */
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
+
+/* What writes a `coins` that is NOT a purse, and why: its file, its function,
+   how many writes.  Anything else is a second door. */
 const NOT_A_PURSE = [
-  { file: 'nomansland.js', text: 'lost.coins =', why: 'the loss\'s own note of what the purse held, for the killer\'s mail; the purse itself goes by nml_loss' },
+  { file: 'nomansland.js', fn: '_nmlOnDeath', field: 'coins', n: 1, why: 'the loss\'s own note of what the purse held (`lost.coins`), for the killer\'s mail; the purse itself goes by nml_loss' },
 ];
 {
-  const WRITE = /(?:\.coins|\[\s*['"]coins['"]\s*\])\s*(?:[-+*/%]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*[\w$.]*\.coins\b/g;
-  const found = [];
-  const allowedSeen = new Set();
-  for (const f of files) {
-    if (f === 'gold.js') continue;
-    const s = code[f];
-    for (const m of s.matchAll(WRITE)) {
-      const lineStart = s.lastIndexOf('\n', m.index) + 1;
-      const lineEnd = s.indexOf('\n', m.index);
-      const line = s.slice(lineStart, lineEnd < 0 ? s.length : lineEnd);
-      const ok = NOT_A_PURSE.find((a) => a.file === f && line.includes(a.text));
-      if (ok) { allowedSeen.add(ok); continue; }
-      found.push(f + ':' + lineOf(s, m.index) + ' ' + line.trim().slice(0, 100));
-    }
-  }
-  check('2. no `.coins` is written in server/src but through the gold door (gold.js)', found.length === 0, found);
-  check('2. every NOT_A_PURSE entry still exists (a stale one is deleted)', allowedSeen.size === NOT_A_PURSE.length,
-    NOT_A_PURSE.filter((a) => !allowedSeen.has(a)).map((a) => a.file + ' ' + a.text));
+  const r = doorWrites(raw, { skip: ['gold.js'], fields: ['coins'], listed: NOT_A_PURSE });
+  check('2. no `coins` is written in server/src but through the gold door (gold.js), however it is spelled', r.found.length === 0, r.found.map(where));
+  check('2. every NOT_A_PURSE row still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
 }
 
 /* ── 3. ONE ROW, ONE PLACE ───────────────────────────────────────────────── */
-/* Every this._goldGive / _goldTake / _goldSet call, its last argument read to
-   the call's own closing bracket (strings skipped). */
-function callsIn(s) {
-  const out = [];
-  /* v2.3.5285: by any name, not only `this` (playerrestore.js is plain
-     functions handed the room: `room._goldSet(...)`) */
-  const re = /\b[A-Za-z_$][\w$]*\._gold(Give|Take|Set)\(/g;
-  for (const m of s.matchAll(re)) {
-    let i = m.index + m[0].length, depth = 1, q = null;
-    for (; i < s.length && depth > 0; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
-      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
-      else if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-    }
-    const args = s.slice(m.index + m[0].length, i - 1);
-    /* v2.3.5084: a give may hand the door its payout after the road (inbox.js,
-       the mail): `..., 'mail_gold', entry)` -- the road is then the one before */
-    const lit = /,\s*'([A-Za-z0-9_]+)'\s*(,\s*[A-Za-z_$][\w$.]*\s*)?$/.exec(args);
-    out.push({ verb: m[1].toLowerCase(), road: lit ? lit[1] : null, credit: !!(lit && lit[2]), line: lineOf(s, m.index) });
-  }
-  return out;
-}
+/* Every _goldGive / _goldTake / _goldSet call, by any receiver (v2.3.5285:
+   playerrestore.js's plain functions call `room._goldSet(...)`), its road the
+   last word among its arguments; a payout after the road (inbox.js, the
+   mail: `..., 'mail_gold', entry)`) is the mail's alone (v2.3.5084). */
+const VERB_OF = { _goldGive: 'give', _goldTake: 'take', _goldSet: 'set' };
+/* The functions that hold a road's call and are called from more than one
+   place, each with its callers (file and function).  Every other holder has
+   one caller: a second caller of a function that pays through a legal road
+   is a second payment (plants1 GOLD-4, the mail's way round). */
+const FORWARDERS = [
+  { fn: '_handleBankMove', callers: ['index.js _onMessage', 'index.js _onMessage'], why: 'the bank\'s deposit and its withdrawal: two router cases, one handler' },
+  { fn: '_escrowDebitGoldTogether', callers: ['duel.js _interceptDuel', 'gladiator.js _handleArenaSponsor', 'store.js _stBuyNow'], why: 'the escrow\'s group debit, each caller its own escrow' },
+  { fn: '_applyCreditToPs', callers: ['inbox.js _creditLiveTogether', 'inbox.js _creditPlayerOnce', 'inbox.js _drainInboxNow', 'inbox.js _creditWith'], why: 'the mail: a credit entry applied, each caller a way the mail is delivered (inbox.js)' },
+  { fn: '_escrowDebitGold', callers: ['gladiator.js _handleArenaSponsor', 'store.js _stBuyNow', 'store.js _stPlaceBid', 'storeoffer.js _stOfferPlace'], why: 'the escrow\'s debit, each caller its own escrow' },
+  { fn: '_mktPlaceOrder', callers: ['market.js _marketFetch', 'market.js _marketFetch'], why: 'the market\'s order: two routes of its fetch' },
+  { fn: '_mktUnwind', callers: ['market.js _mktPlaceOrder', 'market.js _mktPlaceOrder'], why: 'the market\'s unwind of a failed order, two places in it' },
+];
 {
+  const { calls, odd } = doorCalls(raw, { skip: ['gold.js'], names: Object.keys(VERB_OF) });
+  check('3. the gold door is called plainly, by name (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
   const byRoad = Object.create(null);
   const bad = [];
-  for (const f of files) {
-    if (f === 'gold.js') continue;
-    for (const c of callsIn(code[f])) {
-      const where = f + ':' + c.line;
-      if (!c.road) { bad.push(where + ' names no road as a plain string'); continue; }
-      if (!own(GOLD_ROADS, c.road)) { bad.push(where + ' names "' + c.road + '", which GOLD_ROADS has not got'); continue; }
-      const row = GOLD_ROADS[c.road];
-      if (row.dir !== c.verb) bad.push(where + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + c.verb);
-      if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
-      if (c.credit && row.other !== 'inbox:') bad.push(where + ' ' + c.road + ' hands the door a payout, and only the mail\'s road may (v2.3.5084)');
-      (byRoad[c.road] = byRoad[c.road] || []).push(where);
-    }
+  for (const c of calls) {
+    const where1 = c.file + ':' + c.line;
+    const at = c.args.lastIndexOf(c.road);
+    const credit = at >= 0 && at < c.args.length - 1;
+    if (!c.road || !/^[A-Za-z0-9_]+$/.test(c.road)) { bad.push(where1 + ' names no road as a plain string'); continue; }
+    if (!own(GOLD_ROADS, c.road)) { bad.push(where1 + ' names "' + c.road + '", which GOLD_ROADS has not got'); continue; }
+    const row = GOLD_ROADS[c.road];
+    if (row.dir !== VERB_OF[c.name]) bad.push(where1 + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + VERB_OF[c.name]);
+    if (row.at.split(' ')[0] !== c.file) bad.push(where1 + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    if (credit && row.other !== 'inbox:') bad.push(where1 + ' ' + c.road + ' hands the door a payout, and only the mail\'s road may (v2.3.5084)');
+    (byRoad[c.road] = byRoad[c.road] || []).push(where1);
   }
   check('3. every call names a road the table has, with its verb, from its row\'s file', bad.length === 0, bad);
   const none = Object.keys(GOLD_ROADS).filter((r) => !byRoad[r]);
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
-  check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
+  check('3. no road has two callers, by any receiver (a second place is a second row)', twice.length === 0, twice);
   check('3. at v2.3.4670: 44 roads, 41 places that wrote gold by hand before the door',
     Object.keys(GOLD_ROADS).length >= 44, Object.keys(GOLD_ROADS).length);
+  const h = doorHolders(raw, calls, FORWARDERS);
+  check('3. a function that holds a road\'s call has one caller, or is a FORWARDERS row with its callers named (v2.3.6441)', h.bad.length === 0, h.bad);
+  check('3. ...every FORWARDERS row still holds a road\'s call (a stale one is deleted)', h.stale.length === 0, h.stale.map((r) => r.fn));
 }
 
 /* ── 4. A WRONG ROAD MOVES NOTHING ───────────────────────────────────────── */
@@ -568,6 +564,93 @@ function callsIn(s) {
   room._goldGive(f, 1, 'quest_reward');
   room._liveFlags = {};
   check('9. with `goldonesum: false` the count is the whole-coin difference (10 -> 11: one)', JSON.stringify(g(f)) === '[1,0]', g(f));
+}
+
+/* ── 10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3) ──────────
+   §9 holds a few roads by hand; a road no case names could book one coin
+   less than it gives and stay green (shape-books.md plant 1: `loot_gold`
+   booking d - 1, the world's sum calls it explained, 16 suites green).  So
+   EVERY road in GOLD_ROADS runs here, by its own verb, on a blank record and
+   on one carrying a purse and a count, for several amounts, with step 2's
+   sum on and off: the record's `_econ` and the day's book (daybook.js `econ`
+   part) moved exactly what the purse moved -- a mint its rise, a burn its
+   fall, a set its signed difference by its class -- and a move, an escrow or
+   a load (GOLD_LOADS) nothing.  The mail road books its CREDIT's class, for
+   every word of MAIL_CLASSES.  With `econ: false` every road moves the same
+   purse and books nothing.
+   BREAK PROOF: `econGold(rec, row.class, road === 'loot_gold' ? d - 1 : d,
+   this)` in _goldGive -> FAIL 10 (loot_gold minted 39 of 40). */
+{
+  const room = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} }, getWebSockets: () => [], acceptWebSocket: () => {} },
+    { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  /* the day's book held in memory: its pace never due, so no put takes the sums away mid-check */
+  const freshBook = () => { room._daybook = { days: new Map(), lastPut: Number.MAX_SAFE_INTEGER, putting: null, prunedDay: null, pruneAfter: null, sizedDay: null }; };
+  const dayG = () => {
+    let mint = 0, burn = 0;
+    for (const d of room._daybook.days.values()) { const g = d.parts.econ && d.parts.econ.g; if (g) { mint += Number(g.mint) || 0; burn += Number(g.burn) || 0; } }
+    return { mint, burn };
+  };
+  const g = (rec) => (rec._econ ? { m: rec._econ.g.m, b: rec._econ.g.b } : { m: 0, b: 0 });
+  const STARTS = [() => ({}), () => ({ coins: 100 }), () => ({ coins: 250.5, _econ: { v: ECON_V, g: { m: 7, b: 3 }, i: Object.create(null) } })];
+  const AMOUNTS = [1, 40, 5000];
+  const call = (road, rec, n, credit) => {
+    const dir = GOLD_ROADS[road].dir;
+    if (dir === 'give') return room._goldGive(rec, n, road, credit);
+    if (dir === 'take') return room._goldTake(rec, n, road);
+    return room._goldSet(rec, (Number(rec.coins) || 0) + (n % 2 ? -n : n), road);   /* a set both ways: up and down */
+  };
+  const bad = [];
+  let runs = 0;
+  const moved = new Set();
+  const run1 = (road, mk, n, oneSum, credit, want) => {
+    room._liveFlags = oneSum ? {} : { goldonesum: false };
+    freshBook();
+    const rec = mk();
+    const before = wholeGold(rec.coins), e0 = g(rec);
+    call(road, rec, n, credit);
+    const d = wholeGold(rec.coins) - before, e1 = g(rec), day = dayG();
+    const got = { m: e1.m - e0.m, b: e1.b - e0.b };
+    const exp = want ? want(d) : { m: 0, b: 0 };
+    runs++; if (d !== 0) moved.add(road);
+    if (got.m !== exp.m || got.b !== exp.b || day.mint !== exp.m || day.burn !== exp.b) {
+      bad.push({ road, start: JSON.stringify(mk()), n, oneSum, opId: credit && credit.opId, purse: d, rec: got, day, want: exp });
+    }
+  };
+  const byClass = (road) => {
+    const row = GOLD_ROADS[road];
+    if (GOLD_LOADS.includes(road)) return null;
+    if (row.class === 'mint') return (d) => ({ m: d, b: 0 });
+    if (row.class === 'burn') return (d) => ({ m: 0, b: -d });
+    return null;   /* a move, an escrow: the world's total did not change */
+  };
+  for (const road of Object.keys(GOLD_ROADS)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) for (const oneSum of [true, false]) run1(road, mk, n, oneSum, undefined, byClass(road));
+  }
+  /* the mail: what landed books its credit's class (gold.js MAIL_CLASSES) on top of the road's own */
+  for (const [word, row] of Object.entries(MAIL_CLASSES)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) {
+      const house = Math.floor(n / 3);
+      const want = (d) => ({ m: row.class === 'mint' ? d : (row.house ? Math.min(d, house) : 0), b: 0 });
+      run1('mail_gold', mk, n, true, { opId: word + ':dg6442:x', payload: { amount: n, house } }, want);
+    }
+  }
+  room._liveFlags = {};
+  check(`10. every road (${Object.keys(GOLD_ROADS).length}) and every mail word (${Object.keys(MAIL_CLASSES).length}) booked exactly what its purse moved: a mint its rise, a burn its fall, a move, an escrow or a load nothing (record and day's book; ${runs} runs)`,
+    bad.length === 0 && runs >= Object.keys(GOLD_ROADS).length * 18, bad.slice(0, 6));
+  const still = Object.keys(GOLD_ROADS).filter((r) => !moved.has(r));
+  check('10. ...and every road moved gold in some run (a road that moved nothing proves nothing)', still.length === 0, still);
+  /* `econ: false`: the same purse, nothing booked */
+  const off = [];
+  for (const road of Object.keys(GOLD_ROADS)) {
+    room._liveFlags = {}; freshBook();
+    const a = { coins: 100 }; call(road, a, 40);
+    room._liveFlags = { econ: false }; freshBook();
+    const b = { coins: 100 }; call(road, b, 40);
+    const day = dayG();
+    if (a.coins !== b.coins || b._econ || day.mint || day.burn) off.push({ road, on: a.coins, off: b.coins, econ: b._econ, day });
+  }
+  room._liveFlags = {};
+  check('10. with `econ: false` every road moves the same purse and books nothing', off.length === 0, off.slice(0, 5));
 }
 
 /* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════

@@ -75,7 +75,7 @@ The socket and the messages: the router, the relay, the client's connection and 
 
 A sitting: the join, leaving, lingering, the rejoin and what it re-sends.
 
-- **Files**: `server/src/`: join, leave, linger, lastplace, pacekeep, rejoinresend, nearjoin, presence2
+- **Files**: `server/src/`: join, leave, linger, lastplace, pacekeep, rejoinresend, nearjoin, presence2, actor, sitting
 - **Files**: `src/game/`: rejoinSlots, resumeListeners, quietPhone, nearJoin, presence2, stateCleanup
 - **Doors**: `_playerLeaves` in `server/src/leave.js` (LEAVE_WAYS: the one way a session leaves); `REJOIN_SLOTS` in `src/game/rejoinSlots.js` (what the phone clears at state_sync, with the worker's re-send)
 - **Switches**: [its rows in the switch table](SWITCHES.md#session)

@@ -57,6 +57,32 @@
  * outer router has no live flags (they are the room's storage), so its
  * lever is the worker's setting `BODY_CAP = "off"` (as `ORIGIN_LOCK`).
  *
+ * v2.3.6443 (card DG PR 4; the review's shape-doors: 44 of 47 plants green,
+ * `n: "5"`, `-5`, `true`, a 15,000-character id all LET IN): A FIELD HELD TO
+ * ITS FORM.  Past the checks above, a named field must also have its form:
+ *
+ *   by its row (the wire table's `form` column, in.js): `count` a whole
+ *           number of zero or more, `int` a whole number, `num` a finite
+ *           number, `yes` true or false, `id` WIRE_FORM.ID_RE's shape and
+ *           length, `str:<n>` words of at most n, `num|str:<n>` either, and
+ *           a list (`['gold', 'item']`) one of a closed list;
+ *   by its trust, where the row says no more: a `request` field's string
+ *           at most WIRE_FORM.STR_MAX characters (a `words` field keeps its
+ *           own bound, above; `claim`, `look` and `bounded` are their
+ *           handlers' to clamp).
+ *
+ * `null` passes, as above.  The form is judged only once every field has
+ * passed the checks above, so a frame the old door refused is refused for
+ * the same why (`form <field>` is never a cover for `number <field>`).
+ *
+ * THE SWITCH (`wireform` in the live flags; liveops.js _wireFormMode): absent
+ * or true, a frame out of form is refused like any other (`form`, counted
+ * and logged the same, and in `_wireFormSeen` by row and field); `'count'`,
+ * it is counted and logged and goes on to its handler (the measure before
+ * the refusal: the card's "first as a count"); `false`, no form is read: the
+ * door of v2.3.5184, byte for byte.  The routes' door holds no forms yet (a
+ * query's value is always a string): their rows are http.js's.
+ *
  * docs/specs/wire-door.md says it in full. */
 import { WIRE_DOOR_ROWS } from './lists.js';
 
@@ -76,6 +102,27 @@ export const WIRE_DOOR = Object.freeze({
   ARRAY_MAX: 256,
   /* refusals logged in a worker's life; every one is counted */
   LOG_FIRST: 20,
+});
+
+/* v2.3.6443: THE FORMS (header).  Measured over the whole server suite,
+   the storm included, in count mode (`wireform: 'count'`): the honest
+   values the suites and the page send, against these bounds. */
+export const WIRE_FORM = Object.freeze({
+  /* a string in a `request` field whose row gives it no form: half a
+     frame (MAX_INBOUND_BYTES 16 KB).  Above every honest string the suites
+     send, the longest a Turnstile token (verify.js VERIFY.TOKEN_MAX 2048)
+     and heap-forget's 7 KB strike; a `claim`, `look` or `bounded` field
+     has no default form (its handler clamps it, and a move must never be
+     dropped for a look: movefields.test) */
+  STR_MAX: 8192,
+  /* an id: a player's `bp_`, an item's key, a weapon's `gid`, a listing, a
+     request's opId; letters, digits and `_ - . :` (SHAPES part 2's reqId
+     and more), at most 96 */
+  ID_RE: /^[A-Za-z0-9_.:-]{1,96}$/,
+  /* the forms a row may name (wire-door.test §8 holds every row to them) */
+  NAMED: Object.freeze(['count', 'int', 'num', 'yes', 'id']),
+  STR_RE: /^str:([1-9][0-9]{0,4})$/,
+  NUM_OR_STR_RE: /^num\|str:([1-9][0-9]{0,4})$/,
 });
 
 /* ═══ v2.3.5720: A BODY'S SIZE (card K2 PR 1; header) ═══
@@ -248,11 +295,46 @@ function fieldWhy(trust, v) {
   return '';
 }
 
+/* v2.3.6443: a field's value against its form (WIRE_FORM; header): ''
+   when it passes.  `form` is the row's (`count`, a list, ...) or undefined,
+   when the trust's own default holds it (a `request` string of at most
+   STR_MAX). */
+export function formWhy(form, trust, v) {
+  if (v === undefined || v === null) return '';
+  if (form === undefined) {
+    return trust === 'request' && typeof v === 'string' && v.length > WIRE_FORM.STR_MAX ? 'form' : '';
+  }
+  if (Array.isArray(form)) return form.includes(v) ? '' : 'form';
+  switch (form) {
+    case 'count': return Number.isSafeInteger(v) && v >= 0 ? '' : 'form';
+    case 'int': return Number.isSafeInteger(v) ? '' : 'form';
+    case 'num': return typeof v === 'number' && Number.isFinite(v) ? '' : 'form';
+    case 'yes': return typeof v === 'boolean' ? '' : 'form';
+    case 'id': return typeof v === 'string' && WIRE_FORM.ID_RE.test(v) ? '' : 'form';
+    default: break;
+  }
+  const s = WIRE_FORM.STR_RE.exec(form);
+  if (s) return typeof v === 'string' && v.length <= Number(s[1]) ? '' : 'form';
+  const ns = WIRE_FORM.NUM_OR_STR_RE.exec(form);
+  if (ns) return (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length <= Number(ns[1])) ? '' : 'form';
+  /* a form no rule reads refuses (wire-door.test §8 fails the row first) */
+  return 'form';
+}
+
+/* a row's `form` is a form formWhy reads (the table's guard, wire-door §8) */
+export function formKnown(form) {
+  if (Array.isArray(form)) return form.length > 0 && form.every((x) => typeof x === 'string' || (typeof x === 'number' && Number.isFinite(x)));
+  return typeof form === 'string' && (WIRE_FORM.NAMED.includes(form) || WIRE_FORM.STR_RE.test(form) || WIRE_FORM.NUM_OR_STR_RE.test(form));
+}
+
 /* ── the judges: pure, so a suite reads them alone ── */
 
 /* A socket message (a frame, or one part of a bundle): '' to let it in, or
-   `<why>` / `<why> <field>`.  `rows` is a Map type -> [[path, trust]]. */
-export function wireDoorJudge(msg, rows = WIRE_DOOR_ROWS.SOCKET) {
+   `<why>` / `<why> <field>`.  `rows` is a Map type -> [[path, trust,
+   form]].  v2.3.6443: `forms: false` reads no form (the switch thrown:
+   the door of v2.3.5184); a form is read only once every field has passed
+   the checks before it. */
+export function wireDoorJudge(msg, rows = WIRE_DOOR_ROWS.SOCKET, { forms = true } = {}) {
   if (!isPlain(msg)) return 'body';
   if (badKeyIn(msg)) return 'key';
   if (own(msg, 'payload') && msg.payload !== null && msg.payload !== undefined && !isPlain(msg.payload)) return 'body';
@@ -267,6 +349,14 @@ export function wireDoorJudge(msg, rows = WIRE_DOOR_ROWS.SOCKET) {
       for (const v of valuesAt(root, path)) {
         const why = fieldWhy(trust, v);
         if (why) return why + ' ' + path;
+      }
+    }
+  }
+  if (!forms) return '';
+  for (const [path, trust, form] of fields) {
+    for (const root of roots) {
+      for (const v of valuesAt(root, path)) {
+        if (formWhy(form, trust, v)) return 'form ' + path;
       }
     }
   }
@@ -410,14 +500,51 @@ export const wireDoorMethods = {
      §182). */
   _wireDoor(session, msg, ws) {
     if (this._wireDoorOff && this._wireDoorOff()) return false;
-    const why = wireDoorJudge(msg);
+    /* v2.3.6443: the forms by the switch (header): 'on', 'count' or 'off' */
+    const mode = this._wireFormMode ? this._wireFormMode() : 'on';
+    let why = wireDoorJudge(msg, WIRE_DOOR_ROWS.SOCKET, { forms: mode !== 'off' });
+    const type = msg && typeof msg.type === 'string' ? msg.type : '';
+    if (why && why.startsWith('form ')) {
+      this._wireFormNote(type, why.slice(5), mode);
+      if (mode === 'count') why = '';
+    }
     /* v2.3.5195 (card K PR 10): past the checks, a repeat of a request id the
        player sent before reaches no handler (reqonce.js _reqOnceDoor) */
     if (!why) return !!(this._reqOnceDoor && this._reqOnceDoor(session, msg, ws));
     if (session) session.wireDoor = (session.wireDoor || 0) + 1;
-    const type = msg && typeof msg.type === 'string' ? msg.type : '';
     this._wireDoorCount(type && WIRE_DOOR_ROWS.SOCKET.has(type) ? type : '(no row)', why, type || '(no type)');
     return true;
+  },
+
+  /* v2.3.6443: a frame out of form, by its row and field (only a row's own
+     type and a path its row names reach here, so the keys are at most the
+     table's named fields).  Counted in both modes; in count mode it is also
+     logged here (a refusal is logged by _wireDoorCount), the first
+     WIRE_DOOR.LOG_FIRST of a worker's life. */
+  _wireFormNote(type, path, mode) {
+    if (!this._wireFormSeen) this._wireFormSeen = Object.create(null);
+    const key = type + ' ' + path;
+    this._wireFormSeen[key] = (this._wireFormSeen[key] || 0) + 1;
+    if (mode !== 'count') return;
+    this._wireFormCounted = (this._wireFormCounted || 0) + 1;
+    if (this._wireFormCounted <= WIRE_DOOR.LOG_FIRST) {
+      try { console.warn('[wireform] would refuse ' + key.slice(0, 96)); } catch (e) { /* the count stands */ }
+    }
+  },
+
+  /* v2.3.6443: what the door counted, for the owner's overview (admin.js
+     GET /api/admin/overview `wireDoor`): memory only, since the worker woke
+     (as floodTally).  `forms` is every field out of its form, refused or
+     (in count mode) let in; `mode` the forms' switch now. */
+  _wireDoorInfo() {
+    const copy = (o) => (o ? Object.assign(Object.create(null), o) : {});
+    return {
+      off: !!(this._wireDoorOff && this._wireDoorOff()),
+      mode: this._wireFormMode ? this._wireFormMode() : 'on',
+      refused: this._wireDoorRefused || 0,
+      counts: copy(this._wireDoorCounts),
+      forms: copy(this._wireFormSeen),
+    };
   },
 
   /* v2.3.5720: `bodycap: false` in the live flags and the routes' door

@@ -132,6 +132,11 @@ A test-mode character's device is also kept as the owner's (v2.3.5627,
 (`freezedevice`) never holds the owner's own phone. Not a check: it turns
 nothing off.
 
+And a record that keeps who acted marks it (v2.3.6480, `actor.js actorTest`,
+`actorRow`): an `xfer:` row's `actor` takes `test: true` beside its kind,
+and the day's book adds the character's seconds and gold under its part's
+`test` key, apart from play. Not a check: it turns nothing off.
+
 ## The switch
 
 | Surface | Who | What |

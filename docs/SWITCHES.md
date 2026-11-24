@@ -563,6 +563,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `actor` | worker | switch | v2.3.6480 | 2026-11-23 | false | logic |  | no | The ledger's rows (`xfer:`) carry no `actor` (who started it) and the day's book adds a test-mode character's play with everyone's, every row exactly as before; the cap `actor` is not advertised (the session still makes its actor, in memory, read by nothing else). |
 | `bodytake` | worker | switch | v2.3.4455 | 2026-11-10 | false | logic |  | no | A second login taking over mid-fight no longer keeps the body (the v2.3.4432 way), and caps.bodyTake is un-advertised. |
 | `joinguard` | worker | switch | v2.3.5730 | 2026-11-17 | false | logic |  | no | ON since v2.3.5730 (card RV's review: ACC-1, ACC-2, SEC-F1, ACC-3; decided for the owner while away, 2026-11-17: "Go recommended on all"); thrown (`joinguard: false`), a key registers a guest's id and takes its record, a guest on a made-up bp_ id writes a char: row, a join with no id is let in as undefined, and a socket that named a held seat and never joined keeps its claim, as before. |
 | `joinplace` | worker | switch | v2.3.5722 | 2026-11-17 | false | logic | `lastplace` | no | A join that names no place is left where the fresh state puts it, with no move clock, so its first move is judged from nothing, as before. |
@@ -578,6 +579,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `quiet` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Un-advertises the quiet phone: each phone as before from its next join. |
 | `refusejoined` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A refused session is dropped only, not taken out of the world. |
 | `rejoinresend` | worker | switch | v2.3.4382 | 2026-11-10 | false | logic |  | no | No re-sends after state_sync, the cap un-advertised. |
+| `sitting` | worker | switch | v2.3.6481 | 2026-11-23 | false | logic |  | no | No sitting's card is opened, closed or counted (what a record holds is kept as it is), the actor's `stint` is one a socket again, and the cap `sitting` is not advertised. |
 | `takeoverlinger` | worker | switch | v2.3.4432 | 2026-11-10 | false | logic |  | no | A second login takes over a body in a fight as before, rebuilt where the new phone says. |
 | `takeoversave` | worker | switch | v2.3.4377 | 2026-11-10 | false | logic |  | no | A second join of the same character does not save what a close would. |
 
@@ -734,6 +736,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `sendcount` | worker | switch | v2.3.5193 | 2026-11-17 | false | logic |  | no | The send door writes every frame as before but counts none: the day's book carries no `send` part (the frames a type and their length). |
 | `?wheelwhole` | page | switch | v2.3.3318 | 2026-10-17 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
 | `wiredoor` | worker | switch | v2.3.5184 | 2026-11-14 | false | logic |  | no | Every message and the room's web routes reach their handlers unchecked again, as before the wire door; a mute of `__proto__` is taken again. |
+| `wireform` | worker | switch | v2.3.6443 | 2026-11-24 | false or 'count' | logic | `wiredoor` | no | A named field is held only to the old door's checks again (no number that is not finite, a words field a string of 2,000): `n: "5"`, `-5` or a 15,000-character id reaches its handler; `'count'` counts each one and lets it in. |
 | `?wirereset` | page | switch | v2.3.5207 | 2026-11-14 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world

@@ -313,6 +313,17 @@ export const liveopsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wiredoor') && !f.wiredoor);
   },
 
+  /* v2.3.6443 (card DG PR 4): the wire door's forms (wire/door.js
+     WIRE_FORM): `wireform: 'count'` counts a field out of form and lets it
+     in; `wireform: false` (or any falsy value) reads no form, the door of
+     v2.3.5184; absent or anything else, a field out of form is refused */
+  _wireFormMode() {
+    const f = this._liveFlags;
+    if (!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wireform'))) return 'on';
+    if (f.wireform === 'count') return 'count';
+    return f.wireform ? 'on' : 'off';
+  },
+
   /* v2.3.5543 (RT-1 N10): the relay's byte bounds (relay.js
      _relayBytesDrop), the same way: `relaybytes: false` lets every relay
      into the queue whatever its size, as before */

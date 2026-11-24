@@ -23,7 +23,7 @@ how frames are made (a binary wire, a squeeze) had 150 places to touch.
   or the same string. `_send` throws as `ws.send` throws, so every caller's
   `try` still catches a dead socket, and a caller without one still throws.
 - **The count.** In memory: a `Map` of type to `[frames, length]`. The length
-  is in characters (the worker's JSON is ASCII but a player's own words). A
+  is in UTF-8 bytes as the socket writes them (v2.3.6445, `utf8Bytes`). A
   type out of form, or past 256 types, is counted under `_other`.
 - **Where it is kept.** The day's book's part `send` (`daybook.js`), a
   RIDING part: `sendRide` folds the counts into today's sums only when the
