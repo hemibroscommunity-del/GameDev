@@ -31,8 +31,7 @@ state: working
 - none (no real second writer)
 
 ## Needs
-- docs/specs/send-door.md:25 still says the count is in characters (send.js
-  counts bytes now): not a card DG file; asked the orchestrator.
+- none (send-door.md lines 25-26 mended: the orchestrator allowed it)
 
 ## Note
 - testroom §7 tries four fields (Z's Found): PR 1's line, a later PR's.
