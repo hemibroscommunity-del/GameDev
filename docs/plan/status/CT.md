@@ -12,7 +12,10 @@ state: working
   (latchFrame in the step `input`, latchAttackPress, latchHolds, latchLook:
   the disc's bevel, game.css); targeting.js locks the latch's monster and
   nothing else (touch only); the right half the world's taps only; no flick;
-  BroTown 15911 -> 15911 (calls on existing lines).
+  S.stickX/Y given one owner (the orchestrator's addition): every mode's
+  analog read and lift moved whole to stickZones.js (stickAnalog,
+  stickLift; the same values to the last bit, stick-zones 8);
+  BroTown 15911 -> 15901.
 
 ## Next
 - PR 3: `mp-twobuttons` part 2 upright and sideways, `mp-heldcombat`,
@@ -26,10 +29,9 @@ state: working
   (`tools/qa/mp/mp-twobuttons.mjs` 1f says so).
 
 ## Needs
-- PR 1's mechanical rows outside the card: approved (answer 1).
-- PR 2: card M's guard `tools/guards/frame-steps.test.mjs` (WANT +
-  'input'; its indices read from WANT) and `tools/qa/mp/mp-framesteps.mjs`
-  (WANT + 'input'): approved by the orchestrator part 1, 2026-11-23 (three
-  plants proved red: in the PR's words).
-- The ledgers' machine rows for the moved writers (`src/state/input.js`,
-  `skills.js`, `ui.js`: stickX/Y, _lastInputAt, player; `_IN`, `_turn`).
+- The two OWNED rows (stickX, stickY pinned to `input`, OWNED_LINE + 2 in
+  WL's `tools/guards/state-ledger.test.mjs`: approved by the orchestrator,
+  2026-11-24) land when #2290 is on `main` (merged in before the last push).
+- Approved: PR 1's mechanical rows outside the card; PR 2's card M guard
+  rows (frame-steps WANT + 'input'); the ledgers' machine rows for moved
+  writers (input, skills, ui, combat: the script's `--write`).

@@ -22,6 +22,9 @@
  *      40% walks, the knob drawn out to the drawn radius (never past it);
  *      a lifted thumb is rest; BroTown's handler makes the one call behind
  *      twoButtonsOn, and its release writes rest;
+ *   8. v2.3.6542 (PR 3) THE STICK'S ONE WRITER: every mode's analog read and
+ *      lift are stickZones.js's (moved whole from BroTown: the same values
+ *      to the last bit), and nothing else in src/ writes S.stickX / stickY;
  *   8. v2.3.6541 THE FRAME'S STEP `input`, stickFrame (moved whole out of
  *      gameLoop): the stick read, the gates, the keys, the idle clock (a thumb
  *      held turning is a player), the name tag's facing; one object a page.
@@ -31,7 +34,7 @@
  * -> FAIL 1.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame } from '../../src/game/stickZones.js';
+import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';   /* v2.3.6542: + the stick's one writer in every mode */
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { manualMode, manualOn, tapLockOn, twoButtonsOn, setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
 
@@ -198,7 +201,7 @@ function writesOutside(prop, doorFile, doorFn) {
   /* read by system (tools/guards/lib/filesOf.mjs), never a big file by its path */
   check('7. the stick handler makes the one call, behind twoButtonsOn, and returns', findIn('ui', /stickDrive\(/).length === 1
     && findIn('ui', /if \(twoButtonsOn\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
-  check('7. ...and its release writes rest', findIn('ui', /S\.stickY = 0; stickTo\(S, 'rest'\);/).length === 1);
+  check('7. ...and its release writes rest (v2.3.6542: through stickLift, 8 below)', findIn('ui', /\bstickLift\(S\);/).length === 1);
 }
 
 /* ── 8. the frame's step `input` (stickFrame) ── */
@@ -222,6 +225,51 @@ function writesOutside(prop, doorFile, doorFn) {
   check('8. one object a page (a frame makes no garbage)', stickFrame(mk(0, 0), {}, false, false, 0) === stickFrame(mk(0, 0), {}, false, false, 0));
   check('8. gameLoop reads the input through the step `input` (no second read of S.stickX there)',
     findIn('ui', /_steps\.to\(0, 2\); var _in = stickFrame\(/).length === 1 && findIn('ui', /\? 0 : S\.stickX/).length === 0);
+}
+
+/* ── 8. v2.3.6542: the stick's ONE writer in every mode (the orchestrator: card WL's owned state) ──
+   BroTown's analog read and lift moved whole into stickZones.js: the
+   DEFAULT controls (every mode but 5) write the same values.  The old lines,
+   copied here verbatim, against the call, across the thumb's reach, upright
+   (travel 17.5) and sideways (25): equal to the last bit. */
+{
+  const old = (S, dist, angle, maxR) => {   /* BroTown.jsx handleJoystickMove before v2.3.6542 */
+    var deadzone = 12;
+    if (dist < deadzone) {
+      S.stickX = 0;
+      S.stickY = 0;
+    } else {
+      var strength = Math.min((dist - deadzone) / (maxR - deadzone), 1);
+      S.stickX = Math.cos(angle) * strength;
+      S.stickY = Math.sin(angle) * strength;
+    }
+  };
+  let n = 0; const diff = [];
+  for (const maxR of [17.5, 25, 37.5 / 2 - 20 + 20]) {
+    for (let dist = 0; dist <= 80; dist += 0.25) {
+      for (let k = -16; k <= 16; k++) {
+        const angle = (k * Math.PI) / 16 + 0.013;
+        const A = {}, B = {};
+        old(A, dist, angle, maxR); stickAnalog(B, dist, angle, maxR); n++;
+        if (!Object.is(A.stickX, B.stickX) || !Object.is(A.stickY, B.stickY)) diff.push({ maxR, dist, angle, A, B });
+      }
+    }
+  }
+  check(`8. the analog read moved whole: ${n} thumbs, the same values to the last bit`, diff.length === 0, diff.slice(0, 3));
+  check('8. its dead zone is the old 12 px: 11.99 nothing, 12 a start', STICK_DEAD_PX === 12
+    && (() => { const S = {}; stickAnalog(S, 11.99, 0, 17.5); return S.stickX === 0 && S.stickY === 0; })()
+    && (() => { const S = {}; stickAnalog(S, 12, 0, 17.5); return S.stickX === 0 && S.stickY === 0 && Object.keys(S).length === 2; })());
+  const L = { stickX: 0.7, stickY: -0.2 };
+  stickLift(L);
+  check('8. the lift: no walk, the stick at rest (no phase written when mode 5 never moved it)', L.stickX === 0 && L.stickY === 0 && !('_stickPhase' in L));
+  const T = { stickX: 1, stickY: 0, _stickPhase: 'walk' };
+  stickLift(T);
+  check('8. ...and from mode 5\'s walk, at rest', T._stickPhase === 'rest');
+  for (const prop of ['stickX', 'stickY']) {
+    const w = writesOutside(prop, 'src/game/stickZones.js', 'stickAnalog');
+    const far = w.outside.filter((x) => !x.startsWith('src/game/stickZones.js:'));
+    check(`8. no write of S.${prop} in src/ outside stickZones.js (its one owner, system input)`, far.length === 0, far);
+  }
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
