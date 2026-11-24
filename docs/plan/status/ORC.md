@@ -7,8 +7,8 @@ part 5 (session_01LccHakcRoC4r9Sbtry2Erm, started by the owner 02:49 UTC, depth 
 ## Sitting 57: MERGED 02:14 UTC (#2288, #2294, #2296, #2281, #2289, #2282, notes #2304); main b966af81. The holds' words: docs/plan/census/review-z57.md on main. Its gatekeeper (session_01LccHahbA4NKM4W2gfwhETx) was told it may stop.
 ## Sitting 58: 2026-11-25 UTC (two a day; the owner was told they may say "run another round today"). A NEW gatekeeper session (strong, high). Queue so far, every re-push reviewed fresh:
 - CK #2305 (6425, 69c7b1e8) THEN #2307 (6424, `.github/`, 4261a46b; the owner's own words quoted in its body)
-- BK #2299 (3c4322c8), #2301 (f40b578f), and 6465 when it comes. WHO #2285 (dcf8ca12, mended). CT #2293 (a new head coming: three more plants), #2308 (6542, a draft)
-- DG #2283 (a98fff04, green), #2295 and #2300 (new heads coming from part 5)
+- BK #2299 (3c4322c8), #2301 (f40b578f), #2309 (670ec724). WHO #2285 (dcf8ca12, mended). CT #2293 (a new head coming: three more plants), #2308 (6542, a draft)
+- DG #2283 (a98fff04, green), #2295 and #2300 (new heads coming from part 5), #2310 (6443, a draft; deploys, behaviour)
 - PH #2279, #2291 (held, being mended), #2297, #2306 (a draft until green). LS's one PR (6560)
 - WL MENDED, in this order: #2286 (8290b17b, deploys), #2287 (a91eb4e5), #2290 (0709ce99), #2298 (0a555d3c), #2302 (faa51437), #2303 (3df384e3)
 - #2273 (RR, card LF) HELD: LF part 2 session_01LccHak4rzmk1FfkjzyFgGo (new 02:54, strong, high: a guard's mend) moves wsClient's thaw decision into src/game/thawCarried.js and plays it; five plants in the PR's body; sends the head when green.
@@ -16,8 +16,8 @@ After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #227
 
 ## Sessions (strong, high unless said)
 - CK  part 3 session_01LccHanDgcojfUMPpPn87N2: holds; the card is DONE once #2305 and #2307 merge
-- DG  #2283 GREEN at a98fff04 (part 3 stopped). DG part 5 session_01LccHameAWFA8ouUrKZDsv3: #2295's three plants with a98fff04 merged in, then up into #2300, sends two heads, stops. DG part 4 session_01LccHajiyuv8speuDQTioEV: builds PR 4 (6443), merges claude/dg-books once before its last push, then 5, 6
-- BK  part 4 session_01LccHajLr9A1dTtu6jVmRir (new 02:43): one PR, 6465 (Z's two Founds: the weapon listing's restart, piecesHeld by ids)
+- DG  #2283 GREEN at a98fff04. DG part 5 session_01LccHameAWFA8ouUrKZDsv3: #2295's three plants with a98fff04 merged in, then up into #2300, sends two heads, stops. DG part 6 session_01LccHahYhjXtJomMgMgJiT7 (new 03:17, on claude/dg-wireform): takes over #2310 (6443, a draft, BEHAVIOUR: a line of its own; ready when green), then PR 5 (6444), PR 6 (6445); TELL it #2295/#2300's new heads. Parts 3 and 4 stopped.
+- BK  part 4 session_01LccHajLr9A1dTtu6jVmRir: #2309 (6465, 670ec724, tests only, stacked on #2301) ready; the card's PRs are all up
 - WHO part 4 session_01LccHahezkhX8pJRQSedVFF: 6481 and 6482 built, not pushed, wait for #2283; report.js waits for #2279
 - PH  part 4 session_01LccHajdAuhmwzihWdn6F7x (new 02:24): mends #2279 and #2291 up the chain, then PR 4 (call 1 is COMPLETE: it has the table and the owner's words), then PR 6; it brings a default-look question for the owner first
 - WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb: all six PRs mended and pushed (heads above); it waits for the sitting
