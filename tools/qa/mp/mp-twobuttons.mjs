@@ -233,17 +233,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
-      /* the monster at 1 hp walks off: the harness keeps you beside it (a hop
-         when it is past 80 px, every two seconds), the latch does the rest */
+      /* the monster at 1 hp walks off: the harness keeps you beside it, the
+         latch does the rest.  v2.3.6542: every second a chase to within 30 px
+         of where the monster IS (read again on each 100 px hop, as hopTo's
+         own steps and gap); a hop toward where it WAS fell behind a monster
+         walking off (2c sideways: 329 px, the sword swinging at air) */
+      const chase = async () => {
+        for (let i = 0; i < 12; i++) {
+          const d = await P.page.evaluate((id) => {
+            const S = window._gameState.current; const m = (S.monsters || []).find((x) => x && String(x.id) === id);
+            if (!m || !m.alive) return 0;
+            const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
+            if (d <= 30) return d;
+            const k = Math.min(100, d - 25);
+            S.player.x += (dx / d) * k; S.player.y += (dy / d) * k;
+            return d - k;
+          }, target).catch(() => 0);
+          if (d <= 30) return d;
+          await P.page.waitForTimeout(260);   /* > the 198ms solo move gap (hopTo's) */
+        }
+        return null;
+      };
       const FIGHT = bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
         return { end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId), dead: !(m && m.alive && !(m.curHp <= 0)),
           mx: m ? m.x : null, my: m ? m.y : null, gap: m ? Math.hypot(m.x - S.player.x, m.y - S.player.y) : null }; }, target);
       let died = null;
-      for (let k = 0; k < 60 && !died; k++) {
+      for (let k = 0; k < 90 && !died; k++) {
         const f = await H.readState(P, FIGHT);
         if (f.dead && (f.end === 'killed' || (f.id && f.id !== target))) { died = f; break; }
-        if (!f.dead && f.gap > 80) await H.hopTo(P, Math.round(f.mx - 45), Math.round(f.my), { tries: 12 });
-        await P.page.waitForTimeout(2000);
+        if (!f.dead && f.gap > 30) await chase();
+        await P.page.waitForTimeout(1000);
       }
       const l2 = await LATCH(P);
       const why = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);

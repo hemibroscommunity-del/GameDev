@@ -6,8 +6,8 @@ state: working
 ## Done
 - PR 1 (6540, #2282, merged at sitting 57): the three rules, their suites.
 - PR 2 (6541, #2293): the left stick in mode 5, the step `input`, part 1;
-  mended for sitting 58 (stick-zones 8 by what stickFrame does, the call
-  off the syntax tree: five plants red). Card item 6 (6545) added.
+  mended for sitting 58: stick-zones 8 and 7b, all eight of sitting 57's
+  plants red (head 58521077). Card item 6 (6545) added.
 - PR 3 (6542, stacked on 6541): the right side in mode 5. latch.js wired
   (latchFrame in the step `input`, latchAttackPress, latchHolds, latchLook:
   the disc's bevel, game.css); targeting.js locks the latch's monster and
@@ -18,11 +18,11 @@ state: working
   BroTown 15911 -> 15901.
 
 ## Next
-- PR 3: one line red, `mp-twobuttons` 2c sideways: the monster at 1 hp
-  walks off and the harness's hop does not keep you beside it (329 px; the
-  latch held, the sword swinging). Upright the whole fight plays (killed).
-  Mend the chase, then mark the PR ready. Green: precheck; heldcombat,
-  sprint, framesteps, playable, memory-budget; twobuttons 33 of 34.
+- PR 3: #2293's mend merged in (stick-zones 92). 2c's chase mended: every
+  second a chase to within 30 px of where the monster IS (a hop toward
+  where it WAS fell behind it: 329 px sideways). A helper runs
+  mp-twobuttons once; green: merge main, precheck, push, mark ready.
+- Then PR 4 (6543), PR 5 (6544), item 6 (6545).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.

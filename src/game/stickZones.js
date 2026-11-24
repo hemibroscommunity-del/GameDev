@@ -84,6 +84,13 @@ export function stickTravel(sideways) {
   return sideways ? STICK_ZONES.RADIUS_SIDE : STICK_ZONES.RADIUS_UP;
 }
 
+/** v2.3.6541 (sitting 57's mend): the turn ring's radius on the disc, CSS px:
+ *  the page's turn border (`?turnzone`, turnShare) of the disc's drawn radius,
+ *  to a tenth of a px.  TouchControls draws it only in mode 5 (twoButtonsOn). */
+export function turnRingRadius(sideways) {
+  return Math.round(turnShare() * stickTravel(sideways) * 10) / 10;
+}
+
 /** Snap an angle to the nearest of the eight facings drawn today. */
 export function facing8(ang) {
   const step = (2 * Math.PI) / STICK_ZONES.FACINGS;

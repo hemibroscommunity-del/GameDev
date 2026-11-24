@@ -6,9 +6,7 @@ import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { Skin, RDISC_ICONS, AimReticle } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
 import { twoButtonsOn } from '@/game/manualCombat.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2) */
-import { stickTravel, turnShare } from '@/game/stickZones.js'; /* v2.3.6541 */
-/** v2.3.6541: the turn ring's radius, CSS px: the turn's share of the disc's drawn radius. */
-const TURN_R = (sideways) => Math.round(turnShare() * stickTravel(sideways) * 10) / 10;
+import { turnRingRadius } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call) */
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
  * Owner: "Make the on screen buttons look more like the improved mockup."
@@ -249,7 +247,7 @@ export function TouchControls(props) {
      the body, past it the body walks (game/stickZones.js).  Static: drawn once with the disc, never per move. */
   twoButtonsOn() ? React.createElement('div', {
     'data-turnring': '', 'aria-hidden': 'true',
-    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * TURN_R(isLandscape), height: 2 * TURN_R(isLandscape),
+    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
       transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',
       boxSizing: 'border-box', pointerEvents: 'none' },
   }) : null, /*#__PURE__*/React.createElement("div", {
