@@ -14,6 +14,16 @@ and write while they carry it out.
 - **`census/<name>.md`**: a session's long output (a table of hundreds of
   rows). Never in the status file: the gatekeeper reads every status file at
   each sitting, and must be able to.
+- **`finish.md`** (v2.3.6400): the direction of 2026-11-23, which the
+  orchestrator works from: the cards of the phase, the model each kind of
+  session runs on, the five rules a card keeps, the spending rules.
+- **`log.md`**: the gatekeeper's notes, one line a step a sitting, so the
+  plan itself stops growing.
+
+**The status file rides its work** (v2.3.6400): it is committed with the
+change it describes. Never a status-only push to an open PR: every push
+runs every check, about 22 minutes of GitHub's paid time
+(`census/shape-cost.md`).
 
 ## The status file
 

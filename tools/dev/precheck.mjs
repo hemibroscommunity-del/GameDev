@@ -926,8 +926,15 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
     const tail = rest.out.trim().split('\n').slice(-30).join('\n    ');
     add('FAIL', 'server-tests', `cd server && npm test exited ${rest.status ?? ('on signal ' + (rest.signal || '?'))}:\n    ${tail}`);
   }
-  const thrown = await runCapped('node', [join('tools', THRONE)], { cwd: root, capS: THROWN_CAP_S });
-  if (thrown.status === 0) add('PASS', 'switches-thrown', `${THRONE} green, ${thrown.secs} s (run apart from the rest: v2.3.6307)`);
+  /* v2.3.6420 (card CK PR 1): in the gatekeeper's rehearsal this part is
+     the gatekeeper's own next step, the WHOLE set (`--whole`, once a
+     sitting); here, as on a PR, it throws what the branch can break and a
+     few chosen by the commit (the guard's header) */
+  const thrown = process.env.BT_THROWN_BY_GATEKEEPER === '1'
+    ? { status: 0, secs: 0, gatekeeper: true }
+    : await runCapped('node', [join('tools', THRONE)], { cwd: root, capS: THROWN_CAP_S });
+  if (thrown.gatekeeper) add('PASS', 'switches-thrown', `left to the gatekeeper's next step: node tools/${THRONE} --whole (BT_THROWN_BY_GATEKEEPER)`);
+  else if (thrown.status === 0) add('PASS', 'switches-thrown', `${THRONE} green, ${thrown.secs} s (run apart from the rest: v2.3.6307)`);
   else if (thrown.timedOut) {
     const tail = thrown.out.trim().split('\n').slice(-5).join('\n    ');
     add('FAIL', 'switches-thrown', `timed out after ${THROWN_CAP_S} s; it did not finish (nothing was seen to fail; this box was too slow or a suite hung -- run \`node tools/${THRONE}\` alone); its processes were stopped. Its last lines:\n    ${tail}`);

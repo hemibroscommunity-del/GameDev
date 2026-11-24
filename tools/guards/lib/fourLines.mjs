@@ -633,14 +633,21 @@ export function stateWritesFromRendering({ live = false } = {}) {
      ExchangePanel               (1029, 1020) -> (270, 268)
      bodyRecolor.js    (1500 generic, 1010) -> (1939, 1449)
      hitMaterialFx.js  (1500 generic, 1332) -> (1946, 1778)
-     initPixiRenderer  (1000 generic, 960)  -> (1007, 967) */
+     initPixiRenderer  (1000 generic, 960)  -> (1007, 967)
+   v2.3.6268 (the gatekeeper, sitting 56, main 0aec648; the shape review's
+   part 4): entityRenderer.js 8941 -> 7984 and effectsRenderer.js 9870 ->
+   9450 code lines, each that day's count (7959, 9425) plus 25.  By
+   statements (v2.3.6520, the same rule, merged after it: the room 25 lines
+   is 25 statements in both): effectsRenderer.js 9705 + 25 = 9730,
+   entityRenderer.js 7983 + 25 = 8008 (the table above says the rooms before
+   sitting 56). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
-    'src/rendering/systems/effectsRenderer.js': 10150,
-    'src/rendering/systems/entityRenderer.js': 8965,
+    'src/rendering/systems/effectsRenderer.js': 9730,
+    'src/rendering/systems/entityRenderer.js': 8008,
     'src/ui/BroTown.jsx': 6916,
     'src/data/gameSystems.js': 2105,
     'src/data/gameDisplay.js': 3116,

@@ -1,0 +1,41 @@
+[
+  { "id": "SUM-1 unexplained gold on a path the world's sum plays (shop_sell)", "file": "server/src/shop.js", "anchor": "this._goldGive(ps, paid, 'shop_sell');",
+    "text": "    Object.assign(ps, { coins: (ps.coins || 0) + 5 });   /* Diego rounds up */", "suites": ["gold-door", "world-sum"] },
+  { "id": "SUM-2 the same on a path it does not play (quest turn-in)", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    Object.assign(ps, { coins: (ps.coins || 0) + 5 });", "suites": ["world-sum", "storm", "quest"] },
+
+  { "id": "HIT-1 a monster's blow priced by another receiver name, in a monster file", "file": "server/src/monstermoves.js", "anchor": "return this._monsterHit({", "before": true,
+    "text": "    { const room = this; const tps = room.playerState[pid]; if (tps) room._applyDamage(tps, 5, { monster: true }); }", "suites": ["hit-door"] },
+  { "id": "HIT-2 a second caller inside a file the test allows whole (combat.js)", "file": "server/src/combat.js", "anchor": "const dmgCap = this._maxDmgForAttacker(attackerPs, !!payload.special);",
+    "text": "    this._applyDamage(attackerPs, 3, { thorns: true });   /* the monster's thorns bite back */", "suites": ["hit-door"] },
+  { "id": "HIT-3 a monster's blow straight to the life door under an existing road (this.)", "file": "server/src/monstermoves.js", "anchor": "return this._monsterHit({", "before": true,
+    "text": "    { const tps = this.playerState[pid]; if (tps) this._hpSet(tps, Math.max(0, tps.hp - 5), 'hit'); }", "suites": ["hit-door", "life-door"] },
+  { "id": "HIT-4 the same by another receiver name", "file": "server/src/monstermoves.js", "anchor": "return this._monsterHit({", "before": true,
+    "text": "    { const room = this; const tps = room.playerState[pid]; if (tps) room._hpSet(tps, Math.max(0, tps.hp - 5), 'hit'); }", "suites": ["hit-door", "life-door"] },
+
+  { "id": "SEND-0 CONTROL the obvious raw write", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    ws.send(JSON.stringify({ type: 'player_state', payload: {} }));", "suites": ["send-door"] },
+  { "id": "SEND-1 the socket's send bound to a name", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    { const out = ws.send.bind(ws); out(JSON.stringify({ type: 'player_state', payload: {} })); }", "suites": ["send-door", "wire-audit"] },
+  { "id": "SEND-2 the door's own uncounted helper used inside the room", "suites": ["send-door", "wire-audit"], "edits": [
+      { "file": "server/src/quests.js", "anchor": "import ", "before": true, "text": "import { sendOutside } from './send.js';" },
+      { "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');", "text": "    sendOutside(this._wsBySessionId(session.id), { type: 'player_state', payload: {} });" } ] },
+  { "id": "SEND-3 a NEW type the worker sends, its name not a bare literal (no out row)", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    { const T = 'quest_' + 'bonus'; this._send(this._wsBySessionId(session.id), { type: T, payload: { gold: 5 } }); }", "suites": ["send-door", "wire-audit", "wire-table"] },
+
+  { "id": "WIRE-2 CONTROL a router case with no row", "file": "server/src/index.js", "anchor": "      case 'bank_deposit':", "before": true,
+    "text": "      case 'bank_tip': if (session.id) await this._handleBankMove(session, msg.payload || msg, 'in'); break;", "suites": ["wire-table"] },
+  { "id": "WIRE-1 a handler reads a field its row does not name", "file": "server/src/bank.js", "anchor": "const n = wholeN(p.n);",
+    "text": "    const tip = Math.floor(p.tip) || 0;   /* a tip for the teller, added to what moves */", "suites": ["wire-table", "wire-door", "wire-audit", "wire-hostile"] },
+  { "id": "WIRE-3 a field the handler reads taken OUT of its row's trust", "file": "server/src/wire/in.js",
+    "replace": ["trust: { reqId: 'request', kind: 'request', id: 'request', n: 'request', opId: 'request' }", "trust: { reqId: 'request', kind: 'request', opId: 'request' }"], "suites": ["wire-table", "wire-door", "wire-hostile"] },
+
+  { "id": "ACT-0 CONTROL the page's obvious send outside the door", "file": "src/ui/BroTown.jsx", "anchor": "S.channel.idleLogout(", "before": true,
+    "text": "S.channel.send({ type: 'bank_deposit', payload: { kind: 'gold', n: 1 } });", "suites": ["action-door"] },
+  { "id": "ACT-1 optional chaining", "file": "src/ui/BroTown.jsx", "anchor": "S.channel.idleLogout(", "before": true,
+    "text": "S.channel?.send({ type: 'bank_deposit', payload: { kind: 'gold', n: 1 } });", "suites": ["action-door"] },
+  { "id": "ACT-2 the channel in a variable, a type with no row", "file": "src/ui/BroTown.jsx", "anchor": "S.channel.idleLogout(", "before": true,
+    "text": "{ const ch = S.channel; const m = { type: 'bank_tip', payload: { n: 1 } }; ch.send(m); }", "suites": ["action-door"] },
+  { "id": "ACT-3 a route fetched by a url built a line above", "file": "src/ui/BroTown.jsx", "anchor": "S.channel.idleLogout(", "before": true,
+    "text": "{ const u = (window.BT_API_BASE || '') + '/api/store/buy?room=brotown-1'; fetch(u, { method: 'POST', body: '{}' }); }", "suites": ["action-door"] }
+]
