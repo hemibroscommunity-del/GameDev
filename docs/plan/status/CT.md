@@ -12,9 +12,8 @@ state: working
   binding followed off the syntax tree (`_in` read only as `_in.dx/_in.dy`,
   each the whole start of dx/dy; gameLoop reads no stick and hides S from
   nothing; every reader of the stick in src/ on a closed list). 16 plants
-  red, tried by hand. The card's +44 (item 6, tag 6545) named in the PR's
-  words as the orchestrator's addition. Head bfd443e9 green, frozen (held
-  at sitting 59: a later write to dx/dy unseen; the owner is asked).
+  red, tried by hand; the card's +44 (item 6) named as the orchestrator's.
+  Head bfd443e9 green, frozen (held at 59: the owner is asked).
 - Sitting 59's mend rides PR 3 (the orchestrator's word): §8's writes of
   dx/dy an ALLOW list (WALK_WRITES: the statement, its `if`, counted; only
   falls), followed by the binding; both plants and eight of my own red.
