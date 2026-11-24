@@ -53,7 +53,14 @@
  * the hand is TAKEN, which is what 5.7 changes); the global handed to a
  * function as an argument and read off its parameter; a key held in a
  * variable that changes; `eval`, `Function`; a walk over the global's keys;
- * `export * from` of a getter.
+ * `export * as C from` (a namespace handed on: not followed); a SECOND
+ * reach on a line already counted (the census counts lines, by its rule:
+ * two reads on one line are one line, as the line it holds is one).
+ * v2.3.6523, sitting 57's spellings, each green before and now played by
+ * check 3 every run: `import * as C` then `C.getState()` or `C.HAND`; an
+ * imported getter given a new name (`const gs = getState`); a named
+ * re-export (`export { getState } from`, renamed too) and `export * from`,
+ * read by a third file.
  *
  *   node tools/guards/open-hand.test.mjs            the verdict
  *   node tools/guards/open-hand.test.mjs --write    lowers the list to what is
@@ -146,6 +153,7 @@ for (const [name, code, atLeast = 1] of PLANTS) {
   if (n < atLeast) { missed++; bad(`3 the plant "${name}" adds ${n} reaches (wants ${atLeast}): ${code.split('\n')[0]}`); }
 }
 /* across files: a getter exported, imported and called; an alias the same */
+let ACROSS_N = 0;
 {
   const A = 'src/zzHandA.js';
   const B = 'src/ui/zzHandB.jsx';
@@ -157,7 +165,27 @@ for (const [name, code, atLeast = 1] of PLANTS) {
   const h = two('export default function () { return window._gameState; }',
     "import pick from '../zzHandA.js';\nexport const p = () => pick().current;");
   if (!(h.has(B) && h.get(B).size >= 1)) { missed++; bad('3 the plant "a default-exported getter, imported by a relative path" adds no reach in the importer'); }
+  /* v2.3.6523: sitting 57's spellings (each green before), every run */
+  const GET = "export const getState = () => window._gameState.current;";
+  const ACROSS = [
+    ['a namespace import, its getter called', GET, "import * as C from '@/zzHandA.js';\nexport function p() {\n  return C.getState().rpg;\n}"],
+    ['a namespace import, its alias read', 'export const HAND = window._gameFns;', "import * as C from '../zzHandA.js';\nexport const p = () => C.HAND.say();"],
+    ['an imported getter given a new name', GET, "import { getState } from '@/zzHandA.js';\nconst gs = getState;\nexport function p() {\n  return gs().rpg;\n}"],
+  ];
+  for (const [name, a, b] of ACROSS) {
+    const r = two(a, b);
+    if (!(r.has(B) && r.get(B).size >= 1)) { missed++; bad(`3 the plant "${name}" adds no reach in the importer`); }
+  }
+  /* a re-export in a middle file, read by a third */
+  const M = 'src/ui/zzHandM.js';
+  const C3 = 'src/ui/zzHandC.jsx';
+  for (const [name, mid] of [['a named re-export', "export { getState } from '@/zzHandA.js';"], ['a named re-export, renamed', "export { getState as gs } from '@/zzHandA.js';"], ['export * from', "export * from '@/zzHandA.js';"]]) {
+    const call = name.endsWith('renamed') ? 'gs' : 'getState';
+    const r = openHandCensus(babel, new Map([[A, GET], [M, mid], [C3, `import { ${call} } from './zzHandM.js';\nexport const p = () => ${call}().rpg;`]]));
+    if (!(r.has(C3) && r.get(C3).size >= 1)) { missed++; bad(`3 the plant "${name}" adds no reach in the reader`); }
+  }
+  ACROSS_N = ACROSS.length + 3;
 }
-if (!missed) ok(`3 every plant (${PLANTS.length + 2}) adds a reach`);
+if (!missed) ok(`3 every plant (${PLANTS.length + 2 + ACROSS_N}) adds a reach`);
 
 process.exit(failed ? 1 : 0);

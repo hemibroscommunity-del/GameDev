@@ -34,8 +34,11 @@
  * reads its parameter (the reach is counted at the call, not in the
  * callee); a key held in a variable that changes (`window[k]` with `k` not a
  * constant: no rule can read it short of running it); `eval`, `Function`,
- * `with`; a walk over the global's keys (`Object.entries(window)`); a name
- * re-exported through `export * from`.
+ * `with`; a walk over the global's keys (`Object.entries(window)`); a
+ * namespace handed on (`export * as C from`).  v2.3.6523 (sitting 57): a
+ * namespace import (`import * as C`, then `C.getState()`), a getter given
+ * a second name (`const gs = getState`), a named re-export and `export *
+ * from` are followed now (they were not).
  *
  * Speed: every file is parsed (@babel/parser, about 0.8 s for src/), walked
  * by a plain loop for anything that could be a reach, and only those files
@@ -171,6 +174,16 @@ function analyse(babel, rel, ast, exportsOf, has) {
   /* kinds of names, by binding: 'win' (the global), 'hand' (holds a hand or
      something taken from one), 'getter' (a function that hands one back) */
   const kind = new Map();                /* Binding -> kind */
+  /* v2.3.6523 (sitting 57's hold: `import * as C` then `C.getState()`
+     stayed green): a namespace import's binding -> the exports of its file,
+     so `C.x` has the kind its file gave x */
+  const nsKind = (objPath, key) => {
+    if (!objPath || !objPath.isIdentifier()) return null;
+    const b = objPath.scope.getBinding(objPath.node.name);
+    if (!b || !b.path.isImportNamespaceSpecifier()) return null;
+    const src = resolveImport(rel, b.path.parentPath.node.source.value, has);
+    return src && exportsOf.has(src) && key ? (exportsOf.get(src)[key] || null) : null;
+  };
   const kindOfImport = (b) => {
     const p = b.path;
     if (!p.isImportSpecifier() && !p.isImportDefaultSpecifier()) return null;
@@ -187,7 +200,7 @@ function analyse(babel, rel, ast, exportsOf, has) {
       if (!b) return ROOTS.has(n.name);
       return kind.get(b) === 'win';
     }
-    if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') return SELF_KEYS.has(memberKey(path)) && isWin(path.get('object'));
+    if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') return (SELF_KEYS.has(memberKey(path)) && isWin(path.get('object'))) || nsKind(path.get('object'), memberKey(path)) === 'win';
     if (n.type === 'ConditionalExpression') return isWin(path.get('consequent')) || isWin(path.get('alternate'));
     if (n.type === 'LogicalExpression') return isWin(path.get('left')) || isWin(path.get('right'));
     if (n.type === 'SequenceExpression') { const ex = path.get('expressions'); return isWin(ex[ex.length - 1]); }
@@ -200,6 +213,7 @@ function analyse(babel, rel, ast, exportsOf, has) {
     const n = path.node;
     if (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') {
       if (HANDS.has(memberKey(path)) && isWin(path.get('object'))) return true;
+      if (nsKind(path.get('object'), memberKey(path)) === 'hand') return true;
       return isHand(path.get('object'));
     }
     if (n.type === 'Identifier') {
@@ -210,6 +224,7 @@ function analyse(babel, rel, ast, exportsOf, has) {
     if (n.type === 'CallExpression' || n.type === 'OptionalCallExpression') {
       const c = path.get('callee');
       if (c.isIdentifier()) { const b = path.scope.getBinding(c.node.name); if (b && kind.get(b) === 'getter') return true; }
+      if ((c.isMemberExpression() || c.isOptionalMemberExpression()) && nsKind(c.get('object'), memberKey(c)) === 'getter') return true;
       if (isReflectHand(path)) return true;
       return isHand(c);
     }
@@ -259,6 +274,12 @@ function analyse(babel, rel, ast, exportsOf, has) {
         if (init.node && isWin(init) && sameWay(isWin)) k = 'win';
         else if (init.node && isHand(init)) k = 'hand';
         else if (init.node && (init.isArrowFunctionExpression() || init.isFunctionExpression()) && returnsHand(init)) k = 'getter';
+        /* v2.3.6523 (sitting 57's hold: `const gs = getState` stayed
+           green): a getter given a second name is a getter */
+        else if (init.node && init.isIdentifier() && sameWay(() => true)) {
+          const ib = init.scope.getBinding(init.node.name);
+          if (ib && kind.get(ib) === 'getter') k = 'getter';
+        } else if (init.node && (init.isMemberExpression() || init.isOptionalMemberExpression()) && nsKind(init.get('object'), memberKey(init)) === 'getter') k = 'getter';
         else if (!init.node && b.constantViolations.length && b.constantViolations.some((v) => v.isAssignmentExpression() && isHand(v.get('right')))) k = 'hand';
       }
       if (!k && p.isFunctionDeclaration() && returnsHand(p)) k = 'getter';
@@ -308,6 +329,10 @@ function analyse(babel, rel, ast, exportsOf, has) {
   babel.traverse(ast, {
     'MemberExpression|OptionalMemberExpression'(p) {
       if (HANDS.has(memberKey(p)) && isWin(p.get('object'))) mark(p.node, 'a');
+      /* v2.3.6523: through a namespace import, as a name would count */
+      const nk = nsKind(p.get('object'), memberKey(p));
+      if (nk === 'hand') mark(p.node, 'e');
+      else if (nk === 'getter' && (p.parentPath.isCallExpression() || p.parentPath.isOptionalCallExpression()) && p.key === 'callee') mark(p.node, 'f');
     },
     ObjectProperty(p) {
       if (p.parentPath.isObjectPattern() && HANDS.has(patternKey(p)) && isPatternOfWin(p.parentPath)) mark(p.node, 'c');
@@ -339,12 +364,32 @@ function analyse(babel, rel, ast, exportsOf, has) {
           if (b && kind.has(b)) exp[name] = kind.get(b);
         }
       }
-      if (p.node.source) return;
+      /* v2.3.6523 (sitting 57's hold: a named re-export stayed green):
+         `export { getState } from './common.js'` hands on what that file
+         exported, under the name given */
+      if (p.node.source) {
+        const src = resolveImport(rel, p.node.source.value, has);
+        const theirs = src && exportsOf.has(src) ? exportsOf.get(src) : null;
+        if (!theirs) return;
+        for (const s of p.node.specifiers) {
+          const out = s.exported && (s.exported.name || s.exported.value);
+          if (s.type === 'ExportSpecifier' && theirs[s.local.name || s.local.value]) exp[out] = theirs[s.local.name || s.local.value];
+        }
+        return;
+      }
       for (const s of p.get('specifiers')) {
         if (!s.isExportSpecifier()) continue;
         const b = p.scope.getBinding(s.node.local.name);
         if (b && kind.has(b)) exp[s.node.exported.name || s.node.exported.value] = kind.get(b);
       }
+    },
+    /* v2.3.6523: `export * from './common.js'` hands on every name (the
+       PR's first words listed it as not caught) */
+    ExportAllDeclaration(p) {
+      if (p.node.exported) return;   /* `export * as C from`: a namespace, not followed */
+      const src = resolveImport(rel, p.node.source.value, has);
+      if (!src || !exportsOf.has(src)) return;
+      for (const [k2, v] of Object.entries(exportsOf.get(src))) if (k2 !== 'default' && !exp[k2]) exp[k2] = v;
     },
     ExportDefaultDeclaration(p) {
       const d = p.get('declaration');
@@ -381,7 +426,7 @@ export function openHandCensus(babel, sources) {
   const importsOf = (rel) => {
     const out2 = [];
     for (const st of parse(rel).program.body) {
-      if (st.type !== 'ImportDeclaration' && !(st.type === 'ExportNamedDeclaration' && st.source)) continue;
+      if (st.type !== 'ImportDeclaration' && !((st.type === 'ExportNamedDeclaration' || st.type === 'ExportAllDeclaration') && st.source)) continue;
       const src = resolveImport(rel, st.source.value, has);
       if (src) out2.push(src);
     }
