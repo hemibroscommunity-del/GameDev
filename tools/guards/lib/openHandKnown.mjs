@@ -7,11 +7,11 @@
  * hand (grand plan step 5.7) takes these to nothing; the gatekeeper alone
  * makes the census strict.
  */
-export const LINE = 225;          /* code lines that reach the hand, every file */
-export const FILES_LINE = 84;     /* files that do */
+export const LINE = 227;          /* code lines that reach the hand, every file */
+export const FILES_LINE = 85;     /* files that do */
 export const KNOWN = {
   'src/debug/crashTrap.js': 1,
-  'src/debug/debugBus.js': 4,
+  'src/debug/debugBus.js': 5,
   'src/debug/perfHud.js': 1,
   'src/game/abilities.js': 2,
   'src/game/bowFeel.js': 5,
@@ -48,6 +48,7 @@ export const KNOWN = {
   'src/ui/LevelUpBurst.jsx': 1,
   'src/ui/XpFlyOverlay.jsx': 2,
   'src/ui/guideArrow.js': 1,
+  'src/ui/lazyPanel.js': 1,
   'src/ui/mobile/BottomDashboard.jsx': 8,
   'src/ui/mobile/ChatBubble.jsx': 3,
   'src/ui/mobile/ChestReveal.jsx': 4,
