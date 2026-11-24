@@ -8,6 +8,14 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 59 | 4.4, 4.5 | listed at 59: BK's #2301 (the roads' levers), #2309 (the weapon listing, pieces by id) | four contrived spellings past road-levers (BK's next PR); the gear and pet listings undriven |
+| 59 | 4.1 | sitting 58: DG's #2283 | DG's #2295 (held: `S[k].send`, a stash helper, `s.id`), #2300 (on it), #2310, #2312, #2313 (held) |
+| 59 | 8.1 | nothing new | LF's #2273 (held: no uncarried gap of 5 to 12 s is played) |
+| 59 | 5.4b | nothing new | CT's #2293 (held: a later write to `dx`/`dy` unseen) |
+| 59 | 5.2b, 5.3 | nothing merged | WL's #2286, #2287, #2298 (held); #2290, #2302, #2303 (passed, on them) |
+| 59 | 10.1, 11.2 | nothing merged | WHO's #2285, #2316 (held, and a bug: a week-old card reopened), #2317 (held) |
+| 59 | 2.3 | nothing merged | PH's #2279 (held), #2291, #2297 (passed, on it), #2306, #2314 (held) |
+| 59 | (no box) | sitting 58: CK's #2305, #2307; LS's #2311 | elemental2.test.mjs:187 flaky, about 1 run in 1,700 (no card) |
 | 58 | 8.1 | nothing new | RR's #2273 (held: an early return before `thawResume` is green in thaw-carried) |
 | 58 | 4.4, 4.5 | sitting 57: BK's #2281, #2289; listed at 58: #2299 (the bar, honestly) | BK's #2301 (held: a computed key past road-levers), #2309 (passed, on #2301); the gear and pet listings undriven |
 | 58 | 4.1 | listed at 58: DG's #2283 (the running room refuses) | DG's #2295 (held: a destructured `channel`, `[first]` of the stash), #2300 (on #2295), #2310 (held), #2312 |
