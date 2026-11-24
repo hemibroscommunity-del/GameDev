@@ -1,6 +1,6 @@
 card: CT
 branch: claude/plan-ct-3-right
-prs: #2282 (6540, merged), #2293 (6541, ready), PR 3 (6542, working)
+prs: #2282 (6540, merged), #2293 (6541, ready), PR 3 (6542, draft)
 state: working
 
 ## Done
@@ -18,8 +18,11 @@ state: working
   BroTown 15911 -> 15901.
 
 ## Next
-- PR 3: `mp-twobuttons` part 2 upright and sideways, `mp-heldcombat`,
-  `playable`, `memory-budget`; then open READY.
+- PR 3: one line red, `mp-twobuttons` 2c sideways: the monster at 1 hp
+  walks off and the harness's hop does not keep you beside it (329 px; the
+  latch held, the sword swinging). Upright the whole fight plays (killed).
+  Mend the chase, then mark the PR ready. Green: precheck; heldcombat,
+  sprint, framesteps, playable, memory-budget; twobuttons 33 of 34.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
