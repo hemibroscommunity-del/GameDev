@@ -77,6 +77,34 @@ export const lane = 'full';
 const UPRIGHT = { width: 390, height: 844 };
 /* v2.3.6542: H.readState passes the page's S alone: an argument goes into the function's text */
 const bind = (fn, arg) => ({ toString: () => `(S) => (${fn.toString()})(S, ${JSON.stringify(arg)})` });
+/* v2.3.6543: a monster AND the side to come at it from, chosen so no other
+   live monster is near the path (the third run: 2b/2c upright locked another
+   of the pack, and part 3 found no monster 1300 px from its nearest neighbour
+   among those the phone knows: 548 and 582).  For each live monster and each
+   of the eight drawn facings, the body's points on the path (dMin to dMax out,
+   facing it) and the nearest OTHER live monster to any of them: the pair with
+   the most room wins (within maxD of the body). */
+const PICK = (S, o) => {
+  const FACE = { east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4, west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4 };
+  const P0 = S.player, live = (S.monsters || []).filter((m) => m && m.alive && (m.curHp > 0 || m.curHp == null));
+  let best = null;
+  for (const m of live) {
+    const d = Math.hypot(m.x - P0.x, m.y - P0.y);
+    if (d > o.maxD) continue;
+    let nn = Infinity;
+    for (const q of live) if (q !== m) nn = Math.min(nn, Math.hypot(q.x - m.x, q.y - m.y));
+    for (const face of Object.keys(FACE)) {
+      const a = FACE[face];
+      let room = Infinity;
+      for (let s = o.dMin; s <= o.dMax; s += 30) {
+        const x = m.x - Math.cos(a) * s, y = m.y - Math.sin(a) * s;
+        for (const q of live) if (q !== m) room = Math.min(room, Math.hypot(q.x - x, q.y - y));
+      }
+      if (!best || room > best.room || (room === best.room && d < best.d)) best = { id: String(m.id), x: m.x, y: m.y, d, face, a, room: Math.round(room), nn: Math.round(nn) };
+    }
+  }
+  return best;
+};
 const SIDEWAYS = { width: 844, height: 390 };
 
 /* the left disc's drawn box and the turn ring's */
@@ -206,18 +234,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.waitFor(P, (S) => ((S.rpg && S.rpg.weaponStash) || []).some((w) => w && w.type === 'greatsword') || !!(S.rpg && S.rpg.weapon), (v) => v, { timeout: 15000, label: 'the kit' }).catch(() => null);
       const eq = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));   /* the held attack swings only an equipped weapon (monsterCombat _eqWpn) */
       rec.ok(`2. ${label}: a sword in hand (guard)`, !!(eq && eq.ok), eq);
-      const mon0 = await H.readState(P, (S) => {
-        const P0 = S.player; let best = null;
-        for (const m of S.monsters || []) {
-          if (!m || !m.alive || !(m.curHp > 0 || m.curHp == null)) continue;
-          const d = Math.hypot(m.x - P0.x, m.y - P0.y);
-          if (!best || d < best.d) best = { id: String(m.id), x: m.x, y: m.y, d };
-        }
-        return best;
-      });
-      rec.ok(`2. ${label}: a real monster of the Wheel (guard)`, !!mon0, mon0);
-      if (!mon0) continue;
-      await H.hopTo(P, Math.round(mon0.x - 170), Math.round(mon0.y), { tries: 90 });
+      /* v2.3.6543: the monster with room round the walk in (PICK: 60 to 420 px
+         out, the sight's 550 held plus a wander, 650 px from any other) */
+      const mon0 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
+      rec.ok(`2. ${label}: a real monster of the Wheel with no other near its path (${mon0 && mon0.room} px; guard)`, !!mon0 && mon0.room >= 650, mon0);
+      if (!mon0 || mon0.room < 650) continue;
+      await H.hopTo(P, Math.round(mon0.x - 170 * Math.cos(mon0.a)), Math.round(mon0.y - 170 * Math.sin(mon0.a)), { tries: 90 });
       await P.page.waitForTimeout(1200);
       const near = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { mx: m.x, my: m.y, px: S.player.x, py: S.player.y } : null; }, mon0.id));
       /* 2a: turn toward it with the stick, 20% of the drawn radius */
@@ -249,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
       const l1 = await LATCH(P);
       rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
-        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', l1);
+        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', { ...l1, target, b1: !!b1 });
 
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
@@ -405,23 +427,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let shieldOn = false;
       for (let k = 0; k < 60 && !shieldOn; k++) { shieldOn = await wear(); if (!shieldOn) await P.page.waitForTimeout(250); }
       rec.ok(`3. ${label}: a shield in hand (guard)`, !!shieldOn);
-      /* v2.3.6543: a LONE monster (the second run: at 700 px from the one
-         chosen, another of its pack was in sight 350-460 px off, and the
-         sight is the phone's, of every monster): the live one whose nearest
-         live neighbour is farthest, 1300 px at least (700 out and the cone) */
-      const mon3 = await H.readState(P, (S) => {
-        const P0 = S.player, live = (S.monsters || []).filter((m) => m && m.alive && (m.curHp > 0 || m.curHp == null));
-        let best = null;
-        for (const m of live) {
-          let nn = Infinity;
-          for (const o of live) if (o !== m) nn = Math.min(nn, Math.hypot(o.x - m.x, o.y - m.y));
-          if (!best || nn > best.nn) best = { id: String(m.id), x: m.x, y: m.y, nn: Math.round(nn), d: Math.hypot(m.x - P0.x, m.y - P0.y) };
-        }
-        return best;
-      });
-      rec.ok(`3. ${label}: a lone live monster for the edge (its nearest neighbour ${mon3 && mon3.nn} px; guard)`, !!mon3 && mon3.nn >= 1300, mon3);
-      if (!mon3 || mon3.nn < 1300) continue;
-      if (mon3.d > 900) { await H.hopTo(P, Math.round(mon3.x - 700), Math.round(mon3.y), { tries: 260 }); await P.page.waitForTimeout(1500); }
+      /* v2.3.6543: a monster with ROOM round the path (the second run: at
+         700 px from the one chosen, another of its pack was in sight 350-460
+         px off, and the sight is the phone's, of every monster; the third: no
+         monster 1300 px from its nearest neighbour among those the phone
+         knows).  PICK: the body's points 400 to 730 px out on the side chosen,
+         650 px from any other live monster (the sight's 550 held, and a
+         wander); then the body turned to face it from that side, so the
+         keeper's line (the drawn facing's) is that side */
+      const mon3 = await H.readState(P, bind(PICK, { dMin: 400, dMax: 730, maxD: 4000 }));
+      rec.ok(`3. ${label}: a live monster with no other near the path (${mon3 && mon3.room} px, from the ${mon3 && mon3.face}; guard)`, !!mon3 && mon3.room >= 650, mon3);
+      if (!mon3 || mon3.room < 650) continue;
+      await H.hopTo(P, Math.round(mon3.x - 700 * Math.cos(mon3.a)), Math.round(mon3.y - 700 * Math.sin(mon3.a)), { tries: 260 });
+      await P.page.waitForTimeout(1500);
+      await touch('touchStart', [c]);
+      await P.page.waitForTimeout(80);
+      await touch('touchMove', [{ x: c.x + 0.2 * R * Math.cos(mon3.a), y: c.y + 0.2 * R * Math.sin(mon3.a), id: 1 }]);
+      const faced = await H.waitFor(P, (S) => S._renderFacing, (v) => v === mon3.face, { timeout: 10000, label: 'facing ' + mon3.face }).catch(() => null);
+      await touch('touchEnd', [{ x: c.x + 0.2 * R * Math.cos(mon3.a), y: c.y + 0.2 * R * Math.sin(mon3.a), id: 1 }]);
+      rec.ok(`3. ${label}: turned to face it from the ${mon3.face} side (guard)`, !!faced, { faced });
+      if (!faced) continue;
       /* the keeper and the watcher, inside the page: the body stands on the
          drawn facing's line from the monster (so it is straight ahead,
          whatever way the body faces), at the path's distance, stepping at most
