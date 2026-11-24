@@ -168,7 +168,7 @@ function note(room, session, ps, msg, now) {
     for (const k of Object.keys(R.prev || {})) if (!own(m, k)) mv[k] = { $gone: 1 };
     R.prev = m;
     e = { t, mv };
-    if (!R.start && fin(m.x) && fin(m.y)) R.start = { x: Math.round(m.x), y: Math.round(m.y), z: typeof m.z === 'string' ? m.z : placeOf(ps).z };
+    if (!R.start && fin(m.x) && fin(m.y)) R.start = placeAt(Math.round(m.x), Math.round(m.y), typeof m.z === 'string' ? m.z : placeOf(ps).z);
   } else {
     e = { t, m };
     if (m.type === 'extraction_start') R.startT = t;
@@ -196,8 +196,14 @@ export function traceWould(room, ps, why, now) {
   if (R.wt.length < TRACE.WOULD_AT) R.wt.push([Math.max(0, Math.floor((fin(now) ? now : Date.now()) - R.t0)), TRACE.WOULD.indexOf(why)]);
 }
 
+/* v2.3.6484: a place as the league's trace form holds it, written once
+   (a place READ into a recording, never a write of a player's zone:
+   phase-table 2d's one row for this file) */
+function placeAt(x, y, z) {
+  return { x, y, z };
+}
 function placeOf(ps) {
-  return { x: fin(ps && ps.x) ? Math.round(ps.x) : 0, y: fin(ps && ps.y) ? Math.round(ps.y) : 0, z: ps && typeof ps.z === 'string' ? ps.z : '' };
+  return placeAt(fin(ps && ps.x) ? Math.round(ps.x) : 0, fin(ps && ps.y) ? Math.round(ps.y) : 0, ps && typeof ps.z === 'string' ? ps.z : '');
 }
 
 /** THE MOVE'S SHADOW (movement.js, one call, a test-mode character's move
