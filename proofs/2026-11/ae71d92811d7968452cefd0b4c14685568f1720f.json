@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ae71d92811d7968452cefd0b4c14685568f1720f",
+  "tree": "5498c61f2e2106a37ab27b4eaba51271f692fbd6",
+  "committedAt": "2026-11-24T07:45:38-08:00",
+  "subject": "Merge pull request #2316 from hemibroscommunity-del/claude/plan-who-2-sitting",
+  "files": 8525,
+  "bytes": 964220291,
+  "listingSha256": "8bb700a58e08a738f22aee4f2098695be49f47a517dbf2ba3388c45ad89ce892",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
