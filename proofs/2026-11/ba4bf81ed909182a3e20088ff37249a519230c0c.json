@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ba4bf81ed909182a3e20088ff37249a519230c0c",
+  "tree": "10bdc900e7fff17f849a74cd7609355948de5207",
+  "committedAt": "2026-11-23T18:14:21-08:00",
+  "subject": "Merge pull request #2289 from hemibroscommunity-del/claude/plan-bk-5-pieces",
+  "files": 8489,
+  "bytes": 963587562,
+  "listingSha256": "350a2a2c8f3fc26b53e190fd1b3fabb29bc25f887aeff10cf2d38ae4230a49cc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

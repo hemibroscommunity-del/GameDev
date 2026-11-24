@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "396568fa8c6c330e74bdeb5766215ba9046a8f97",
+  "tree": "48327c1081af1b0b6075317a210e12e27fd4d304",
+  "committedAt": "2026-11-23T18:13:54-08:00",
+  "subject": "Merge pull request #2294 from hemibroscommunity-del/claude/ck-one-parse",
+  "files": 8489,
+  "bytes": 963570509,
+  "listingSha256": "a7ab9675e4f6298b3b4ca7ffc96c479a1b9fa5406d70781c659b85e604c4b2a7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

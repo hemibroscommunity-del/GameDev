@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "26743f6ac963ed568f046e000613bfe62b75aa45",
+  "tree": "b3ebaceac47f3ccaad70d7d92930ce0eb8b09e13",
+  "committedAt": "2026-11-23T18:14:30-08:00",
+  "subject": "Merge pull request #2282 from hemibroscommunity-del/claude/plan-ct-1-rules",
+  "files": 8496,
+  "bytes": 963642922,
+  "listingSha256": "6ef82fd0a637cbd12b95bdd2f38b0c91b7810fea04f7b83f65a94eec071dd20d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

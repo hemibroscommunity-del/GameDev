@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1d5a40aa82fb7daa8b02ca486c36e2b9b50912a1",
+  "tree": "6c90bd4d3cd47bcd740301806e0ffbcad6d9852a",
+  "committedAt": "2026-11-23T18:14:11-08:00",
+  "subject": "Merge pull request #2281 from hemibroscommunity-del/claude/plan-bk-2-restart",
+  "files": 8489,
+  "bytes": 963585732,
+  "listingSha256": "26f6cf14127b694c8d7a1178ddaaced20b2c29980ffef19446cfa11fcab8e888",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
