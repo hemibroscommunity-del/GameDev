@@ -351,14 +351,14 @@ const inSystem = (system, name) => filesOf(system).find((f) => f.endsWith('/' + 
    v2.3.6520: 17 -> 18 by the tree (BroTown.jsx's tidy of `?create`); 3b's list of forms it could
    not follow was 0 and is folded in here. */
 const OUTSIDE = Object.freeze(Object.assign(Object.create(null), {
-  'src/data/gameDisplay.js': 8,            /* `/[?&]x\b/.test(location.search)`: eight switches read before the reader */
+  [inSystem('data', 'gameDisplay.js')]: 8,           /* `/[?&]x\b/.test(location.search)`: eight switches read before the reader */
   'src/data/soundFold.js': 1,
   'src/debug/perfTracker.js': 1,           /* a long-task observer's `list.getEntries()` (no navigation there; not followed) */
   'src/game/deskKeys.js': 1,               /* `typeof document !== 'undefined' ? document : null` handed on */
   'src/game/manualCombat.js': 2,
   'src/game/pinSlots.js': 1,
   'src/game/weaponFeel.js': 1,
-  'src/networking/wsClient.js': 2,         /* the document and the window handed to the freeze watch */
+  [inSystem('wire', 'wsClient.js')]: 2,        /* the document and the window handed to the freeze watch */
   'src/rendering/bodyBake.js': 1,          /* `new URL(u, location.href)`: a base under a path not literal */
   'src/rendering/drawLists.js': 1,         /* `window[name]` */
   'src/rendering/keepAsImage.js': 1,

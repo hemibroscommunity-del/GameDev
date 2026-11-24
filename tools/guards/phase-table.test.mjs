@@ -915,10 +915,10 @@ const KEYS = Object.freeze(Object.assign(Object.create(null), {
   'alive server/src/spawnscale.js': 2,
   'alive server/src/tick.js': 2,
   'alive server/src/wheelzone.js': 1,
-  'alive src/data/gameSystems.js': 2,
+  ['alive ' + fileNamed('gameSystems.js')]: 2,   /* a big file, by its system */
   'alive src/data/lifeSkills.js': 1,
-  'alive src/networking/gameEvents.js': 1,
-  'alive src/networking/wsClient.js': 1,
+  ['alive ' + fileNamed('gameEvents.js')]: 1,   /* a big file, by its system */
+  ['alive ' + fileNamed('wsClient.js')]: 1,   /* a big file, by its system */
   'alive src/rendering/farmWorld.js': 3,
   'alive src/rendering/lightfx/casters.js': 7,
   'alive src/rendering/systems/ambientFx.js': 1,
