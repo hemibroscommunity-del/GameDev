@@ -63,8 +63,21 @@
  *                                         -> FAIL 3
  *   - `window.__bubbleSeen = new Map()` in _chatBubbleUp
  *                                         -> FAIL 4 (4 over the line 3)
- * NOT CAUGHT, and why: a leaf handing its state to a function outside the
- * leaves (src/game/...) that writes it (that file is not a leaf: the state
+ * v2.3.6521, sitting 57's two plants (green before), tried 2026-11-24 in
+ * leaves/entity-combat.js:
+ *   - `S.monsters.forEach((m) => { m.seen = Date.now(); });` in
+ *     selfCorpseUp(S)                       -> FAIL 2 (a callback's
+ *     parameter is the state's part; also `Object.values(S.x).map(f)`)
+ *   - `export const zzTick = (() => { let n = 0; return () => n++; })();`
+ *                                         -> FAIL 1 (an IIFE's `let`; its
+ *     `const` Map filled from the inner function fails 1 too)
+ * NOT CAUGHT, and why: a callback handed to a function that is given the
+ * state elsewhere (`each(f)` where each reads S itself: the call names no
+ * marked value); a function run once at load through a name (`const init
+ * = () => { let n; return () => n++; }; const t = init();`): its `let` is a
+ * local of each call, and telling a call made once from many is not read;
+ * a leaf handing its state to a function outside the leaves (src/game/...)
+ * that writes it (that file is not a leaf: the state
  * ledger holds who writes a field, card WL PR 3); a caller that holds the
  * state under a name other than `S`, `stateRef` or `window._gameState`
  * (the renderers name it `S` everywhere today) and a leaf whose parameter
@@ -197,6 +210,26 @@ function spreadMarks(ast, marked) {
       const l = p.node.left;
       if (p.node.type === 'ForOfStatement') decls.push({ scope: p.scope, id: l.type === 'VariableDeclaration' ? l.declarations[0].id : l, init: p.node.right });
     },
+    /* v2.3.6521 (sitting 57's hold: `S.monsters.forEach((m) => { m.seen =
+       now; })` stayed green): a function handed to a call over a marked
+       value (its callee's object, or another argument: `S.x.forEach(f)`,
+       `Object.values(S.x).map(f)`, `each(S.x, f)`) is given that value's
+       parts, so every parameter it names is marked too */
+    'CallExpression|OptionalCallExpression'(p) {
+      const fns = p.get('arguments').filter((a) => a.isFunction());
+      if (!fns.length) return;
+      const from = [...p.node.arguments.filter((a) => !/Function/.test(a.type))];
+      /* the callee's chain, and the arguments of each call along it
+         (`Object.values(S.x).map`, `[...S.x].filter`) */
+      for (let n = p.node.callee; n;) {
+        from.push(n);
+        if (isMember(n)) n = n.object;
+        else if (isCall(n)) { from.push(...n.arguments); n = n.callee; }
+        else if (n.type === 'ArrayExpression') { n.elements.forEach((e) => e && from.push(e.type === 'SpreadElement' ? e.argument : e)); n = null; }
+        else n = null;
+      }
+      for (const f of fns) for (const prm of f.node.params) decls.push({ scope: p.scope, id: prm, init: null, from, inner: f.scope });
+    },
   });
   const idsOf = (id, out = []) => {
     if (!id) return out;
@@ -209,9 +242,10 @@ function spreadMarks(ast, marked) {
   for (let changed = true; changed;) {
     changed = false;
     for (const d of decls) {
-      if (!bases(d.init).some((b) => b.type === 'Identifier' && marked.has(d.scope.getBinding(b.name)))) continue;
+      const srcs = d.from || [d.init];
+      if (!srcs.some((x) => bases(x).some((b) => b.type === 'Identifier' && marked.has(d.scope.getBinding(b.name))))) continue;
       for (const name of idsOf(d.id)) {
-        const b = d.scope.getBinding(name);
+        const b = (d.inner || d.scope).getBinding(name);
         if (b && !marked.has(b)) { marked.add(b); changed = true; }
       }
     }
@@ -263,8 +297,27 @@ function scanLeaf(rel, text, stateParams = new Map()) {
     else if (b.kind !== 'module' && b.constantViolations.length) moduleState.push(where(b.constantViolations[0].node) + ' -- the top-level `' + name + '` given a new value');
   }
 
+  /* v2.3.6521 (sitting 57's hold: closure state in an IIFE stayed green):
+     a function called where it is written, at the top (`const f = (() => {
+     let n = 0; return () => n++; })()`), runs once at load, so what it
+     declares lives as long as the module: its `let` and `var` are module
+     state, and its other names are the module's own (marked below) */
+  const onceScopes = [];
+  babel.traverse(ast, {
+    'CallExpression|NewExpression'(p) {
+      if (p.getFunctionParent()) return;
+      const c = p.get('callee');
+      const fn = c.isFunction() ? c : (c.isMemberExpression() && c.get('object').isFunction() && /^(call|apply)$/.test(propName(c.node) || '') ? c.get('object') : null);
+      if (fn) onceScopes.push(fn.scope);
+    },
+  });
+  for (const sc of onceScopes) for (const [name, b] of Object.entries(sc.bindings)) {
+    if (b.kind === 'let' || b.kind === 'var') moduleState.push(where(b.identifier) + ' -- `' + b.kind + ' ' + name + '` in a function run once at load (it lives as long as the module)');
+  }
+
   /* the marks: the module's own (top-level bindings, and imports from src/) */
   const moduleMarks = new Set();
+  for (const sc of onceScopes) for (const b of Object.values(sc.bindings)) if (b.kind !== 'param') moduleMarks.add(b);
   for (const b of Object.values(programScope.bindings)) {
     if (b.kind === 'module') {
       const src = b.path.parentPath && b.path.parentPath.node.source && b.path.parentPath.node.source.value;
@@ -453,6 +506,11 @@ export const draw = (sprite, S) => { sprite.alpha = S.a; sprite.scale.set(2); };
     ['S renamed, a caller fills it', 'export function f(st, now) { st._ask = now; }', 'stateWrites', new Map([['f', new Set([0])]])],
     ['handed to a local leaf', 'function g(st) { st.x = 1; }\nexport function f(S) { g(S); }', 'stateWrites', null, true],
     ['window._gameState', 'export function f() { window._gameState.current.x = 1; }', 'stateWrites'],
+    /* v2.3.6521: sitting 57's plants */
+    ['a callback given the state\'s parts', 'export function f(S, now) { S.monsters.forEach((m) => { m.seen = now; }); }', 'stateWrites'],
+    ['a callback, the state as an argument', 'export function f(S) { Object.values(S.monsters).map(function (m) { m.n++; }); }', 'stateWrites'],
+    ['a `let` in a function run once at load', 'export const tick = (() => { let n = 0; return () => n++; })();', 'moduleState'],
+    ['a `const` Map in a function run once at load, filled', 'export const remember = (function () { const seen = new Map(); return (k) => { seen.set(k, 1); }; })();', 'moduleState'],
     ['a page global', 'export function f() { window.__seen = window.__seen || new Map(); }', 'globals'],
   ];
   const clean = scanLeaf('fixture/clean.js', CLEAN);
@@ -474,7 +532,7 @@ export const draw = (sprite, S) => { sprite.alpha = S.a; sprite.scale.set(2); };
   if (!chainToSystems(G, 'src/rendering/leaves/a.js')) missed.push('the chain through a middle file');
   if (chainToSystems(new Map([['src/rendering/leaves/a.js', ['src/rendering/b.js']]]), 'src/rendering/leaves/a.js')) missed.push('(a chain read where there is none)');
   if (missed.length) bad('5. the rules miss ' + missed.length + ' of ' + (PLANTS.length + 2) + ' plants: ' + missed.join('; '));
-  else ok('5. the rules catch all ' + (PLANTS.length + 2) + ' plants (module state 9, the state 10 with the rename and the hand-on, a global, the chain)');
+  else ok('5. the rules catch all ' + (PLANTS.length + 2) + ' plants (module state 11, the state 12 with the rename, the hand-on and the callbacks, a global, the chain)');
 }
 
 /* ── the leaves, read ─────────────────────────────────────────────────── */

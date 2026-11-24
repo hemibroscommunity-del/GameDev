@@ -1,38 +1,39 @@
 card: CK
-branch: claude/ck-checks-cost (one PR a branch, claude/ck-*)
-prs: (6420) switches-thrown on a PR: opening
-state: working
+branch: claude/ck-bookkeeping (one PR a branch, claude/ck-*; on #2294's)
+prs: #2284 (6420, merged), #2288 (6421, ready), #2294 (6422, ready), this branch's (6423, ready)
+state: ready
 
 ## Done
-- (6420) switches-thrown: on a PR it throws the rows the branch touched
-  (the row's line, its system's files, a file that reads it, a suite it
-  runs) and a few chosen by the commit (60 suite runs); `--whole` is the
-  old set (89 rows), run once a sitting by the gatekeeper as its own step
-  (precheck leaves it to that step there); `--list` says what and why.
-  GitHub's one-commit checkout: main fetched by the merge's first parent
-  (tried on a depth-1 clone; unreachable: the few only, said).
-
-- (6420) measured here: a docs branch's whole suite 979 -> 215.5 s
-  (154.7 s without claims-gain; switches-thrown 894 -> 13 s); plant A
-  (join.js, `lookjoin`'s off path) red on its PR, 55 s; plant B (index.js,
-  `cleanmore`'s, not touched) green on its PR, red at `--whole` (773 s).
+- (6420) #2284: switches-thrown throws what a PR touched, a few by the
+  commit; `--whole` at the gatekeeper. Docs suite 979 -> 215.5 s.
+- (6421) #2288: asset guards trust main's files by git's ids: door 16.5 ->
+  0.23 s, sources 13.2 -> 0.07 s.
+- (6422) #2294: per-suite mends (the orchestrator's answer): ladder-passes
+  20.3 -> 0.25 s, picture-door 7.2 -> 1.2 s; plants red before and after.
+- (6423) bookkeeping: SLOW_FIRST from 2026-11-24 (suite 153 s, claims-gain
+  128 s first); precheck's rest cap 20 -> 10 min, the gatekeeper's precheck
+  70 -> 25 min; CLAUDE.md 6's time; the brief hides all-merged blocks
+  (102 -> 96 lines); README's rule already on main (v2.3.6400).
 
 ## Next
-- HANDED OVER at the memory line (244,000 tokens) after 6420: a fresh
-  session takes the card from PR 2 (6421, the asset guards by git's ids).
-- The plants (by hand, not in any PR): A `join.js` line 522 drop
-  `&& this._lookJoinOn()`; B `index.js` room chat
-  `text = this._cleanMoreOn() ? this._chatGuardClean(text) : text;`.
+- PR 5 only on the owner's own words (Needs). Card done otherwise.
 
 ## Found
 - docs/specs/switch-table.md line 165 ("On every PR only the rows born
   from tag 5301 on run"): stale after 6420 (not this card's file).
-- server/test/claims-gain.test.mjs (card BK's): 162 s alone here
-  (`time node test/claims-gain.test.mjs`), its header says about 25 s:
-  the whole suite cannot be under 120 s while it is.
-- server/test/run.mjs: a name picks every suite whose name holds it
-  (`npm test -- switches` runs switches-thrown too): PR 4's file.
+- server/test/claims-gain.test.mjs (card BK's): 128-162 s here (header:
+  25 s); the suite cannot be under 120 s while it is.
+- run.mjs: `npm test -- switches` runs switches-thrown too (not PR 4's).
+- switches-thrown (gatekeeper's): never catches a cap advertised whatever
+  its reader says (harvestGrade; plain suites do). Fits no PR of CK's.
+- tools/guards/phase-table.test.mjs (WL's; #2286, #2282 on it): 7 s, babel
+  traverse and GC; a parse kept by git id fits, after those merge.
 
 ## Needs
-- The orchestrator: the 120 s line of PR 1 is not met while
-  claims-gain (card BK's) takes 162 s alone; open it as it is, or hold?
+- PR 5 waits on the owner's own words, two changes under `.github/`:
+  (a) server-ci.yml: `concurrency: { group: <workflow>-<ref>,
+  cancel-in-progress: true }`, so a newer push cancels the older run
+  (each push 22 to 43 paid minutes); (b) the required `test` job ends
+  green at its first step when the PR changes only `docs/` (a step that
+  diffs against main, never a path filter on the trigger: TRAPS 238),
+  saving a whole suite run on every documents-only push.
