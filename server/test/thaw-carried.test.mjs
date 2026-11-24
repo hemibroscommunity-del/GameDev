@@ -593,5 +593,15 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
   }
 }
 
+// ── 10. v2.3.6313 (sitting 60's mend): thawBeat holds the page's catch, the resume that throws is dropped ──
+{
+  const judge = makeThawJudge({ sample() { return false; }, toPage(t) { return t; } });
+  let calls = 0;
+  const fx = { resume() { calls++; throw new Error('a return that fails'); } };
+  let out = 'unset';
+  try { out = thawBeat(judge, { now: 50000, gap: 12000, visible: true, off: true, awayMs: 5000 }, fx); } catch (e) { out = 'threw'; }
+  check('10. ?thawjudge=0: a resume that throws is caught inside thawBeat (as wsClient\'s own try did), the beat still answers \'at-once\'', out === 'at-once' && calls === 1, { out, calls });
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

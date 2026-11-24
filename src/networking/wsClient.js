@@ -5194,7 +5194,7 @@ export function setupWebSocket(ctx) {
          frozen long enough has a stale world, whether or not iOS fired visibilitychange or pageshow for it: the
          same recovery as a return); `?thawjudge=0`: main's path, handed on at once */
       thawBeat(_thaw, { now: now, gap: gap, visible: typeof document !== 'undefined' && document.visibilityState === 'visible', off: sw('thawjudge'), awayMs: RESYNC_AWAY_MS },
-        { resume: function (g, c) { try { _resumeRecover('thaw', g, c); } catch (e) { /* the next return tries again */ } } });
+        { resume: function (g, c) { _resumeRecover('thaw', g, c); } });   /* v2.3.6313: thawBeat catches a throw (the next return tries again) */
       if (gap > 3000) return;
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       if (ws && ws.readyState === 0 && _connectAt && now - _connectAt > CONNECT_STALL_MS) {

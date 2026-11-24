@@ -116,10 +116,13 @@ export function makeThawJudge(clock) {
  *  'noted', both: 'judged+noted'), or null. */
 export function thawBeat(judge, env, fx) {
   let did = null;
+  /* v2.3.6313: the page's try/catch around its resume lives here (it stood in wsClient.js, one statement over its line:
+     sitting 60's hold); a resume that throws is dropped, the next return tries again, as it was */
+  const resume = (g, c) => { try { fx.resume(g, c); } catch (e) { /* the next return tries again */ } };
   const d = judge.due(env.now, env.off);
-  if (d && env.visible) { fx.resume(d.gap, d.carried); did = 'judged'; }
+  if (d && env.visible) { resume(d.gap, d.carried); did = 'judged'; }
   if (env.gap > env.awayMs && env.visible) {
-    if (env.off) { fx.resume(env.gap); did = 'at-once'; }
+    if (env.off) { resume(env.gap); did = 'at-once'; }
     else { judge.gap(env.now, env.gap); did = did ? did + '+noted' : 'noted'; }
   }
   return did;

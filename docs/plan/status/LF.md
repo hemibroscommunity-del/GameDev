@@ -1,6 +1,6 @@
 card: LF
 branch: claude/plan-lf-thaw-edges (carries this file; based on #2273's branch)
-prs: #2276 (6292), #2277 (6310), #2280 (6291), #2273 (6309, frozen at 72c08a15); the mend 6311 (claude/plan-lf-thaw-edges, on #2273's branch)
+prs: #2276 (6292), #2277 (6310), #2280 (6291), #2273 (6309, frozen at 72c08a15); the mend 6311 (claude/plan-lf-thaw-edges, on #2273's branch); 6313 (claude/plan-lf-mend60)
 state: working
 
 ## Done
@@ -26,10 +26,12 @@ state: working
   the mend is 6311 on its own branch: every gap 4-12 s both sides of the
   line, a mutation pass (118 mutants, 6 equivalent survivors), the
   review's five floors and LF's three unplanned plants red (69 green).
+- Part 4, sitting 60's hold (four-lines, wsClient 2599 over 2598): the thaw's
+  try/catch moved into thawBeat; thaw-carried §10 plays it. Tag 6313 (6312 is
+  elemental2's on main).
 
 ## Next
 - The mend's `test` green; the owner's word on #2273 (frozen); then a sitting.
-- The Found: elemental2's crit shove (its own PR, 6312, from main).
 
 ## Found
 - deskkeys 8f stays red on main (card CT's verdict).
