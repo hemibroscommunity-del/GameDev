@@ -51,6 +51,9 @@
  *     takeover's old sitting);
  *   actor.js actorRow: `test` from `ps._testMode` alone -> FAIL 5
  *     (`testmode: false`).
+ * ...and the purpose review's (sitting 58):
+ *   join.js: `if (!actorOff(this)) actorSocket(...)` -> FAIL 7 (joined off,
+ *     traded on: `actor: null`).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { ACTOR, ROOM_ACTOR, actorOwner, actorOf, actorRow, actorSocket, actorOff, stintNext } from '../src/actor.js';
@@ -147,12 +150,13 @@ const capsOf = (ws) => { const m = ws.sent.find((x) => x && x.type === 'state_sy
 
 /* ══════════ 5. THE LEDGER ══════════ */
 const A = 'bp_ac_a', B = 'bp_ac_b';
-async function windowTo(m, flags) {
+async function windowTo(m, flags, afterJoins) {
   const st = makeStorage(m);
   const room = await openRoom(st, flags);
   const wa = fakeWs('a'), wb = fakeWs('b');
   await join(room, wa, A, { loginTaken: true });
   await join(room, wb, B, { loginTaken: true });
+  if (afterJoins) afterJoins(room);   /* v2.3.6480: a live flag thrown between the joins and the trade (§7) */
   await cmd(room, wa, 'trade2_open', { target: B }); await settle();
   await cmd(room, wb, 'trade2_open', { target: A }); await settle();
   await cmd(room, wa, 'trade2_set', { offer: { _gold: 120, fish_minnow: 4 } }); await settle();
@@ -307,6 +311,17 @@ async function sitting(testmode, flags) {
 {
   const { wb } = await windowTo(world(false));
   check('7. on: the cap `actor: 1`', !!capsOf(wb) && capsOf(wb).actor === 1, capsOf(wb));
+}
+{
+  /* v2.3.6480 (the gatekeeper's purpose review, sitting 58): joined while
+     `actor: false`, the switch thrown back on, then the trade: the row says
+     who settled it (actor.js's header: "thrown back on needs no rejoin").
+     A join that made no actor with the switch off would write `actor: null`
+     here, and the off-only checks above stayed green. */
+  const { st, room, wb } = await windowTo(world(true), { actor: false }, (r) => { r._liveFlags = {}; });
+  const row = xrows(st)[0];
+  const a = row && row.actor;
+  check('7. off at the join, on at the trade: the row\'s actor is the last confirm\'s, never null', actorOff(room) === false && !!a && a.kind === 'person' && a.pid === B && a.test === true && a.stint === sessOf(room, wb).actor.stint, row && row.actor);
 }
 
 clock.restore();
