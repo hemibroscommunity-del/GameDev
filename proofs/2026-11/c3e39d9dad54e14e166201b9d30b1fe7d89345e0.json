@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c3e39d9dad54e14e166201b9d30b1fe7d89345e0",
+  "tree": "26e6a925447c6b34e6fe4071e243d7c9d3f9aeb3",
+  "committedAt": "2026-11-24T00:30:24-08:00",
+  "subject": "Merge pull request #2309 from hemibroscommunity-del/claude/plan-bk-6-roads",
+  "files": 8503,
+  "bytes": 963779356,
+  "listingSha256": "c1d2911797f4c9677168057fdd037f6864799c2bd525dc862b215d1b69bb4e7d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
