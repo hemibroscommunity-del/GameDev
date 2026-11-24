@@ -44,6 +44,12 @@ state: working (orchestrator now part 6, session_01LccHanKxudynkwdrcZewcK, from 
   water and shadows stay; the phone's default ONE number in one place (a
   lower pick, 1.5 or 1, is one line); the Speed test gains ?res=1.5 and 1
   rows if it fits PR 4's files. Name it in the PR as the owner's answer.
+  REPLACED (04:34 UTC): the owner tried ?res= on the phone: "1.5 looks
+  fine nothing below that". Phone default 1.5 (not 2), never lower, with
+  its switch to the old look; shine off stands; water, shadows stay.
+  Check [data-res-soft] is the look at 1.5 (the art is 2 px a game px) and
+  the one the owner saw at ?res=1.5; no 1.5 row in the Speed test, so the
+  frames gained are unmeasured: say so in the PR (finish.md rule 4).
   Low Power Mode ANSWERED (04:32 UTC): "Low power mode was not on during
   test". So lane "thirty" (a 30-a-second screen) was read wrong on a phone
   that drew 45: a fault in how the pacer or the report reads the screen's
