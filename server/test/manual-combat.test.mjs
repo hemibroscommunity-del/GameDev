@@ -78,7 +78,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   /* the slingshot bow's variation: `?manual=2` */
   const l2 = store();
   check('1g `?manual=2` is manual combat with the slingshot bow, and is remembered as that', manualMode('?manual=2', l2) === 2 && manualCombatWanted('', l2) === true && l2.getItem(MANUAL.KEY) === '2' && manualMode('', l2) === 2);
-  check('1h `?manual=1` after it is the plain swipes, remembered (v2.3.4655); `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && l2.getItem(MANUAL.KEY) === '1' && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=5', store()) === 4);   /* v2.3.4520: 3 is the free-swing trial (13); v2.3.5018: 4 the held combat, 5 no switch */
+  check('1h `?manual=1` after it is the plain swipes, remembered (v2.3.4655); `?manual=0` after that is the old combat', manualMode('?manual=1', l2) === 1 && l2.getItem(MANUAL.KEY) === '1' && manualMode('', l2) === 1 && manualMode('?manual=0', l2) === 0 && manualMode('', l2) === 0 && manualMode('?manual=6', store()) === 4);   /* v2.3.4520: 3 is the free-swing trial (13); v2.3.5018: 4 the held combat; v2.3.6540: 5 the two buttons (stick-zones.test §6), 6 no switch */
   const B = bow(), St = { rpg: { activeSlot: 'staff' } }, Sw = sword();
   setManualCombat(2);
   check('1i the slingshot is the BOW\'s only: a staff stays a flick, a sword a stroke', manualOn() && manualSling() && mcBowSling(B) && !mcBowSling(St) && !mcBowSling(Sw));
