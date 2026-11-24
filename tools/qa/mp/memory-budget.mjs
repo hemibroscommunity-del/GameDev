@@ -490,7 +490,21 @@
  * 198.2: `sound` read 0.8 MB above this box's highest, so its line is CI's
  * 18.9 + 1.0 = 19.9 (still 2.1 under main's 22).  `buffers` read 24.3 there,
  * 0.5 MB of room: CI's read + 1.0 would be 25.3, over main's 24.8, and no
- * line rises, so it stays at 24.8 (the next trim is owed there). */
+ * line rises, so it stays at 24.8 (the next trim is owed there).
+ *
+ * v2.3.6503 (card PH PR 4), `heap` 40.0 -> 42.5 -- RAISED, +2.5 MB, the ONE
+ * line that rises (decided for the owner while away by the orchestrator, part
+ * 9, 2026-11-24; the TOTAL stays 216.0 and every other line stays).  The
+ * owner's 1.5 sharpness on a phone ("1.5 looks fine nothing below that",
+ * 2026-11-24) owns about 2 MB of the page's heap: compiled code +1.00, arrays
+ * +0.27, objects +0.12, because the 1.5 page swings 24 times at the check's
+ * fight where the 1.0 one swings 10 (docs/plan/census/PH-phone.md, "PR 4's
+ * heap at 1.5"): more code run, no holder.  The reads: 39.4 (#2318) and 40.2
+ * (#2323) on GitHub's runner, 41.5 on the test box, 39.3 on the test box with
+ * `?phoneres=0` (the switch that undoes the cause).  The line is the highest
+ * read, 41.5, plus 1.0 MB (the margin the 6501/6502 lines carry), rounded up
+ * to 42.5.  tools/dev/heap-trend.mjs HEAP_LINE rises to 42.5 with it (the
+ * guard still holds the line at that number; it is not weakened). */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 12.2, measured: 11.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header; v2.3.6222: left at 79.3 though the ore rocks and the projectile sheets as numbers saved 2.2 MB (the frame pacer's copy, framePacer.js MEM_LINES), see the header; v2.3.6501: no longer copied (framePacer.js MEM_ALARM), see the header ; v2.3.6502: 79.3 -> 12.2, LOWERED to the highest of six reads (11.2) + 1.0 MB, see the header (v2.3.6502) */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
@@ -500,9 +514,9 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 19.9, measured: 18.9,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header ; v2.3.6502: 22 -> 19.9, LOWERED to CI's read (18.9, over this box's six reads' 18.1) + 1.0 MB, see the header (v2.3.6502) */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 40.0, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header; v2.3.6306: 38.5 -> 40.0, main read 37.4-39.2 run to run, see the header; v2.3.6502: unchanged, its scatter in three runs narrower than main's run to run, see the header (v2.3.6502) */
+  heap: { name: 'the page\'s JavaScript objects', mb: 42.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header; v2.3.6306: 38.5 -> 40.0, main read 37.4-39.2 run to run, see the header; v2.3.6502: unchanged, its scatter in three runs narrower than main's run to run, see the header (v2.3.6502); v2.3.6503: 40.0 -> 42.5, RAISED +2.5 MB by the owner's 1.5 sharpness (the highest read 41.5 + 1.0), see the header (v2.3.6503) */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 24.8, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header; v2.3.6222: 24.2 -> 24.8, the rocks' and the projectile sheets' numbers (0.5 MB) as artCache fell 2.2 (net 1.7 less), see the header; v2.3.6502: unchanged, its scatter in three runs narrower than main's run to run, see the header (v2.3.6502) */
+  buffers: { name: 'the page\'s raw data buffers', mb: 24.8, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header; v2.3.6222: 24.2 -> 24.8, the rocks' and the projectile sheets' numbers (0.5 MB) as artCache fell 2.2 (net 1.7 less), see the header; v2.3.6502: unchanged, its scatter in three runs narrower than main's run to run, see the header (v2.3.6502); v2.3.6503: 40.0 -> 42.5, RAISED +2.5 MB by the owner's 1.5 sharpness (the highest read 41.5 + 1.0), see the header (v2.3.6503) */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
   workers: { name: 'the background workers', mb: 24.3, measured: 21.2,   /* v2.3.6502: 36 -> 24.3, LOWERED to the highest of six reads (21.2) + their scatter (3.1), see the header (v2.3.6502) */
     what: 'the background workers (the ground builder): their objects and buffers' },

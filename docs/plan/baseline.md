@@ -73,7 +73,7 @@ be added here by a later run of the same commands with no
 v2.3.6504 (card PH PR 5). The memory check's `heap` line was raised five
 times to follow `main` (33 to 40.0), each time because `main`'s own code had
 reached it; no one change was measured. It is not raised again
-(`tools/guards/heap-trend.test.mjs` holds it at 40.0 or below). Instead the
+(`tools/guards/heap-trend.test.mjs` holds it at 42.5 or below: the one rise, 40.0 to 42.5 at v2.3.6503, the owner's phone sharpness of 1.5). Instead the
 gatekeeper records `main`'s heap at each sitting, on the test box:
 
 ```

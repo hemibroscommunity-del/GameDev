@@ -18,7 +18,7 @@
  *   tools/dev/heap-trend.mjs lastTrim: `return rows[rows.length - 1] || null;`
  *     (the rise from the last sitting)                     -> FAIL 4, 6
  *   tools/dev/heap-trend.mjs verdict: `named: rise >= RISE_MB`    -> FAIL 3, 5
- *   tools/qa/mp/memory-budget.mjs: heap `mb: 40.5`         -> FAIL 8
+ *   tools/qa/mp/memory-budget.mjs: heap `mb: 43.0`         -> FAIL 8 (v2.3.6503: was 40.5 at HEAP_LINE 40.0)
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
