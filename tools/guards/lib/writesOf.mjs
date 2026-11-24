@@ -626,10 +626,14 @@ export function doorHolders(code, calls, listed = []) {
   const byName = new Map(listed.map((r) => [r.fn, r]));
   const bad = [];
   const seen = new Set();
-  for (const fn of [...new Set(calls.map((c) => c.fn))].sort()) {
-    if (fn === '(top)') continue;
-    const callers = [];
-    for (const f of Object.keys(code)) for (const r of refsOf(code[f], [fn], { file: f })) if (r.how !== 'test') callers.push(r.file + ' ' + r.fn + (r.how === 'call' ? '' : ' (' + r.how + ')'));
+  const fns = [...new Set(calls.map((c) => c.fn))].filter((fn) => fn !== '(top)').sort();
+  /* v2.3.6441 (sitting 57's CI: gold-door ran 46 s, past the switches'
+     180 s on the runner): ONE walk of each file for every name, not one a
+     name (47 names x 208 files was 20 s of the suite's 25) */
+  const refs = new Map(fns.map((fn) => [fn, []]));
+  if (fns.length) for (const f of Object.keys(code)) for (const r of refsOf(code[f], fns, { file: f })) if (r.how !== 'test' && refs.has(r.name)) refs.get(r.name).push(r.file + ' ' + r.fn + (r.how === 'call' ? '' : ' (' + r.how + ')'));
+  for (const fn of fns) {
+    const callers = refs.get(fn);
     callers.sort();
     const row = byName.get(fn);
     if (row) { seen.add(row); if (JSON.stringify([...row.callers].sort()) !== JSON.stringify(callers)) bad.push({ fn, callers, listed: row.callers }); continue; }

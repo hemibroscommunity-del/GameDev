@@ -1,9 +1,16 @@
 card: DG
 branch: claude/dg-wireform (PR 4), on claude/dg-books (PR 3), on claude/dg-scans (PR 2), on claude/dg-door-guards (PR 1)
-prs: #2283 (PR 1, 6440, ready, mended), #2295 (PR 2, 6441, ready, base main), #2300 (PR 3, 6442, ready), PR 4 (6443, working)
-state: working
+prs: #2283 (PR 1, 6440, CI mend), #2295 (PR 2, 6441, CI mend), #2300 (PR 3, 6442, ready), PR 4 (6443, ready); all base main
+state: ready
 
 ## Done
+- PR 4 (6443): the wire door holds a named field to its form (door.js
+  WIRE_FORM, the table's `form` column); `wireform` absent refuses (the
+  orchestrator's (a)), 'count' counts, false the old door; cap wireForm.
+  Counted: whole suite + storm + bot lab, every case hostile or explained;
+  judge.mjs refuses every plant; playable and mp-bank green.
+- Sitting 57's CI (#2295): one scan walk a file (gold-door 46 s -> 4.6 s);
+  PR 1's guard lets go of a record leaving the room's map (heap-forget).
 - PR 1 (6440, #2283): the running room refuses a write of a guarded field
   outside its door (testroom.mjs); mended for sitting 56 (roomGuard.holds;
   ECON_V + 1 for card WHO). Deploys when merged.
@@ -17,12 +24,7 @@ state: working
   PAY2-1 red by PR 2's scan.
 
 ## Next
-- PR 4 (6443, part 4): the wire door holds a named field to its form
-  (wire/door.js WIRE_FORM; the table's `form` column); `wireform` absent
-  refuses, `'count'` counts, `false` the old door (the orchestrator's
-  answer, 2026-11-24: (a)); cap `wireForm` on its own line; counts on the
-  owner's overview.  judge.mjs: every plant refused.  Counting the whole
-  suite (test/wire-form-count.mjs), then bots, playable and mp-bank.
+- PR 5 (6444), for a fresh part (part 4 handed over at 255,000 tokens).
 
 ## Found
 - none (no real second writer)
@@ -34,6 +36,4 @@ state: working
 - PR 6's `sessions.clear()` / rebuilt `sessions` and `ws.send` through
   `bind` landed in PR 2 (they are the session and send doors' scans).
 - PR 3 is stacked on 6441 and does not merge `main` (its diff stays its own).
-- PR 4 is outside the card's list in: columns.js (the `form` column),
-  admin.js (one line, the overview), bank.test §4 and caps-audit (the
-  cap's row), the switch table and docs/SWITCHES.md, wire README, spec.
+- PR 4's files outside the card: its PR's words list them, with why.
