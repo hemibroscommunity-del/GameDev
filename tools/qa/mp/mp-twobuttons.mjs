@@ -22,7 +22,9 @@
  *
  * PART 6 (tag 6546, the owner's mends of 2026-11-24): 6a in part 2 (the
  *   latch wears the plain sword, raised and pressed in, never the
- *   crosshair), 6b in 2f (mode 4 keeps the crosshair), 6c at the end (the
+ *   crosshair), 6b in 2f (mode 4 keeps the crosshair), 6d to 6f in part 2
+ *   (the owner: "It's only the line drawn that snaps": no line before the
+ *   press, the line on the lock, gone at combat's end), 6c at the end (the
  *   left stick's zones in CSS px on the owner's iPhone, 430x775 at 3x).
  *
  * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
@@ -62,8 +64,9 @@
  *   goes, each change of the DOM, and every change of the sight's phase)
  *   3a. far off (700 px), nothing in sight: the right side is Attack and
  *       Jump only (no Block, no Special, no Whirlwind) and no line drawn;
- *   3b. walked in to 435 px (inside the sword's 440): sighted, the line
- *       drawn to that monster, Block and Special on screen around Attack;
+ *   3b. walked in to 435 px (inside the sword's 440): sighted, Block and
+ *       Special on screen around Attack (v2.3.6546: and NO line: the latch
+ *       is idle, and the line is combat's, 6d to 6f);
  *   3c. walked back and forth between 435 and 520 px (past the 440 a new
  *       sighting needs, inside the 550 the sight is held to) six times: the buttons and the phase never
  *       changed (no flicker at the edge);
@@ -164,6 +167,7 @@ const STICK = (P) => H.readState(P, (S) => ({
   ang: S._facingAngle, roll: !!S._dodgeRoll,
 }));
 
+const LINE = (P) => P.page.evaluate(() => (window.__btSightLine ? window.__btSightLine() : null));   /* v2.3.6546: the sight line's QA record (rendering/sightLineDraw.js) */
 /* v2.3.6546: what the Attack disc wears: the plain sword (bt-rjoy-strike, mode 5)
    and the crosshair (bt-rjoy-aim), each drawn or not, and the latch's look */
 const FACE_ICON = (P) => P.page.evaluate(() => {
@@ -484,6 +488,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
           look: el ? el.getAttribute('data-latch') : null, taps: S._tapAttacks || 0 };
       });
       const i0 = await FACE_ICON(P);   /* v2.3.6546: raised, before the press */
+      /* 6d (v2.3.6546, the owner: "It's only the line drawn that snaps"): sighted, the latch idle: NO line yet */
+      await frames(P, 2);
+      const ln0 = await LINE(P);
+      rec.ok(`6d. ${label}: the monster in sight, Attack not pressed: no sight line (drawn ${ln0 && ln0.drawn})`, !!ln0 && !ln0.drawn, ln0);
       await press();
       const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
       const l1 = await LATCH(P);
@@ -493,6 +501,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const i1 = await FACE_ICON(P);
       rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and pressed in and lit (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
         i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'on' && i1.strike && !i1.aim && i1.src, { i0, i1 });
+      const ln1 = await H.waitFor(P, () => (window.__btSightLine ? window.__btSightLine() : null), (v) => !!v && v.drawn && v.id === target, { timeout: 8000, label: 'the line on the lock' }).catch(() => null);
+      rec.ok(`6e. ${label}: Attack pressed: the line drawn to the LOCKED monster (${ln1 && ln1.id}, ${ln1 && ln1.len} px)`, !!ln1, { ln1: ln1 || (await LINE(P)), target });
 
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
@@ -617,6 +627,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (lockMoved) await press();
       else await P.page.waitForTimeout(400);
       const l3 = await LATCH(P);
+      await frames(P, 2);
+      const ln3 = await LINE(P);
+      rec.ok(`6f. ${label}: combat over (${l3.phase}, ${l3.end}): the line gone (drawn ${ln3 && ln3.drawn})`, l3.phase === 'idle' && !!ln3 && !ln3.drawn, { l3, ln3 });
       rec.ok(`2d. ${label}: ${lockMoved ? 'the second press lets go' : 'the kill let go by itself'}: idle (${l3.end}), the held attack off, the disc raised (${l3.look})`,
         l3.phase === 'idle' && l3.end === (lockMoved ? 'press' : 'killed') && !l3.auto && l3.look === 'off' && !l3.latchLock, l3);
 
@@ -740,10 +753,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await walkTo(435, 0);
       const s1 = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 15000, label: 'sighted at 435' }).catch(() => null);
       await H.waitFor(P, () => !!document.querySelector('[data-shield]') && !!document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special' }).catch(() => null);
-      await H.waitFor(P, () => !!(window.__btSightLine && window.__btSightLine().drawn), (v) => v, { timeout: 8000, label: 'the line' }).catch(() => null);
+      await frames(P, 2);
       const q1 = await EDGE(P);
-      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, the line drawn to it (${q1.line && q1.line.len} px), Block and Special around Attack`,
-        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && q1.line.drawn && q1.line.id === mon3.id && Math.abs(q1.line.len - 435) < 60 && q1.block && q1.special && q1.attack && q1.jump, q1);
+      /* v2.3.6546: no line before the press (the owner: "It's only the line drawn that snaps"); the line is combat's (6d to 6f) */
+      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, Block and Special around Attack, and no line before the press (drawn ${q1.line && q1.line.drawn})`,
+        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && !q1.line.drawn && q1.block && q1.special && q1.attack && q1.jump, q1);
       /* 3c: back and forth across the edge, inside the held 550.  v2.3.6543:
          out to 520, not 545 (the helper's run on 9af138bb, sideways: a frame
          every 767 ms, and the monster's wander past 550 on ONE frame is more
@@ -754,8 +768,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const q2 = await EDGE(P);
       const w2 = await P.page.evaluate((o) => { const gs = window._ctEdge.gaps.slice(o.g).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(o.d), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, { g: mid.g, d: mid.d });
       if (w2.dom.length) console.log(`  3c ${label}: the buttons changed ${w2.dom.length} times (v2.3.6546: each with what their rules read): ${JSON.stringify(w2.dom)}`);   /* v2.3.6546: every change in 3c, not the last six */
-      const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`;
-      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost;
+      const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted, no line before the press`;
+      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && !q2.line.drawn && !q2.lost;   /* v2.3.6546: no line before the press */
       /* v2.3.6544 (TRAPS 200): the sight holds 400 ms past its last sighting (sight.js SIGHT.HOLD_MS), counted on the
          game's own clock and stepped once a frame.  A page that draws a frame wider than that (this box sideways: 767
          to 1117 ms) drops the sight on ONE frame that misses (the monster's wander past the held 550 between two

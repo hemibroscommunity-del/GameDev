@@ -260,6 +260,7 @@ const FORMS = {
   'shine': '*',
   'shirtworker': '0|off|false',
   'shotimage': '0',
+  'sightline': '1',
   'skillsreset': '0',
   'skulldoor': '0',
   'slimesplat': '*',
