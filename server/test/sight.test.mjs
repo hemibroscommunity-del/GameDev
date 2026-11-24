@@ -367,7 +367,7 @@ function writesOutside(prop, doorFile, doorFn) {
   check('10. Block\'s and Special\'s own rules handed `combatReach(twoButtonsOn() && !fineInput(), TARGET_PERIMETER_PX)` beside the resolver',
     reach['src/ui/panels/ShieldButton.jsx'] === 1 && reach['src/ui/panels/SpecialButton.jsx'] === 1 && reachBad.length === 0, { reach, reachBad });
   check('10. the renderer draws the sight line once, in its overlays, with `gfx, S, now, shouldDraw && isBow`',
-    draws.length === 1 && draws[0].f === 'src/rendering/systems/effectsRenderer.js' && draws[0].in === '_updateOverlays' && draws[0].args, draws);
+    draws.length === 1 && /\/systems\/effects[A-Z]\w+\.js$/.test(draws[0].f) && draws[0].in === '_updateOverlays' && draws[0].args, draws);   /* the effects renderer, by its folder (tests-by-system: no suite names a big file by its path) */
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

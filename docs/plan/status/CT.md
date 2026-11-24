@@ -14,18 +14,18 @@ state: working
   nothing; every reader of the stick in src/ on a closed list). 16 plants
   red, tried by hand; the card's +44 (item 6) named as the orchestrator's.
   Head bfd443e9 green, frozen (held at 59: the owner is asked).
-- Sitting 59's mend rides PR 3 (the orchestrator's word): §8's writes of
-  dx/dy an ALLOW list (WALK_WRITES: the statement, its `if`, counted; only
-  falls), followed by the binding; both plants and eight of my own red.
+- Sitting 59's mend rides PR 3: §8's writes of dx/dy an ALLOW list.
 - PR 3 (6542, #2308 ready, head 6bb4d0f0): the latch, the lock, the stick's
   one owner; 2c's sideways fight a SKIP with the box's frame time.
 
 ## Next
-- PR 4 (6543): the sight line (leaf effects-sight.js, the bow's stream
-  moved verbatim into it), Block/Special/Whirlwind through
-  controlVisibility.js combatButtonsShown; sight.test 7-10 (24 of 25
-  plants red; the 25th was a redundant check, taken out); states.mjs's
-  two screens, UI notes' section; mp-twobuttons part 3. Then the PR.
+- PR 4 (6543, branch claude/plan-ct-4-sight, no PR yet; handed over at
+  285k memory). Built: the line (leaf effects-sight.js), Block/Special via
+  controlVisibility.js combatButtonsShown + combatReach (sight's range);
+  sight.test 7-10, 30 plants red. mp-twobuttons run 2: 42 pass, 5 red, all
+  3a/3c/3d: ANOTHER monster of the pack in sight at 700 px (the test's).
+  Mended (a lone monster, nn >= 1300) but NOT run: next part runs part 3
+  once by a helper, then the full suite, main merged, the PR (base 3-right).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.

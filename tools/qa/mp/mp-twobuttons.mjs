@@ -405,18 +405,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let shieldOn = false;
       for (let k = 0; k < 60 && !shieldOn; k++) { shieldOn = await wear(); if (!shieldOn) await P.page.waitForTimeout(250); }
       rec.ok(`3. ${label}: a shield in hand (guard)`, !!shieldOn);
+      /* v2.3.6543: a LONE monster (the second run: at 700 px from the one
+         chosen, another of its pack was in sight 350-460 px off, and the
+         sight is the phone's, of every monster): the live one whose nearest
+         live neighbour is farthest, 1300 px at least (700 out and the cone) */
       const mon3 = await H.readState(P, (S) => {
-        const P0 = S.player; let best = null;
-        for (const m of S.monsters || []) {
-          if (!m || !m.alive || !(m.curHp > 0 || m.curHp == null)) continue;
-          const d = Math.hypot(m.x - P0.x, m.y - P0.y);
-          if (!best || d < best.d) best = { id: String(m.id), x: m.x, y: m.y, d };
+        const P0 = S.player, live = (S.monsters || []).filter((m) => m && m.alive && (m.curHp > 0 || m.curHp == null));
+        let best = null;
+        for (const m of live) {
+          let nn = Infinity;
+          for (const o of live) if (o !== m) nn = Math.min(nn, Math.hypot(o.x - m.x, o.y - m.y));
+          if (!best || nn > best.nn) best = { id: String(m.id), x: m.x, y: m.y, nn: Math.round(nn), d: Math.hypot(m.x - P0.x, m.y - P0.y) };
         }
         return best;
       });
-      rec.ok(`3. ${label}: a live monster for the edge (guard)`, !!mon3, mon3);
-      if (!mon3) continue;
-      if (mon3.d > 900) { await H.hopTo(P, Math.round(mon3.x - 700), Math.round(mon3.y), { tries: 90 }); await P.page.waitForTimeout(1200); }
+      rec.ok(`3. ${label}: a lone live monster for the edge (its nearest neighbour ${mon3 && mon3.nn} px; guard)`, !!mon3 && mon3.nn >= 1300, mon3);
+      if (!mon3 || mon3.nn < 1300) continue;
+      if (mon3.d > 900) { await H.hopTo(P, Math.round(mon3.x - 700), Math.round(mon3.y), { tries: 260 }); await P.page.waitForTimeout(1500); }
       /* the keeper and the watcher, inside the page: the body stands on the
          drawn facing's line from the monster (so it is straight ahead,
          whatever way the body faces), at the path's distance, stepping at most
