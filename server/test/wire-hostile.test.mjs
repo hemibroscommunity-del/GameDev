@@ -184,6 +184,45 @@ const rec = () => ({ _v: 21, coins: 5000, level: 10, hp: 100, maxHp: 100,
   inventory: { copper_ore: 20, wood_oak: 10, fish_minnow: 10, iron_bar: 5 },
   _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
 
+/* ═══ v2.3.6444: HOW FAR THE CASES REACH (card DG PR 5; the review's REACH plant, kept) ═══
+ * A case that a handler's first check stops never meets the lines that read
+ * its later fields: the suite would pass with those fields unjudged.  So the
+ * test room watches what is read off each message AFTER the wire door lets
+ * it in (a Proxy on the message and its payload, armed when `_wireDoor`
+ * passes it; the door's own reads are not counted), and section 3 below
+ * holds every field a socket row's `trust` names to: read by some case, or
+ * listed in NOT_REACHED with why (a list that only falls).  A field read
+ * that the row does NOT name fails too (section 4): the door holds only
+ * what the table names.  The test room's alone: nothing on the live worker. */
+const READS = new Map();   /* 'row field' -> where it was first read (a line of src/) */
+const SEEN = new Set();    /* the rows a case took past the door */
+const armedOf = new WeakMap();
+function whereRead() {
+  const at = (new Error().stack || '').split('\n').find((l) => /\/src\//.test(l));
+  return at ? at.trim().replace(/^at /, '').replace(/\(?file:\/\/[^)]*?\/server\//, '').replace(/\)$/, '') : '?';
+}
+function watchReads(room) {
+  const onMessage = room._onMessage, door = room._wireDoor;
+  room._onMessage = function (ws, session, msg) {
+    if (!msg || typeof msg !== 'object' || Array.isArray(msg)) return onMessage.call(this, ws, session, msg);
+    const T = String(msg.type).slice(0, 64);
+    const st = { on: false };
+    const seen = (k) => { if (st.on && typeof k === 'string') { const key = T + ' ' + k; if (!READS.has(key)) READS.set(key, whereRead()); } };
+    const wrap = (o) => new Proxy(o, { get(t, k, r) { seen(k); return Reflect.get(t, k, r); }, has(t, k) { seen(k); return Reflect.has(t, k); } });
+    const p = msg.payload;
+    if (p && typeof p === 'object' && !Array.isArray(p)) msg.payload = wrap(p);
+    const m = wrap(msg);
+    armedOf.set(m, st);
+    return onMessage.call(this, ws, session, m);
+  };
+  room._wireDoor = function (session, msg) {
+    const out = door.call(this, session, msg);
+    const st = armedOf.get(msg);
+    if (!out && st) { st.on = true; SEEN.add(String(msg.type)); }
+    return out;
+  };
+}
+
 async function newRoom() {
   const st = makeStorage(new Map([['rpg:' + A, rec()], ['rpg:' + B, rec()]]));
   const writes = [];
@@ -193,6 +232,7 @@ async function newRoom() {
     return put.call(this, k, v);
   };
   const room = await openRoom(st);
+  watchReads(room);   /* v2.3.6444: how far the cases reach (above) */
   /* v2.3.5184: WIRE_HOSTILE_DOOR=off throws the wire door's switch (the
      plan's rule 4): the count is the line before the door, 19 */
   if (DOOR_OFF) room._liveFlags = { ...(room._liveFlags || {}), wiredoor: false };
@@ -399,6 +439,9 @@ async function runHttpRow(row) {
   return n;
 }
 
+const REACH_LINE = 0;
+const NOT_REACHED = {};
+
 /* ══════════ RUN ══════════ */
 const t0 = performance.now();
 let cases = 0;
@@ -473,6 +516,44 @@ if (DOOR_OFF) {
 } else {
   check(`2: the failing cases do not rise past the line (${failing} <= ${LINE}: docs/plan/census/hostile.md)`, failing <= LINE, census.slice(0, 8));
   if (failing < LINE) console.log(`NOTE the failing cases fell (${failing} < ${LINE}): lower LINE in this suite, and the census with --write`);
+}
+/* ══════════ 3 and 4: HOW FAR THE CASES REACHED (v2.3.6444; card DG PR 5) ══════════
+   Every field a socket row's `trust` names (its top level: `data.x` is
+   `data`; less type, payload and reqId) was read by some case after the
+   door, or is in NOT_REACHED with why; a listed field that a case now reads
+   fails until its line goes (the list only falls, REACH_LINE its count).
+   And no case read a field its row does not name.  Held with the door on
+   (WIRE_HOSTILE_DOOR=off lets other frames in: its reach is not the line). */
+const REACH_SKIP = new Set(['type', 'payload', 'reqId']);
+const NOT_A_FIELD = /^(then|toJSON|constructor|length|valueOf|toString)$/;
+const namedOf = (r) => [...new Set(Object.keys(r.trust || {}).map((k) => k.split('.')[0].replace(/\[\]$/, '')))].filter((k) => !REACH_SKIP.has(k));
+if (!DOOR_OFF) {
+  const listed = new Set();
+  for (const [row, { fields }] of Object.entries(NOT_REACHED)) for (const f of fields) listed.add(row + ' ' + f);
+  const unread = [], stale = [], unnamed = [];
+  let named = 0, read = 0;
+  for (const r of socketRows.filter((x) => !x.wayIn || x.wayIn === 'socket')) {
+    const fields = namedOf(r);
+    named += fields.length;
+    for (const f of fields) {
+      const key = r.name + ' ' + f;
+      if (READS.has(key)) read++;
+      if (READS.has(key) && listed.has(key)) stale.push(key);
+      else if (!READS.has(key) && !listed.has(key)) unread.push(key);
+    }
+    for (const [key, at] of READS) {
+      if (!key.startsWith(r.name + ' ')) continue;
+      const f = key.slice(r.name.length + 1);
+      if (!REACH_SKIP.has(f) && !NOT_A_FIELD.test(f) && !fields.includes(f)) unnamed.push(key + ' (read at ' + at + ')');
+    }
+  }
+  for (const key of listed) if (!WIRE_IN.some((r) => key.startsWith(r.name + ' ') && namedOf(r).includes(key.slice(r.name.length + 1)))) stale.push(key + ' (no such row or field)');
+  if (process.argv.includes('--reach')) for (const k of [...unread, ...stale, ...unnamed]) console.log('REACH ' + k);   /* every line, for NOT_REACHED */
+  console.log(`     reach: ${named} named fields, ${read} read after the door, ${listed.size} not reached (REACH_LINE ${REACH_LINE}); ${SEEN.size} rows passed the door`);
+  check(`3a: every field a row names was read by some case, or is in NOT_REACHED with why (${unread.length} neither)`, unread.length === 0, unread.slice(0, 20));
+  check(`3b: NOT_REACHED only falls: no listed field is read now (delete its line) and the list is at most REACH_LINE (${listed.size} <= ${REACH_LINE})`, stale.length === 0 && listed.size <= REACH_LINE, stale.slice(0, 20));
+  if (listed.size < REACH_LINE) console.log(`NOTE NOT_REACHED fell (${listed.size} < ${REACH_LINE}): lower REACH_LINE in this suite`);
+  check(`4: no case read a field its row does not name (name it in the row's trust: wire/in.js)`, unnamed.length === 0, unnamed.slice(0, 20));
 }
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
