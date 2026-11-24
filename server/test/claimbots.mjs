@@ -66,8 +66,13 @@ export function botWs(label) {
 const soon = () => new Promise((r) => setImmediate(() => setImmediate(r)));
 
 /* ══════════ THE WORLD: one room, one bot ══════════ */
-export async function makeWorld(clock, { recs = {}, flags = {}, tickMs = 22, plant = null, prep = null } = {}) {
-  const W = { clock, tickMs, recs, flags, plant, prep, ws: Object.create(null), at: Object.create(null), heal: false, hurt: 0, blows: 0 };
+/* v2.3.6462 (card BK PR 3): `fs`, the phone's free-swing word at its join
+   (join.js: `session.freeSwing = msg.fs` for 1 or 2): testroom.mjs's join
+   carries no `fs`, so every join here (a deploy's and a lost line's again
+   included) sets it on the session as that line does -- the probe's way
+   (tools/dev/plants/probe-freeswing.mjs) */
+export async function makeWorld(clock, { recs = {}, flags = {}, tickMs = 22, plant = null, prep = null, fs = 0 } = {}) {
+  const W = { clock, tickMs, recs, flags, plant, prep, fs, ws: Object.create(null), at: Object.create(null), heal: false, hurt: 0, blows: 0 };
   W.st = makeStorage(new Map(Object.entries(recs).map(([pid, r]) => ['rpg:' + pid, structuredClone(r)])));
   W.room = await openRoom(W.st, { disable_event_capes: true, ...flags });
   if (prep) prep(W.room);
@@ -96,6 +101,7 @@ export async function makeWorld(clock, { recs = {}, flags = {}, tickMs = 22, pla
   W.join = async (pid, data, ph) => {
     const ws = botWs(pid);
     await joinRoom(W.room, ws, pid, { loginTaken: true, data });
+    if (W.fs === 1 || W.fs === 2) { const s = W.room.sessions.get(ws); if (s) s.freeSwing = W.fs; }   /* v2.3.6462: join.js's own line, for a join that said `fs` */
     W.ws[pid] = ws;
     if (ph) ph.pid = pid;
     tickOn();
@@ -190,6 +196,8 @@ export class Phone {
 
 /* ══════════ SEEDS ══════════ */
 const SWORD = { type: 'sword', tier: 'common', tierMult: 1.0, element1: null, element2: null, isVolatile: false, name: 'copper sword', gearBase: 'copper', quality: 'normal' };
+/* v2.3.6462: the staff a new character finds (migrations.js: 'Pine Staff') */
+const STAFF = { type: 'staff', tier: 'common', tierMult: 1.0, element1: null, element2: null, isVolatile: false, name: 'pine staff', gearBase: 'pine', quality: 'normal' };
 const BOW = { type: 'bow', tier: 'common', tierMult: 1.0, element1: null, element2: null, isVolatile: false, name: 'pine bow', gearBase: 'pine', quality: 'normal' };
 export const rec = (extra) => ({ _v: 21, coins: 100, level: 5, hp: 250, maxHp: 250, inventory: {}, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} }, ...(extra || {}) });
 const u = (a, b) => a + Math.random() * (b - a);
@@ -224,7 +232,7 @@ async function combatStart(W, ph, gear) {
   const m0 = f[0];
   ph.x = m0.x + 300; ph.y = m0.y; ph.z = WHEEL_ZONE;
   await W.join(PID, ph.where(), ph);
-  const arm = () => { const ps = W.ps(PID); if (!ps) return; ps.weapon = { ...SWORD }; if (gear === 'bow') ps.rangedWeapon = { ...BOW }; ps._zoneEntryGraceUntil = 0; };
+  const arm = () => { const ps = W.ps(PID); if (!ps) return; ps.weapon = { ...SWORD }; if (gear === 'bow') ps.rangedWeapon = { ...BOW }; if (gear === 'staff') ps.staffWeapon = { ...STAFF }; ps._zoneEntryGraceUntil = 0; };
   arm();
   ph.onRejoin = async () => { arm(); };
 }
@@ -333,6 +341,70 @@ export async function honestBow(W, ph, take, opts = {}) {
       if (r.sent && !r.landed && r.could) ph.refuse('an arrow in reach did not land');
       if (r.killed) take.kills++;
     }
+  }
+  take.xp = fightTake(W.ws[PID]);
+}
+/* v2.3.6462 (card BK PR 3): THE STAFF.  The honest caster: in to 600 px, a
+   bolt every 900 ms (monsterCombat.js: SWING_COOLDOWN 600 x the staff's
+   swing mult 1, + the staff's 300), its relay as a page looses it
+   (`player_projectile`, isStaff), and each claim when its bolt lands -- a
+   bolt flies 5 px a frame (STAFF_ORB_SPEED_PX, 300 px a second) and lives
+   675 px (STAFF_LIFE).  A bolt is held to its caster's live place
+   (hitproof.js), so the caster stands while its bolts fly. */
+export async function honestStaff(W, ph, take, opts = {}) {
+  await combatStart(W, ph, 'staff');
+  let target = null; const flying = [];
+  let nextShot = ph.pageNow;
+  while (!ph.over) {
+    target = target && liveOf(W, target.id);
+    if (!target || !hurtable(target)) { const a = alive(W); target = a.sort((p, q) => dist(p, ph) - dist(q, ph))[0]; if (!target) { await ph.wait(500); continue; } }
+    if (dist(target, ph) > 620 && !flying.length) { const t = target; await ph.walkTo(() => t.x, () => t.y, { stop: 600 }); nextShot = Math.max(nextShot, ph.pageNow); continue; }
+    if (dist(target, ph) > 620) nextShot = Infinity;
+    if (nextShot === Infinity && !flying.length) { nextShot = ph.pageNow; continue; }
+    if (ph.pageNow >= nextShot) {
+      await ph.send({ type: 'player_projectile', payload: { x: Math.round(ph.x), y: Math.round(ph.y), ang: Math.atan2(target.y - ph.y, target.x - ph.x), isStaff: true, ts: Math.round(ph.pageNow) } });
+      flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / 300) * 1000 });
+      nextShot = ph.pageNow + (opts.gap || 900);
+    }
+    flying.sort((a, b) => a.at - b.at);
+    const due = Math.min(nextShot, flying.length ? flying[0].at : Infinity);
+    if (due > ph.pageNow) await ph.wait(due - ph.pageNow);
+    while (flying.length && flying[0].at <= ph.pageNow) {
+      const f = flying.shift();
+      const fm = liveOf(W, f.m.id);
+      if (!fm || !hurtable(fm)) continue;
+      const r = await claim(W, ph, fm, 'staff', null, null, 675);
+      if (r.sent && !r.landed && r.could) ph.refuse('a bolt in reach did not land');
+      if (r.killed) take.kills++;
+    }
+  }
+  take.xp = fightTake(W.ws[PID]);
+}
+/* the liar's staff: standing at the staff's whole reach (hitproof.js
+   _hitReach: 675 x Range + 250 + 0.3 s of the run), a `staff` claim on each
+   monster in it whenever the rate's bucket holds one (2 a second, 3 s of
+   them waiting: hitproof.js), each monster on its 210 ms lane, unshoved,
+   no relay (nothing counts a bolt's) -- the most the staff's judge accepts,
+   with the liar's whole knowledge of the room (it reads the bucket) */
+export async function liarStaff(W, ph, take, opts = {}) {
+  await combatStart(W, ph, 'staff');
+  while (!ph.over) {
+    const ps = W.ps(PID);
+    const reach = W.room._hitReach(ps, 'staff', Date.now()) - 1;
+    const inReach = alive(W).filter((m) => dist(m, ps) <= reach).sort((p, q) => dist(p, ps) - dist(q, ps));
+    if (!inReach.length) {
+      const a = alive(W).sort((p, q) => dist(p, ph) - dist(q, ph))[0];
+      if (!a) { await ph.wait(500); continue; }
+      await ph.walkTo(() => a.x, () => a.y, { speed: opts.speed || 480, stop: reach - 40, honest: false });
+      continue;
+    }
+    const tokens = () => W.room._hitBucketOf(W.ps(PID), 'staff', Date.now()).b.tokens;
+    for (const m of inReach) {
+      if (tokens() < 1) break;
+      const r = await claim(W, ph, m, 'staff', { noKb: true }); if (r.killed) take.kills++;
+    }
+    const t = tokens();
+    await ph.wait(t >= 1 ? 210 : Math.max(20, Math.ceil((1 - t) * 1000 / W.room._hitRate(W.ps(PID), 'staff'))));
   }
   take.xp = fightTake(W.ws[PID]);
 }
