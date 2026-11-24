@@ -956,20 +956,29 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
      it (every MEM_READ_MS, a verdict about every 1.4 s): the art held at what the trip reads (11 to 16 MB), the
      sound at 18, the chip's textures filling from 60 MB by 0.2 MB a second -- a crowd gathering.  The alarm must
      take the memory's rung within two verdicts of the total crossing it, and none before; today's trigger (the
-     memory check's two lines, `?memalarm=0`) takes none until the chip alone passes 109.3 -- the break proof. */
+     memory check's two lines, `?memalarm=0`) takes none until the chip alone passes 109.3 -- the break proof.
+     v2.3.6501 (the gatekeeper's sitting 57, review-z57): the model rides THE PACER'S OWN READ, memFull, through the
+     count handed in (useMemCount) and the address (`?memalarm=0` thrown, and not): it modelled memOver alone, so a
+     memFull that never asked the switch, or always slept on the old lines, stayed green.
+     BREAKS, tried 2026-11-24 on the test box:
+       framePacer.js memFull: `memOver(m)` (the switch never asked)          -> FAIL 23i (the second)
+       framePacer.js memFull: `memOver(m, true)` (the alarm asleep)         -> FAIL 23i (the first)
+       framePacer.js memFull: `memOver(m, memAlarmOld())` (the address dropped; node's page has none) -> FAIL 23i (the second)
+       framePacer.js memFull: `if (ts - _memAt < MEM_READ_MS) return true;` -> FAIL 23i (both) */
   {
     const ride = (old) => {
       _resetLanes();
       const g = makeGovernor({ on: true, store: memStore() });
       g.veil(0);
-      let first = null, crossedAt = null, readAt = -Infinity, full = false;
+      let first = null, crossedAt = null, m = null;
+      FP.useMemCount(() => m.slice());
       for (let t = 1400; t <= 600000; t += 1400) {
-        const m = [14, 60 + 0.0002 * t, 18];
+        m = [14, 60 + 0.0002 * t, 18];
         if (crossedAt == null && FP.memTotal(m) > A) crossedAt = t;
-        if (t - readAt >= FP.MEM_READ_MS) { readAt = t; full = FP.memOver(m, old); }
-        g.verdict(0, t, { axis: 'chip', atFloor: true, memFull: full });
+        g.verdict(0, t, { axis: 'chip', atFloor: true, memFull: FP.memFull(t, old ? '?memalarm=0' : '') });
         if (first == null && g.read().mem > 0) first = { t, total: +FP.memTotal(m).toFixed(1), chip: +m[1].toFixed(1) };
       }
+      FP.useMemCount(null);
       _resetLanes();
       return { first, crossedAt };
     };

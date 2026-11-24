@@ -1,25 +1,26 @@
 card: PH
 branch: claude/plan-ph-2-memalarm (PR 1's branch merged in: sitting 57)
-prs: #2279 (ready, PR 1, 6500, DEPLOYS), #2291 (ready, PR 2, 6501: this branch), #2297 (PR 3, 6502, draft)
-state: ready
+prs: #2279 (PR 1, 6500, DEPLOYS: sitting 57's hold mended), #2291 (PR 2, 6501: this branch, sitting 57's hold mended), #2297 (PR 3, 6502), #2306 (PR 5, 6504)
+state: working (part 4: mending sitting 57's holds, one push per PR when the chain is mended)
 
 ## Done
-- PR 1 (6500) #2279: the report sees heat, the board and the ramps;
-  sitting 56's four dodges tried through the room (report.test 15.8).
+- PR 1 (6500) #2279: the report sees heat, the board and the ramps.
+  Sitting 57: 15.8c's fraction now positive; 15.8e/f the up row's late
+  and below the kept verdict's (plants red, 2026-11-24, test box).
 - PR 2 (6501) #2291: the governor's memory alarm on the game's own total
   (framePacer.js MEM_ALARM { READ 106.4, MB 120 }, on the test box;
-  decided for the owner while away, `?memalarm=0` the old lines);
-  frame-pacer.test 23a/23b/23i; the phone test mp-memalarm (7/7, its
-  break red); src/state/page-thread.js's two rows (the state ledger).
-- Sitting 57: claude/plan-ph-1-report merged into this branch (the two
-  status files' add/add), so #2279 then #2291 land without a conflict.
+  DECIDED FOR THE OWNER WHILE AWAY, not the owner's yes; `?memalarm=0`
+  the old lines). Sitting 57: memFull exported with an address; 23i's
+  filling phone rides memFull itself, thrown and not. Plants tried
+  2026-11-24: `memOver(m)`, `memOver(m, true)`, `memAlarmOld()` without
+  the address, the read's cadence -> each FAIL 23i. The header's "owner's
+  yes" corrected.
 
 ## Next
-- PR 3 (6502) #2297, stacked on 6501: its lines set from its own CI
-  memory-budget run (any with under 1.0 MB of room), then ready.
+- #2297 and #2306 take #2291's mend; main merged once at the bottom.
+- Then PR 6 (6505). PR 4 (6503) waits for call 1.
 
 ## Found
-- report.test 7's "full" cell was not full; mended in PR 1.
 - src/rendering/maskedEvict.js's header still says the memory rung is
   "the report's count over the memory check's lines" (not my card's file).
 - The 30-bot crowd fight cannot be read on the test box (census/PH-phone.md).
