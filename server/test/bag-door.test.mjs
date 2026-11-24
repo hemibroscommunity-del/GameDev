@@ -35,6 +35,7 @@ import { ECON_V, MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../sr
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
 import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
+import { writesOf, doorWrites, doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */
 setBagOneSum(false);   /* v2.3.4900: §1-5 hold the step-1 sums; §6 turns step 2 on */
 
 let failures = 0, passes = 0;
@@ -202,87 +203,87 @@ const lineAt = (s, i) => { const a = s.lastIndexOf('\n', i) + 1; const e = s.ind
 /* v2.3.5081: each names its row of bag.js BAG_WHOLE, which classes what it
    does to what the bag holds (SHAPES part 3, edge 4); the death's two wipes,
    one line before, are two entries now: they are two classes */
+/* v2.3.6441 (card DG PR 2): keyed by file, function and how many writes,
+   read off the syntax tree; the old '*' row (a new, empty bag anywhere)
+   names its files now (plants4 BAG-5: `ps.inventory = {}` in a quest's
+   turn-in was "a new bag"). */
+const W = (file, fn, n, row, why) => ({ file, fn, field: 'inventory', n, row, why });
+const NEW_BAG = 'a new, empty bag for a player who has none (the callers\' own guard, as before)';
 const WHOLE_BAG = [
-  { file: '*', re: /\.inventory\s*=\s*(?:\{\s*\}|Object\.create\(null\))\s*;/, row: 'new_bag', why: 'a new, empty bag for a player who has none (the callers\' own guard, as before)' },
-  { file: 'join.js', re: /\.inventory\s*=\s*stored\.inventory\s*\|\|\s*\{\}/, row: 'join_load', why: 'the join loads the stored character\'s bag' },
-  { file: 'join.js', re: /\.inventory\s*=\s*_cappedInv\b/, row: 'join_first', why: 'the join\'s first-connect bag, capped (trapping.js _trapJoinCap)' },
-  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(ps,/, row: 'death_wipe', why: 'the death wipe: the bag made what the dead keep (the tools; nothing in No man\'s land), the rest to the pile' },
-  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(ps\)/, row: 'respawn_wipe', why: 'the respawn wipe: the same, again, five seconds on' },
+  W('bank.js', '_handleBankMove', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleEatRequest', 2, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleFiremakingRequest', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleDrinkRequest', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleCookRecipe', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_applyShopItem', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleCookRequest', 1, 'new_bag', NEW_BAG),
+  W('devtools.js', '_devKit', 1, 'new_bag', NEW_BAG),
+  W('devtools.js', '_devTrapping', 1, 'new_bag', NEW_BAG),
+  W('dungeonreward.js', '_dungeonReward', 1, 'new_bag', NEW_BAG),
+  W('eventcapes.js', '_claimCapeTicket', 1, 'new_bag', NEW_BAG),
+  W('eventcapes.js', '_handleCapeRedeem', 1, 'new_bag', NEW_BAG),
+  W('farm.js', '_farmPs', 1, 'new_bag', NEW_BAG),
+  W('fishlog.js', '_fishCatch', 1, 'new_bag', NEW_BAG),
+  W('fishlog.js', '_fishDev', 1, 'new_bag', NEW_BAG),
+  W('gathering.js', '_handleNodeStrike', 1, 'new_bag', NEW_BAG),
+  W('gear.js', '_handleForgeWeapon', 1, 'new_bag', NEW_BAG),
+  W('gems.js', 'bagOf', 1, 'new_bag', NEW_BAG),
+  W('hardenedwood.js', '_handleMakeHardenedWood', 1, 'new_bag', NEW_BAG),
+  W('hardening.js', '_handleHardenWeapon', 1, 'new_bag', NEW_BAG),
+  W('inbox.js', '_applyCreditToPs', 1, 'new_bag', NEW_BAG),
+  W('index.js', '_handleLootPickup', 4, 'new_bag', NEW_BAG),
+  W('quests.js', '_grantQuestItem', 1, 'new_bag', NEW_BAG),
+  W('salvage.js', '_salvageWho', 1, 'new_bag', NEW_BAG),
+  W('shop.js', '_shopSell', 1, 'new_bag', NEW_BAG),
+  W('shop.js', '_shopBuy', 3, 'new_bag', NEW_BAG),
+  W('trapping.js', '_handleMakeTraps', 1, 'new_bag', NEW_BAG),
+  W('join.js', '_handleJoin', 2, ['join_load', 'join_first'], 'the join loads the stored character\'s bag, or a first connect\'s, capped (trapping.js _trapJoinCap)'),
+  W('index.js', '_handlePlayerDeath', 1, 'death_wipe', 'the death wipe: the bag made what the dead keep (the tools; nothing in No man\'s land), the rest to the pile'),
+  W('index.js', '_tickPlayerRespawn', 1, 'respawn_wipe', 'the respawn wipe: the same, again, five seconds on'),
 ];
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
 {
-  /* a name that holds the bag: `const inv = ps.inventory`, `= ...inventory : null`, `= bagOf(...)` */
-  const ALIAS = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]*)/g;
-  const found = [];
-  const seen = new Set();
-  for (const f of files) {
-    if (f === 'bag.js') continue;
-    const s = code[f];
-    const names = new Set();
-    for (const m of s.matchAll(ALIAS)) if (/\.inventory\b(?!\s*\[)|\bbagOf\(/.test(m[2]) && !/Object\.(?:keys|entries|values)|JSON|[\w$]\(\s*[\w$.]*\.inventory\s*\)/.test(m[2])) names.add(m[1]);   /* not a copy made from it (index.js `keep = this._keepGatherTools(ps.inventory)`) */
-    const holders = ['[\\w$.]*\\.inventory', ...[...names].map((n) => '\\b' + n.replace(/\$/g, '\\$'))];
-    const H = '(?:' + holders.join('|') + ')';
-    const COUNT_WRITE = new RegExp(H + '\\s*(?:\\[[^\\]\\n]*\\]|\\.[A-Za-z_$][\\w$]*)\\s*(?:[-+*/%]?=(?!=)|\\+\\+|--)|delete\\s+' + H + '\\s*[\\[.]|(?:\\+\\+|--)\\s*' + H + '\\s*[\\[.]', 'g');
-    for (const m of s.matchAll(COUNT_WRITE)) found.push(f + ':' + lineOf(s, m.index) + ' ' + lineAt(s, m.index).trim().slice(0, 100));
-    /* whole-bag assigns: only those listed */
-    for (const m of s.matchAll(/\.inventory\s*=(?!=)/g)) {
-      const line = lineAt(s, m.index);
-      const ok = WHOLE_BAG.find((w) => (w.file === '*' || w.file === f) && w.re.test(line));
-      if (ok) { seen.add(ok); continue; }
-      found.push(f + ':' + lineOf(s, m.index) + ' (whole bag) ' + line.trim().slice(0, 100));
-    }
-  }
-  check('2. no bag count is written in server/src but through the bag door (bag.js)', found.length === 0, found);
-  check('2. every WHOLE_BAG entry still exists (a stale one is deleted)', seen.size === WHOLE_BAG.length,
-    WHOLE_BAG.filter((w) => !seen.has(w)).map((w) => w.file + ' ' + w.re));
+  /* a write of a count (through any alias: `const inv = ps.inventory`,
+     `const { inventory } = ps`, `bagOf(ps)`, a helper handed the bag) or of
+     the whole bag; only the whole-bag puts listed above are not the door's */
+  const r = doorWrites(raw, { skip: ['bag.js'], containers: ['inventory'], makers: { bagOf: 'inventory' }, listed: WHOLE_BAG });
+  const counts = r.found.filter((w) => w.inside);
+  const whole = r.found.filter((w) => !w.inside);
+  check('2. no bag count is written in server/src but through the bag door (bag.js), however it is spelled', counts.length === 0, counts.map(where));
+  check('2. ...and the whole bag is put only where WHOLE_BAG lists', whole.length === 0, whole.map(where));
+  check('2. every WHOLE_BAG entry still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
   /* the scan sees what it must: an alias write, a dot write, a delete */
-  const probe = (src) => { const s = strip(src); const H = '(?:[\\w$.]*\\.inventory|\\binv)'; return new RegExp(H + '\\s*(?:\\[[^\\]\\n]*\\]|\\.[A-Za-z_$][\\w$]*)\\s*(?:[-+*/%]?=(?!=)|\\+\\+|--)|delete\\s+' + H + '\\s*[\\[.]').test(s); };
-  check('2. the scan catches `inv[k] = 1`, `ps.inventory.x += 1`, `delete ps.inventory[k]`, `inv[k]--`',
-    probe('inv[k] = 1') && probe('ps.inventory.x += 1') && probe('delete ps.inventory[k]') && probe('inv[k]--') && !probe('const a = inv[k] === 1') && !probe('if (ps.inventory[k] <= 0) x()'));
+  const probe = (src) => writesOf('function f(ps, inv0, k) {\n const inv = ps.inventory;\n' + src + '\n}', { containers: ['inventory'] }).length > 0;
+  check('2. the scan catches `inv[k] = 1`, `ps.inventory.x += 1`, `delete ps.inventory[k]`, `inv[k]--`, `inv[k] ||= 1`, `Object.assign(inv, {})`',
+    probe('inv[k] = 1') && probe('ps.inventory.x += 1') && probe('delete ps.inventory[k]') && probe('inv[k]--') && probe('inv[k] ||= 1') && probe('Object.assign(inv, { a: 1 })')
+    && !probe('const a = inv[k] === 1') && !probe('if (ps.inventory[k] <= 0) x()'));
 }
 
 /* ── 3. ONE ROW, ONE PLACE ───────────────────────────────────────────────── */
-/* Every bagGive / bagTake / bagSet call, its arguments split at the top level
-   (strings skipped); the road is the 4th. */
-function callsIn(s) {
-  const out = [];
-  for (const m of s.matchAll(/\bbag(Give|Take|Set)\(/g)) {
-    if (/(?:function|\.)\s*$/.test(s.slice(Math.max(0, m.index - 10), m.index))) continue;
-    let i = m.index + m[0].length, depth = 1, q = null, start = i;
-    const args = [];
-    for (; i < s.length && depth > 0; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
-      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
-      else if (ch === '(' || ch === '[' || ch === '{') depth++;
-      else if (ch === ')' || ch === ']' || ch === '}') { depth--; if (depth === 0) args.push(s.slice(start, i).trim()); }
-      else if (ch === ',' && depth === 1) { args.push(s.slice(start, i).trim()); start = i + 1; }
-    }
-    const lit = /^'([A-Za-z0-9_]+)'$/.exec(args[3] || '');
-    out.push({ verb: m[1].toLowerCase(), road: lit ? lit[1] : null, nargs: args.length, line: lineOf(s, m.index) });
-  }
-  return out;
-}
+/* Every bagGive / bagTake / bagSet call, by any receiver (v2.3.6441: read
+   off the syntax tree); the road is the 4th argument, the cap the 5th. */
 {
+  const VERB_OF = { bagGive: 'give', bagTake: 'take', bagSet: 'set' };
+  const { calls, odd } = doorCalls(raw, { skip: ['bag.js'], names: Object.keys(VERB_OF), road: (args) => args[3] || null });
+  check('3. the bag door is called plainly, by name (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
   const byRoad = Object.create(null);
   const bad = [];
-  for (const f of files) {
-    if (f === 'bag.js') continue;
-    for (const c of callsIn(code[f])) {
-      const where = f + ':' + c.line;
-      if (!c.road) { bad.push(where + ' names no road as a plain string (4th argument)'); continue; }
-      if (!own(BAG_ROADS, c.road)) { bad.push(where + ' names "' + c.road + '", which BAG_ROADS has not got'); continue; }
-      const row = BAG_ROADS[c.road];
-      if (row.dir !== c.verb) bad.push(where + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + c.verb);
-      if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
-      if (row.cap !== (c.nargs === 5)) bad.push(where + ' ' + c.road + (row.cap ? ' needs its cap (5th argument)' : ' passes a cap its row has not got'));
-      (byRoad[c.road] = byRoad[c.road] || []).push(where);
-    }
+  for (const c of calls) {
+    const where1 = c.file + ':' + c.line;
+    if (!c.road || !/^[A-Za-z0-9_]+$/.test(c.road)) { bad.push(where1 + ' names no road as a plain string (4th argument)'); continue; }
+    if (!own(BAG_ROADS, c.road)) { bad.push(where1 + ' names "' + c.road + '", which BAG_ROADS has not got'); continue; }
+    const row = BAG_ROADS[c.road];
+    if (row.dir !== VERB_OF[c.name]) bad.push(where1 + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + VERB_OF[c.name]);
+    if (row.at.split(' ')[0] !== c.file) bad.push(where1 + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    if (row.cap !== (c.args.length === 5)) bad.push(where1 + ' ' + c.road + (row.cap ? ' needs its cap (5th argument)' : ' passes a cap its row has not got'));
+    (byRoad[c.road] = byRoad[c.road] || []).push(where1);
   }
   check('3. every call names a road the table has, with its verb, from its row\'s file', bad.length === 0, bad);
   const none = Object.keys(BAG_ROADS).filter((r) => !byRoad[r]);
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
-  check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
+  check('3. no road has two callers, by any receiver (a second place is a second row)', twice.length === 0, twice);
   check('3. at v2.3.4810: one road for each of the places that wrote a bag count by hand before the door',
     Object.keys(BAG_ROADS).length >= N_ROADS_4810, Object.keys(BAG_ROADS).length);
 }
@@ -444,8 +445,10 @@ setBagOneSum(true);
 {
   /* edge 4: the whole-bag assigns -- not roads, but classed */
   const rows = Object.keys(BAG_WHOLE);
-  const named = WHOLE_BAG.map((w) => w.row);
-  check('8. every WHOLE_BAG entry names a row of BAG_WHOLE, and every row is named once', named.every((r) => rows.includes(r)) && rows.every((r) => named.filter((x) => x === r).length === 1), { rows, named });
+  /* v2.3.6441: a row's places are named by file and function now, so the new
+     bag's row is named by each of its files */
+  const named = WHOLE_BAG.flatMap((w) => [].concat(w.row));
+  check('8. every WHOLE_BAG entry names a row of BAG_WHOLE, and every row is named', named.every((r) => rows.includes(r)) && rows.every((r) => named.includes(r)), { rows, named });
   const bad = Object.entries(BAG_WHOLE).filter(([, w]) => w.class !== null && classFaults({ x: w }, BAG_ROADS).length).map(([n]) => n);
   check('8. ...each is null (holds nothing new) or classed as a road is', bad.length === 0 && Object.values(BAG_WHOLE).every((w) => w.class === null || CLASSES.includes(w.class)), bad);
   check('8. ...the death\'s wipe moves the bag to the pile on the ground (death_pile:)', BAG_WHOLE.death_wipe.class === 'escrow' && BAG_WHOLE.death_wipe.other === 'death_pile:' && ESCROW_PLACES.includes('death_pile:'));

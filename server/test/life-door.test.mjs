@@ -29,6 +29,7 @@ import { HP_ROADS, LIFE_ROADS, LIFE, lifeOf, lifeMethods } from '../src/life.js'
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
 import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
+import { doorWrites, doorCalls, visit, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -156,77 +157,83 @@ for (const f of files) if (f !== 'life.js') for (const c of callsIn(code[f], '_h
 }
 
 /* ── 2. ONE DOOR ─────────────────────────────────────────────────────────── */
-/* What writes a `.hp` that is NOT a player's, and why.  `m` and `mn` are a
-   monster in every file (the server's own name for one); the rest are
-   matched by file and text. */
-const MONSTER_NAMES = ['m', 'mn'];
+/* v2.3.6441 (card DG PR 2): the scan reads the syntax tree
+   (tools/guards/lib/writesOf.mjs): `||=`, `Object.assign(ps, { hp })`,
+   `delete ps.dead`, a destructure, a key in a variable.  What writes an `hp`
+   or a `dying` / `dead` / `life` that is NOT a player's is listed by its
+   file, its function and its field, with how many writes: the old rule that
+   a receiver named `m` or `mn` is a monster in every file let a party healed
+   through `const m = this.playerState[id]` walk past (plants1 HP-2). */
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
+const P = (file, fn, field, n, why) => ({ file, fn, field, n, why });
+const MONSTER = 'a monster\'s own hit points (`m`, `mn`), not a body';
 const NOT_A_PLAYER = [
-  { file: 'gathering.js', text: 'rec.hp =', why: 'a gather node\'s hits, not a body' },
-  { file: 'devtools.js', text: 'out.hp =', why: 'the Test panel\'s answer, reporting what the door wrote' },
-  { file: 'slimeboss.js', text: 'x.hp =', why: 'a split slime (a monster)' },
-  { file: 'tick.js', text: 'e.dead =', why: 'the tick entry\'s copy of the body\'s phase, for the wire' },
+  P('abilities.js', '_abilityStrikeMonster', 'hp', 1, MONSTER),
+  P('combat.js', '_handleMonsterDamage', 'hp', 2, MONSTER),
+  P('devtools.js', '_devClearWave', 'hp', 1, MONSTER),
+  P('devtools.js', '_devTrapping', 'hp', 1, MONSTER),
+  P('devtools.js', '_devVitals', 'hp', 2, 'the Test panel\'s answer (`out`), reporting what the door wrote'),
+  P('dungeon.js', '_dungeonSpawnBoss', 'hp', 1, MONSTER),
+  P('dungeon.js', '_dungeonBossSummon', 'hp', 1, MONSTER),
+  P('dungeon.js', '_dungeonTickBossAbilities', 'hp', 1, MONSTER),
+  P('gathering.js', '_planGatherHits', 'hp', 1, 'a gather node\'s hits (`rec.hp`), not a body'),
+  P('gathering.js', '_planCookHits', 'hp', 1, 'a cook\'s planned hits (`ps._cookHits`), not a body'),
+  P('hits.js', '_legacyThornsReflect', 'hp', 1, MONSTER),
+  P('index.js', '_applyMonsterDot', 'hp', 1, MONSTER),
+  P('killroll.js', '_killRollDev', 'hp', 1, MONSTER),
+  P('monsterlife.js', '_monsterNewLife', 'hp', 1, MONSTER),
+  P('monsterlife.js', '_monsterNewLife', 'life', 1, 'a monster\'s own count of lives (v2.3.4843), not the player\'s phase'),
+  P('monstermoves.js', '_moveTierStep', 'hp', 1, MONSTER),
+  P('monstermoves.js', '_monsterMovesFlagChanged', 'hp', 2, MONSTER),
+  P('slimeboss.js', '_slimeBossCleanup', 'hp', 1, 'a split slime (a monster)'),
+  P('tick.js', 'body', 'dead', 1, 'the tick entry\'s copy of the body\'s phase, for the wire'),
+  P('join.js', '_handleJoin', 'dead', 1, 'the join\'s fresh body has `dead: false`, then _lifeTo'),
 ];
 {
-  const HP_WRITE = /([\w$\]\)]+)(?:\.hp|\[\s*['"]hp['"]\s*\])\s*(?:[-+*/%]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*[\w$.]*\.hp\b/g;
-  /* v2.3.4820 (batch merge): the owner is captured here too, so a monster's own
-     `m.life` (monsterlife.js, v2.3.4843: its count of lives) is a monster's
-     field, not a player's phase -- the same `m` / `mn` rule as hp */
-  const PHASE_WRITE = /([\w$\]\)]+)(?:\.(?:dying|dead|life)|\[\s*['"](?:dying|dead|life)['"]\s*\])\s*(?:[-+*/%]?=(?!=)|\+\+|--)/g;
-  const found = [];
-  const allowedSeen = new Set();
-  for (const f of files) {
-    if (f === 'life.js') continue;
-    const s = code[f];
-    for (const [re, isHp] of [[HP_WRITE, true], [PHASE_WRITE, false]]) {
-      for (const m of s.matchAll(re)) {
-        if (m[1] && MONSTER_NAMES.includes(m[1])) continue;
-        const lineStart = s.lastIndexOf('\n', m.index) + 1;
-        const lineEnd = s.indexOf('\n', m.index);
-        const line = s.slice(lineStart, lineEnd < 0 ? s.length : lineEnd);
-        const ok = NOT_A_PLAYER.find((a) => a.file === f && line.includes(a.text));
-        if (ok) { allowedSeen.add(ok); continue; }
-        found.push(f + ':' + lineOf(s, m.index) + ' ' + line.trim().slice(0, 100));
-      }
-    }
-  }
-  check('2. no player\'s hp, and no dying / dead / life, is written in server/src but through the life door', found.length === 0, found);
-  check('2. every NOT_A_PLAYER entry still exists (a stale one is deleted)', allowedSeen.size === NOT_A_PLAYER.length,
-    NOT_A_PLAYER.filter((a) => !allowedSeen.has(a)).map((a) => a.file + ' ' + a.text));
-  /* an object literal or assign that names the phase is a second writer too */
+  const r = doorWrites(raw, { skip: ['life.js'], fields: ['hp', 'dying', 'dead', 'life'], listed: NOT_A_PLAYER });
+  check('2. no player\'s hp, and no dying / dead / life, is written in server/src but through the life door, however it is spelled', r.found.length === 0, r.found.map(where));
+  check('2. every NOT_A_PLAYER row still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
+  /* an object literal that names the phase is a second writer too (read off the tree) */
   const lit = [];
   for (const f of files) {
     if (f === 'life.js') continue;
-    for (const m of code[f].matchAll(/\b(dying|life)\s*:\s*(true|false|'alive'|'dying')/g)) lit.push(f + ':' + lineOf(code[f], m.index));
+    visit(raw[f], { ObjectProperty(path) {
+      const k = path.node.key, v = path.node.value;
+      const key = path.node.computed ? null : (k.name || k.value);
+      if ((key === 'dying' || key === 'life') && (v.type === 'BooleanLiteral' || (v.type === 'StringLiteral' && (v.value === 'alive' || v.value === 'dying'))))
+        lit.push(f + ':' + path.node.loc.start.line);
+    } });
   }
   check('2. no literal sets the phase (join.js\'s fresh body has `dead: false`, then _lifeTo)', lit.length === 0, lit);
 }
 
 /* ── 3. ONE ROW, ONE PLACE ───────────────────────────────────────────────── */
+/* v2.3.6441: every call by ANY receiver (`const room = this; room._hpSet(...)`,
+   plants3 HP-5), a bind or a name made of it no plain call */
+const LIFE_CALLS = doorCalls(raw, { skip: ['life.js'], names: ['_hpSet', '_lifeTo', '_lifeDeadClaim'] });
+check('3. the life door is called plainly, by name (no bind, .call, apply or a name made of it)', LIFE_CALLS.odd.length === 0, LIFE_CALLS.odd.map((o) => where(o) + ' (' + o.how + ')'));
 for (const [name, table, fn] of [['hp', HP_ROADS, '_hpSet'], ['life', LIFE_ROADS, '_lifeTo']]) {
   const byRoad = Object.create(null);
   const bad = [];
-  for (const f of files) {
-    if (f === 'life.js') continue;
-    for (const c of callsIn(code[f], fn)) {
-      const where = f + ':' + c.line;
-      if (!c.road) { bad.push(where + ' names no road as a plain string'); continue; }
-      if (!own(table, c.road)) { bad.push(where + ' names "' + c.road + '", which the table has not got'); continue; }
-      const row = table[c.road];
-      if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
-      if (fn === '_lifeTo' && c.args[1] !== '\'' + row.to + '\'') bad.push(where + ' ' + c.road + ' goes to ' + row.to + ', called with ' + c.args[1]);
-      (byRoad[c.road] = byRoad[c.road] || []).push(where);
-    }
+  for (const c of LIFE_CALLS.calls.filter((x) => x.name === fn)) {
+    const where1 = c.file + ':' + c.line;
+    if (!c.road || !/^[A-Za-z0-9_]+$/.test(c.road) || c.args[c.args.length - 1] !== c.road) { bad.push(where1 + ' names no road as a plain string (its last argument)'); continue; }
+    if (!own(table, c.road)) { bad.push(where1 + ' names "' + c.road + '", which the table has not got'); continue; }
+    const row = table[c.road];
+    if (row.at.split(' ')[0] !== c.file) bad.push(where1 + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    if (fn === '_lifeTo' && c.args[1] !== row.to) bad.push(where1 + ' ' + c.road + ' goes to ' + row.to + ', called with ' + c.args[1]);
+    (byRoad[c.road] = byRoad[c.road] || []).push(where1);
   }
   check('3. every ' + fn + ' call names a ' + name + ' road the table has, from its row\'s file', bad.length === 0, bad);
   const none = Object.keys(table).filter((r) => !byRoad[r]);
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every ' + name + ' road has a caller', none.length === 0, none);
-  check('3. no ' + name + ' road has two callers', twice.length === 0, twice);
+  check('3. no ' + name + ' road has two callers, by any receiver', twice.length === 0, twice);
 }
 {
   /* the claim road: one caller, in the move, behind serverdead's switch */
-  const claims = [];
-  for (const f of files) if (f !== 'life.js') for (const c of callsIn(code[f], '_lifeDeadClaim')) claims.push({ f, line: c.line });
+  const claims = LIFE_CALLS.calls.filter((c) => c.name === '_lifeDeadClaim').map((c) => ({ f: c.file, line: c.line, fn: c.fn }));
   const ok = claims.length === 1 && claims[0].f === 'movement.js'
     && /_serverDeadOff\(\)\)\s*this\._lifeDeadClaim\(/.test(code['movement.js'].split('\n')[claims[0].line - 1]);
   check('3. _lifeDeadClaim has one caller: the move, behind `serverdead: false`', ok, claims);

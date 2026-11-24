@@ -41,6 +41,7 @@ import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { POINT_ROADS, POINT_READS, POINT_FIELDS, DEAL_FIELDS, POINTS_WHOLE, pointsAfter, pointsGive, pointsTake, pointsSet, pointsDeal } from '../src/skillpoints.js';
 import { PROG3, prog3XpRequired } from '../src/prog3.js';
 import { openRoom, makeStorage, join, fakeWs, settle, playTour, roomGuard } from './testroom.mjs';
+import { writesOf, doorWrites, doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -143,115 +144,79 @@ function fnAt(s, i) {
   return best;
 }
 
+/* v2.3.6441 (card DG PR 2): the scans read the syntax tree
+   (tools/guards/lib/writesOf.mjs): `||=`, `Object.assign(prog3, { pool })`,
+   a destructured block, a key in a variable (plants1 POINTS-1, POINTS-2).
+   Each place that is not the door's is keyed by its file, its function and
+   its field, with how many writes it holds. */
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, SRC_DIR), 'utf8');
 /* The block's shaping: prog3.js's pure functions that build or heal a STORED
    block (a copy in the sanitizer, `blob.prog3` in a migration) before the
-   join adopts it.  None runs on a live player's points. */
+   join adopts it.  None runs on a live player's points.  Each with the
+   fields it writes and how many times. */
 const SHAPERS = {
-  _sanitizeProg3: 'the join\'s clean of a stored block: a fresh block (`out`) built from it, bounded, and adopted whole (POINTS_WHOLE join_adopt)',
-  prog3GrantRetroPoints: 'migration v14 and the sanitizer\'s heal: the 3-a-level back-pay, once (its `ppl` stamp)',
-  prog3SplitAtk: 'migration v11 and the sanitizer\'s heal (on a copy): the one alloc split into body and weapon stats, the weapon points refunded',
-  prog3MoveElemToAtk: 'migration v15 and the sanitizer\'s heal (on a copy): the old body elemental stat refunded',
-  prog3FoldLuck: 'migration v17 and the sanitizer\'s heal (on a copy): crit and crit damage refunded into their lane',
-  prog3GrantSharedPoints: 'migration v17 and the sanitizer\'s heal: the shared points\' back-pay, once (its `spl` stamp)',
+  _sanitizeProg3: { why: 'the join\'s clean of a stored block: a fresh block (`out`) built from it, bounded, and adopted whole (POINTS_WHOLE join_adopt)', writes: { alloc: 1, atk: 1, pool: 1, poolBy: 4, ppl: 1, shared: 1, spl: 1 } },
+  prog3GrantRetroPoints: { why: 'migration v14 and the sanitizer\'s heal: the 3-a-level back-pay, once (its `ppl` stamp)', writes: { poolBy: 2, pool: 1, ppl: 1 } },
+  prog3SplitAtk: { why: 'migration v11 and the sanitizer\'s heal (on a copy): the one alloc split into body and weapon stats, the weapon points refunded', writes: { alloc: 2, atk: 1, pool: 1 } },
+  prog3MoveElemToAtk: { why: 'migration v15 and the sanitizer\'s heal (on a copy): the old body elemental stat refunded', writes: { alloc: 1, pool: 1 } },
+  prog3FoldLuck: { why: 'migration v17 and the sanitizer\'s heal (on a copy): crit and crit damage refunded into their lane', writes: { poolBy: 2, pool: 1, atk: 1 } },
+  prog3GrantSharedPoints: { why: 'migration v17 and the sanitizer\'s heal: the shared points\' back-pay, once (its `spl` stamp)', writes: { shared: 1, spl: 1 } },
 };
 /* The whole-block assigns, each tied to a POINTS_WHOLE row. */
 const WHOLE = [
-  { file: 'join.js', text: '_ps.prog3 = _p3Adopted', row: 'join_adopt' },
-  { file: 'migrations.js', text: 'blob.prog3 = prog3FromLegacy(blob)', row: 'migrate_legacy' },
+  { file: 'join.js', fn: '_handleJoin', field: 'prog3', n: 1, row: 'join_adopt', why: '`_ps.prog3 = _p3Adopted`' },
+  { file: 'migrations.js', fn: 'run', field: 'prog3', n: 1, row: 'migrate_legacy', why: '`blob.prog3 = prog3FromLegacy(blob)`' },
 ];
 /* What writes a points-named field that is NOT a player's build points. */
+const CONTROL = 'the power index\'s control: a build made up in memory to measure against (controlBuild), never a player\'s';
 const NOT_POINTS = [
-  { file: 'cadence.js', text: 'draw.pool += amount', why: 'the weekly jackpot\'s gold pool (`jackpot:draw`), not points' },
-  { file: 'power.js', text: 'p3.alloc[k] = n', why: 'the power index\'s control: a build made up in memory to measure against (controlBuild), never a player\'s' },
-  { file: 'power.js', text: 'p3.shared = Math.max(0, p3.shared - spent)', why: 'the same control' },
-  { file: 'power.js', text: 'p3.atk[cat][k] = n', why: 'the same control' },
-  { file: 'power.js', text: 'p3.poolBy[cat] = Math.max(0, p3.poolBy[cat] - lane)', why: 'the same control' },
-  { file: 'power.js', text: 'p3.pool = Math.max(0, p3.pool - lane)', why: 'the same control' },
+  { file: 'cadence.js', fn: '_handleJackpotDeposit', field: 'pool', n: 1, why: 'the weekly jackpot\'s gold pool (`jackpot:draw`), not points' },
+  ...['alloc', 'shared', 'atk', 'poolBy', 'pool'].map((field) => ({ file: 'power.js', fn: 'controlBuild', field, n: 1, why: CONTROL })),
 ];
-const FIELDS = '(?:pool|poolBy|shared|alloc|atk|ppl|spl|unspentT2|buildPointsThisLvl|prog3)';
-const WRITE = new RegExp('\\.' + FIELDS + '\\b(?:\\s*\\[[^\\]\\n]*\\])*\\s*(?:[-+*/%]?=(?!=)|\\+\\+|--)|(?:\\+\\+|--)\\s*[\\w$.]*\\.' + FIELDS + '\\b|\\bdelete\\s+[\\w$.\\[\\]\'"]*\\.' + FIELDS + '\\b', 'g');
+const LISTED = [
+  ...NOT_POINTS, ...WHOLE,
+  ...Object.entries(SHAPERS).flatMap(([fn, sh]) => Object.entries(sh.writes).map(([field, n]) => ({ file: 'prog3.js', fn, field, n, why: sh.why }))),
+];
+const SCAN = { fields: ['pool', 'shared', 'ppl', 'spl', 'unspentT2', 'buildPointsThisLvl', 'prog3'], containers: ['poolBy', 'alloc', 'atk'] };
 {
-  const found = [];
-  const seen = new Set();
-  const shapersSeen = new Set();
-  for (const f of files) {
-    if (f === 'skillpoints.js') continue;
-    const s = code[f];
-    for (const m of s.matchAll(WRITE)) {
-      const line = lineAt(s, m.index);
-      const np = NOT_POINTS.find((a) => a.file === f && line.includes(a.text));
-      if (np) { seen.add(np); continue; }
-      const w = WHOLE.find((a) => a.file === f && line.includes(a.text));
-      if (w) { seen.add(w); continue; }
-      if (f === 'prog3.js') {
-        const fn = fnAt(s, m.index);
-        if (fn && own(SHAPERS, fn)) { shapersSeen.add(fn); continue; }
-      }
-      found.push(f + ':' + lineOf(s, m.index) + ' ' + line.trim().slice(0, 100));
-    }
-  }
-  check('2. no build points are written in server/src but through the skill points\' door (skillpoints.js)', found.length === 0, found);
-  check('2. every NOT_POINTS and WHOLE entry still exists (a stale one is deleted)', seen.size === NOT_POINTS.length + WHOLE.length,
-    [...NOT_POINTS, ...WHOLE].filter((a) => !seen.has(a)).map((a) => a.file + ' ' + a.text));
-  check('2. every SHAPERS function still writes points (a stale one is deleted)', Object.keys(SHAPERS).every((k) => shapersSeen.has(k)), Object.keys(SHAPERS).filter((k) => !shapersSeen.has(k)));
+  const r = doorWrites(raw, { skip: ['skillpoints.js'], ...SCAN, listed: LISTED });
+  check('2. no build points are written in server/src but through the skill points\' door (skillpoints.js), however it is spelled', r.found.length === 0, r.found.map(where));
+  check('2. every NOT_POINTS, WHOLE and SHAPERS place still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
   check('2. every WHOLE entry names a POINTS_WHOLE row, and every row is named once',
     WHOLE.every((w) => own(POINTS_WHOLE, w.row)) && Object.keys(POINTS_WHOLE).every((r) => WHOLE.filter((w) => w.row === r).length === 1));
-  /* the strip and the finder themselves */
-  const probe = strip('function a() {\n  /* p3.pool = 1 */\n  x.pool = 2; // y.shared = 3\n}\n  _m(z) {\n  for (const k of ks) {\n  z.spl = 1;\n');
-  const hits = [...probe.matchAll(WRITE)].map((m) => [lineOf(probe, m.index), fnAt(probe, m.index)]);
-  check('2. ...the scan skips comments and finds a write\'s function (a method too, never a `for`)', JSON.stringify(hits) === '[[3,"a"],[7,"_m"]]', hits);
+  /* the finder itself: a comment is no write, a method's name is its function */
+  const probe = writesOf('function a(p3) {\n  /* p3.pool = 1 */\n  x.pool = 2; // y.shared = 3\n}\nconst o = {\n  _m(z) {\n  for (const k of ks) {\n  z.spl = 1;\n  }\n  },\n};\n', SCAN).map((w) => [w.line, w.fn]);
+  check('2. ...the scan skips comments and finds a write\'s function (a method too, never a `for`)', JSON.stringify(probe) === '[[3,"a"],[8,"_m"]]', probe);
 }
 
 /* ── 3. ONE ROW, ONE PLACE ───────────────────────────────────────────────── */
-/* Every door call (and prog3RespecPoints, the deal's front), its arguments
-   split at the top level (strings and brackets skipped): the road is the
-   third. */
-const CALL = /\b(pointsGive|pointsTake|pointsSet|pointsDeal|prog3RespecPoints)\(/g;
+/* Every door call (and prog3RespecPoints, the deal's front), by any
+   receiver, read off the syntax tree: the road is the third argument. */
 const VERB = { pointsGive: 'give', pointsTake: 'take', pointsSet: 'set', pointsDeal: 'deal', prog3RespecPoints: 'deal' };
-function callsIn(s) {
-  const out = [];
-  for (const m of s.matchAll(CALL)) {
-    const before = s.slice(Math.max(0, m.index - 12), m.index);
-    if (/function\s+$|\.\s*$/.test(before)) continue;   /* its own definition, or a method of something else */
-    const args = [];
-    let i = m.index + m[0].length, depth = 1, q = null, start = i;
-    for (; i < s.length && depth > 0; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
-      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
-      else if (ch === '(' || ch === '{' || ch === '[') depth++;
-      else if (ch === ')' || ch === '}' || ch === ']') { depth--; if (depth === 0) args.push(s.slice(start, i)); }
-      else if (ch === ',' && depth === 1) { args.push(s.slice(start, i)); start = i + 1; }
-    }
-    const lit = args[2] !== undefined ? /^\s*'([A-Za-z0-9_]+)'\s*$/.exec(args[2]) : null;
-    out.push({ fn: m[1], verb: VERB[m[1]], road: lit ? lit[1] : null, raw: (args[2] || '').trim(), at: m.index, line: lineOf(s, m.index) });
-  }
-  return out;
-}
 {
+  const { calls, odd } = doorCalls(raw, { skip: ['skillpoints.js'], names: Object.keys(VERB), road: (args) => args[2] || null });
+  check('3. the door is called plainly, by name (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
   const byRoad = Object.create(null);
   const bad = [];
   const passThrough = [];
-  for (const f of files) {
-    if (f === 'skillpoints.js') continue;
-    for (const c of callsIn(code[f])) {
-      const where = f + ':' + c.line;
-      /* the one call that hands on its caller's road: the deal's front */
-      if (!c.road && f === 'prog3.js' && c.fn === 'pointsDeal' && c.raw === 'road' && fnAt(code[f], c.at) === 'prog3RespecPoints') { passThrough.push(where); continue; }
-      if (!c.road) { bad.push(where + ' ' + c.fn + ' names no road as a plain string (' + c.raw + ')'); continue; }
-      if (!own(POINT_ROADS, c.road)) { bad.push(where + ' names "' + c.road + '", which POINT_ROADS has not got'); continue; }
-      const row = POINT_ROADS[c.road];
-      if (row.verb !== c.verb) bad.push(where + ' ' + c.road + ' is a ' + row.verb + ', called as a ' + c.verb);
-      if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
-      (byRoad[c.road] = byRoad[c.road] || []).push(where);
-    }
+  for (const c of calls) {
+    const where1 = c.file + ':' + c.line;
+    /* the one call that hands on its caller's road: the deal's front */
+    if (!c.road && c.file === 'prog3.js' && c.name === 'pointsDeal' && c.fn === 'prog3RespecPoints' && c.argSrc[2] === 'road') { passThrough.push(where1); continue; }
+    if (!c.road || !/^[A-Za-z0-9_]+$/.test(c.road)) { bad.push(where1 + ' ' + c.name + ' names no road as a plain string'); continue; }
+    if (!own(POINT_ROADS, c.road)) { bad.push(where1 + ' names "' + c.road + '", which POINT_ROADS has not got'); continue; }
+    const row = POINT_ROADS[c.road];
+    if (row.verb !== VERB[c.name]) bad.push(where1 + ' ' + c.road + ' is a ' + row.verb + ', called as a ' + VERB[c.name]);
+    if (row.at.split(' ')[0] !== c.file) bad.push(where1 + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    (byRoad[c.road] = byRoad[c.road] || []).push(where1);
   }
   check('3. every call names a road the table has, with its verb, from its row\'s file', bad.length === 0, bad);
   check('3. ...and one call alone hands on its caller\'s road (pointsDeal in prog3RespecPoints)', passThrough.length === 1, passThrough);
   const none = Object.keys(POINT_ROADS).filter((r) => !byRoad[r]);
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
-  check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
+  check('3. no road has two callers, by any receiver (a second place is a second row)', twice.length === 0, twice);
   check('3. at v2.3.5283: 26 roads, 22 live places and the 4 deals\' callers',
     Object.keys(POINT_ROADS).length >= 26, Object.keys(POINT_ROADS).length);
 }
