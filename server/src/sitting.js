@@ -103,9 +103,9 @@ export function sitOff(room) {
 }
 
 /** A new open card: its stint (the worker's clock), its network. */
-export function sitBlank(stint, asn) {
+export function sitBlank(begun, asn) {
   const s = zeros(SIT.LEN);
-  s[C.t] = pos(stint);
+  s[C.t] = pos(begun);
   s[C.u] = s[C.t];
   s[C.n] = fin(asn) && asn > 0 ? Math.floor(asn) : 0;
   s[C.b] = '';
@@ -191,8 +191,8 @@ export function sitOpen(room, rec, session, now, stintNew) {
     sh.push(cur);
     e.sh = sh.slice(-SIT.KEEP);
   }
-  const stint = typeof stintNew === 'function' ? stintNew(t) : t;
-  e.s = sitBlank(stint, asn);
+  const begun = typeof stintNew === 'function' ? stintNew(t) : t;   /* actor.js stintNext: the id is made there, once */
+  e.s = sitBlank(begun, asn);
   return e.s[C.t];
 }
 

@@ -1581,10 +1581,10 @@ export const combatMethods = {
     // negative on overkill -- otherwise the broadcast hpPct goes < 0
     // and any subsequent code reading m.hp sees a nonsensical value.
     m.hp -= actualDmg;
-    sitHit(this, attackerPs, 'landed');   /* v2.3.6481: ...and landed */
     /* v2.3.4545: an accepted hit, once a shot, for the player's accuracy (accuracy.js): `sn` is the shot's number
        on the phone; a special, a stuck arrow's chip and an older phone carry none */
     this._accHit(session.id, _effSlot, isSpecial, payload.sn);
+    sitHit(this, attackerPs, 'landed');   /* v2.3.6481: ...and landed on the sitting's card (sitting.js), after the accuracy's count (accuracy.test 4f) */
 
     /* v2.3.2481: where the bolt actually landed, read BEFORE the knockback
        below moves the monster — the splash must go off at the impact point,
