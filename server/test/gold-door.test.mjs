@@ -33,6 +33,10 @@
  *      or an escrow books nothing; a payout by the mail books its own class.
  *      BREAK PROOF: `econGold(rec, row.class, d)` removed from _goldGive ->
  *      FAIL 9 (a reward books nothing).
+ *  10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3): every road
+ *      of GOLD_ROADS and every mail word runs on a blank record and a
+ *      carried one; the record's `_econ` and the day's book moved exactly
+ *      what the purse moved (mint, burn) or nothing (move, escrow, a load).
  *
  * A new way to change gold: a row in GOLD_ROADS, one call that names it, and
  * its longhand line in EXPECT below.
@@ -560,6 +564,93 @@ const FORWARDERS = [
   room._goldGive(f, 1, 'quest_reward');
   room._liveFlags = {};
   check('9. with `goldonesum: false` the count is the whole-coin difference (10 -> 11: one)', JSON.stringify(g(f)) === '[1,0]', g(f));
+}
+
+/* ── 10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3) ──────────
+   §9 holds a few roads by hand; a road no case names could book one coin
+   less than it gives and stay green (shape-books.md plant 1: `loot_gold`
+   booking d - 1, the world's sum calls it explained, 16 suites green).  So
+   EVERY road in GOLD_ROADS runs here, by its own verb, on a blank record and
+   on one carrying a purse and a count, for several amounts, with step 2's
+   sum on and off: the record's `_econ` and the day's book (daybook.js `econ`
+   part) moved exactly what the purse moved -- a mint its rise, a burn its
+   fall, a set its signed difference by its class -- and a move, an escrow or
+   a load (GOLD_LOADS) nothing.  The mail road books its CREDIT's class, for
+   every word of MAIL_CLASSES.  With `econ: false` every road moves the same
+   purse and books nothing.
+   BREAK PROOF: `econGold(rec, row.class, road === 'loot_gold' ? d - 1 : d,
+   this)` in _goldGive -> FAIL 10 (loot_gold minted 39 of 40). */
+{
+  const room = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} }, getWebSockets: () => [], acceptWebSocket: () => {} },
+    { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  /* the day's book held in memory: its pace never due, so no put takes the sums away mid-check */
+  const freshBook = () => { room._daybook = { days: new Map(), lastPut: Number.MAX_SAFE_INTEGER, putting: null, prunedDay: null, pruneAfter: null, sizedDay: null }; };
+  const dayG = () => {
+    let mint = 0, burn = 0;
+    for (const d of room._daybook.days.values()) { const g = d.parts.econ && d.parts.econ.g; if (g) { mint += Number(g.mint) || 0; burn += Number(g.burn) || 0; } }
+    return { mint, burn };
+  };
+  const g = (rec) => (rec._econ ? { m: rec._econ.g.m, b: rec._econ.g.b } : { m: 0, b: 0 });
+  const STARTS = [() => ({}), () => ({ coins: 100 }), () => ({ coins: 250.5, _econ: { v: ECON_V, g: { m: 7, b: 3 }, i: Object.create(null) } })];
+  const AMOUNTS = [1, 40, 5000];
+  const call = (road, rec, n, credit) => {
+    const dir = GOLD_ROADS[road].dir;
+    if (dir === 'give') return room._goldGive(rec, n, road, credit);
+    if (dir === 'take') return room._goldTake(rec, n, road);
+    return room._goldSet(rec, (Number(rec.coins) || 0) + (n % 2 ? -n : n), road);   /* a set both ways: up and down */
+  };
+  const bad = [];
+  let runs = 0;
+  const moved = new Set();
+  const run1 = (road, mk, n, oneSum, credit, want) => {
+    room._liveFlags = oneSum ? {} : { goldonesum: false };
+    freshBook();
+    const rec = mk();
+    const before = wholeGold(rec.coins), e0 = g(rec);
+    call(road, rec, n, credit);
+    const d = wholeGold(rec.coins) - before, e1 = g(rec), day = dayG();
+    const got = { m: e1.m - e0.m, b: e1.b - e0.b };
+    const exp = want ? want(d) : { m: 0, b: 0 };
+    runs++; if (d !== 0) moved.add(road);
+    if (got.m !== exp.m || got.b !== exp.b || day.mint !== exp.m || day.burn !== exp.b) {
+      bad.push({ road, start: JSON.stringify(mk()), n, oneSum, opId: credit && credit.opId, purse: d, rec: got, day, want: exp });
+    }
+  };
+  const byClass = (road) => {
+    const row = GOLD_ROADS[road];
+    if (GOLD_LOADS.includes(road)) return null;
+    if (row.class === 'mint') return (d) => ({ m: d, b: 0 });
+    if (row.class === 'burn') return (d) => ({ m: 0, b: -d });
+    return null;   /* a move, an escrow: the world's total did not change */
+  };
+  for (const road of Object.keys(GOLD_ROADS)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) for (const oneSum of [true, false]) run1(road, mk, n, oneSum, undefined, byClass(road));
+  }
+  /* the mail: what landed books its credit's class (gold.js MAIL_CLASSES) on top of the road's own */
+  for (const [word, row] of Object.entries(MAIL_CLASSES)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) {
+      const house = Math.floor(n / 3);
+      const want = (d) => ({ m: row.class === 'mint' ? d : (row.house ? Math.min(d, house) : 0), b: 0 });
+      run1('mail_gold', mk, n, true, { opId: word + ':dg6442:x', payload: { amount: n, house } }, want);
+    }
+  }
+  room._liveFlags = {};
+  check(`10. every road (${Object.keys(GOLD_ROADS).length}) and every mail word (${Object.keys(MAIL_CLASSES).length}) booked exactly what its purse moved: a mint its rise, a burn its fall, a move, an escrow or a load nothing (record and day's book; ${runs} runs)`,
+    bad.length === 0 && runs >= Object.keys(GOLD_ROADS).length * 18, bad.slice(0, 6));
+  const still = Object.keys(GOLD_ROADS).filter((r) => !moved.has(r));
+  check('10. ...and every road moved gold in some run (a road that moved nothing proves nothing)', still.length === 0, still);
+  /* `econ: false`: the same purse, nothing booked */
+  const off = [];
+  for (const road of Object.keys(GOLD_ROADS)) {
+    room._liveFlags = {}; freshBook();
+    const a = { coins: 100 }; call(road, a, 40);
+    room._liveFlags = { econ: false }; freshBook();
+    const b = { coins: 100 }; call(road, b, 40);
+    const day = dayG();
+    if (a.coins !== b.coins || b._econ || day.mint || day.burn) off.push({ road, on: a.coins, off: b.coins, econ: b._econ, day });
+  }
+  room._liveFlags = {};
+  check('10. with `econ: false` every road moves the same purse and books nothing', off.length === 0, off.slice(0, 5));
 }
 
 /* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════

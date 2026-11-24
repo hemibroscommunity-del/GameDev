@@ -25,12 +25,18 @@
  *      hold, the step-1 line exactly for every honest one, and the room's
  *      switch.  §1-5 run with the switch OFF (the step-1 sums).
  *
+ *  (8, 9: the classes and the count, v2.3.5081 and v2.3.5084;)
+ *  10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3): every road
+ *      of BAG_ROADS and every mail word runs on a blank bag and carried ones,
+ *      named or waiting; the record's `_econ.i` and the day's book moved
+ *      exactly what the count moved (mint, burn) or nothing (move, escrow).
+ *
  * A new way to change the bag: a row in BAG_ROADS, one call that names it,
  * and its longhand line in EXPECT below.
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
-import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending } from '../src/bag.js';
+import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending, setBagBook, setBagEcon } from '../src/bag.js';   /* v2.3.6442: + the day's book's hook and the counting's switch (§10) */
 import { ECON_V, MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
@@ -504,6 +510,101 @@ setBagOneSum(true);
   check('9. a replaced bag: its record is learned again at the next save (the count waits beside it)', !pair(r2, 'log_pine') && bagEconPending(r2.inventory).log_pine.m === 2);
   bagEconOwn(r2.inventory, r2);
   check('9. ...and is folded in there', JSON.stringify(pair(r2, 'log_pine')) === '[2,0]');
+}
+
+/* ── 10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3) ──────────
+   §9 holds a few roads by hand; a road no case names could book one less
+   than it gives and stay green (the gold door's shape-books.md plant 1, the
+   same here).  So EVERY road in BAG_ROADS runs, by its own verb, on a blank
+   bag and on bags carrying a count (a fraction too), for several amounts,
+   with step 2's sum on and off, in a bag its record has named and in one
+   whose count waits for its save (then folded in, whole): the record's `_econ.i[key]` (or what
+   waits) and the day's book (the room's hook, setBagBook) moved exactly
+   what the bag's count moved -- a mint its rise, a burn its fall, a set its
+   signed difference by its class -- and a move or an escrow nothing.  The
+   mail road books its CREDIT's class, for every word of MAIL_CLASSES.  With
+   `econ: false` every road moves the same bag and books nothing.
+   BREAK PROOF: `econBag(bag, k, row.class, road === 'cook_recipe' ? d - 1 :
+   d)` in bagGive -> FAIL 10. */
+{
+  const K = 'ore_copper';
+  const day = Object.create(null);
+  setBagBook((cls, k, amt) => { const p = day[k] || (day[k] = { mint: 0, burn: 0 }); p[cls] += amt; });
+  const STARTS = [() => ({}), () => ({ [K]: 9 }), () => ({ [K]: 2.5, log_pine: 1 })];
+  const AMOUNTS = [1, 4, 500];
+  const call = (road, bag, n, credit) => {
+    const row = BAG_ROADS[road];
+    if (row.dir === 'give') return bagGive(bag, K, n, road, row.cap ? 12 : undefined, credit);
+    if (row.dir === 'take') return bagTake(bag, K, n, road);
+    return bagSet(bag, K, bagCount(bag, K) + (n % 2 ? -n : n), road);   /* a set both ways: up and down */
+  };
+  const pairOf = (into) => (into && into[K] ? { m: into[K].m, b: into[K].b } : { m: 0, b: 0 });
+  const bad = [];
+  let runs = 0;
+  const moved = new Set();
+  const run1 = (road, mk, n, oneSum, named, credit, want) => {
+    setBagOneSum(oneSum);
+    for (const k of Object.keys(day)) delete day[k];
+    const bag = mk();
+    const rec = { inventory: bag };
+    if (named === 'carried') rec._econ = { v: ECON_V, g: { m: 0, b: 0 }, i: Object.assign(Object.create(null), { [K]: { m: 5, b: 1 } }) };
+    if (named) bagEconOwn(bag, rec);
+    const read = () => (named ? pairOf(rec._econ && rec._econ.i) : pairOf(bagEconPending(bag)));
+    const before = bagCount(bag, K), e0 = read();
+    call(road, bag, n, credit);
+    const d = bagCount(bag, K) - before, e1 = read();
+    const got = { m: e1.m - e0.m, b: e1.b - e0.b };
+    const bk = day[K] || { mint: 0, burn: 0 };
+    const exp = want ? want(d) : { m: 0, b: 0 };
+    runs++; if (d !== 0) moved.add(road);
+    if (got.m !== exp.m || got.b !== exp.b || bk.mint !== exp.m || bk.burn !== exp.b) {
+      bad.push({ road, start: JSON.stringify(mk()), n, oneSum, named, opId: credit && credit.opId, count: d, rec: got, day: bk, want: exp });
+    }
+    if (!named) {   /* what waited is folded into the record at its save, whole */
+      const r2 = { inventory: bag };
+      bagEconOwn(bag, r2);
+      const f = pairOf(r2._econ && r2._econ.i);
+      if (f.m !== e1.m || f.b !== e1.b || Object.keys(bagEconPending(bag)).length) bad.push({ road, n, oneSum, fold: f, waited: e1 });
+    }
+  };
+  const byClass = (road) => {
+    const row = BAG_ROADS[road];
+    if (row.class === 'mint') return (d) => ({ m: d, b: 0 });
+    if (row.class === 'burn') return (d) => ({ m: 0, b: -d });
+    return null;   /* a move, an escrow: the world's total did not change */
+  };
+  for (const road of Object.keys(BAG_ROADS)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) for (const oneSum of [true, false]) for (const named of ['blank', 'carried', null]) {
+      run1(road, mk, n, oneSum, named, undefined, byClass(road));
+    }
+  }
+  /* the mail: what landed books its credit's class (gold.js MAIL_CLASSES) on top of the road's own */
+  for (const [word, row] of Object.entries(MAIL_CLASSES)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) {
+      const house = Math.floor(n / 3);
+      const want = (d) => ({ m: row.class === 'mint' ? d : (row.house ? Math.min(d, house) : 0), b: 0 });
+      run1('mail_item', mk, n, true, 'blank', { opId: word + ':dg6442:x', payload: { invKey: K, count: n, house } }, want);
+    }
+  }
+  setBagOneSum(true);
+  check(`10. every road (${Object.keys(BAG_ROADS).length}) and every mail word (${Object.keys(MAIL_CLASSES).length}) booked exactly what its count moved: a mint its rise, a burn its fall, a move or an escrow nothing (record, what waits, the day's book; ${runs} runs)`,
+    bad.length === 0 && runs >= Object.keys(BAG_ROADS).length * 54, bad.slice(0, 6));
+  const still = Object.keys(BAG_ROADS).filter((r) => !moved.has(r));
+  check('10. ...and every road moved its count in some run (a road that moved nothing proves nothing)', still.length === 0, still);
+  /* `econ: false`: the same bag, nothing booked */
+  const off = [];
+  for (const road of Object.keys(BAG_ROADS)) {
+    for (const k of Object.keys(day)) delete day[k];
+    setBagEcon(true);
+    const a = { [K]: 9 }; call(road, a, 4);
+    for (const k of Object.keys(day)) delete day[k];
+    setBagEcon(false);
+    const b = { [K]: 9 }; const rb = { inventory: b }; bagEconOwn(b, rb); call(road, b, 4);
+    if (JSON.stringify(a) !== JSON.stringify(b) || rb._econ || Object.keys(day).length) off.push({ road, on: a, off: b, econ: rb._econ, day: { ...day } });
+  }
+  setBagEcon(true);
+  setBagBook(null);
+  check('10. with `econ: false` every road moves the same bag and books nothing', off.length === 0, off.slice(0, 5));
 }
 
 /* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════
