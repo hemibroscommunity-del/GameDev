@@ -1,28 +1,28 @@
 card: BK
-branch: claude/plan-bk-6-roads (6465, stacked on claude/plan-bk-4-levers 6463: one merge base; main 43541e5f in)
-prs: #2278 6460, #2281 6461, #2289 6464, #2299 6462 (merged); #2301 6463 (mended), #2309 6465: ready
+branch: claude/plan-bk-mend61 (6467: sitting 61's hold on #2326), on claude/plan-bk-debts59 (6466)
+prs: #2278 6460, #2281 6461, #2289 6464, #2299 6462, #2301 6463, #2309 6465 (merged); #2326 6466: held; 6467: ready
 state: ready
 
 ## Done
 
 - 6460, 6461, 6464, 6462: merged (sittings 56 to 58).
-- 6463 (PR 4): LEVERS marks fee, hold, pace `wired: false` (playerroads.js).
-  Sitting 58's hold mended as a class: road-levers follows the table's value
-  binding by binding (the table's file included) and FAILS a use it cannot
-  follow; the review's six spellings and BK's own red in a scratch copy and
-  in its §5 (sixteen plants, three honest uses quiet).
-- 6465 (item 5, sitting 57's review): chaos-restart §7 sweeps the AH WEAPON
-  listing as a second way into the store/list row (`ALSO`); world-sum's
-  `piecesHeld` and chaos-restart's `held()` compare id sets. Plants, green
-  on the old suites, red now: store.js:815 `await this._saveRpg(...)` (axe
-  lost); gear.js:819 the swap's put-back `Object.assign({}, activeItem,
-  { gid: undefined })` (one id lost, one came). The review's line 814
-  (`stashItem`) is red today already by its step's own check. Tests only:
-  the merge deploys the worker, no behaviour changed.
+- 6463 (PR 4): LEVERS marks fee, hold, pace `wired: false`; road-levers
+  follows the table's value through the syntax tree. 6465: chaos-restart §7
+  and world-sum compare the weapon listing's pieces by id (sitting 59: red).
+- 6466 (sitting 59's debts on #2301): road-levers names every place its
+  scan stops (THE STOPS, NAMED); lost is red; sitting 59's four green
+  spellings and BK's two each red now; 31 plants; 16 mutants die.
+- 6467 (sitting 61's hold on #2326: red beside PH's #2279, whose worker
+  imports `../../src/game/switches.js`): road-levers resolves an import
+  that leaves server/src on the disk and scans the file it reaches, and
+  its imports in turn; what it cannot place stays lost (red). Green on
+  main's tree (it reads switches.js); 12 tree plants red, the 31 and the
+  six spellings still red; 15 mutants die. A guard only: no deploy.
 
 ## Next
 
-- #2301, then #2309 (built on it): the gatekeeper's list.
+- 6467 with 6466 beneath it: the gatekeeper's list, as one line. The card
+  is then done.
 
 ## Found
 
@@ -35,4 +35,3 @@ state: ready
 ## Needs
 
 - Call 5 (the sword's reach) and a staff's-judge card: not this card's.
-- The orchestrator's word on #2301's files outside the card (asked once).
