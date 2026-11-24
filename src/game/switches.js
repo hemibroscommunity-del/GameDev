@@ -160,7 +160,7 @@ const FORMS = {
   'legsync': '0',
   'lightfx': '*',
   'login': '1',
-  'loginspin': '0',
+  'loginspin': '*',
   'lookatlas': '0',
   'lookform': '0',
   'lookinline': '',

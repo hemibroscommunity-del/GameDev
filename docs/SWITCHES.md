@@ -690,7 +690,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?guest` | page | lever | v2.3.1116 |  | =1 | none |  | no | This tab plays as a fresh guest with its own id. |
 | `?jumpicon` | page | value | v2.3.3721 |  | a glyph's name | logic |  | no | Picks the jump button's glyph. |
 | `?login` | page | lever | v2.3.1839 |  | =1 | none |  | no | Shows the login door. |
-| `?loginspin` | page | switch | v2.3.4295 | 2026-11-05 | =0 | logic |  | no | The login wheel does not open by itself (its button still opens it). |
+| `?loginspin` | page | switch | v2.3.4295 | 2026-11-24 (v2.3.6560) | =1 (the offer at login comes back), =0 (never by itself: the default; the harness passes it) | logic |  | no | v2.3.6560: the login wheel offers itself once after login again, as before (closed without a spin it waits for its button; the default, and `=0`: it never opens by itself, its button at the right of the top bar is the way in). |
 | `?nomapdetail` | page | switch | v2.3.3319 | 2026-10-17 | present | memory |  | no | No detail tiles on the world map. |
 | `?noresume` | page | lever | v2.3.781 |  | =1 | none |  | no | Does not walk back into the world on load. |
 | `?npcprox` | page | switch | v2.3.3583 | 2026-10-23 | present | logic |  | no | Walking up to a townsperson opens them again (the old opener), to compare. |

@@ -1,50 +1,39 @@
 card: PH
-branch: claude/plan-ph-4-governor (stacked on claude/plan-ph-6-debtgate, #2314)
-prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (6501), #2297 (6502), #2306 (6504): test green, heads sent; #2314 (PR 6, 6505, draft, head 72accffe); PR 4 (6503): this branch, no PR
-state: stopped, part 6 handed over (memory past 250k; orchestrator part 7, session_01LccHaiJdAe8MAz1LJHMztf). This branch (PR 4) pushed as a BACKUP, no PR, precheck NOT run on it.
+branch: the stack, bottom to top: claude/plan-ph-1-report, -2-memalarm, -3-membudget, -5-heaptrend, -6-debtgate, -4-governor (this file is the same on each)
+prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504), #2314 (PR 6, 6505, draft); PR 4 (6503) on claude/plan-ph-4-governor, its PR not yet open
+state: working (part 7, session_01LccHajroDM6poawzQHuBhV): sitting 58's mends of #2279 and #2291 merged up the stack, one push a branch; then PR 4's membudget question, its precheck, its PR
 
 ## Done
-- PR 1 (6500) #2279: heat, the board, the ramps; sitting 57 mended.
-- PR 2 (6501) #2291: the memory alarm on the game's own total, 120 MB
-  (DECIDED FOR THE OWNER WHILE AWAY; `?memalarm=0`).
-- PR 3 (6502) #2297: lines + TOTAL 216.0. PR 5 (6504) #2306: --heap.
-- PR 6 (6505): the gate's held sample (stand, town, ride; the sweep's
-  unminified build) and gate-steps.test (new files approved, orchestrator
-  part 5, 03:30); screen-check mended in the test (rider's own browser,
-  peer 6.5 ms, was 281-307); `server-message` a NEW named debt row (17
-  ms, ours; orchestrator part 5's call; reopens step 3.1) + its row in
-  held-sweep.md's table (7b4); mp-skateboard on the game's clock (at 6:
-  old 28/30, mended 30/30; census/PH-phone.md). Lands AFTER CK's #2305
-  and #2307 (open at 04:55 UTC); origin/main (b966af81) merged.
+- Sitting 58 (review-z58) on #2279, mended (part 6): report.test 15.9 and 15.10; its three plants red, tried by hand 2026-11-24. 148 passed (test box). #2279's words updated for sitting 58 (part 7).
+- Sitting 58 (review-z58) on #2291, mended (part 6): frame-pacer.test 23j, the page's pacer reading its own address (`?memalarm=0`); both plants red, tried by hand 2026-11-24.
+- PR 2 (6501) #2291: the memory alarm on the game's own total (MEM_ALARM
+  MB 120, test box; DECIDED FOR THE OWNER WHILE AWAY; `?memalarm=0`).
+- PR 3 (6502) #2297: the seven lines + TOTAL 216.0. PR 5 (6504) #2306: --heap.
+- PR 6 (6505) #2314 (draft): the gate's held sample (stand, town, ride),
+  gate-steps.test; screen-check mended in the test; `server-message` a
+  named debt row; mp-skateboard on the game's clock. Lands AFTER CK's
+  #2305 and #2307.
+- PR 4 (6503), on its branch: the cooling margin (COOL_MARGIN 8%;
+  `?govcool=0`), the screen's beat held (keptBeat; `?beathold=0`),
+  frame-pacer.test §24 (the heat model); a phone at 1.5 (renderRes.js
+  PHONE_RES; `?phoneres=0`); `?shine=0|1`. `playable` passed on it.
 
 ## Next
-- PR 4 (6503), the governor, IN CODE on this branch (not pushed yet):
-  the cooling margin (COOL_MARGIN 8%, the ladder and a fast screen's own
-  rate; `?govcool=0`), the screen's beat held (keptBeat; `?beathold=0`),
-  frame-pacer.test §24 (the heat model; break proof 24d and four by hand);
-  a phone at 1.5 (renderRes.js PHONE_RES; never lower; `?phoneres=0`;
-  render-res §7); `?shine=0|1` pins (ladder-passes §7); census readings.
-  The shine's place: (A) rate first, shine second, as today (orchestrator
-  part 6, 05:39); shine on by default; the comparison in census/PH-phone.md.
-  Files outside the card approved by part 6's 05:51 message (name it in
-  the PR's words). PR words drafted (part 6's scratchpad, lost: rewrite).
-  Left for the next part: precheck, the whole server suite; membudget on
-  PR 4 (test box) read heap 41.4 > 40 and buffers 24.9 > 24.8: run
-  claude/plan-ph-6-debtgate without PR 4 to see whether they are PR 4's;
-  questline's run was not read. Then merge the stack up (#2297, #2306,
-  #2314 after #2279 and #2291's sitting-58 mends) and open PR 4.
+- PR 4: membudget read heap 41.4 > 40 and buffers 24.9 > 24.8 on the test
+  box; one run of claude/plan-ph-6-debtgate WITHOUT PR 4 (a helper) says
+  whether they are PR 4's. Then precheck, push, open its PR.
+- PR 4's words name: phone sharpness 1.5 (the owner: "1.5 looks fine
+  nothing below that"); shine ON by default with `?shine=0|1` (decided for
+  the owner while away, the orchestrator's); the ladder's order stays
+  today's (rate first), the owner's to change; the files outside the card
+  approved by the orchestrator (part 6, 05:51 UTC 11-24).
+- #2306's `playable` timed out at sitting 58: a second timeout is a hold.
 
 ## Found
-- maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
-- `portrait` 21.7 ms > 12 at the sweep's armour (off the list since 5042).
-- `server-message` (new row, ours): src/networking/wsClient.js ws.onmessage
-  and what it hands on (census/HB-holds.md row 15).
-- lane `thirty` read on a phone drawing 45 (Low Power off): mended in PR 4
-  (keptBeat: missed frames are no slower screen).
-- The Speed test (src/game/speedTest.js, not this card's): every row that
-  turns something off reads slower than "Everything on" on the owner's
-  card at 1.5, yet it prints savings from them; no 1.5 or 1 row; at the
-  1.5 default its "2x, not 3x" row changes nothing (census/PH-phone.md).
+- src/rendering/maskedEvict.js's header still says the memory rung is
+  "the report's count over the memory check's lines" (not my card's file).
+- The 30-bot crowd fight cannot be read on the test box (census/PH-phone.md).
 
 ## Needs
+- The owner's five minutes (call 1): PR 4's order of rungs (today's order kept until then).
 - The owner's word on the alarm's level (call 3): decided while away, 120.
