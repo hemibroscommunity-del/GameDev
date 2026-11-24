@@ -573,6 +573,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `quiet` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Un-advertises the quiet phone: each phone as before from its next join. |
 | `refusejoined` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A refused session is dropped only, not taken out of the world. |
 | `rejoinresend` | worker | switch | v2.3.4382 | 2026-11-10 | false | logic |  | no | No re-sends after state_sync, the cap un-advertised. |
+| `sitting` | worker | switch | v2.3.6481 | 2026-11-23 | false | logic |  | no | No sitting's card is opened, closed or counted (what a record holds is kept as it is), the actor's `stint` is one a socket again, and the cap `sitting` is not advertised. |
 | `takeoverlinger` | worker | switch | v2.3.4432 | 2026-11-10 | false | logic |  | no | A second login takes over a body in a fight as before, rebuilt where the new phone says. |
 | `takeoversave` | worker | switch | v2.3.4377 | 2026-11-10 | false | logic |  | no | A second join of the same character does not save what a close would. |
 
