@@ -12,18 +12,31 @@
  *      before or after the gap are not counted;
  *   5. the count wanted: one ping a THAW.PING_MS, less one at an edge, at
  *      least one;
- *   6. the page wires it (wsClient.js, read by system): the pings handed to
- *      the judge, the gap noted and judged a SETTLE beat later, and only the
- *      forced rejoin skipped for a carried gap (the rest of the return runs);
- *      `?thawjudge=0` judges nothing: every gap rejoins at once, main's
- *      path as before (the planning session, sitting 54's note);
- *   7. the judge: once, a beat on, on the offset as found; off; no clock.
+ *   6. the page wires it (wsClient.js, its SYNTAX TREE: tools/guards/lib/
+ *      renderTables.mjs's babel): one judge on the worker's clock, each
+ *      ping's time handed to it, and the decision NOT in wsClient: the alive
+ *      timer's one thawBeat call (its resume handing the judge's gap and
+ *      verdict straight to _resumeRecover), the open socket's one thawResume
+ *      call (its own `carried`, untouched, and the rejoin its effect);
+ *      `?thawjudge=0` judges nothing: every gap rejoins at once, main's path
+ *      as before (the planning session, sitting 54's note);
+ *   7. the judge: once, a beat on, on the offset as found; off; no clock;
+ *   8. the road PLAYED (sitting 57's hold: "nothing plays pings missing ->
+ *      the gap handed on -> _forceRejoin"): a page of beats on a fake clock,
+ *      fake pings, thawBeat and thawResume as wsClient wires them, a spy for
+ *      the rejoin: a gap carried, none; pings missing, exactly one, a beat
+ *      on; a slow page's many gaps; the kept list's cap; the switch off; a
+ *      short gap.
  * BREAK PROOF (rule 8), tried by hand once: thawCarried returning true for
- * an unknown clock -> FAIL 3; `carried === true` dropped from the rejoin's
- * branch in wsClient.js -> FAIL 6; `?thawjudge=0`'s at-once path dropped -> FAIL 6.
+ * an unknown clock -> FAIL 3; sitting 57's three plants and card LF's two
+ * (the PR's "Plants"): every verdict made carried after due() -> FAIL 8;
+ * the rejoin behind `carried` -> FAIL 8 (in wsClient's if: FAIL 6); KEEP's
+ * shift dropped -> FAIL 8; `?thawjudge=0` noting instead of rejoining at
+ * once -> FAIL 8; the ping not handed to the judge -> FAIL 6.
  */
 import { readSystem } from '../../tools/guards/lib/filesOf.mjs';
-import { THAW, thawCarried, thawPingsWanted, makeThawJudge } from '../../src/game/thawCarried.js';
+import { babel } from '../../tools/guards/lib/renderTables.mjs';
+import { THAW, thawCarried, thawPingsWanted, makeThawJudge, thawBeat, thawResume } from '../../src/game/thawCarried.js';
 
 let passed = 0, failed = 0;
 const check = (name, ok, detail) => {
@@ -84,19 +97,121 @@ check('5. a ping each THAW.PING_MS, less one at an edge, at least one',
 check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enough pings for a long gap',
   THAW.SETTLE_MS >= 1000 && THAW.KEEP * 2000 >= 60000, THAW);
 
-// ── 6. the page wires it (read by system: tools/guards/lib/filesOf.mjs) ──
+// ── 6. the page wires it: wsClient's syntax tree (its files by system: tools/guards/lib/filesOf.mjs) ──
 {
-  const src = [...readSystem('wire', { only: /\.js$/ }).values()].join('\n');
-  check('6. the connection makes one judge on the worker\'s clock', /import \{ makeThawJudge \} from '@\/game\/thawCarried\.js'/.test(src) && /var _thaw = makeThawJudge\(workerClock\);/.test(src));
-  check('6. each ping\'s worker time is handed to it', /_thaw\.ping\(msg\.ts\);/.test(src));
-  check('6. a gap over RESYNC_AWAY_MS is noted, not rejoined at once; `?thawjudge=0` takes main\'s path, rejoined at once',
-    /if \(gap > RESYNC_AWAY_MS && [^\n]*\) \{ if \(sw\('thawjudge'\)\) \{ try \{ _resumeRecover\('thaw', gap\); \} catch \(e\) \{[^}\n]*\} \} else _thaw\.gap\(now, gap\); \}/.test(src)
-      && (src.match(/_resumeRecover\('thaw', gap\)/g) || []).length === 1);
-  check('6. ...judged a beat later, `?thawjudge=0` judging nothing (every gap rejoins, as before), and handed on as `carried`',
-    /var _td = _thaw\.due\(now, sw\('thawjudge'\)\);/.test(src) && /_resumeRecover\('thaw', _td\.gap, _td\.carried\)/.test(src));
-  check('6. only the forced rejoin is skipped for a carried gap',
-    /_awayMs > RESYNC_AWAY_MS && carried === true\) \{ _thaw\.count\('carried'\);[^\n]*\n\s*\} else if \(ws\.readyState === 1 && _awayMs > RESYNC_AWAY_MS\) \{/.test(src)
-      && /_forceRejoin\('resume-resync'/.test(src));
+  const wire = readSystem('wire', { only: /\.js$/ });
+  const wsFile = [...wire.keys()].find((f) => /networking\/wsClient\.js$/.test(f));
+  const { parse, traverse } = babel();
+  const ast = parse(wire.get(wsFile), { sourceType: 'module', plugins: ['jsx'] });
+  const isId = (n, name) => !!n && n.type === 'Identifier' && (name === undefined || n.name === name);
+  const isStr = (n, v) => !!n && n.type === 'StringLiteral' && n.value === v;
+  const isMember = (n, obj, prop) => !!n && n.type === 'MemberExpression' && !n.computed && isId(n.object, obj) && isId(n.property, prop);
+  const calleeName = (c) => (isId(c.callee) ? c.callee.name : null);
+  const ownBlock = (p) => p.parentPath && p.parentPath.isExpressionStatement() ? p.parentPath.parentPath : null;
+  const imported = new Set();
+  const calls = Object.create(null);   /* callee name -> [path] */
+  const thawUses = [];                 /* every reference to _thaw but its declaration */
+  let judgeDecl = null;
+  traverse(ast, {
+    ImportDeclaration(p) { if (p.node.source.value === '@/game/thawCarried.js') for (const s of p.node.specifiers) imported.add(s.local.name); },
+    VariableDeclarator(p) { if (isId(p.node.id, '_thaw')) judgeDecl = p.node; },
+    CallExpression(p) {
+      const n = calleeName(p.node) || (p.node.callee.type === 'MemberExpression' && isId(p.node.callee.object) && isId(p.node.callee.property) ? p.node.callee.object.name + '.' + p.node.callee.property.name : null);
+      if (n) (calls[n] || (calls[n] = [])).push(p);
+    },
+    Identifier(p) { if (p.node.name === '_thaw' && !p.parentPath.isVariableDeclarator()) thawUses.push(p); },
+  });
+  const one = (name) => (calls[name] || []).length === 1 ? calls[name][0] : null;
+
+  check('6. wsClient imports the judge, the beat and the resume from game/thawCarried.js',
+    ['makeThawJudge', 'thawBeat', 'thawResume'].every((n) => imported.has(n)), [...imported]);
+  check('6. the connection makes one judge on the worker\'s clock',
+    !!judgeDecl && judgeDecl.init && judgeDecl.init.type === 'CallExpression' && isId(judgeDecl.init.callee, 'makeThawJudge')
+      && judgeDecl.init.arguments.length === 1 && isId(judgeDecl.init.arguments[0], 'workerClock') && (calls.makeThawJudge || []).length === 1);
+
+  /* each ping's worker time, unconditionally, in the block that samples the worker's clock with it */
+  const pingCall = one('_thaw.ping');
+  const pingBlock = pingCall && ownBlock(pingCall);
+  check('6. each ping\'s worker time is handed to the judge, in the block that samples the worker\'s clock',
+    !!pingBlock && pingBlock.isBlockStatement() && pingCall.node.arguments.length === 1 && isMember(pingCall.node.arguments[0], 'msg', 'ts')
+      && pingBlock.node.body.some((st) => {
+        if (st.type !== 'IfStatement') return false;
+        let x = st.test; while (x.type === 'LogicalExpression') x = x.left;   /* `workerClock.sample(msg.ts, ...) && ...` */
+        return x.type === 'CallExpression' && isMember(x.callee, 'workerClock', 'sample') && isMember(x.arguments[0], 'msg', 'ts');
+      }),
+    { pings: (calls['_thaw.ping'] || []).length });
+
+  /* the decision is the module's: wsClient never asks the judge itself */
+  const thawRoles = thawUses.map((p) => {
+    if (p.parentPath.isMemberExpression() && p.parentPath.node.object === p.node) return 'judge.' + (p.parentPath.node.property.name || '?');
+    if (p.parentPath.isCallExpression() && p.parentPath.node.arguments[0] === p.node) return calleeName(p.parentPath.node) + '(judge)';
+    return 'other';
+  });
+  check('6. wsClient keeps calls, not the decision: the judge reached only by ping, thawBeat and thawResume',
+    thawRoles.slice().sort().join(',') === 'judge.ping,thawBeat(judge),thawResume(judge)', thawRoles);
+
+  /* the alive timer: one thawBeat, a statement of its own body no return stands before */
+  const beat = one('thawBeat');
+  const beatStmt = beat && beat.parentPath.isExpressionStatement() ? beat.parentPath : null;
+  const timerFn = beatStmt && beatStmt.parentPath.parentPath;
+  const timerCall = timerFn && timerFn.parentPath;
+  const isTimer = !!timerCall && timerCall.isCallExpression() && isId(timerCall.node.callee, 'setInterval') && timerCall.parentPath.isVariableDeclarator() && isId(timerCall.parentPath.node.id, '_aliveTimer');
+  let returnsBefore = 0;
+  if (isTimer) {
+    const body = timerFn.get('body.body');
+    for (const st of body.slice(0, body.findIndex((x) => x.node === beatStmt.node))) {
+      if (st.isReturnStatement()) returnsBefore++;
+      st.traverse({ ReturnStatement() { returnsBefore++; }, Function(q) { q.skip(); } });
+    }
+  }
+  const [bJudge, bEnv, bFx] = beat ? beat.node.arguments : [];
+  const prop = (o, k) => o && o.type === 'ObjectExpression' ? (o.properties.find((x) => isId(x.key, k)) || {}).value : undefined;
+  const off = prop(bEnv, 'off');
+  const envOk = isId(bJudge, '_thaw') && isId(prop(bEnv, 'now'), 'now') && isId(prop(bEnv, 'gap'), 'gap') && isId(prop(bEnv, 'awayMs'), 'RESYNC_AWAY_MS')
+    && !!off && off.type === 'CallExpression' && isId(off.callee, 'sw') && isStr(off.arguments[0], 'thawjudge')
+    && !!prop(bEnv, 'visible') && prop(bEnv, 'visible').type === 'LogicalExpression';
+  check('6. the alive timer\'s one thawBeat, every beat (no return before it), on its own now and gap, `?thawjudge=0` its switch',
+    isTimer && returnsBefore === 0 && envOk, { isTimer, returnsBefore, envOk });
+  /* ...its resume hands the judge's gap and verdict, untouched, to _resumeRecover('thaw', ...) */
+  const res = prop(bFx, 'resume');
+  let resOk = false;
+  if (res && res.type === 'FunctionExpression' && res.params.length === 2 && res.params.every((x) => isId(x))) {
+    const [g, c] = res.params.map((x) => x.name);
+    const rc = [], writes = [];
+    const resPath = beat.get('arguments')[2].get('properties').find((q) => isId(q.node.key, 'resume')).get('value');
+    resPath.traverse({
+      CallExpression(q) { if (isId(q.node.callee, '_resumeRecover')) rc.push(q.node); },
+      AssignmentExpression(q) { if (isId(q.node.left)) writes.push(q.node.left.name); },
+      UpdateExpression(q) { if (isId(q.node.argument)) writes.push(q.node.argument.name); },
+    });
+    resOk = rc.length === 1 && rc[0].arguments.length === 3 && isStr(rc[0].arguments[0], 'thaw') && isId(rc[0].arguments[1], g) && isId(rc[0].arguments[2], c)
+      && !writes.includes(g) && !writes.includes(c);
+  }
+  check('6. ...its resume hands the judge\'s gap and verdict, untouched, to _resumeRecover(\'thaw\', gap, carried), the only thaw resume',
+    resOk && (calls._resumeRecover || []).filter((p) => isStr(p.node.arguments[0], 'thaw')).length === 1);
+
+  /* the open socket: one thawResume, in _resumeRecover, on its own `carried`, the rejoin its effect */
+  const rs = one('thawResume');
+  const fn = rs && rs.getFunctionParent();
+  const recover = fn && rs.findParent((q) => q.isFunctionDeclaration() && isId(q.node.id, '_resumeRecover'));
+  const carriedB = recover && recover.scope.getBinding('carried');
+  const a = rs ? rs.node.arguments : [];
+  const rejoinFn = a[4];
+  const rejoinOk = !!rejoinFn && rejoinFn.type === 'FunctionExpression' && rejoinFn.body.body.length === 1 && rejoinFn.body.body[0].type === 'ExpressionStatement'
+    && rejoinFn.body.body[0].expression.type === 'CallExpression' && isId(rejoinFn.body.body[0].expression.callee, '_forceRejoin') && isStr(rejoinFn.body.body[0].expression.arguments[0], 'resume-resync');
+  check('6. _resumeRecover\'s one thawResume: its own `carried` (a parameter nothing writes, read only there), away past RESYNC_AWAY_MS, the rejoin its effect',
+    !!recover && recover.node.params.map((x) => x.name).join(',') === 'tag,awayMs,carried' && !!carriedB && carriedB.kind === 'param'
+      && carriedB.constantViolations.length === 0 && carriedB.referencePaths.length === 1 && carriedB.referencePaths[0].node === a[3]
+      && isId(a[0], '_thaw') && isId(a[1], '_awayMs') && isId(a[2], 'RESYNC_AWAY_MS') && rejoinOk
+      && (calls._forceRejoin || []).filter((p) => isStr(p.node.arguments[0], 'resume-resync')).length === 1,
+    { recover: !!recover, rejoinOk });
+  /* ...unconditional in the open socket's branch, whose test asks the socket only */
+  const rsBlock = rs && ownBlock(rs);
+  const rsIf = rsBlock && rsBlock.parentPath;
+  const t = rsIf && rsIf.isIfStatement() ? rsIf.node.test : null;
+  check('6. ...a statement of the open socket\'s branch, its test `ws.readyState === 1` and nothing else (no verdict asked there)',
+    !!t && rsIf.node.consequent === rsBlock.node && t.type === 'BinaryExpression' && t.operator === '===' && isMember(t.left, 'ws', 'readyState')
+      && t.right.type === 'NumericLiteral' && t.right.value === 1, t && t.type);
 }
 
 // ── 7. the judge ──
@@ -119,6 +234,90 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
   check('7. no ping clock yet: not carried', k.due(20000, false).carried === false);
   j.count('carried');
   check('7. count(\'carried\') and the probe\'s stats', j.stats().carried === 1 && typeof j.stats().last === 'object');
+}
+
+// ── 8. the road PLAYED: beats on a fake clock, fake pings, a spy for the rejoin ──
+{
+  const AWAY = 5000;   /* wsClient's RESYNC_AWAY_MS */
+  /* a page as wsClient wires it: the alive timer's beat calls thawBeat; its
+     resume is _resumeRecover's open socket (awayMs: the thaw's own measure,
+     the frozen time being ~0 a beat after the gap), which calls thawResume
+     with a spy for _forceRejoin('resume-resync') */
+  const page = ({ off = false, known = true } = {}) => {
+    const judge = makeThawJudge({ offset: () => OFF, known: () => known });
+    const pg = { judge, now: 0, last: 0, rejoins: [], resumes: [], maxKept: 0 };
+    pg.resume = (g, c) => { pg.resumes.push({ g, c, at: pg.now }); thawResume(judge, g, AWAY, c, () => pg.rejoins.push(pg.now)); };
+    pg.ping = (pageT) => { judge.ping(pageT + OFF); pg.maxKept = Math.max(pg.maxKept, judge.stats().kept); };
+    pg.beat = (t) => { pg.now = t; const gap = t - pg.last; pg.last = t; return thawBeat(judge, { now: t, gap, visible: true, off, awayMs: AWAY }, { resume: pg.resume }); };
+    /* play to `t`, a beat a second and a ping every 2 s, on time */
+    pg.play = (t) => { for (let x = pg.now + 1000; x <= t; x += 1000) { if (x % 2000 === 0) pg.ping(x); pg.beat(x); } };
+    /* a freeze of `ms`: no beats; the pings sent inside it handled late (`carried`) or never */
+    pg.freeze = (ms, carried) => {
+      const from = pg.now, to = from + ms;
+      const late = [];
+      for (let x = from + 1; x <= to; x++) if (x % 2000 === 0) late.push(x);
+      const did = pg.beat(to);
+      if (carried) for (const x of late) pg.ping(x);
+      return did;
+    };
+    return pg;
+  };
+
+  { const pg = page();
+    pg.play(20000);
+    const did = pg.freeze(12000, true);
+    pg.play(45000);
+    check('8. a 12 s gap the socket carried (its pings handled late): noted, judged a beat on, carried: no rejoin',
+      did === 'noted' && pg.rejoins.length === 0 && pg.judge.stats().carried === 1 && pg.resumes.length === 1 && pg.resumes[0].c === true && pg.resumes[0].at === 33000,
+      { did, rejoins: pg.rejoins, resumes: pg.resumes, stats: pg.judge.stats() }); }
+
+  { const pg = page();
+    pg.play(20000);
+    pg.freeze(12000, false);
+    check('8. a 12 s gap with its pings missing: no rejoin in the gap\'s own beat', pg.rejoins.length === 0);
+    pg.play(33000);
+    check('8. ...handed on a beat later, not carried: exactly one rejoin', pg.rejoins.length === 1 && pg.rejoins[0] === 33000 && pg.resumes[0].c === false,
+      { rejoins: pg.rejoins, resumes: pg.resumes });
+    pg.play(90000);
+    check('8. ...and only one, the page playing on', pg.rejoins.length === 1 && pg.judge.stats().rejoined === 1 && pg.judge.stats().carried === 0, pg.judge.stats()); }
+
+  { const pg = page();
+    pg.play(10000);
+    const gaps = [6000, 9000, 14000, 30000, 7000, 21000, 16000, 12000, 18000, 8000];
+    for (let r = 0; r < 2; r++) for (const g of gaps) { pg.freeze(g, true); pg.play(pg.now + 2000); }
+    check('8. a slow page (card RD\'s crowdfight): 20 gaps of 6-30 s, every ping late but there: not one rejoin',
+      pg.rejoins.length === 0 && pg.judge.stats().carried === 20, { rejoins: pg.rejoins.length, stats: pg.judge.stats() });
+    pg.freeze(15000, false); pg.play(pg.now + 3000);
+    check('8. ...and its first gap with the pings missing: one rejoin', pg.rejoins.length === 1, pg.rejoins); }
+
+  { const pg = page();
+    pg.play(2000000);   /* 1000 pings */
+    check(`8. the kept list never passes THAW.KEEP (${THAW.KEEP}) after a thousand pings`,
+      pg.maxKept === THAW.KEEP && pg.judge.stats().kept === THAW.KEEP, { maxKept: pg.maxKept, kept: pg.judge.stats().kept });
+    pg.freeze(30000, true); pg.play(pg.now + 3000);
+    check('8. ...the oldest dropped, so a 30 s gap after them is still judged on its own pings: carried', pg.rejoins.length === 0 && pg.judge.stats().carried === 1, pg.judge.stats()); }
+
+  { const pg = page({ off: true });
+    pg.play(20000);
+    const did = pg.freeze(12000, true);
+    pg.play(60000);
+    check('8. `?thawjudge=0`: main\'s path, the gap handed on in its own beat, unjudged: one rejoin, at once, its pings notwithstanding',
+      did === 'at-once' && pg.rejoins.length === 1 && pg.rejoins[0] === 32000 && pg.resumes.length === 1 && pg.resumes[0].c === undefined && pg.judge.stats().carried === 0,
+      { did, rejoins: pg.rejoins, resumes: pg.resumes }); }
+
+  { const pg = page({ known: false });
+    pg.play(20000); pg.freeze(12000, true); pg.play(40000);
+    check('8. no ping clock yet: the gap rejoins (the old rule)', pg.rejoins.length === 1, pg.rejoins); }
+
+  { const pg = page();
+    pg.play(20000);
+    const did = pg.freeze(4000, false);
+    pg.play(30000);
+    pg.resume(2000, undefined);   /* a return iOS told of (visibilitychange), 2 s away, the socket open */
+    check('8. a gap under RESYNC_AWAY_MS, or a short return: nothing noted, no rejoin',
+      did === null && pg.rejoins.length === 0 && pg.judge.stats().last === null, { did, rejoins: pg.rejoins });
+    pg.resume(9000, undefined);   /* ...and a long one iOS told of: not judged, rejoined as before */
+    check('8. a long return iOS told of (not the thaw\'s): rejoined as before', pg.rejoins.length === 1, pg.rejoins); }
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

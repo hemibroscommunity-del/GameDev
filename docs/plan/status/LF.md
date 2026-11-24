@@ -1,7 +1,7 @@
 card: LF
 branch: claude/plan-rr-11-rejoinloop (carries this file; #2280's branch carried an earlier copy)
 prs: #2276 (6292), #2277 (6310), #2280 (6291), #2273 (6309, this branch): all ready
-state: done
+state: ready
 
 ## Done
 - Line 4: #2276 (6292, ground rule): precheck OK, level with main.
@@ -14,9 +14,15 @@ state: done
   mended as the orchestrator said (a new socket, a whole state_sync, the
   judge's counters untouched). 12/12 twice on the merged head, precheck OK.
 - Line 5: EN done, HB2 true (on #2280), RR true (here).
+- Part 2, sitting 57's hold on #2273: the decision moved into
+  src/game/thawCarried.js (thawBeat, the alive timer's say; thawResume, the
+  open socket's); wsClient keeps a call each. thaw-carried.test §8 plays the
+  road (fake clock, pings, a rejoin spy), §6 reads wsClient's syntax tree.
+  Plants a, b, c (in the module, and a, b by hand in wsClient) and LF's d, e
+  all red; green unplanted (40). The PR body's "Plants".
 
 ## Next
-- Nothing: the gatekeeper's merges. #2273 deploys: the next sitting.
+- #2273's `test` green, then the gatekeeper's next sitting (it deploys).
 
 ## Found
 - deskkeys 8f stays red on main (card CT's verdict).

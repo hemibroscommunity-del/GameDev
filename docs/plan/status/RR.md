@@ -15,6 +15,9 @@ state: ready
   988dddff alone: 9 of 10): now it asserts a new socket, a whole state_sync
   again, and the judge's counters untouched. mp-comeback 12/12 twice, this
   box, main merged (card LF, 2026-11-23).
+  Sitting 57's hold mended (card LF part 2, 2026-11-24): the decision is
+  thawCarried.js's thawBeat and thawResume, wsClient a call each; the suite
+  plays the road and reads wsClient's tree; five plants red.
 - #2277 (6310) quietphone: step 4 holds the diet path's promise; a `?diet=0`
   pass holds 15/s; the 80% ratio a named skip where near < 20/s. 15/15, 1
   skip, this box, 2026-11-23.

@@ -23,6 +23,14 @@
  *
  * No imports, no clock of its own (server/test/thaw-carried.test.mjs); the
  * judge below sets the QA probe window.__btThaw.
+ *
+ * v2.3.6309 (card LF, sitting 57's hold): the DECISION lives here, not in
+ * wsClient: thawBeat is the alive timer's whole say on a thaw, thawResume
+ * the open socket's (carried: kept; not: the rejoin).  wsClient passes its
+ * effects in (_resumeRecover, _forceRejoin) and keeps a call each, so the
+ * suite plays the road "pings missing -> the gap handed on -> the rejoin"
+ * with a fake clock, fake pings and a spy, and reads wsClient's tree only
+ * for those calls.
  */
 export const THAW = Object.freeze({
   /* the longest the worker's pings are apart (90 ticks of 22-33 ms is
@@ -92,8 +100,39 @@ export function makeThawJudge(clock) {
       return { gap: p.gap, carried };
     },
     count(kind) { if (kind === 'carried') stats.carried++; },
-    stats() { return { carried: stats.carried, rejoined: stats.rejoined, last: stats.last, pending: !!pending }; },
+    stats() { return { carried: stats.carried, rejoined: stats.rejoined, last: stats.last, pending: !!pending, kept: pings.length }; },
   };
   try { if (typeof window !== 'undefined') window.__btThaw = judge.stats; } catch (e) { /* QA only */ }
   return judge;
+}
+
+/** The alive timer's beat (wsClient.js _aliveTimer), the thaw's whole say:
+ *  a gap noted a beat ago is judged now and handed to `fx.resume(gapMs,
+ *  carried)` (the page's _resumeRecover('thaw', ...)); a gap over
+ *  `env.awayMs` (RESYNC_AWAY_MS) is noted for the next beat, or, with
+ *  `env.off` (`?thawjudge=0`), handed on at once with no judgement: main's
+ *  exact path.  Nothing while the page is not visible.  `env`: { now, gap,
+ *  visible, off, awayMs }.  Returns what it did ('judged', 'at-once',
+ *  'noted', both: 'judged+noted'), or null. */
+export function thawBeat(judge, env, fx) {
+  let did = null;
+  const d = judge.due(env.now, env.off);
+  if (d && env.visible) { fx.resume(d.gap, d.carried); did = 'judged'; }
+  if (env.gap > env.awayMs && env.visible) {
+    if (env.off) { fx.resume(env.gap); did = 'at-once'; }
+    else { judge.gap(env.now, env.gap); did = did ? did + '+noted' : 'noted'; }
+  }
+  return did;
+}
+
+/** _resumeRecover's open socket (wsClient.js), away `awayMs`: past
+ *  `lineMs` (RESYNC_AWAY_MS), a gap the judge found carried keeps its
+ *  socket (counted); anything else -- a gap not carried, a return iOS told
+ *  of, `?thawjudge=0` -- is v2.3.778's stale world: `rejoin()` (the page's
+ *  _forceRejoin('resume-resync', ...)).  Returns 'carried', 'rejoin' or null. */
+export function thawResume(judge, awayMs, lineMs, carried, rejoin) {
+  if (!(awayMs > lineMs)) return null;
+  if (carried === true) { judge.count('carried'); return 'carried'; }
+  rejoin();
+  return 'rejoin';
 }
