@@ -22,13 +22,14 @@
  *      zoom; the look's numbers are the card's;
  *   6. ONE object a frame, cleared at each call.
  *
- * Mutants (v2.3.6555): 72 one-line changes of aimMarks.js's code lines (a
+ * Mutants (v2.3.6555): 75 one-line changes of aimMarks.js's code lines (a
  * comparison flipped, && and || swapped, a ! dropped, max for min, a sign or
  * an operator turned, a number +1, a tone swapped) run against this suite:
- * 68 killed.  The four that live change nothing anyone can see: the loop's
+ * 68 killed.  The seven that live change nothing anyone can see: the loop's
  * bound one past the end (it reads undefined, which the `m &&` skips), and
- * the starting values of the two reused objects (_OUT.color, _BOX.hw,
- * _BOX.hh), which every call writes before it returns them.
+ * the starting values of the three reused objects (_GATE's three fields,
+ * _OUT.color, _BOX.hw, _BOX.hh), which every call writes before it returns
+ * them.
  */
 import { AIM, AIM_TONES, aimGate, aimMarks, aimFrameBox, caretShown } from '../../src/game/aimMarks.js';
 import { latchAttackPress, latchPhase, latchTo, sightNow } from '../../src/game/latch.js';

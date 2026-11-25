@@ -88,8 +88,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${label}: in the Wheel (guard)`, !!inW, inW);
       if (!inW) continue;
       await P.page.waitForTimeout(2000);
-      const clip = label === 'upright' ? { x: 0, y: 222, width: 390, height: 400 } : { x: 222, y: 0, width: 400, height: 390 };
-      const shot = (name) => P.page.screenshot({ path: join(OUT, `aimmarks-${name}-${label}.png`), clip }).catch(() => null);
+      const shot = (name) => P.page.screenshot({ path: join(OUT, `aimmarks-${name}-${label}.png`) }).catch(() => null);   /* the whole screen: docs/shots holds a crop */
       const cdp = await P.ctx.newCDPSession(P.page);
       const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
       const disc = await P.page.evaluate(() => { const el = document.querySelector('.bt-joystick-base'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, r: b.width / 2 }; });

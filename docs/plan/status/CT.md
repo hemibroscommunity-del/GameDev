@@ -14,8 +14,8 @@ state: ready
   src/game/aimMarks.js (asks latch.js sightNow, the press's own pick);
   lockReticle.js AimFrame/AimCaret draw it once, then move/turn/tint it.
   The chevrons are not drawn while the frame is on; `?targetframe=0` gives
-  them back, `?aimcaret=0` hides the caret. aim-marks.test: 71 checks; 72
-  mutants, 68 killed, 4 equivalent (the suite's header says which).
+  them back, `?aimcaret=0` hides the caret. aim-marks.test: 71 checks; 75
+  mutants, 68 killed, 7 equivalent (the suite's header says which).
   mp-aimmarks green on the test box (upright and sideways).
 
 ## Next
