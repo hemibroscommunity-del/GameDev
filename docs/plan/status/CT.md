@@ -1,13 +1,7 @@
 card: CT
-<<<<<<< HEAD
 branch: claude/plan-ct-11-context (part 17: the button under the thing, stacked on claude/plan-ct-9-hold)
-prs: part 17 (6550, draft on claude/plan-ct-9-hold, PR to come), part 15 (6548, draft on claude/plan-ct-8-freefire, PR to come), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
+prs: part 17 (6550, draft on claude/plan-ct-9-hold), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
 state: working
-=======
-branch: claude/plan-ct-9-hold (part 15: tap and hold, stacked on claude/plan-ct-8-freefire)
-prs: part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
-state: ready
->>>>>>> origin/claude/plan-ct-9-hold
 
 ## Done
 - PRs 1-5 (6540-6544) merged or in via #2330; items 6-8 (6545 rim sprint,
@@ -18,7 +12,6 @@ state: ready
   everything go (no hop). The latch's phases idle/active/auto (one field,
   latchTo; S.autoAttack from latchHolds). `?holdauto=0` the old press.
   latch.js + freeAttack.js; latch.test 6, free-attack 4-5 (no server/src).
-
 - Part 17 (6550, working): in mode 5 Attack always attacks (its word, its
   sword, its press, beside a node and during a harvest); ONE brass button
   under the one nearest thing: CHOP/MINE/FISH/COOK under a node on today's
