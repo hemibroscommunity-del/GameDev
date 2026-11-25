@@ -78,6 +78,7 @@ import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: t
 import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
 import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare, folkSkillFallback } from '../folkSkill.js';   /* v2.3.5462: ...at their own trades (card TF) */
 import { folkBeatOf } from '../../game/townsfolkWalk.js';   /* v2.3.5462: his beat */
+import { exBodyPose, hideHeld, ownToolPose, poseHidesHeld } from '../../game/poseHides.js';   /* v2.3.6208: what a body's pose hides, asked by my bro and a peer alike */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -10354,6 +10355,12 @@ export class EntityRenderer {
             width: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.width * _pb2.scale.x) : 0,
             height: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.height * _pb2.scale.y) : 0,
             visible: display.visible,
+            /* v2.3.6208: their weapon as last drawn, and the harvest it was
+               drawn in (mp-fishpeer: put away while they fish or mine) */
+            weaponShown: !!(display._weaponContainer && display._weaponContainer.visible
+              && ((display._weaponSprite && display._weaponSprite.visible && display._weaponSprite.texture && display._weaponSprite.texture.orig.width > 1)
+                || (display._weaponGfx && display._weaponGfx.visible))),
+            ex: other._ex || null,
           });
         }
       }
@@ -10453,7 +10460,15 @@ export class EntityRenderer {
       }
       /* Living — restore visibility of containers that might have been
          hidden by a previous death frame on this display. */
-      if (display._weaponContainer && !display._weaponContainer.visible) {
+      /* v2.3.6208: ...unless their pose holds its own tool (a fish or mine
+         harvest, `other._ex`): then the weapon, and whatever else my own bro
+         puts away in that pose, is hidden, as mine is (game/poseHides.js).
+         The owner, 2026-11-25: a peer's sword "floating mid air while he
+         fished".  Written only when it changes: hidden the frame the pose
+         starts, shown the frame it ends (TRAPS §218). */
+      const _oHeldOff = poseHidesHeld(exBodyPose(other._ex));
+      if (_oHeldOff) hideHeld(display);
+      else if (display._weaponContainer && !display._weaponContainer.visible) {
         display._weaponContainer.visible = true;
       }
       /* v2.3.809: drop the corpse-position snapshot once alive so the NEXT
@@ -10700,7 +10715,7 @@ export class EntityRenderer {
       /* v2.3.3439: and a step on a bed ('farm:<step>:<n>'): their farmer
          (effectsRenderer _drawPeerFarmer) */
       const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire' || !!parseFarmEx(_rex)) && peerStandInReady(id, other, _rex);
-      const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
+      const _rexBodyPose = exBodyPose(_rex);   /* v2.3.6208: the rule's own mapping (game/poseHides.js) */
       if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
       /* v2.3.1534: remote dodge roll.  other._dodgeRoll is already set from
          the `player_dodge` broadcast (v2.3.1011) and drives the afterimage
@@ -12107,7 +12122,7 @@ export class EntityRenderer {
        weapon and shield are put away.  tickSmithing also ends the work when
        the player walks off or dies; called once, here, per frame. */
     const _smithing = !S._extraction && tickSmithing(S, Date.now());
-    const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining')) || _smithing;
+    const _fishingPose = poseHidesHeld(ownToolPose(S._extraction && S._extraction.skill, _smithing));   /* v2.3.6208: the rule a peer's pose asks too (game/poseHides.js) */
     /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
        and hide the real body + weapon for the swing window.  Gated on the melee
        swing flag and no active gathering/firemaking.
@@ -12244,12 +12259,10 @@ export class EntityRenderer {
     const _bowShot = !!_bowDir;
     S._bowShowing = _bowShot;
     S._bowDir = _bowDir;
-    if (_fishingPose || _swordSwing || _bowShot) {
-      if (display._weaponContainer) display._weaponContainer.visible = false;
-      if (display._shieldSprite) display._shieldSprite.visible = false;
-      if (display._handCapSprite) display._handCapSprite.visible = false;
-      _hideArmClones(display);   /* v2.3.3520 */
-    }
+    /* v2.3.6208: the weapon, the held shield, the hand's cap and the arm's
+       clones (v2.3.3520): poseHides.js HELD_PIECES, the list a peer's pose
+       hides too, so the two paths cannot drift. */
+    if (_fishingPose || _swordSwing || _bowShot) hideHeld(display);
 
     const body = display._body;
 

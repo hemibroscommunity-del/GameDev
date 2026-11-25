@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-bars (6206), then claude/plan-en-fishsword (6208)
-prs: 6206 (the bars) opening as a draft; 6208 (a peer's sword while fishing) next
+prs: 6206 (the bars) #2358 ready; 6208 (a peer's sword while fishing) opening as a draft, stacked on it
 state: working
 
 ## Done
@@ -19,9 +19,21 @@ state: working
   sprite programs, rows of 5 and 8, on the test box. Precheck passes.
   Earlier PRs of card EN (6200 to 6205, 6207): merged.
 
+- 6208 (`docs/plan/cards/EN-bars.md` PR 2, on `claude/plan-en-fishsword`,
+  stacked on #2358): another player's sword put away while they fish or
+  mine.  One rule, `src/game/poseHides.js`, says what a pose that holds its
+  own tool hides (the weapon, the held shield, the hand's cap, the arm's
+  clones); my own bro's draw and a peer's both ask it (entityRenderer).  A
+  peer's weapon was forced visible for every living peer; now it is hidden
+  the frame their fish or mine pose starts and shown the frame it ends,
+  written only on the change (TRAPS §218).  No weapon is carried on the
+  back; the slung shield was already right on both paths.  Suite
+  `tools/guards/pose-hides.test.mjs` (kills 25 of 25 mutants); phone test
+  `mp-fishpeer`.
+
 ## Next
 
-- 6208 on `claude/plan-en-fishsword`, stacked on 6206.
+- (card EN's lines done once 6208 lands).
 
 ## Found
 
