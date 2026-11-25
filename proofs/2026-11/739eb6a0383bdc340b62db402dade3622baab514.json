@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "739eb6a0383bdc340b62db402dade3622baab514",
+  "tree": "a383e78603b393f1b7c2e523a5e06f7c4d0e2ca3",
+  "committedAt": "2026-11-25T01:17:27-08:00",
+  "subject": "Merge pull request #2353 from hemibroscommunity-del/claude/plan-z-sitting-65-tail",
+  "files": 8620,
+  "bytes": 968819007,
+  "listingSha256": "539370d6603edafd4cf48808e1693b5207839cc0b70134931750b9ca052e04e7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
