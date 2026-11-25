@@ -83,6 +83,17 @@ export const PAD_ACCENT = Object.freeze({
 
 export const WELLS = Object.freeze(['stick', 'w1', 'w2', 'w3', 'mobility', 'mid', 'special', 'big', 'attack']);
 
+/** v2.3.6641 (card PAD part 4): the width the controller lays out at: the
+ *  world's (`canvasW`, the canvas's CSS width as resize() told it) where it is
+ *  told and narrower than the column (`col`, playVw); else the column.
+ *  Sideways at 844 under the one band the world is 752 between two 46 px bars
+ *  (sheetGeometry oneBandFootprint): laid out at 844, the shell ran 92 px past
+ *  the world's right edge and the right lobe's buttons (placed from that edge)
+ *  sat 92 px left of the wells it drew.  Upright the two are the same. */
+export function padWidthOf(col, canvasW) {
+  return canvasW > 0 && canvasW < col ? canvasW : col;
+}
+
 /** The controller on this screen: `land` sideways, `vw` the play column's
  *  width (CSS px).  { s, shell: { w, h, cutL, cutR }, wells }: each well's
  *  { x, y, d, box: { x, y, size } } -- x px from the column's left to its

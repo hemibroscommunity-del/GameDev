@@ -5,7 +5,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { weaponPillAnchor, WPILL, ctlBottom, RBTN, LBTN, discRight, discBottom, sprintAnchor, jumpAnchor, blockAnchor,
   ctlColumn, CTL_SLOT, rightCluster, RCTL_SLOT, leftCluster, LCTL_SLOT } from './ShieldButton.jsx';
 import { WPN_PILL_ICONS, padArtUrl } from './controlSkin.jsx';
-import { padNow } from './padSpot.js';   /* v2.3.6641: the controller's three weapon wells (card PAD part 3) */
+import { padNow, usePadWidth } from './padSpot.js';   /* v2.3.6641: the controller's three weapon wells (card PAD part 3) */
 import { weaponWell } from '@/game/padSkin.js';
 import { pageAddress } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
@@ -134,6 +134,7 @@ function slotBoxes(land, vw) {
 const qa = { taps: 0, notes: [], last: null, box: weaponPillAnchor, slots: slotBoxes };
 
 export function WeaponPill(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var onCycle = props.onCycle;
   var isLandscape = !!props.isLandscape;

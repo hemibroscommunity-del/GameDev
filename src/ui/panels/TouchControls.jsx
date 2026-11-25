@@ -7,7 +7,7 @@ import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { ChargeButton } from './ChargeButton.jsx'; /* v2.3.6549: card CT part 16 */
 import { Skin, RDISC_ICONS, AimReticle, WPN_PILL_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control; v2.3.6546: the plain sword, the two buttons' Attack */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
-import { padAnchor, padNow } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
+import { padAnchor, padNow, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
 import { PadHousings } from './PadHousings.jsx';
 import { padArtUrl } from './controlSkin.jsx';
 import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
@@ -167,6 +167,7 @@ export const RKNOB_TRAVEL = 0.6;
    The label is the "contextual" half: BroTown stamps rLabelRef's text
    (ATTACK today; HARVEST arrives with the life-skill PR). */
 export function TouchControls(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef,
     lZoneRef = props.lZoneRef,
     rZoneRef = props.rZoneRef,
@@ -298,7 +299,7 @@ export function TouchControls(props) {
      the body, past it the body walks (game/stickZones.js).  Static: drawn once with the disc, never per move. */
   twoButtonsLive() ? React.createElement('div', {
     'data-turnring': '', 'aria-hidden': 'true',
-    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
+    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape, stick ? stick.disc / 2 : 0), height: 2 * turnRingRadius(isLandscape, stick ? stick.disc / 2 : 0),   /* v2.3.6641: in the controller, its base's drawn radius (stickZones.js) */
       transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',
       boxSizing: 'border-box', pointerEvents: 'none' },
   }, rimSprintOn() ? React.createElement(RimGlow, { stateRef: stateRef }) : null) : null, /*#__PURE__*/React.createElement("div", {

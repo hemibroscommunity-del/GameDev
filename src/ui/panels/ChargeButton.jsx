@@ -6,7 +6,7 @@ import { twoButtonsLive } from '@/game/latch.js';
 import { chargeShown } from '@/game/controlVisibility.js';
 import { chargeLock } from '@/game/thumbSide.js';
 import { thumbAnchor } from './thumbSpot.js';
-import { padAnchor } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
+import { padAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
 import { ctlBottom, rightCluster } from './ShieldButton.jsx';
 import { Skin, SkinTag, WPN_PILL_ICONS, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx';
 
@@ -79,6 +79,7 @@ function SpeedLines(props) {
 }
 
 export function ChargeButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   const stateRef = props.stateRef;
   const isLandscape = props.isLandscape;
   /* the 200 ms render of its neighbours (AbilityButtons, SpecialButton): the

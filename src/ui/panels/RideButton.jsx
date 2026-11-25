@@ -7,7 +7,7 @@ import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { RIDE_KEY } from '@/game/deskKeys.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { Skin, pressOn, pressOff } from './controlSkin.jsx';
-import { padAnchor, padLive } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
+import { padAnchor, padLive, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
 import { ctxFor } from '@/game/padSkin.js';
 import { chargeShowing } from './ChargeButton.jsx';
 import { RIDE_ICON_URL } from '@/rendering/rideFx.js';
@@ -79,6 +79,7 @@ export function rideButtonView(S) {
 }
 
 export function RideButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _t = React.useState(0);

@@ -10,18 +10,45 @@
  * size, what Skin draws), or today's anchor untouched when the controller is
  * off or the control has no socket (it keeps today's place).
  */
-import { padOn, padLayout, padSpot } from '@/game/padSkin.js';
+import { padOn, padLayout, padSpot, padWidthOf } from '@/game/padSkin.js';
 import { sw } from '@/game/switches.js';
 import { playVw } from '@/ui/mobile/playViewport.js';
+import { canvasCssW, watchCanvasCssW } from '@/game/renderRes.js';
+import { useState, useEffect, startTransition } from 'react';
 
 export function padLive() {
   return padOn(sw('padskin'));
 }
 
+/** the world's width: the canvas's as resize() last gave it, never wider
+ *  than the column.  v2.3.6641 (part 4): it was playVw(), the window's
+ *  column, and sideways at 844 under the one band the world is 752 between
+ *  two 46 px bars, so the shell ran 92 px past the world's right edge and
+ *  the right lobe's buttons (placed from that edge) sat 92 px left of the
+ *  wells it drew.  Upright the two are the same width. */
+export function padWidth() {
+  return padWidthOf(playVw(), canvasCssW());
+}
+
+/** v2.3.6641 (part 4): a control in the controller redraws when the world's
+ *  width moves (a band folded sideways, a turn): called once, unconditionally,
+ *  at the top of each control that asks padNow or padAnchor.  The width is
+ *  told, never measured (renderRes.js watchCanvasCssW). */
+export function usePadWidth() {
+  const st = useState(canvasCssW), w = st[0], setW = st[1];
+  useEffect(function () {
+    /* told at the top of a frame (resize()): the redraw is a transition, never inside it (CLAUDE.md 7) */
+    const told = function (nw) { startTransition(function () { setW(nw); }); };
+    if (canvasCssW() !== w) told(canvasCssW());   /* moved between the render and this */
+    return watchCanvasCssW(told);
+  }, []);   /* subscribed once: `w` is only the first reading */
+  return w;
+}
+
 /** the controller on this screen (padSkin padLayout), or null when off */
 export function padNow(isLandscape) {
   if (!padLive()) return null;
-  return padLayout(!!isLandscape, playVw());
+  return padLayout(!!isLandscape, padWidth());
 }
 
 export function padAnchor(name, isLandscape, today, fight) {

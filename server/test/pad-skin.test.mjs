@@ -32,7 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   PAD, REF, REF_SLOTS, WELLS, PAD_ACCENT, padLayout, wellOf, padSpot, ctxFor, padFace, attackFace, attackWeapon,
-  PAD_ATTACK_ICONS, weaponWell, insideShell, padOn, padPictures,
+  PAD_ATTACK_ICONS, weaponWell, insideShell, padOn, padPictures, padWidthOf,
 } from '../../src/game/padSkin.js';
 import { PAD_ART, PAD_ART_BYTES } from '../../src/data/padArt.js';
 
@@ -280,6 +280,19 @@ check('6b. every picture is named for the loading screen', padPictures().length 
   const T = padLayout(false, 320), ts = T.s, sp = Math.max(101 * ts, 45) + Math.max(100 * ts, 45) - 201 * ts;
   check('8n. a column too narrow for any fit (320) draws the top row at 0.8, moved left half its spread',
     near(T.wells.mid.d, 0.8 * 80 * ts, 1e-9) && near(T.wells.mobility.x, 320 - (920 - 634) * ts - sp / 2, 1e-6));
+}
+
+/* ── 9 (v2.3.6641, card PAD part 4): the width it lays out at is the WORLD's ── */
+check('9a. sideways under the one band the world (752, told) is narrower than the column (844): the world\'s',
+  padWidthOf(844, 752) === 752);
+check('9b. upright the two are one (430, 430): that; not told yet (0) or nonsense (-1): the column',
+  padWidthOf(430, 430) === 430 && padWidthOf(844, 0) === 844 && padWidthOf(844, -1) === 844);
+check('9c. a told width WIDER than the column (a stale one after a turn) never wins: the column',
+  padWidthOf(430, 844) === 430);
+{
+  const W = padLayout(true, padWidthOf(844, 752));
+  check('9d. laid out at the world\'s width the right lobe\'s wells end inside it (Attack\'s centre 752 - (920 - its x) s)',
+    near(W.shell.w, 752, 1e-9) && near(W.wells.attack.x, 752 - (REF.W - REF_SLOTS.attack[0]) * W.s, 1e-9) && W.wells.attack.x + W.wells.attack.d / 2 < 752);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

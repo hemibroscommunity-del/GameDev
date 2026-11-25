@@ -3,7 +3,7 @@
  * The owner, 2026-11-25: "The controller is too large and doesn't connect in
  * a seamless way to the dashboard. ... Make the jump button turn into the
  * shield button while in combat. Tapping attack button or shield button
- * again lowers it".  In the Wheel (BroTown), 430 x 775 upright and 775 x 430
+ * again lowers it".  In the Wheel (BroTown), 430 x 775 upright and 844 x 390
  * sideways at 2x, real touches (CDP):
  *
  *   0. `&padskin=0` is today's look: no shell, no painted face, the pill;
@@ -33,7 +33,7 @@ import * as H from './harness.mjs';
 export const lane = 'full';
 
 const UPRIGHT = { width: 430, height: 775 };
-const SIDEWAYS = { width: 775, height: 430 };
+const SIDEWAYS = { width: 844, height: 390 };   /* v2.3.6641 (part 4): an iPhone's sideways, where the one band's bars narrow the world (it was 775 x 430, which has none) */
 const SEL = {
   jump: '[data-jump]', skate: '[data-ride]', attack: '.bt-rjoy-base', block: '[data-shield]', special: '[data-special]', charge: '[data-charge]',
   w1: '[data-pad-well="w1"]', w2: '[data-pad-well="w2"]', w3: '[data-pad-well="w3"]', stick: '[data-well-pic="stick"]',
@@ -84,8 +84,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`0. ${label}: \`&padskin=0\` is today's look: no shell, no painted face, the weapon pill`, !off.shell && off.faces === 0 && off.pill && !off.c.w1, { shell: off.shell, faces: off.faces, pill: off.pill });
       await O.ctx.close().catch(() => {});
 
-      /* ── the controller ── */
-      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padbro' : 'Padside', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole' });
+      /* ── the controller ── `tapms`: this box hands the page a touch's start
+         and end about a second apart (70 ms sent; part 4 measured 1036 ms
+         between the two events' stamps), past the weapon pill's 600 ms tap,
+         so the well's tap read as a hold and never swapped (5, qa.taps 0):
+         the window stretched as mp-weaponswap and mp-swaphint stretch it.
+         No player's tap is touched (WeaponPill tapMaxMs, tapJump.js). */
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padbro' : 'Padside', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole&tapms=4000' });
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ': ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(P);

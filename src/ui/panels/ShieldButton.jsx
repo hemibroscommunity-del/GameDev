@@ -8,7 +8,7 @@ import { fightOn } from '@/game/sparTargets.js';
 import { blockShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6549: Block at a threat (card CT part 16) */   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
-import { padAnchor } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
+import { padAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
@@ -840,7 +840,10 @@ export function blockLive(S) {
   return true;
 }
 
+/* v2.3.6641: when a finger last pressed Block (the mouse press after it is the same press: press, below) */
+let _shieldTouchAt = 0;
 export function ShieldButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _tick = React.useState(0);
@@ -883,6 +886,14 @@ export function ShieldButton(props) {
   var right = anchor.right;
   var press = function (e) {
     e.preventDefault(); e.stopPropagation();
+    /* v2.3.6641 (card PAD part 4): the browser's mouse press after a touch is
+       the same press, never a second toggle.  touchend's preventDefault (below)
+       stops it only while touchend is cancelable, and Chrome sends it
+       uncancelable once the page has held the touch past its wait (seen on the
+       test box: mp-padskin 6d sideways read the guard lowered by 'tap' where
+       Attack was meant to lower it).  The weapon pill's rule (800 ms). */
+    if (e.type === 'mousedown' && Date.now() - _shieldTouchAt < 800) return;
+    if (e.type === 'touchstart') _shieldTouchAt = Date.now();
     pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     try { toggleShield(stateRef.current); } catch (err) { /* refusal is silent-safe */ }
     setTick(function (v) { return v + 1; });

@@ -7,7 +7,7 @@ import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
 import { Skin, JumpGlyph, jumpGlyphKind, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
-import { padAnchor, padLive } from './padSpot.js';   /* v2.3.6640: its socket in the controller (card PAD) */
+import { padAnchor, padLive, usePadWidth } from './padSpot.js';   /* v2.3.6640: its socket in the controller (card PAD) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
@@ -77,6 +77,7 @@ export function jumpButtonView(S) {
 }
 
 export function JumpButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _t = React.useState(0);
