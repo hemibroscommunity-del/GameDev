@@ -42,7 +42,7 @@ import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cul
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
 import { tapLockOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat (tapLockOn) */
 import { dropUnsettledDuel } from '@/game/duelPending.js';   /* v2.3.4361: an accept the worker never settled */
-import { latchLocked, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
+import { latchLocked, twoButtonsLive, latchPhase } from '@/game/latch.js';   /* v2.3.6551: + latchPhase (bodyFacesLock) */ import { facesLock } from '@/game/lockFace.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: the fight you picked ends at the zone door (card L) */
 
 function monPos(m) {
@@ -800,4 +800,11 @@ export function engagedStance(S) {
   if (S.autoAttack) return true;
   const lt = monsterLock(S);
   return !!lt && lt.src === 'tap';
+}
+
+/** v2.3.6551 (card CT part 18): does the body face its lock?  engagedStance
+ *  in modes 1 to 4; in mode 5 also a latched monster lock, whose src is
+ *  'auto' (game/lockFace.js says why).  The three facing sites ask this. */
+export function bodyFacesLock(S) {
+  return facesLock(engagedStance(S), twoButtonsLive(), latchPhase(S), S && S.lockedTarget);
 }

@@ -75,7 +75,7 @@ import { swordFeelFrame } from '@/game/swordFeel.js'; /* v2.3.4800: the sword's 
 import { bowFeelOn, bowFeelFrame, bowFeelWalkMult, bowFeelDeskDown } from '@/game/bowFeel.js'; /* v2.3.4802: the bow's feel -- nock, draw back, settle, loose (docs/specs/bow-feel.md) */
 import { WeaponPill } from './panels/WeaponPill.jsx'; /* v2.3.4130: the weapon pill, centred at the foot of the world (it was v2.3.3921's triangle, v2.3.3005's chip) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT, PHONE_GESTURE_HINT, FIRST_HINTS } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
-import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
+import { isTapLock, engagedStance, bodyFacesLock } from '@/game/targeting.js';   /* v2.3.6551: bodyFacesLock, the body faces mode 5's latched lock */ /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
 /* ═══ v2.3.2260: A JOYSTICK YOU HAVE JUST USED STAYS ON SCREEN ═══
@@ -5624,7 +5624,7 @@ export var BroTown = function BroTown(_ref0) {
            but a lock is automatic now, so a bare test would put you in a
            combat stance every time a slime wandered within 220px while you
            were walking somewhere. */
-        var _lkFace = engagedStance(S);
+        var _lkFace = bodyFacesLock(S);   /* v2.3.6551: mode 5's latched lock faces too (game/lockFace.js) */
         S._backpedaling = false;
         if (S.autoAttack) finalSpd *= 0.5;
         if ((S.autoAttack || _lkFace) && S._aimAngle != null

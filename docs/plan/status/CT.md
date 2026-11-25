@@ -16,12 +16,11 @@ state: working
   the work, TALK within 120 px). `?ctxbuttons=0`. contextButton.js (35
   mutants, none left), ContextButton.jsx, mp-contextbuttons. No server file.
 - Part 18: #2342 + #2344 joined once (6 conflicts, both kept; the world
-  button z 29, under the right side's buttons).
+  button z 29, under the right side's buttons). 6551: mode 5's lock faces
+  (lockFace.js, bodyFacesLock; lock-face.test, 6 mutants, none left).
 
 ## Next
 - #2342 (6549): the helper's clean mp-twobuttons run; the owner plays the arc.
-- Sitting 63's (2): a tap's lock does not turn the body between swings
-  (targeting.js engagedStance, src 'auto'): left for a next part.
 
 ## Found
 - Item 8's repro (430x775 @3x, a greatsword, one press, 5 s): the body
