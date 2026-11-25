@@ -1,6 +1,8 @@
 # The dashboard's new architecture: the phases (v2.3.6401; the addendum's pieces, v2.3.6402)
 
-The plan for the owner's document (`UI_ARCHITECTURE_V2.md`: the baseline, parts 1 to 12, and the addendum of the same day, part 14, questions 36 to 72), made from the audit beside it (`UI_ARCHITECTURE_V2_AUDIT.md`, both halves). "14 §3.1" is the addendum's own section 3.1. It is a PROPOSAL until the owner says yes: nothing here is built yet, and a line of it becomes a decision only when the owner's words go into the document's part 13. Each phase is a card to be; phase 1's is drafted (`docs/plan/cards/UI2-nav.md`).
+The plan for the owner's document (`UI_ARCHITECTURE_V2.md`: the baseline, parts 1 to 12, and the addendum of the same day, part 14, questions 36 to 72), made from the audit beside it (`UI_ARCHITECTURE_V2_AUDIT.md`, both halves). "14 §3.1" is the addendum's own section 3.1. It is a PROPOSAL until the owner says yes: nothing here is built yet, and a line of it becomes a decision only when the owner's words go into the document's part 13.
+
+**No phase starts yet** (v2.3.6402). The owner, 2026-11-25, with the addendum: *"Do not begin implementation or final visual redesign yet. We are still completing the architectural design process."* More addenda will come (question 73 on). So this stays a plan until the owner says the design is complete; phase 1 does not start on the answers to three questions. What the owner needs from this work NOW is the section "What to take back to the design conversation": the facts of the game that the two documents get wrong or could not know. Each phase is a card to be; phase 1's is drafted (`docs/plan/cards/UI2-nav.md`).
 
 ## The rules every phase keeps
 
@@ -56,7 +58,7 @@ The plan for the owner's document (`UI_ARCHITECTURE_V2.md`: the baseline, parts 
 - **Phone tests:** `mp-ui2nav` (Gear and Menu; each tile opens its page; Back says where it goes and goes there; Close and reopen resumes; scroll kept; the band's height equal to today's to the pixel, upright, sideways and on a computer; `?ui2=0` gives the old row). Part 10's ninth task (interrupt a deep page, play, resume; Back follows the real journey) is this test.
 - **Switches:** adds `ui2`. Retires none.
 - **Beside it:** nothing else may hold `BottomDashboard.jsx`, `dashboardPanelBus.js` or `NavRail.jsx`. Card PAD's PR touches none of them. It does not touch `BroTown.jsx`.
-- **Size:** PR 1 the frame, reachable by `?ui2=1` (remembered) so the owner tries it on their phone with nothing else moved; PR 2 turns it on for everyone once the owner likes it and moves the 21 phone tests that press the old row's buttons to one harness helper. (Question 3 can fold these into one.)
+- **Size (when the owner has said the design is complete):** PR 1 the frame, reachable by `?ui2=1` (remembered) so the owner tries it on their phone with nothing else moved; PR 2 turns it on for everyone once the owner likes it and moves the 21 phone tests that press the old row's buttons to one harness helper. (Question 3 can fold these into one.)
 
 ### Phase 1b, UI2-motion: the page grows out of what you tapped (new, v2.3.6402)
 
@@ -148,6 +150,23 @@ Nothing in this list is built by the dashboard's work. Each has its place on its
 | A region's monsters, resources and townsfolk as lists (14 §7.2) | the data is in the world's bakes; no table reads it by region | a small table made from the bakes |
 | Fast travel, routes, tracking on the map | none | not to be built (14 §7.1) |
 
+## What to take back to the design conversation
+
+Ten facts about the game as it is today, most important first, each written to be pasted as it stands. They are where the two documents say something the game does not do, or draw something the game does not keep. They are facts, not questions to us.
+
+1. **Points.** Shared (character) points are earned only when my BEST weapon levels up, not on every weapon's level-up: a 3 / 3 / 3 player and a 3 / 1 / 1 player have the same shared points. And a weapon's own points may also be spent on body stats, so the pools are not sealed from each other. (I agreed this on 2026-10-21 for simplicity.)
+2. **Clan, Party, Guild.** There is no clan apart from a party. A party is one lasting group: it is saved, holds up to 50 members online or not, lasts until I leave it, and becomes an "alliance" with a tag and a name at 20 active members. "Guilds" are the ten skill guilds every player is in automatically, ranked by that skill's level; no guild is run by players. There is no clan or guild profile.
+3. **Another player.** I can inspect another player only while they are online and near me, and what I see (levels, item names) is what THEIR phone reports. The server does not yet send another player's real stats, item stats or placed points; an offline player has no page. Outside the world the game can draw a player only as a still face, not a moving sprite, and only for players near me or on a leaderboard: an offline friend has no picture.
+4. **The numbers.** There is no effective health number. DPS exists as one total with no breakdown stored: it is the average hit, plus what critical hits add on average, divided by the seconds a swing takes. Element is not part of DPS. Today's item comparison shows a signed amount, never a percentage, and compares armour piece against piece ("Damage cut"), not by what happens to my character.
+5. **Records.** Lifetime records are counted by each player's own phone, not the server: monsters killed, bosses, deaths, gold earned, gold spent, time played, quests completed, duels won, ores mined, fish caught. Not counted at all: a total of resources gathered, distance, items crafted. The server itself keeps kills, kills by kind of monster and the biggest fish. Discoveries are not tracked.
+6. **Achievements and titles.** Achievements already have four tiers: Common (10 AP), Rare (100), Arena (500), Super-rare (1,000). An achievement is earned or not: there is no "7 of 10" progress. There is no separate list of titles: a title is the name of an achievement I have earned. Only one family of titles follows on (Blooded, Veteran, Centurion, at combat level 10, 50, 100). AP also comes from quests (5 each), guild quests and the arena.
+7. **Skills.** Ten life skills: woodcutting, fishing, mining, farming, cooking, blacksmithing, woodworking, gem cutting, enchanting, trapping. They have no top level. Real unlocks by level exist for some (fish, trees, ore, smithing, cooking, crops), not all. A weapon's level unlocks nothing with a name, only its 3 points. A skill's page already shows its level, XP bar and next unlock. There is no board for the combined life-skill level, no radar and no specialisation label.
+8. **The farm and pets.** The farm is a private place I walk to from town: six beds, sixteen crops, a fixed house to sleep in and a Pet House (a door to the pets page). There is no buying land, building, placing furniture or visiting, and the farm cannot be managed from the dashboard. Storage is the bank in town. Pets exist: caught by trapping, nine kinds in two stages, one out at a time, each with a level, XP, a name I give it and a ward against one element; I hold 30, or 40 with the Pet House. The Codex has no pets section.
+9. **The map.** The map is a full-screen window over the world, not a dashboard page. It already pans and zooms and marks me, my party, players near me, my quest's target and pins I place; a tap drops a pin; nothing selects a region. The world is a town in the middle with eight lands round it (Frost, Ember, Sky, Hollows, Thunder, Tidal, Mist, Verdant) and two realms beyond their tips. Every land touches the town, and each is joined to its two neighbours by two passes across the sea (about levels 20 and 60). There is no fast travel.
+10. **The room, and three small things.** The dashboard's page is about 178 px tall on a 390 x 844 phone, under a 52 px row, and about 78 px tall with the phone sideways: every wireframe has to fit that. A page change has no motion today. The page called Notifications is the chat's last lines, and each request (friend, party, duel) has its own pop-up: there is no list of notifications. The Codex is monsters only and hidden until the first kill; quests have no story text.
+
+Where each comes from in the code: the audit, both halves.
+
 ## The owner's questions
 
 ### What the addendum did to the first ten (v2.3.6402)
@@ -165,7 +184,7 @@ The first plan asked ten. The addendum, written before the owner had seen them, 
 
 ### The ten, as they stand
 
-In order. The first three are the ones phase 1 cannot start without. After each: what I would pick, and why.
+In order, kept for when the owner says the design is complete: no phase starts on them before that. The first three are the ones phase 1 will need then. After each: what I would pick, and why.
 
 1. **The Menu's eight.** Today's More page has fifteen things. Is this sorting right: the eight tiles are **Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings**; Party is inside Social; the skill Guilds are reached from Life Skills and from a door inside Social; Pets, Life Skills and Achievements are inside Bro; Journey becomes Bro's lifetime records; Account, Feedback and About are inside Settings; Notifications stays reachable from Settings until its own list is built? *Pick: yes.* Nothing is lost and each has one home. Homestead opens a small page with what the game already knows away from the farm (how many plots are ready, and where the farm is).
 2. **The closed band.** When the band is closed, should two buttons stay at the bottom, **Gear** and **Menu**, in the same slim row the buttons sit in today? *Pick: yes.* Two buttons is not the crowded bar, and with the Menu button you have already decided for deep pages it makes every place one or two taps from Gear and from the Menu's first page, with no hidden gesture.

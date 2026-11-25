@@ -5,10 +5,10 @@ state: ready
 
 ## Done
 - Part 1 (6401), documents only: `docs/design/UI_ARCHITECTURE_V2.md` (the owner's document word for word, with part 13, the decision log); `UI_ARCHITECTURE_V2_AUDIT.md` (the game today against parts 2 to 8); `UI_ARCHITECTURE_V2_PLAN.md` (seven phases and the owner's ten questions); `docs/plan/cards/UI2-nav.md` (phase 1's card, a draft); CLAUDE.md section 2's line.
-- Part 2 (6402), documents only: the owner's addendum (questions 36 to 72) word for word as the document's part 14, a note at the top on how the parts rank, and part 13's 23 dated lines for what it settles or changes; the audit's second half (14 §2 to §7, with NOT IN THE GAME for each); the plan (phase 1b the motion, six screens in phase 6, four cards in phase 7, phase 8 the clean-up; where each reusable piece lands; "What waits for gameplay"; the ten questions as they now stand); phase 1's card brought in line.
+- Part 2 (6402), documents only: the owner's addendum (questions 36 to 72) word for word as the document's part 14, a note at the top on how the parts rank, and part 13's 23 dated lines for what it settles or changes; the audit's second half (14 §2 to §7, with NOT IN THE GAME for each); the plan (phase 1b the motion, six screens in phase 6, four cards in phase 7, phase 8 the clean-up; where each reusable piece lands; "What waits for gameplay"; ten facts for the owner's design conversation; the ten questions as they now stand); phase 1's card brought in line. By the orchestrator's message of 22:34 UTC (the owner's words with the addendum): part 0's status table, how the next addendum is added, and no phase starting on three answers; that message crossed the first push, so this PR has two.
 
 ## Next
-- nothing: phase 1 starts only on the owner's yes and their answers to questions 1 to 3.
+- nothing: no phase starts until the owner says the design is complete (their words with the addendum, 2026-11-25); the next addendum (question 73 on) is merged the same way, by a new part of this card.
 
 ## Found
 - The document's points rule is not the game's: shared points come with the best weapon's level (`server/src/prog3.js`, the note of v2.3.3538), and a weapon's points may buy body stats.
@@ -22,4 +22,4 @@ state: ready
 - Part 2: the page called Notifications lists chat lines (`notifBus.js`:55), and the setting called Notifications only hides the chat feed.
 
 ## Needs
-- The owner: yes or no to the plan, and questions 1 to 3 as they now stand (the Menu's eight; the closed band's two buttons; how phase 1 arrives, with the growing motion as its own small step).
+- The owner: nothing now. The plan's "What to take back to the design conversation" (ten facts of the game) is for their design conversation; the ten questions wait for the design to be complete.
