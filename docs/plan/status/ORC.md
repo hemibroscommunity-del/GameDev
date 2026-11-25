@@ -2,7 +2,7 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 16 (session_01LccHam7qcwhTEoKK12qESR, the top model, high, depth 0 of 8, started by the owner 01:53 UTC 11-25) IS THE ORCHESTRATOR since 01:57: lists, questions, ready and hand-over messages come to it. Part 15 (session_01LccHajTyWspfqLUs3LfQBc) is stopped at 277k: never message. A NEXT PART: read `ORC-orders.md` beside this file first; write your id here; tell the RUNNING sessions and then part 16 ONCE. Never message parts 1 to 15, nor any session called stopped below.
+part 17 (session_01LccHajkFpBNwB1HXTDatyY, the top model, high, depth 1 of 8, started by part 16 at 03:27 UTC 11-25, the owner away) IS THE ORCHESTRATOR since 03:35: lists, questions, ready and hand-over messages come to it. Part 16 (session_01LccHam7qcwhTEoKK12qESR, depth 0, the owner's own session) handed over at 250k: it only forwards the owner's typed words; never message it after the take-over line. Part 15 (session_01LccHajTyWspfqLUs3LfQBc) is stopped: never message. A NEXT PART: read `ORC-orders.md` beside this file first; write your id here; tell the RUNNING sessions and then part 17 ONCE. Never message parts 1 to 15, nor any session called stopped below.
 OLDER BLOCKS (sittings 59 to 62 in full, each lane's facts, every stopped session's id): `git show bb109cb9:docs/plan/status/ORC.md` (110 lines; read by range). Part 15 cut this file to what is still live.
 
 ## Where the plan stands
