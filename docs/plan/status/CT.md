@@ -6,28 +6,14 @@ state: ready
 ## Done
 - PRs 1-5 (6540-6544), items 6-8 (6545-6547), parts 15-22 (6548-6554): on
   main or in their PRs (git log; their specs).
-- Part 23 PR 1 (6556): the nearest threat first. sight.js sightPick: the
-  nearest in the cone and range wins (the angle within 15%), one in view
-  before one out of it, the kept one held unless a newcomer is 20% nearer
-  or it left the view; latch.js latchAway: a lock out of view moves to the
-  nearest in view in range after 400 ms; `?nearpick=0` the old. The view is
-  S.camera + the size BroTown's ONE latchFrame call now hands in (reading 6:
-  TRAPS 237's census forbids a new _viewW reader in src/game).
-  sight.test 12, latch.test 7: the card's plants (a)-(g) red; 156 mutants
-  of the added lines, 11 left, all equivalent (in the PR body).
-  mp-nearpick: 8/8 once on the test box (before the BroTown call).
-
-- Part 23 PR 2 (6557): the bow's special at once. game/bowSpecialNow.js
-  bowSpecialPick (pure: mode 5's gate, the ranged slot AND a bow, the
-  switch; the latch's lock first, else Attack's pick, latch.js sightNow);
-  specialAttack gains three calls: the queue only when there is nothing to
-  take, the volley aimed at the taken monster (its lock reaches
-  S.lockedTarget only next frame), and the latch's take (latchPress, the
-  hold rule: a tap's lock; never over a lock, so auto is never let go).
-  `?specialnow=0` the queue back. bow-special.test 44 drives the real
-  specialAttack (alias loader + .jsx stubs): the card's five plants red;
-  29 mutants of the added lines, 27 killed, 2 equivalent (in the PR body).
-  mp-bowspecial: see the PR body (once on the test box).
+- Part 23 PR 1 (6556): the nearest threat first (sight.js sightPick, one
+  in view first; latch.js latchAway; `?nearpick=0`). 156 mutants, 11 left,
+  all equivalent; mp-nearpick 8/8 once on the test box. Its PR body.
+- Part 23 PR 2 (6557): the bow's special at once (game/bowSpecialNow.js:
+  the lock, else Attack's pick, fires now and the latch takes it; nothing
+  to take readies it; `?specialnow=0`). bow-special.test 44 drives the real
+  specialAttack: the five plants red; 29 mutants, 27 killed, 2 equivalent.
+  mp-bowspecial 16/16 once on the test box. Its PR body.
 
 ## Next
 - The card is done once PR 2 lands (both PRs stacked: PR 1 first).
