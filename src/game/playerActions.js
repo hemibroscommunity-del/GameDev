@@ -26,6 +26,7 @@ import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the special
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 import { mcSwingGapMs, mcNoteSwing } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial's gap and share */
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
+import { bowSpecialMon, bowSpecialTake } from '@/game/bowSpecialNow.js';   /* v2.3.6557: the bow's special at once (card CT part 23 PR 2) */
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -167,7 +168,12 @@ export function specialAttack(S) {
        and home), and melee has no line to speak of, so neither can ever be in
        a state this would defer.  `_bowSight` is null on those weapons anyway,
        which is why the slot is tested rather than the field. */
-    if ((R.activeSlot === 'ranged') && !(S._bowSight && S._bowSight.d != null)) {
+    /* v2.3.6557: the bow's special at once (card CT part 23 PR 2): in the two
+       buttons, with a monster to take (the latch's, else Attack's pick) it
+       flies at it now, and the queue below is for empty air only
+       (game/bowSpecialNow.js; `?specialnow=0` the queue as before). */
+    var _nowMon = bowSpecialMon(S, getActiveWeapon(R));
+    if ((R.activeSlot === 'ranged') && !_nowMon && !(S._bowSight && S._bowSight.d != null)) {
       S._bowSpecialQueued = now;
       /* ═══ v2.3.2543: THE QUEUE IS SHOWN ON THE BUTTON, NOT SAID IN A POPUP ═══
          Owner, after playing the merged rework: swiping the bow's special on a
@@ -341,9 +347,13 @@ export function specialAttack(S) {
        (v2.3.3399: the bow's volley leaves from the grip now, below, and is
        re-aimed from it at release; the staff's orbs still leave from you.) */
     /* v2.3.2845: at the torso, as every locked shot is (combatHelpers lockShotPoint) */
-    var _sLock = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
+    /* v2.3.6557: the bow's special taken at once flies at its monster (the
+       latch's lock reaches S.lockedTarget only on the next frame: targeting.js) */
+    var _sRef = _nowMon || (S.lockedTarget && S.lockedTarget.ref);
+    var _sLock = lockShotPoint(_sRef, S.currentZone);
     if (_sLock) aimAng = Math.atan2(_sLock.y - S.player.y, _sLock.x - S.player.x);
     if (activeWpn.type === 'bow') {
+      bowSpecialTake(S, _nowMon);   /* v2.3.6557: the latch takes it as Attack's press would (the body turns to it) */
       /* BOW heavy — large elemental arrow in swipe direction.  Renders
          in effectsRenderer as a regular arrow with a bright halo ring;
          no `ice` flag (that flag is the "draw as orb" toggle and is
@@ -412,7 +422,7 @@ export function specialAttack(S) {
       var _bgRoom = arrowEdgeRoom(S.camera, S._viewW, S._viewH, _bgX, _bgY, _bgAng);
       var _bowGf = shotAimAt(S, _bgX, _bgY, _bgAng,
         Math.min(BOW_RANGE_PX * _bowRange, _bgRoom + arrowSureReachPast(_bowStat)),
-        { isSpecial: true, aimAt: _sLock ? S.lockedTarget.ref.id : null,
+        { isSpecial: true, aimAt: _sLock ? _sRef.id : null,   /* v2.3.6557: _sRef, the lock or the special's own monster */
           ground: { x: S.player.x, y: S.player.y + shotGroundDy(S), len: _bgRoom } });
       for (var bvi = 0; bvi < _bowN; bvi++) {
         S.arrows.push({

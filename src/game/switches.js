@@ -278,6 +278,7 @@ const FORMS = {
   'socialreset': '0',
   'sootms': '*',
   'sounds': '',
+  'specialnow': '0',
   'speedms': '*',
   'stafffeel': '0',
   'standinlegs': '0',
