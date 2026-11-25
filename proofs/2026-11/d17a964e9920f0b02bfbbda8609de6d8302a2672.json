@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d17a964e9920f0b02bfbbda8609de6d8302a2672",
+  "tree": "94b52d3c36ea9fd0ebdda5a0d3978c12b266c427",
+  "committedAt": "2026-11-24T23:36:44-08:00",
+  "subject": "Merge pull request #2351 from hemibroscommunity-del/claude/plan-lb-2-ranks",
+  "files": 8603,
+  "bytes": 968210176,
+  "listingSha256": "ab1a255806484f248bfea94b1590d54e48eacc718b8a34936d529bc8eab6439d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
