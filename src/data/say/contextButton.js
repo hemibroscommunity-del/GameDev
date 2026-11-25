@@ -15,4 +15,8 @@ export const SAY = Object.freeze({
   /* v2.3.6552: TALK draws the owner's pill and no word (card CT part 19):
      its name for a screen reader, never drawn */
   'contextButton.talkLabel': 'Talk',
+  /* v2.3.6553 (part 22): the button's two dresses, read by ContextButton.jsx's
+     PLATE_CLASS / PIC_CLASS (the words guard counts a page's string in place) */
+  'contextButton.plateClass': 'bt-chisel bt-chisel--brass bt-ctx-btn bt-desktop-hide',
+  'contextButton.picClass': 'bt-ctx-btn bt-ctx-btn--pic bt-desktop-hide',
 });

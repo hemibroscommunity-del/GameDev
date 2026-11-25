@@ -41,8 +41,8 @@ const SKILL_ICONS = RDISC_ICONS.filter(function (ic) { return ic[0] === 'mining'
 const BTN_H = 48;
 /* v2.3.6552: the two dresses (ctxDress): the brass word button, and the
    picture alone (TALK) -- no chisel class, no border, no ground */
-const PLATE_CLASS = 'bt-chisel bt-chisel--brass bt-ctx-btn bt-desktop-hide';
-const PIC_CLASS = 'bt-ctx-btn bt-ctx-btn--pic bt-desktop-hide';
+const PLATE_CLASS = SAY['contextButton.plateClass'];   /* v2.3.6553: read whole, never through deskWords */
+const PIC_CLASS = SAY['contextButton.picClass'];
 const PLATE_DRESS = { padding: '0 12px 0 8px', minWidth: '72px', background: '', border: '' };
 const PIC_DRESS = { padding: '0', minWidth: CTX_TOUCH + 'px', background: 'none', border: '0' };
 

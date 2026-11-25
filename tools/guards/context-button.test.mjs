@@ -312,7 +312,11 @@ const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50
       (decl.look || []).join() === 'ctxLook(use)' && (decl.ic || []).join() === 'look.pic' && assigns.join() === 'look.word', { look: decl.look, ic: decl.ic, assigns });
     check('9b. it dresses on a kind change: ctxDress(el, look) under `el._btKind !== use.kind`, once',
       calls.length === 1 && calls[0] === 'el._btKind !== use.kind => ctxDress(el, look)', calls);
-    const pic = (decl.PIC_CLASS || []).join(), dress = (decl.PIC_DRESS || []).join();
+    /* v2.3.6553 (part 22): the class lives in the words table (the words
+       guard's line): follow `SAY['key']` to its string, the same check */
+    const SAYCB = (await import('../../src/data/say/contextButton.js')).SAY;
+    const sayKey = (v) => { const m = /^SAY\['([\w.]+)'\]$/.exec(v); return m ? String(SAYCB[m[1]]) : v; };
+    const pic = sayKey((decl.PIC_CLASS || []).join()), dress = (decl.PIC_DRESS || []).join();
     check('9c. the picture alone: no chisel class, no ground, no border, a touch box of CTX_TOUCH',
       pic.includes('bt-ctx-btn') && !pic.includes('chisel') && /minWidth: CTX_TOUCH \+ 'px'/.test(dress) && /background: 'none'/.test(dress) && /border: '0'/.test(dress), { pic, dress });
     check('9d. the pill\'s <img>: TALK_PILL_URL, CTX_TALK_W x CTX_TALK_H, under the name CTX_TALK_PIC',
