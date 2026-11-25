@@ -60,11 +60,23 @@
  * called (9b), the chisel class on PIC_CLASS (9c), PIC_DRESS's 48 to 40
  * (9c), the pill's src (9d), the preload's push dropped (9e): every one red.
  * Survivors: none.
+ * v2.3.6553 (card CT part 21; the owner: "Talk icon below npc"): 3b, 3f-3h
+ * and 9f-9g hold a townsperson's pill below his name tag and quest line.
+ * Mutants (23, by a script, each alone): the tag 20 to 24, the line 20 to 0,
+ * the gap 6 to 0, the offer's marker, the drop's floor 14 to 0, its ratio,
+ * round to floor, its NaN guard, the line's term and half the pill dropped
+ * from ctxTalkBelow, a flat 14 drop, the drop on every kind, the line never
+ * or on any marker, TALK at CTX_BELOW_CSS, every kind on TALK's rule, a beat
+ * as a townsperson, the clamp dropped, held at vh or past vh; in the panel
+ * figH not passed, no npc to npcFigureHeight, figH for every kind: every one
+ * red.  9g is a mirror (the renderer's sizes, read): a change there re-measures.
+ * Survivors: none.
  */
 import { readSystem } from './lib/filesOf.mjs';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
-import { ctxButtonsOn, ctxPick, ctxScreen, ctxTap, ctxExtractionNode, ctxSkillOf, ctxLook, CTX_TALK_REACH, CTX_BELOW_CSS, CTX_NPC_FOOT,
+import { ctxButtonsOn, ctxPick, ctxScreen, ctxTap, ctxExtractionNode, ctxSkillOf, ctxLook, CTX_TALK_REACH, CTX_BELOW_CSS,
+  ctxPlateTop, ctxTalkBelow, CTX_PLATE_CSS, CTX_QUEST_CSS, CTX_TALK_GAP, CTX_QUEST_OFFER,
   CTX_NODE_WORDS, CTX_BEAT_WORDS, CTX_TALK_W, CTX_TALK_H, CTX_TOUCH, CTX_TALK_PIC } from '../../src/game/contextButton.js';
 import { TALK_PILL_DATA, TALK_PILL_W, TALK_PILL_H } from '../../src/data/talkPill.js';
 
@@ -130,11 +142,45 @@ const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50
   const cam = { x: 50, y: 60 };
   const n = ctxScreen({ kind: 'node', thing: { x: 150, y: 160 } }, cam, 2, 2, box, 1);
   check('3a. a node: the canvas\'s corner + (x - camera) * scale, CTX_BELOW_CSS under its feet', !!n && n.x === 10 + 200 && n.y === 20 + 200 + CTX_BELOW_CSS, n);
-  const t = ctxScreen({ kind: 'talk', thing: { x: 150, y: 160 } }, cam, 2, 2, box, 1);
-  check('3b. a townsperson: his feet, 14 world px under his place', !!t && t.y === 20 + (160 + CTX_NPC_FOOT - 60) * 2 + CTX_BELOW_CSS && t.x === n.x, t);
+  /* v2.3.6553 (card CT part 21; the owner: "Talk icon below npc"): a
+     townsperson's pill stands below his name tag and his quest line */
+  const FIG = 128.9;   /* Mayor Bro's figure (world px: 120/256 * 1.25 * 1.10 * 200) */
+  const t = ctxScreen({ kind: 'talk', thing: { x: 150, y: 160 } }, cam, 2, 2, box, 1, FIG);
+  const tagTop = 20 + (160 + ctxPlateTop(FIG) - 60) * 2;
+  check('3b. a townsperson: his tag\'s top (ctxPlateTop world px under his feet), the tag, the gap, half the pill',
+    !!t && t.y === tagTop + CTX_PLATE_CSS + CTX_TALK_GAP + CTX_TALK_H / 2 && t.x === n.x, { t, tagTop });
+  const tq = ctxScreen({ kind: 'talk', thing: { x: 150, y: 160, _questMarker: CTX_QUEST_OFFER } }, cam, 2, 2, box, 1, FIG);
+  check('3b. his offer\'s line shown: CTX_QUEST_CSS lower; a quest he holds (a pin over his head) draws no line',
+    !!tq && tq.y === t.y + CTX_QUEST_CSS && tq.x === t.x
+    && ctxScreen({ kind: 'talk', thing: { x: 150, y: 160, _questMarker: '\u2754' } }, cam, 2, 2, box, 1, FIG).y === t.y
+    && ctxScreen({ kind: 'talk', thing: { x: 150, y: 160, _questMarker: '\u2753' } }, cam, 2, 2, box, 1, FIG).y === t.y, { tq, t });
+  check('3b. the tag\'s drop is the renderer\'s: max(14, round(figH * 38 / 121.9)), 14 with none',
+    ctxPlateTop(FIG) === 40 && ctxPlateTop(121.9) === 38 && ctxPlateTop(117.2) === 37 && ctxPlateTop(30) === 14 && ctxPlateTop(undefined) === 14 && ctxPlateTop(-5) === 14 && ctxPlateTop(NaN) === 14,
+    [ctxPlateTop(FIG), ctxPlateTop(121.9), ctxPlateTop(30), ctxPlateTop(undefined)]);
+  check('3b. the labels\' sizes: a 20 px tag, 20 more for the quest line, 6 px of air', CTX_PLATE_CSS === 20 && CTX_QUEST_CSS === 20 && CTX_TALK_GAP === 6 && CTX_QUEST_OFFER === '\u2757'
+    && ctxTalkBelow(false) === 20 + 6 + CTX_TALK_H / 2 && ctxTalkBelow(true) === 40 + 6 + CTX_TALK_H / 2);
+  /* talk stands lower than a harvest kind by the labels' height, at every
+     view scale and figure: never over the tag or the line */
+  let over = null;
+  for (const sc of [0.5, 1, 1.5, 2, 3]) for (const fh of [60, 93.75, 117.2, FIG, 160]) for (const q of [false, true]) {
+    const tt = ctxScreen({ kind: 'talk', thing: { x: 150, y: 160, _questMarker: q ? CTX_QUEST_OFFER : null } }, cam, sc, sc, box, 1, fh);
+    const nn = ctxScreen({ kind: 'node', thing: { x: 150, y: 160 } }, cam, sc, sc, box, 1);
+    const foot = 20 + (160 + ctxPlateTop(fh) - 60) * sc + CTX_PLATE_CSS + (q ? CTX_QUEST_CSS : 0);
+    if (!(Math.abs(tt.y - CTX_TALK_H / 2 - (foot + CTX_TALK_GAP)) <= 0.5 && Math.abs(tt.y - nn.y - (ctxPlateTop(fh) * sc + ctxTalkBelow(q) - CTX_BELOW_CSS)) <= 1 && tt.y > nn.y && tt.x === nn.x))   /* within the whole-pixel rounding */ { over = { sc, fh, q, tt, nn, foot }; break; }
+  }
+  check('3f. TALK lower than CHOP by the labels: its top 6 px under the lowest line, centred, at every scale and figure', over === null, over);
+  const low = ctxScreen({ kind: 'talk', thing: { x: 150, y: 400 } }, cam, 2, 2, { left: 10, top: 20, vh: 700 }, 1, FIG);
+  const lowN = ctxScreen({ kind: 'node', thing: { x: 150, y: 400 } }, cam, 2, 2, { left: 10, top: 20, vh: 700 }, 1);
+  const mid = ctxScreen({ kind: 'talk', thing: { x: 150, y: 160 } }, cam, 2, 2, { left: 10, top: 20, vh: 700 }, 1, FIG);
+  check('3g. at the window\'s foot the pill is held on the screen (CTX_TOUCH / 2 inside), above it untouched',
+    !!low && low.y === 700 - CTX_TOUCH / 2 && lowN.y === 700 - CTX_TOUCH / 2 && mid.y === t.y
+    && ctxScreen({ kind: 'node', thing: { x: 150, y: 378 } }, cam, 2, 2, { left: 10, top: 20, vh: 700 }, 1).y === 700 - CTX_TOUCH / 2
+    && ctxScreen({ kind: 'node', thing: { x: 150, y: 366 } }, cam, 2, 2, { left: 10, top: 20, vh: 700 }, 1).y === 666, { low, lowN, mid });
+  const bt = ctxScreen({ kind: 'beat', thing: { x: 150, y: 160, _questMarker: CTX_QUEST_OFFER } }, cam, 2, 2, box, 1, FIG);
+  check('3h. a beat stands where its node does (only a townsperson\'s pill moves)', !!bt && bt.y === n.y && bt.x === n.x, bt);
   const r = ctxScreen({ kind: 'node', thing: { x: 150.4, y: 160.2 } }, cam, 1.1, 1.1, { left: 0, top: 0 }, 3);
   check('3c. on whole device pixels (dpr 3: a third of a CSS px)', !!r && Math.abs(r.x * 3 - Math.round(r.x * 3)) < 1e-9 && Math.abs(r.y * 3 - Math.round(r.y * 3)) < 1e-9 && Math.abs(r.x - 110.44) < 0.34, r);
-  const d = ctxScreen({ kind: 'talk', thing: { x: 0, y: 0, renderX: 150, renderY: 160 } }, cam, 2, 2, box, 1);
+  const d = ctxScreen({ kind: 'talk', thing: { x: 0, y: 0, renderX: 150, renderY: 160 } }, cam, 2, 2, box, 1, FIG);
   check('3d. a townsperson\'s drawn place (renderX, renderY) first', !!d && d.x === t.x && d.y === t.y, d);
   check('3e. nothing with no pick, camera or box; a scale of 0 or none is 1',
     ctxScreen(null, cam, 1, 1, box, 1) === null && ctxScreen({ kind: 'node', thing: tree }, null, 1, 1, box, 1) === null && ctxScreen({ kind: 'node', thing: tree }, cam, 1, 1, null, 1) === null
@@ -271,6 +317,20 @@ const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50
       pic.includes('bt-ctx-btn') && !pic.includes('chisel') && /minWidth: CTX_TOUCH \+ 'px'/.test(dress) && /background: 'none'/.test(dress) && /border: '0'/.test(dress), { pic, dress });
     check('9d. the pill\'s <img>: TALK_PILL_URL, CTX_TALK_W x CTX_TALK_H, under the name CTX_TALK_PIC',
       objs.some((o) => o.includes("'data-ctx-icon': CTX_TALK_PIC") && o.includes('src: TALK_PILL_URL') && o.includes('width: CTX_TALK_W') && o.includes('height: CTX_TALK_H')), objs);
+    /* v2.3.6553: the frame hands ctxScreen the townsperson's figure height
+       (the one fact his tag's place needs), only for a townsperson */
+    const sc = []; B.traverse(ast, { CallExpression(p) { if (p.node.callee.type === 'Identifier' && p.node.callee.name === 'ctxScreen') sc.push(gen(p.node)); } });
+    check('9f. the frame passes figH = npcFigureHeight(pick.thing.sprite, pick.thing) for a townsperson, as ctxScreen\'s seventh',
+      (decl.figH || []).join() === "pick && pick.kind === 'talk' ? npcFigureHeight(pick.thing.sprite, pick.thing) : 0" && sc.length === 1 && sc[0].endsWith(', figH)'), { figH: decl.figH, sc });
+    /* the renderer's numbers the rule is cut from (read, never changed here):
+       a townsperson's tag 13 px on one line, the offer's line 13 under it in
+       13 px words, the drop off his figure */
+    let er = '';   /* found by system (tests-by-system): the render file that draws the offer's line */
+    for (const [, text] of readSystem('render', { only: /\.js$/ })) if (text.includes("text: '1 quest available'")) er = text;
+    check('9g. the renderer still draws what ctxTalkBelow counts (a red here: re-measure the three sizes)',
+      /_attachNamePill\(display, 13, 1\);/.test(er) && /const oneLine = level === '';/.test(er) && /\(display\._pillBoxH \|\| display\._pillH \|\| 24\) \+ 13;/.test(er)
+      && /text: '1 quest available', style: \{\s*fontFamily: 'Source Sans 3, sans-serif', fontSize: 13,/.test(er) && /const offerOn = qmStr === '\u2757' && !!display\._namePill;/.test(er)
+      && /display\._namePill\.y = Math\.max\(14, Math\.round\(_figH \* NPC_PLATE_DROP_FRAC\)\);/.test(er));
     const cs = read('src/ui/panels/controlSkin.jsx'), cp = read('src/rendering/controlsPreload.js');
     check('9e. its address the generated data address (controlSkin TALK_PILL_URL from data/talkPill.js), warmed on the loading screen (controlsPreload)',
       /import \{ TALK_PILL_DATA \} from '\.\.\/\.\.\/data\/talkPill\.js'/.test(cs) && /export const TALK_PILL_URL = TALK_PILL_DATA;/.test(cs) && /urls\.push\(TALK_PILL_URL\);/.test(cp));

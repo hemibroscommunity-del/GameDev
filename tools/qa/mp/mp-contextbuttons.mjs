@@ -30,6 +30,8 @@
  *   node tools/qa/mp/run.mjs contextbuttons
  */
 import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 export const lane = 'full';
 
 const UPRIGHT = { width: 430, height: 775 };
@@ -192,6 +194,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
         t1 === 'talk' && L1.show === '1' && L1.probe.word === 'TALK' && L1.probe.name === 'Mayor Bro' && !!L1.box && L1.box.h >= 44 && L1.box.w >= 44 && !!f1 && L1.box.top > f1.y && Math.abs(L1.box.x - f1.x) < 2
         && L1.box.left >= 0 && L1.box.right <= L1.vw && L1.box.bottom <= L1.vh, { L1, f1, mayor });
       /* v2.3.6552: the owner's pill, no word, no plate */
+      /* v2.3.6553 (card CT part 21; the owner, 2026-11-25: "Talk icon below
+         npc"): the pill stands below his name tag and, when it shows, his
+         "1 quest available" line -- its picture's top 6 px under the lowest
+         (the renderer's own plate drop, __btNpcSprites; the labels' sizes
+         contextButton.js counts), never over either */
+      const tag = await P.page.evaluate(() => {
+        const S = window._gameState.current, m = (S.npcs || []).find((n) => n && n.name === 'Mayor Bro');
+        const d = window.__btNpcSprites ? window.__btNpcSprites().find((o) => o && o.name === 'Mayor Bro') : null;
+        return { plateY: d && d.plate ? d.plate.y : null, offer: !!m && m._questMarker === '\u2757', sy: S._worldScaleY || 1 };
+      });
+      const tagTop = f1 && tag.plateY != null ? f1.y + tag.plateY * tag.sy : null;
+      const lineFoot = tagTop != null ? tagTop + 20 + (tag.offer ? 20 : 0) : null;
+      const pillTop = L1.box ? L1.box.y - 15 : null;
+      rec.ok(`1b. below his name tag${tag.offer ? ' and his quest line' : ''}: the pill's top ${pillTop != null && lineFoot != null ? Math.round(pillTop - lineFoot) : '?'} px under the lowest, centred on him`,
+        lineFoot != null && pillTop != null && pillTop - lineFoot >= 5 && pillTop - lineFoot <= 7.5 && Math.abs(L1.box.x - f1.x) < 2, { tag, tagTop, lineFoot, pillTop, f1 });
+      if (f1) { const OUT = join(H.REPO, 'tools/qa/mp/out'); mkdirSync(OUT, { recursive: true }); await P.page.screenshot({ path: join(OUT, 'contextbuttons-talk-under-tag.png'), clip: { x: Math.max(0, f1.x - 110), y: Math.max(0, f1.y - 150), width: 220, height: 280 } }); }
       rec.ok(`1b. it is the owner's pill (${L1.pill && Math.round(L1.pill.w)} x ${L1.pill && Math.round(L1.pill.h)}, inline, decoded), no word drawn, no brass plate, named "${L1.name}", touch-action ${L1.touchAction}`,
         !!L1.pill && L1.pill.shown && L1.pill.decoded && L1.pill.inline && Math.abs(L1.pill.w - 44) <= 1 && Math.abs(L1.pill.h - 30) <= 1
         && L1.word === '' && L1.wordShown === false && L1.chisel === false && L1.name === 'Talk' && L1.touchAction === 'manipulation'

@@ -32,6 +32,7 @@
 import React, { useRef } from 'react';
 import { ctxPick, ctxScreen, ctxLook, CTX_KINDS, CTX_TALK_W, CTX_TALK_H, CTX_TOUCH, CTX_TALK_PIC } from '../../game/contextButton.js';
 import { canvasPlace } from '../mayorScreen.js';
+import { npcFigureHeight } from '../../rendering/leaves/entity-townsfolk.js';   /* v2.3.6553: the one fact ctxScreen needs for a townsperson, where his name tag hangs (a leaf: pure) */
 import { RDISC_ICONS, TALK_PILL_URL } from './controlSkin.jsx';
 import { say } from '../../game/say.js';
 import { SAY } from '../../data/say/contextButton.js';
@@ -64,7 +65,8 @@ function ctxDress(el, look) {
 export function ctxButtonFrame(el, S, o) {
   if (!el) return null;
   const pick = ctxPick(S, o);
-  const pos = pick ? ctxScreen(pick, S.camera, S._worldScaleX, S._worldScaleY, canvasPlace(), (typeof window !== 'undefined' && window.devicePixelRatio) || 1) : null;
+  const figH = pick && pick.kind === 'talk' ? npcFigureHeight(pick.thing.sprite, pick.thing) : 0;   /* v2.3.6553: "Talk icon below npc" */
+  const pos = pick ? ctxScreen(pick, S.camera, S._worldScaleX, S._worldScaleY, canvasPlace(), (typeof window !== 'undefined' && window.devicePixelRatio) || 1, figH) : null;
   const use = pick && pos ? pick : null;
   el._btPick = use;
   el._btPos = use ? pos : null;

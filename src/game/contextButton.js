@@ -39,6 +39,7 @@ import { readerFor, sw } from './switches.js';
 import { twoButtonsLive } from './latch.js';
 import { say } from '../game/say.js';   /* spelt by its folder (guards/say.test reads the path) */
 import { SAY } from '../data/say/contextButton.js';   /* its words (docs/specs/player-words.md) */
+import { NPC_PLATE_DROP_FRAC } from '../rendering/tables/townsfolk.js';   /* v2.3.6553: the name tag's drop, the renderer's own number (a table: no imports) */
 
 /** How near a townsperson stands for his TALK button (world px, from the
  *  bro's feet to his).  v2.3.6550: between _nearNpc's 90 (the E key) and the
@@ -168,28 +169,68 @@ export function ctxLook(pick) {
   return { plate: true, word: pick.word, pic: pick.skill || 'none', label: say(SAY, 'contextButton.label') };
 }
 
-/** Below a thing's feet, how far the button's centre sits (CSS px). */
+/** Below a thing's feet, how far the button's centre sits (CSS px): CHOP,
+ *  MINE, FISH, COOK and the beats (a townsperson's: ctxTalkBelow). */
 export const CTX_BELOW_CSS = 34;
-/** A townsperson's feet stand this far under his place (world px; the same
- *  14 mayorScreen.js mayorScreenRect draws his body to). */
-export const CTX_NPC_FOOT = 14;
+
+/* ═══ v2.3.6553: TALK STANDS BELOW THE NAME TAG (card CT part 21) ═══
+ * The owner, 2026-11-25: "Talk icon below npc".  Part 19 hung the pill
+ * CTX_BELOW_CSS under his feet, where the old TALK button stood: over his
+ * name tag and his "1 quest available" line.  A townsperson's pill now
+ * stands below everything written under him, CTX_TALK_GAP under the lowest
+ * line, centred on him; never over either.  A RULE in the labels' known
+ * sizes, never a measure of the page a frame (the thread law,
+ * docs/specs/layout-reads.md).  The renderer's numbers (read, unchanged):
+ *  - the tag's top hangs off his figure's own height, max(14,
+ *    round(figH * NPC_PLATE_DROP_FRAC)) world px under his feet
+ *    (entityRenderer v2.3.2069; ctxPlateTop), so it rides the view's scale;
+ *  - the tag itself is held one size on screen (_fitPlateToZoom: its 13 px
+ *    name on one line, 14 tall, plus 6: CTX_PLATE_CSS, 20; the hold's 0.2-3 clamp bites
+ *    only past a view of 5x or under a third: never in play);
+ *  - the offer line (his marker the offer's, '\u2757': v2.3.3600) is a child
+ *    of the tag, its middle 13 under the tag's foot, its 13 px stroked words
+ *    inked 7 under their middle: its foot CTX_QUEST_CSS (20) under the tag's (the line shows
+ *    or not: ctxScreen reads his marker, the same field the renderer reads).
+ * The view's foot still holds the pill on the screen (ctxScreen's clamp). */
+export const CTX_PLATE_CSS = 20;   /* measured: mp-contextbuttons' 3x shot, Mayor Bro's tag 170-189 CSS px */
+export const CTX_QUEST_CSS = 20;   /* measured: his line inked 197-209, the tag's foot 190 */
+export const CTX_TALK_GAP = 6;
+/** His marker when the offer's line shows (BroTown's questline sets it). */
+export const CTX_QUEST_OFFER = '\u2757';
+
+/** The name tag's top under his feet (world px), from his figure's height
+ *  (world px, npcFigureHeight: the frame passes it). */
+export function ctxPlateTop(figH) {
+  return Math.max(14, Math.round((figH > 0 ? figH : 0) * NPC_PLATE_DROP_FRAC));
+}
+
+/** Under the tag's top, how far the pill's centre sits (CSS px): the tag,
+ *  the quest line when it shows, the gap, half the pill. */
+export function ctxTalkBelow(questShown) {
+  return CTX_PLATE_CSS + (questShown ? CTX_QUEST_CSS : 0) + CTX_TALK_GAP + CTX_TALK_H / 2;
+}
 
 /**
  * Where the button's centre goes on the page (CSS px), on whole device
  * pixels so it does not shimmer as the camera (itself on whole device
  * pixels) moves.  `box` is the canvas's place on the page (mayorScreen.js
- * canvasPlace: kept, never measured here), `dpr` the device's pixel ratio.
- * Null when anything is missing.
+ * canvasPlace: kept, never measured here; its `vh` the window's height),
+ * `dpr` the device's pixel ratio, `figH` a townsperson's figure height
+ * (world px; v2.3.6553: where his name tag hangs).  A centre past the
+ * window's foot is held CTX_TOUCH / 2 inside it.  Null when anything is
+ * missing.
  */
-export function ctxScreen(pick, cam, sx, sy, box, dpr) {
+export function ctxScreen(pick, cam, sx, sy, box, dpr, figH) {
   if (!pick || !pick.thing || !cam || !box) return null;
   const t = pick.thing;
   const x = typeof t.renderX === 'number' ? t.renderX : t.x;
   const y = typeof t.renderY === 'number' ? t.renderY : t.y;
-  const foot = pick.kind === 'talk' ? CTX_NPC_FOOT : 0;
+  const talk = pick.kind === 'talk';
+  const foot = talk ? ctxPlateTop(figH) : 0;
   const cx = box.left + (x - cam.x) * (sx || 1);
-  const cy = box.top + (y + foot - cam.y) * (sy || 1) + CTX_BELOW_CSS;
+  let cy = box.top + (y + foot - cam.y) * (sy || 1) + (talk ? ctxTalkBelow(t._questMarker === CTX_QUEST_OFFER) : CTX_BELOW_CSS);
   if (!isFinite(cx) || !isFinite(cy)) return null;
+  if (box.vh > 0 && cy > box.vh - CTX_TOUCH / 2) cy = box.vh - CTX_TOUCH / 2;
   const k = dpr > 0 ? dpr : 1;
   return { x: Math.round(cx * k) / k, y: Math.round(cy * k) / k };
 }
