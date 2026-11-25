@@ -831,8 +831,13 @@ export function ctlBottom(px) {
    (shieldToggle.js shieldButtonLive, true while the guard is up) and the
    two buttons' moment (controlVisibility.js blockShown). */
 export function blockLive(S) {
-  if (!S || !S.rpg) return false;
-  return !!(shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn));
+  if (!S || !S.rpg) return null;
+  /* `true`, or null when Block does not show: the render's gate is this
+     `return null` (sight.test 10 reads it off the syntax tree), and
+     padSkin.js wellOf takes only `true` for a fight */
+  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn);
+  if (!live) return null;
+  return true;
 }
 
 export function ShieldButton(props) {

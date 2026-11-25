@@ -156,6 +156,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cdp = await P.ctx.newCDPSession(P.page);
       const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
       const tap = async (b, id) => { await touch('touchStart', [{ x: b.x, y: b.y, id }]); await P.page.waitForTimeout(70); await touch('touchEnd', [{ x: b.x, y: b.y, id }]); };
+      const under = await P.page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); return el ? String(el.getAttribute('data-pad-well') || el.className || el.tagName).slice(0, 50) : null; }, [L.c.w2.box.x, L.c.w2.box.y]);
       await tap(L.c.w2.box, 3);
       const bow = await H.waitFor(P, (S) => S.rpg && S.rpg.activeSlot, (v) => v === 'ranged', { timeout: 6000, label: 'bow in hand' }).catch(() => null);
       await P.page.waitForTimeout(400);
@@ -163,7 +164,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await tap(L.c.w1.box, 4);
       const sword = await H.waitFor(P, (S) => S.rpg && S.rpg.activeSlot, (v) => v === 'melee', { timeout: 6000, label: 'sword in hand' }).catch(() => null);
       rec.ok(`5. ${label}: the bow's well puts the bow in hand and lights (${B.c.w2 && B.c.w2.pic}), the sword's puts it back`,
-        bow === 'ranged' && B.c.w2 && B.c.w2.pic === 'slot-on' && B.c.w1 && B.c.w1.pic === 'slot' && sword === 'melee', { bow, sword });
+        bow === 'ranged' && B.c.w2 && B.c.w2.pic === 'slot-on' && B.c.w1 && B.c.w1.pic === 'slot' && sword === 'melee',
+        { bow, sword, under, qa: await P.page.evaluate(() => { const q = window.__btWeaponPill; return q ? { taps: q.taps, last: q.last, notes: q.notes } : null; }),
+          held: await H.readState(P, (S) => S.rpg ? { r: !!S.rpg.rangedWeapon, slot: S.rpg.activeSlot } : null) });
 
       /* 6: a fight, the band folded as in the owner's mockup.  The kit's
          shield lands in the stash: worn the bag's way (mp-twobuttons 3's) */
