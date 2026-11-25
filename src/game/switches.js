@@ -237,6 +237,7 @@ const FORMS = {
   'popupworld': '',
   'portraitgentle': '0|off|false',
   'posedoor': '0',
+  'questpages': '0',
   'questpath': '',
   'racedoor': '0',
   'reachspecials': '0',

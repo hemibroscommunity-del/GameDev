@@ -194,7 +194,7 @@ Quests, achievements, the codex, pets' book, points.
 - **Files**: `server/src/`: skillpoints
 - **Files**: `server/src/`: xp
 - **Files**: `server/src/`: queststate
-- **Files**: `src/game/`: quests, questCard, questComplete, questFly, questHandIn, questJournal, questKept, questPins, questRoute, questTrailStyle, questWays, trackedQuest, achievements, petBook, petFetch, pointsBubbles, pointsReset, pointsTips, tour, levelCelebration, xpBar, xpPop, welcomeBanner
+- **Files**: `src/game/`: quests, questCard, questComplete, questFly, questHandIn, questJournal, questKept, questPages, questPins, questRoute, questTrailStyle, questWays, trackedQuest, achievements, petBook, petFetch, pointsBubbles, pointsReset, pointsTips, tour, levelCelebration, xpBar, xpPop, welcomeBanner
 - **Doors**: `pointsGive` in `server/src/skillpoints.js` (POINT_ROADS: every change to a player's build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R)); `xpGive` in `server/src/xp.js` (XP_ROADS: every change to a character's experience and levels (xpGive, xpLevelUp, xpSet, xpMake; v2.3.5289, card R)); `questStateSet` in `server/src/queststate.js` (QUEST_ROADS: every change to a quest's state, progress, flags and kept lists (seven verbs; v2.3.5284, card R))
 - **Switches**: [its rows in the switch table](SWITCHES.md#quests)
 - **Words**: `quest`, `achievement`, `codex`, `pet`, `points`, `tour`, `xp`, `level`

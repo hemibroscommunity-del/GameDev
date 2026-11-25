@@ -781,11 +781,23 @@ townsfolk's dialogue busts are not this and stay Hemi Bros.
 Sources: docs/specs/hemi-portrait.md, docs/specs/npc-creator-looks.md, src/rendering/hemiBust.js, src/rendering/hemiLook.js, src/rendering/hemiBustCore.js
 
 ## The quest log
-Screens: dash-quests, dash-quest-detail
+Screens: dash-quests, dash-quest-journey, dash-quest-rewards, dash-quest-detail
 
 **What it is for:** The quest journal (v2.3.3944). It answers, at a glance, which quest you are on, what it asks, where to go, who you have talked to, what you were handed and will be paid, and what to do after it. Taking a quest and handing it in happen only with its giver, in the world.
 
-**Decisions, and why:**
+**Since v2.3.6620 (card QP): the tab is three pages, each whole with no scrolling.** The owner, 2026-11-25, of the Bro tab first: "it shows "pages" where all the information needs to be displayed together (instead of scrolling little by little) so all related information is shown at once ... Players see the big picture first and can investigate the details whenever they want"; then of this tab, with three mockups: "Same idea here I want the quest menu redesigned to this". The band keeps today's height (owner, earlier: "No don't change todays dashboard height"): about 190 px on an upright iPhone, so each page is built to that (mp-questpages measures 390 x 844 and 375 x 667). The rules are `src/game/questPages.js` (one field, `view`, one transition); the pages `src/ui/mobile/dash/QuestPages.jsx`; `?questpages=0` gives back the page below.
+- **Page 1, the quest** (it opens first): the row **Active (n) | Daily | Completed** with the three page marks at its end; the **head** (the giver's face, the quest's name, "IN PROGRESS · Mayor Bro", Track); **what to do now** (the thing's picture where the bag has one, the words, the count and its bar: a tap opens the journey); **where** (the pin, the place, Map, the whole row the Show on map road it was); **Rewards** in one row of tiles (gold, the points, the items with their pictures: a tap opens page 3). The tabs are the owner's own mockup's row (the "no tabs again" below was of v2.3.1298's tabs, which hid the quest itself; these hold one each of Daily and Completed, and the quest is the page).
+- **Page 2, the quest journey**: the head, then the steps as a line: done green with a tick (talking to the giver, with what he handed over by its pictures: the mockup's "Received"), the step in hand gold with its place and count, the steps to come grey ("Hand it in to Mayor Bro"). Whole for up to four steps; a longer one scrolls, opening on the step in hand.
+- **Page 3, rewards and what is next**: the head with the count, **Completion rewards** as tiles, and the **next quest** (its giver's face, its name, who and where, a lock and "Available after <this quest>"), from the same table the old NEXT line read (the giver's chain, then the tour). Where nothing names a next quest, the journal's own NEXT line.
+- **Getting about**: the marks (a tap each), the "what to do now" block, the rewards row; on pages 2 and 3 the top row is the page's name and the marks (the mockups draw no tabs there); the Quest mark or the Active tab is page 1. Taps only.
+- **Several quests in hand**: the head is the picker's button (a ▾ after the name): Active (the tracked one first), then Available, as the old list's pills; a tap opens that quest's page 1. The picker, Completed and Daily are lists and may scroll.
+- **A quest opened by name** (the pinned card's "Open quest") lands on its page 1 in the tab, not on a page of its own: a pushed page's header would leave it no room.
+- **Track** says what it does for five seconds where the status line was ("Your map's gold star follows this quest.").
+- **Wide** (the page's own box 600 px or more: a tablet, a phone on its side) the three pages stand side by side under one head, no marks. On a phone on its side the band is about 80 px tall, so there the head and the tabs share one row and the whole scrolls, as the old page did.
+- **Left out of the mockups, because the game does not know them**: a step's "West of town" and "Received" words of its own (the place is the journal's "Earth Forest, west of BroTown"; what was handed over is the giver's own list), the anvil picture (the next giver's face stands there).
+- **The words written in the old page but not on the pages** (each is still one tap away or said another way): REWARD's "Paid by Mayor Bro when you hand this quest in" is the tiles' tooltip, under the heading "Completion rewards"; WHO's face and "Talked to Mayor Bro ✓" are the head and the journey's first step; "1 more person has a quest: look for a gold !" is not drawn (the picker lists every offer).
+
+**Before the pages (v2.3.3944 to v2.3.6620), and still the page behind `?questpages=0`:**
 - **A menu since v2.3.4394: your quests are a list of pills, the open one beside it.** The owner, 2026-11-09: "The quests page actually needs to be reorganized as a useful menu interface. Right now everything scrolls too long and it's not a good quest management system. It needs to be able to help you navigate active quests, next steps, locations, etc easily on a mobile device." The v2.3.3944 journal was one column: the points, one whole quest (about 700 px of it), the daily card, then three lists, in a band about 190 px tall. To reach a second quest you scrolled past all of the first. Now it is the Leaderboards' shape, which the owner had just approved ("This is looking good"):
   - **The list** (left, scrolls by itself, each pill a 44 px target): **Active**, **Available**, then **More** (Done with its count, Daily). A quest's pill wears the pin its giver wears in the world: the grey "?" while you work on it, the gold ring and tick once it is ready to hand in, the gold "!" for one on offer; the quest you track wears a brass star. Done wears a green tick, Daily the prize wheel.
   - **The open quest** (right) is a head and then one card an item. The owner, of the first cut: "the quest detail menu is still pretty messy. I like clean separation between each menu item. Like the 'make 3 box traps at the woodworker' and the '0/3 box traps' line beneath it all run together ... display the profile picture of each NPC beside the quest. Think of the best way to arrange the layout so that mobile users can see the most pertinent data at a glance."
@@ -833,11 +845,11 @@ Screens: dash-quests, dash-quest-detail
 **Please don't suggest:**
 - Accept or Turn In buttons in the journal.
 - Quests from givers who are not in the world, or offers before the Mayor's first quest is handed in.
-- Tabs again, or small text and chips.
+- Tabs that hide the quest, or small text and chips (the pages' row of three, the owner's 2026-11-25 mockup, holds Daily and Completed; the quest is the page).
 - Daily quests or a season again, a daily-rewards button on the HUD, or a chest at login.
 - A road on the ground instead of the minimap's gold road, or green for "in progress".
 
-Sources: CLAUDE.md, docs/specs/quest-journal.md, docs/specs/quest-guidance.md, docs/specs/daily-rewards.md, src/game/questJournal.js, src/ui/mobile/sheet/questJournalModel.js, src/ui/mobile/dash/QuestsPanel.jsx, src/ui/mobile/dash/QuestDetailPanel.jsx, src/ui/mobile/dash/QuestJournalPage.jsx, src/ui/mobile/dash/DailyRewardsCard.jsx, src/ui/mobile/sheet/questModel.js, src/ui/BroTown.jsx
+Sources: CLAUDE.md, docs/plan/cards/QP.md, src/game/questPages.js, src/ui/mobile/dash/QuestPages.jsx, src/ui/mobile/dash/questParts.jsx, docs/specs/quest-journal.md, docs/specs/quest-guidance.md, docs/specs/daily-rewards.md, src/game/questJournal.js, src/ui/mobile/sheet/questJournalModel.js, src/ui/mobile/dash/QuestsPanel.jsx, src/ui/mobile/dash/QuestDetailPanel.jsx, src/ui/mobile/dash/QuestJournalPage.jsx, src/ui/mobile/dash/DailyRewardsCard.jsx, src/ui/mobile/sheet/questModel.js, src/ui/BroTown.jsx
 
 ## Life skills
 Screens: dash-bro-skills, dash-bro-skill-detail

@@ -711,24 +711,51 @@ export const STATES = [
      default: it is off unless `?hemiface=1` (docs/specs/hemi-portrait.md) */
   /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
      quest you are on (a run has taken Into the Blue at quest-accepted) */
-  dash('quests', 'Quests', 'The Quests page (v2.3.4394: a menu): your quests as a list of pills down the left (Active, Available, then Done with its count and Daily), each with its giver\'s pin; the open quest beside it: its title and status with Map and Track, what to do NOW with its count and bar, WHERE; then, a scroll below, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT.'),
+  /* v2.3.6620 (card QP): the Quests tab in pages (dash/QuestPages.jsx; `?questpages=0` the old page) */
+  dash('quests', 'Quests', 'The Quests tab, page 1 (v2.3.6620: the tab in pages, each whole with no scrolling): the row Active (n) | Daily | Completed with the three page marks; the quest\'s head (the giver\'s face, its name, "In progress" and the giver, Track); what to do now with its picture, count and bar (a tap opens the journey); where, with Map; the rewards in one row of tiles (a tap opens page 3).'),
   {
-    id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
-    about: 'One quest\'s own page, as the pinned quest card in the world opens it (v2.3.4394: the Quests page itself opens a quest beside its list): the six parts (NOW, WHERE, WHO with each step ticked, GIVEN TO YOU, REWARD, NEXT) and Track this quest.',
-    /* v2.3.3944: a row of the list by its own mark (an Active row, else an
-       Available one), scrolled into view under the page it opens on */
+    id: 'dash-quest-journey', group: 'Dashboard', title: 'Quests: the quest journey',
+    about: 'Page 2 of a quest (v2.3.6620): the head, then its steps as a line: done steps green with their tick (and what the giver handed over), the step in hand gold with its place and count, the steps to come grey.',
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      const sel = (await has(P, '[data-quest-row]')) ? '[data-quest-row]' : '[data-quest-offer-row]';
-      /* v2.3.4394: a pill of the list opens its quest beside it; the quest's
-         own page is the pinned card's road (questDetailBus, then the drill) */
-      const qid = await evalIn(P, (s0) => { const el = document.querySelector(s0); return el ? (el.getAttribute('data-quest-row') || el.getAttribute('data-quest-offer-row')) : null; }, sel);
-      if (!qid) return 'no quest in the list to open';
+      if (!(await has(P, '[data-quest-mark="journey"]'))) return 'no quest open in pages';
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-mark="journey"]'); if (b) b.click(); });
+      await wait(P, 400);
+      if (!(await has(P, '[data-quest-view="journey"]'))) return 'the journey did not open';
+    },
+  },
+  {
+    id: 'dash-quest-rewards', group: 'Dashboard', title: 'Quests: rewards and what is next',
+    about: 'Page 3 of a quest (v2.3.6620): the head with the count, the completion rewards as tiles, and the next quest (its giver\'s face, its name, who and where, a lock: "Available after" this one).',
+    run: async ({ P }) => {
+      await bus(P, 'open', 'quests');
+      await wait(P, 600);
+      if (!(await has(P, '[data-quest-mark="rewards"]'))) return 'no quest open in pages';
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-mark="rewards"]'); if (b) b.click(); });
+      await wait(P, 400);
+      if (!(await has(P, '[data-quest-view="rewards"]'))) return 'page 3 did not open';
+    },
+  },
+  {
+    id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
+    about: 'A quest opened by name, as the pinned quest card in the world opens it ("Open quest"): since v2.3.6620 it lands on that quest\'s page 1 in the Quests tab (with `?questpages=0`, its own page: NOW, WHERE, WHO, GIVEN TO YOU, REWARD, NEXT and Track).',
+    run: async ({ P }) => {
+      await bus(P, 'open', 'quests');
+      await wait(P, 600);
+      /* the quest the tab is on (the pages), else a row of the old page's list */
+      const qid = await evalIn(P, () => {
+        const pg = document.querySelector('[data-quests-page]');
+        const el = document.querySelector('[data-quest-row]') || document.querySelector('[data-quest-offer-row]');
+        return (pg && pg.getAttribute('data-quest-open')) || (el ? (el.getAttribute('data-quest-row') || el.getAttribute('data-quest-offer-row')) : null);
+      });
+      if (!qid) return 'no quest to open';
+      await bus(P, 'open', 'bag');
+      await wait(P, 300);
       const ok = await evalIn(P, (q) => { if (!window.__btQuestDetail) return false; window.__btQuestDetail.open(q); return true; }, qid);
       if (!ok) return 'no quest-detail probe';
       await wait(P, 500);
-      if (!(await has(P, '[data-journal-page]')) || (await has(P, '[data-journal-focus]'))) return 'the quest\'s page did not open';
+      if (!(await has(P, `[data-quest-open="${qid}"][data-quest-view="quest"]`)) && !(await has(P, '[data-journal-page]'))) return 'the quest\'s page did not open';
     },
   },
   /* v2.3.4172: Life Skills are a page under Bro (the card's Life Skills row;
