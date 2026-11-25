@@ -71,11 +71,26 @@ the switch table.
   more than the worker would land.
 - **While one is sighted**: the sight line is drawn from the body to it (the
   aim beam's drawing, called from a new leaf, not new lines in
-  `effectsRenderer.js`), and Block and the specials appear around Attack.
-  With none sighted the right side is Attack and Jump only. The appearing is
-  one change at the sighting, held a short while at the range's edge so it
-  does not flicker (TRAPS 218: never a structural change every frame). It
-  goes through `controlVisibility.js`'s one resolver.
+  `effectsRenderer.js`). **Each button its own moment** (part 16, tag 6549;
+  the owner, 2026-11-24: *"I want a clean attack and jump button that's it.
+  The special attacks buttons should only appear when a monster is within
+  attack range. I want to change the melee behavior so that it doesn't jump
+  to every monster. Instead you must press an attack charge button to get
+  that behavior."*; of Charge, *"do the recommended charge button
+  behavior"*; of Block in a fixed spot at a threat and the layout, *"Yes and
+  help position the size and arrangement of the buttons to cater to users
+  using their thumb on that side to do the work"*): with nothing near the
+  right side is Attack and Jump only. One phase, `S._thumbPhase` (calm,
+  threat, reach; thumbSide.js thumbTo): the SPECIALS in reach (a sword's
+  engage reach 72 x its multiplier, held out to 90; a bow's or a staff's
+  shot, 675 x its multiplier; held 0.4 s; `?reachspecials=0` at the
+  sighting); BLOCK at a threat (sighted, locked, in reach, or a monster's
+  hit in the last 3 s, seen or not: this undoes PR 4's "decided while
+  away"; `?threatblock=0`); CHARGE with a sword, a monster sighted or locked
+  and none in reach: a press locks it and is the sword's dash
+  (maybeSwordDash; `?chargebtn=0`). Each on its own spot of the right
+  thumb's arc (thumbArc.js; `?thumbarc=0` the old places). One change at
+  each edge (TRAPS 218), through `controlVisibility.js`'s resolvers.
 - **Attack is a latch**, drawn bevelled: raised at rest, pressed in and lit
   while combat is active. A press with a monster sighted makes combat
   ACTIVE: the target is locked, the body faces it, the weapon attacks at its

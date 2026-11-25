@@ -4,8 +4,9 @@ import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
 import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
 import { WHEEL_MINI_PX } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side on a phone, in one place */
 import { fightOn } from '@/game/sparTargets.js';
-import { combatButtonsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
+import { blockShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6549: Block at a threat (card CT part 16) */   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
+import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
@@ -834,7 +835,7 @@ export function ShieldButton(props) {
      the shield's cooldown runs out. */
   var flash = useReadyFlash(!!(S && S._shieldCdUntil && Date.now() < S._shieldCdUntil));
   if (!S || !S.rpg) return null;
-  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && combatButtonsShown(S, twoButtonsLive(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
+  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
   /* QA probe (house style: __btMonHit, __btCoach): why the button is or is
      not on screen, which a screenshot cannot say. */
   if (typeof window !== 'undefined') {
@@ -843,7 +844,7 @@ export function ShieldButton(props) {
       return { live: shieldButtonLive(s2, TARGET_PERIMETER_PX), up: !!(s2 && s2._shieldUp),
         hasShield: !!(s2 && s2.rpg && s2.rpg.shield), lock: !!(s2 && s2.lockedTarget),
         monsters: (s2 && s2.monsters ? s2.monsters.length : 0),
-        shown: combatButtonsShown(s2, twoButtonsLive(), fightOn) };   /* v2.3.6543 */
+        shown: blockShown(s2, twoButtonsLive(), fightOn), phase: s2._thumbPhase || 'calm' };   /* v2.3.6543; v2.3.6549: Block's own moment (thumbSide.js) */
     };
   }
   /* Keep rendering while it is UP even if the fight moved away, or a raised
@@ -856,7 +857,7 @@ export function ShieldButton(props) {
      with the disc's centre.  v2.3.2562 (owner, after playing it) moved it to
      the diagonal bottom-left of the disc, on its own, for "mental separation
      for combat purpose" -- see blockAnchor. */
-  var anchor = blockAnchor(isLandscape);
+  var anchor = thumbAnchor('block', isLandscape) || blockAnchor(isLandscape);   /* v2.3.6549: on the thumb's arc in the two buttons, a spot of its own */
   var size = anchor.size;
   var right = anchor.right;
   var press = function (e) {

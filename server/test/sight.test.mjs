@@ -29,7 +29,10 @@
  *   8. THE BUTTONS (controlVisibility.js combatButtonsShown, the one
  *      resolver): any other mode, every button's own rule; the two buttons,
  *      on screen while sighted, latched, or in a fight between players, and
- *      nothing else; the fight asked last;
+ *      nothing else; the fight asked last.  v2.3.6549 (card CT part 16): by
+ *      button (blockShown at a threat, specialsShown in reach, chargeShown a
+ *      sword out of reach; each switch the old rule), and the own rules'
+ *      perimeter no limit in the two buttons (the flip's cause, pinned);
  *   9. THE LEAF (rendering/leaves/effects-sight.js sightStream, handed the
  *      line; v2.3.6544: drawSightLine, rendering/sightLineDraw.js, makes it
  *      from the state and keeps the QA record): drawSightLine draws the
@@ -72,7 +75,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
-import { combatButtonsShown, combatReach } from '../../src/game/controlVisibility.js';   /* v2.3.6543 */
+import { combatButtonsShown, combatReach, blockShown, specialsShown, chargeShown } from '../../src/game/controlVisibility.js';   /* v2.3.6543; v2.3.6549: each button its own moment */
 import { latchTo, latchFrame, latchReach, latchLine, sightLineEarly, latchPress, latchCheck } from '../../src/game/latch.js';   /* v2.3.6543; v2.3.6546: the line is combat's */
 import { beamStream, sightStream } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543; v2.3.6544: the leaf only draws (main's leaves guard) */
 import { drawSightLine } from '../../src/rendering/sightLineDraw.js';   /* v2.3.6544: the line made from the state, and its QA record, off the leaf */
@@ -274,14 +277,31 @@ function writesOutside(prop, doorFile, doorFn) {
     if (now !== was) { flips++; was = now; }
   }
   check('8. a monster walked back and forth across the edge: the buttons came once and went once', flips === 2 && was === false, flips);
-  /* their "a monster near": the sight's range in the two buttons */
-  check('8. reach: a sword\'s before any frame, 550 (the sight held out)', latchReach() === 550 && combatReach(true, 220) === 550, latchReach());
+  /* v2.3.6549 (card CT part 16): their "a monster near" is NO LIMIT in the two buttons -- the resolvers alone
+     decide (the flipping, mp-twobuttons 3c/3d sideways: each button measured the sight's 550 again, every render,
+     with no hold); anywhere else the base untouched */
+  check('8. reach: the two buttons, no limit (the resolvers decide)', combatReach(true, 220) === Infinity && combatReach(true, 900) === Infinity);
   check('8. reach: any other mode, the base untouched', combatReach(false, 220) === 220 && combatReach(0, 300) === 300);
-  latchFrame({ player: { x: 0, y: 0 }, monsters: [], currentZone: 'wheel' }, 1, false, 'ranged', 1);
-  check('8. reach: a bow\'s once a frame sighted with it (825, the worker\'s 675 + 150)', latchReach() === 825 && combatReach(true, 220) === 825, latchReach());
-  check('8. reach: never less than the base', combatReach(true, 900) === 900);
-  latchFrame({ player: { x: 0, y: 0 }, monsters: [], currentZone: 'wheel' }, 2, false, 'melee', 1);
-  check('8. reach: back to the sword\'s', latchReach() === 550);
+  /* the own rules' perimeter test (shieldToggle.js shieldButtonLive, SpecialButton.jsx specialButtonLive: d*d <= R*R)
+     handed it: a monster at 560, past the old 550, is near; the old line dropped it (the flip) */
+  const ownNear = (d, R) => { const r = R || 220; return d * d <= r * r; };
+  check('8. reach: the own rules keep a monster at 560 near (the old 550 line dropped it: the flip)', ownNear(560, combatReach(true, 220)) === true && ownNear(560, 550) === false && ownNear(1e6, combatReach(true, 220)) === true);
+  /* v2.3.6549: each button its own moment (thumbSide.js's phase), the switches handed */
+  const T = (p, extra) => Object.assign({ _thumbPhase: p }, extra || {});
+  check('8. any other mode: Block and the specials their own rule (true), Charge none', blockShown({}, false, no) === true && specialsShown(null, false) === true && chargeShown(T('threat', { _sightPhase: 'sighted' }), false, true, true) === false);
+  check('8. specials: in reach only', specialsShown(T('reach'), true, no, true) === true && specialsShown(T('threat', { _sightPhase: 'sighted' }), true, no, true) === false && specialsShown(T('calm'), true, no, true) === false);
+  check('8. specials, `?reachspecials=0`: at the sighting, as before', specialsShown(T('calm', { _sightPhase: 'sighted' }), true, no, false) === true && specialsShown(T('reach'), true, no, false) === false);
+  check('8. Block: a threat or in reach', blockShown(T('threat'), true, no, true) === true && blockShown(T('reach'), true, no, true) === true && blockShown(T('calm'), true, no, true) === false);
+  check('8. Block, `?threatblock=0`: at the sighting, as before', blockShown(T('threat'), true, no, false) === false && blockShown(T('calm', { _sightPhase: 'sighted' }), true, no, false) === true);
+  check('8. a fight between players: Block and the specials, never Charge', blockShown(T('calm'), true, yes, true) === true && specialsShown(T('calm'), true, yes, true) === true && chargeShown(T('calm'), true, true, true) === false);
+  check('8. a fight handed as a boolean: true shows, false does not', blockShown(T('calm'), true, true, true) === true && blockShown(T('calm'), true, false, true) === false && specialsShown(T('calm'), true, true, true) === true && specialsShown(T('calm'), true, false, true) === false);
+  check('8. no S: Block and the specials hidden', blockShown(null, true, yes, true) === false && specialsShown(null, true, yes, true) === false);
+  check('8. Charge: a sword, in sight, out of reach', chargeShown(T('threat', { _sightPhase: 'sighted' }), true, true, true) === true);
+  check('8. Charge: not in reach, not a bow, not with `?chargebtn=0`, not with nothing in sight', chargeShown(T('reach', { _sightPhase: 'sighted' }), true, true, true) === false && chargeShown(T('threat', { _sightPhase: 'sighted' }), true, false, true) === false && chargeShown(T('threat', { _sightPhase: 'sighted' }), true, true, false) === false && chargeShown(T('threat'), true, true, true) === false);
+  const LC = T('threat'); latchTo(LC, 'active', 'm2');
+  check('8. Charge: a locked monster out of reach', chargeShown(LC, true, true, true) === true);
+  /* the switches read from the page when not handed: all on with no address */
+  check('8. the switches, not handed: the new rule (node has no address)', specialsShown(T('threat', { _sightPhase: 'sighted' }), true, no) === false && blockShown(T('threat'), true, no) === true && chargeShown(T('threat', { _sightPhase: 'sighted' }), true, true) === true);
 }
 
 /* ── 9. the leaf (v2.3.6543) ── */
@@ -332,13 +352,20 @@ function writesOutside(prop, doorFile, doorFn) {
     'src/ui/panels/ShieldButton.jsx': 2,   /* the render's gate, and its QA probe */
     'src/ui/panels/SpecialButton.jsx': 2,   /* the render's gate, and its QA probe */
     'src/ui/panels/AbilityButtons.jsx': 1,   /* the render's gate */
+    /* v2.3.6549 (card CT part 16): + Charge (its press, its QA probe, its render's gate), and the old resolver asked
+       by the new ones when their switch is thrown (`?reachspecials=0`, `?threatblock=0`) */
+    'src/ui/panels/ChargeButton.jsx': 3,
+    'src/game/controlVisibility.js': 2,
   });
+  /* v2.3.6549: the resolvers, by button: Block's, the specials', Charge's (and the old one behind their switches) */
+  const RESOLVERS = new Set(['combatButtonsShown', 'blockShown', 'specialsShown', 'chargeShown']);
+  const WANT_NAME = Object.freeze({ 'src/ui/panels/ShieldButton.jsx': 'blockShown', 'src/ui/panels/SpecialButton.jsx': 'specialsShown', 'src/ui/panels/AbilityButtons.jsx': 'specialsShown', 'src/ui/panels/ChargeButton.jsx': 'chargeShown', 'src/game/controlVisibility.js': 'combatButtonsShown' });
   const calls = Object.create(null), bad = [], gates = Object.create(null), draws = [], reach = Object.create(null), reachBad = [];
   /* v2.3.6542 (the gatekeeper's sitting 60): the one gate, latch.js twoButtonsLive() (latch.test H2 holds every caller of twoButtonsOn) */
   const isTwoOn = (e) => !!e && e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'twoButtonsLive' && e.arguments.length === 0;
   for (const f of walk('src/', [])) {
     const src = readFileSync(new URL(f, ROOT), 'utf8');
-    if (!src.includes('combatButtonsShown') && !src.includes('drawSightLine')) continue;
+    if (!/combatButtonsShown|blockShown|specialsShown|chargeShown|drawSightLine/.test(src)) continue;
     const ast = parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
     traverse(ast, {
       CallExpression(path) {
@@ -353,10 +380,20 @@ function writesOutside(prop, doorFile, doorFn) {
             line: n.loc && n.loc.start.line });
           return;
         }
-        if (n.callee.name !== 'combatButtonsShown') return;
+        if (!RESOLVERS.has(n.callee.name)) return;
+        if (path.findParent((p) => p.isExportNamedDeclaration() && p.node.declaration && p.node.declaration.type === 'FunctionDeclaration' && RESOLVERS.has(p.node.declaration.id.name)) && f === 'src/game/controlVisibility.js') {
+          /* the old resolver behind the new ones' switches: `combatButtonsShown(S, twoOn, fight)` */
+          calls[f] = (calls[f] || 0) + 1;
+          if (n.callee.name !== WANT_NAME[f]) bad.push(f + ':' + (n.loc && n.loc.start.line));
+          return;
+        }
         calls[f] = (calls[f] || 0) + 1;
         const a = n.arguments;
-        const ok = a.length === 3 && isTwoOn(a[1]) && a[2].type === 'Identifier' && a[2].name === 'fightOn';
+        /* v2.3.6549: each file its own resolver; Charge's third is the weapon (chargeMelee(S)), not a fight */
+        const third = n.callee.name === 'chargeShown'
+          ? a[2] && a[2].type === 'CallExpression' && a[2].callee.type === 'Identifier' && a[2].callee.name === 'chargeMelee'
+          : a[2] && a[2].type === 'Identifier' && a[2].name === 'fightOn';
+        const ok = n.callee.name === WANT_NAME[f] && a.length === 3 && isTwoOn(a[1]) && !!third;
         if (!ok) bad.push(f + ':' + (n.loc && n.loc.start.line));
         /* in the gate, beside it: the button's own rule handed the reach */
         const own = path.findParent((p) => p.isLogicalExpression());
@@ -388,7 +425,7 @@ function writesOutside(prop, doorFile, doorFn) {
   check('10. the resolver\'s callers are the three buttons, and nothing else in src/', want === got, { want, got });
   check('10. ...each as many times as listed', Object.keys(ALLOW).every((f) => calls[f] === ALLOW[f]), calls);
   check('10. ...each with `twoButtonsLive()` and `fightOn`', bad.length === 0, bad);
-  check('10. ...each in its render\'s gate (its `return null`)', Object.keys(ALLOW).every((f) => gates[f] === 1), gates);
+  check('10. ...each in its render\'s gate (its `return null`)', Object.keys(ALLOW).every((f) => f === 'src/game/controlVisibility.js' || gates[f] === 1), gates);
   check('10. Block\'s and Special\'s own rules handed `combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)` beside the resolver',
     reach['src/ui/panels/ShieldButton.jsx'] === 1 && reach['src/ui/panels/SpecialButton.jsx'] === 1 && reachBad.length === 0, { reach, reachBad });
   check('10. the renderer draws the sight line once, in its overlays, with `gfx, S, now, shouldDraw && isBow`',

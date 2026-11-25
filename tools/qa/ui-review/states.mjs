@@ -1481,7 +1481,7 @@ export const STATES = [
      today's combat after. */
   {
     id: 'two-buttons', group: 'Fighting', title: 'The two buttons, nothing in sight',
-    about: 'The two-button trial (`?manual=5`) with no monster in sight: on the right only the Attack button (raised, a bevel) and Jump. Block, Special and Whirlwind stay away until a monster is in your sight.',
+    about: 'The two-button trial (`?manual=5`) with no monster in sight: on the right only the Attack button (raised, a bevel) and Jump, laid out for a right thumb (v2.3.6549: Attack low by the edge, Jump on the arc beside it). Block comes when a monster is in your sight (or hits you), Charge with a sword when one is in sight but too far, and the specials only once one is in reach.',
     views: ['portrait', 'landscape'],
     settle: 1200,
     run: async ({ P, wsPort, myId }) => {
@@ -1495,7 +1495,7 @@ export const STATES = [
   },
   {
     id: 'two-buttons-sighted', group: 'Fighting', title: 'The two buttons, a monster in sight',
-    about: 'The two-button trial with a snowman in your sight (within the sword\'s 440 px, in front of you): a soft white line runs from your bro to it, and Block and Special have come up around the Attack button (Whirlwind joins them once Attack is pressed: combat on). They stay while it is in sight and go about half a second after it leaves.',
+    about: 'The two-button trial with a snowman in your sight (within the sword\'s 440 px, in front of you) but too far for the sword: Block has come up on its own spot of the thumb\'s arc, and Charge (the sword with speed lines) beside it: a press dashes your bro to the snowman. Special stays away until the snowman is in reach (v2.3.6549). They go about half a second after it leaves your sight.',
     views: ['portrait', 'landscape'],
     settle: 1200,
     run: async ({ P, wsPort, myId, view }) => {
@@ -1523,6 +1523,32 @@ export const STATES = [
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {});
       const seen = await P.page.waitForFunction(() => { const S = window._gameState.current; return S && S._sightPhase === 'sighted'; }, null, { timeout: 8000, polling: 150 }).then(() => true).catch(() => false);
       if (!seen) return 'no monster came into sight';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
+  },
+  /* v2.3.6549 (card CT part 16): a monster IN REACH: the specials come, Charge
+     goes, Block stays on its spot (the sighted scene, then a hop beside the
+     snowman) */
+  {
+    id: 'two-buttons-reach', group: 'Fighting', title: 'The two buttons, a monster in reach',
+    about: 'The two-button trial with a snowman in the sword\'s reach (where a swing would connect): Special has come up on the thumb\'s arc above Attack, Block stays where it was, and Charge has gone (you are already there). Whirlwind joins them once a monster is locked. Every button keeps its own spot whatever else comes or goes.',
+    views: ['portrait', 'landscape'],
+    settle: 1200,
+    run: async (ctx) => {
+      const sighted = STATES.find((x) => x.id === 'two-buttons-sighted');
+      const why = await sighted.run(ctx);
+      if (typeof why === 'string') return why;
+      const { P } = ctx;
+      const m = await evalIn(P, () => {
+        const S = window._gameState.current, p = S.player;
+        const q = (S.monsters || []).filter((x) => x && x.alive !== false && (x.curHp == null || x.curHp > 0))
+          .sort((x, y) => Math.hypot(x.x - p.x, x.y - p.y) - Math.hypot(y.x - p.x, y.y - p.y))[0];
+        return q ? { x: q.x, y: q.y, a: Math.atan2(q.y - p.y, q.x - p.x) } : null;
+      });
+      if (!m) return 'no monster near';
+      await H.hopTo(P, Math.round(m.x - 60 * Math.cos(m.a)), Math.round(m.y - 60 * Math.sin(m.a)), { tries: 260 });
+      const near = await P.page.waitForFunction(() => { const S = window._gameState.current; return S && S._thumbPhase === 'reach'; }, null, { timeout: 8000, polling: 150 }).then(() => true).catch(() => false);
+      if (!near) return 'no monster came into reach';
     },
     after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
   },

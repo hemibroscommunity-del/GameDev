@@ -2,10 +2,11 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { fightOn } from '@/game/sparTargets.js';
-import { combatButtonsShown } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
+import { specialsShown } from '@/game/controlVisibility.js';   /* v2.3.6549: in reach (card CT part 16) */   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
 import { ctlColumn, ctlBottom, CTL_SLOT, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: both buttons are on the RIGHT again -- Bash in the column (slot 0), Whirlwind in the cluster above the disc */
+import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3018: A PICTURE EACH, IN THE MOCKUP'S FIVE STATES ═══
@@ -123,7 +124,7 @@ export function AbilityButtons(props) {
 
   var S = stateRef && stateRef.current;
   if (!S || !S.rpg) return null;
-  if (!combatButtonsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: in the two buttons Whirlwind and Shield Bash come with the sight (controlVisibility.js; card CT PR 4) */
+  if (!specialsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: in the two buttons Whirlwind and Shield Bash come with the sight (controlVisibility.js; card CT PR 4) */
 
   var kinds = ['bash', 'whirl'];
   var live = [];
@@ -178,6 +179,8 @@ export function AbilityButtons(props) {
   var rclu = rightCluster(isLandscape);
 
   var anchorOf = function (kind) {
+    var arc = thumbAnchor(kind, isLandscape);   /* v2.3.6549: Whirlwind and Shield Bash on the thumb's arc in the two buttons */
+    if (arc) return { size: arc.size, right: arc.right, bottom: ctlBottom(arc.bottomPx) };
     /* v2.3.2574: the cluster above the disc, checked first.  Same
        hasOwnProperty test the column uses below and for the same reason --
        RCTL_SLOT's members are legally 0. */

@@ -534,6 +534,21 @@ export const PHASES = [
     notes: ['S._latchId', 'S._latchEnd'],
     note: 'v2.3.6540: the five ends (LATCH_ENDS press, range, killed, death, zone) and the one move (the target dead, another in sight: the nearest, no new press). Its notes, the locked id and the last end, written by latchTo with it. v2.3.6548 (card CT part 15): auto is a phase, not a boolean beside it (S.autoAttack derived from it, latchHolds); active to auto at the hold\'s fill (latchFill: the press\'s start time S._latchHoldAt, not a phase); with the hold\'s rule a kill lets go (no move); `?holdauto=0` the old press (a lock is auto at once, the move kept).',
   },
+  {
+    name: 'thumb', side: 'page', status: 'door',
+    what: 'The two buttons\' right side: calm (Attack and Jump), threat (Block: a monster in sight or locked, or a monster\'s hit in the last 3 s) or reach (Block and the specials: a monster where an attack connects).',
+    field: 'S._thumbPhase', states: ['calm', 'threat', 'reach'],
+    fn: 'thumbTo', file: 'src/game/thumbSide.js',
+    clears: [
+      { edge: 'end', at: 'src/game/thumbSide.js thumbStep' },
+      { edge: 'death', at: 'src/game/thumbSide.js thumbClear' },
+      { edge: 'zone', at: 'src/game/thumbSide.js thumbClear' },
+    ],
+    rejoin: 'none: the page\'s own, made again each frame from the monsters, the sight and the latch it holds',
+    held: { suite: 'server/test/thumb-side.test.mjs' },
+    notes: ['S._thumbAt'],
+    note: 'v2.3.6549 (card CT part 16): its note, the last frame in reach, written beside it in thumbStep and thumbClear; reach has an in line and a wider out line (1.25) and holds THUMB.HOLD_MS past the last frame in it (no flicker at the edge: TRAPS 218). Block, the specials and Charge each ask it through controlVisibility.js; `?reachspecials=0` and `?threatblock=0` the sighting, as before.',
+  },
 ];
 
 /* Ledger rows D's census marks `phase` (a field set to, or compared with, two
