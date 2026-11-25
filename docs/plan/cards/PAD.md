@@ -1,6 +1,6 @@
 # Card PAD: the controls area as a controller (the owner's request, 2026-11-25)
 
-**The owner's words, 17:5x UTC 2026-11-25, to the orchestrator (part 18):**
+**The owner's words, 17:3x UTC 2026-11-25, to the orchestrator (part 18):**
 *"Also want a redesign of the controls area to be more like a controller. I
 attached a mockups (first and last attachments) as well as the art assets in
 middle"*.
