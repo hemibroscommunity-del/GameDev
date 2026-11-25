@@ -1,4 +1,4 @@
-# Known debts (v2.3.6272, v2.3.6273, v2.3.6274; the owner's line of 2026-11-24)
+# Known debts (v2.3.6272, v2.3.6273, v2.3.6274, v2.3.6275; the owner's line of 2026-11-24)
 
 The owner, 2026-11-24, asked "May I draw the line there?": *"Yes."* The
 finish is a fixed list (`docs/plan/finish.md` part 2). A reviewer's finding
@@ -111,6 +111,36 @@ stays with that PR until it lands, and is marked (held).
 - `src/game/controlVisibility.js`'s header names
   `server/test/control-visibility-ct.test.mjs`, which does not exist
   (`sight` 8 is its test) (61).
+- `src/ui/BroTown.jsx:11828`/`:11831`: both `twoButtonRelease` calls taken
+  out of `bE` green; no node guard reads Attack's lift (63).
+- `src/ui/BroTown.jsx:11710`: the slide measured from `bSwipe.lx/ly` green;
+  `mp-twobuttons` never moves Attack's finger (63).
+- `src/ui/BroTown.jsx:5364`: `if (_lw) S.autoAttack = _lw` (the kill's
+  `false` never written) green (63; the kind of 61's `:5364` line).
+- `src/game/targeting.js:516`: `latchPhase(S) === 'active'` in place of
+  `latchLocked(S)` green (no node suite loads the file; harmless at the
+  head, which reads `latchLocked`, active or auto) (63).
+- `src/game/latch.js` `latchTo`/`latchHolds`: a second field carrying auto
+  (`S._latchAuto`) green in `state-ledger` 4 and `phase-table` 2 (the
+  card's "Never a second boolean", line 135, is kept at the head: one
+  writer, `latchTo`) (63).
+- `src/game/latch.js:194` `latchFill`: a frame at least `autohold` ms after
+  the press that runs before a queued lift makes a tap auto (a page held
+  600 ms; simulated) (63).
+- `tools/qa/mp/mp-twobuttons.mjs:540` `HOLD(150,100)`: three page reads with
+  the finger down can pass 600 ms of wall clock on the test box, and the
+  fill is wall clock: time the tap by the page's clock, or raise
+  `?autohold` for the tap steps (63; the likelier cause of the run that
+  dc615d6f mended).
+- `src/game/freeAttack.js:93`: throws on a null `S` (not reachable in
+  play) (63).
+- `tools/qa/mp/mp-twobuttons.mjs:503` `PICK` (sideways pass, :320): the
+  orchestrator's helper on 3c86a24e, 98 of 108 (upright all PASS); all 10
+  FAILs one cascade from "2b. sideways: a TAP", the target wm-mist-1 dead
+  at one tap (`taps: 1`, one attack asked; the kill lets go by the rule).
+  The pass picks the same monster upright's 2b, 2c and 7d left hurt, with
+  no full-health wait: pick a full-health monster (or another id) before
+  each pass's 2a (63).
 
 ## DG
 
