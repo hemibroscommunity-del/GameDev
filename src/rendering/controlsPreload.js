@@ -28,7 +28,7 @@
  * nothing to fetch; since v2.3.3279 they are the owner's pictures, warmed
  * here with their grey copies.)
  */
-import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS, WPN_PILL_ICONS, TALK_PILL_URL } from '../ui/panels/controlSkin.jsx';
+import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS, WPN_PILL_ICONS, TALK_PILL_URL, PAD_ART_URLS } from '../ui/panels/controlSkin.jsx';
 import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
@@ -77,6 +77,11 @@ export function controlsPreloadUrls() {
      the script (nothing fetched), decoded here so its first showing under a
      townsperson paints at once */
   urls.push(TALK_PILL_URL);
+  /* v2.3.6640: the controller's eighteen pieces (card PAD; public/ui/pad/,
+     192 kB of files, 256 colours or fewer): the housings, the stick's ring,
+     disc and knob, every button's face and its grey twin -- on screen from
+     the first frame of play, a face's twin the moment a state asks */
+  urls.push(...PAD_ART_URLS);
   return [...new Set(urls)];
 }
 

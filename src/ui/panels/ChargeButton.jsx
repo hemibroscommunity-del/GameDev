@@ -6,6 +6,7 @@ import { twoButtonsLive } from '@/game/latch.js';
 import { chargeShown } from '@/game/controlVisibility.js';
 import { chargeLock } from '@/game/thumbSide.js';
 import { thumbAnchor } from './thumbSpot.js';
+import { padAnchor } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
 import { ctlBottom, rightCluster } from './ShieldButton.jsx';
 import { Skin, SkinTag, WPN_PILL_ICONS, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx';
 
@@ -42,10 +43,17 @@ let _presses = 0, _dashes = 0;   /* the probe's counts, this page's */
 /** The press: true when the dash went.  `S` the game's state. */
 export function chargePress(S) {
   if (!S || !S.rpg) return false;
-  if (!chargeShown(S, twoButtonsLive(), chargeMelee(S))) return false;
+  if (!chargeShowing(S)) return false;   /* v2.3.6640: the one ask, below */
   if (chargeLock(S) == null) return false;
   try { updateTargeting(S); } catch (e) { /* the lock comes next frame; the dash below refuses without it */ }
   try { return maybeSwordDash(S) === true; } catch (e) { return false; }
+}
+
+/** v2.3.6640: is Charge on screen now (the controller's context socket:
+ *  RideButton gives the socket up to it, padSkin.js ctxFor).  The resolver's
+ *  one caller stays this file (sight.test 10). */
+export function chargeShowing(S) {
+  return !!S && !!S.rpg && chargeShown(S, twoButtonsLive(), chargeMelee(S));
 }
 
 /** A melee weapon in hand, and the dash this character has. */
@@ -100,9 +108,11 @@ export function ChargeButton(props) {
 
   const arc = thumbAnchor('charge', isLandscape);
   const col = arc ? null : rightCluster(isLandscape);
-  const size = arc ? arc.size : col.size;
-  const right = arc ? arc.right : col.rightPx(1);
-  const bottomPx = arc ? arc.bottomPx : col.bottomPx(1);
+  /* v2.3.6640: in the controller, the context socket (padSpot.js) */
+  const at = padAnchor('charge', isLandscape, arc || { size: col.size, right: col.rightPx(1), bottomPx: col.bottomPx(1) });
+  const size = at.size;
+  const right = at.right;
+  const bottomPx = at.bottomPx;
   const ready = !cooling && st.afford !== false;
   const skinState = cooling ? 'cooldown' : (ready ? 'normal' : 'disabled');
   const grey = skinState !== 'normal';
@@ -141,7 +151,8 @@ export function ChargeButton(props) {
       touchAction: 'manipulation',
       WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
-  }, React.createElement(Skin, { size: size, tone: 'slate', state: skinState, progress: cooling ? 1 - st.cdFrac : null, flash: flash && skinState === 'normal' },
+  }, React.createElement(Skin, { size: size, tone: 'slate', state: skinState, progress: cooling ? 1 - st.cdFrac : null, flash: flash && skinState === 'normal',
+    pad: at.pad ? 'charge' : null, face: at.face },   /* v2.3.6640: the painted face, no word (the mockup's) */
     React.createElement('span', { className: 'bt-skin-art', 'data-icon': 'charge', style: { position: 'relative', display: 'block', width: size, height: size } },
       React.createElement(SpeedLines, { size: size, grey: grey }),
       React.createElement('img', { src: grey ? WPN_PILL_ICONS.melee.off : WPN_PILL_ICONS.melee.on, alt: '', draggable: false, width: art, height: art,

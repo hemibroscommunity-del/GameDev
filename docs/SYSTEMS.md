@@ -272,7 +272,7 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, padSkin
 - **Files**: `src/ui/`: tapDismiss, swallowTapClick
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
