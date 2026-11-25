@@ -121,14 +121,17 @@ const FACE_PX = 40;
  * cache.  Not behind the loading screen: a window's own art loads with its
  * window (lazyPanels.js's rule). */
 export const LB_ART = (name) => '/ui/leaderboard/' + name + '.webp?v=2.3.5500';
-/* every piece the window draws (the trophies, rosettes, title frame and the
-   silver divider are cut but not drawn: the mockups do not use them).  Asked
+/* every piece the window draws (the silver and bronze trophies, rosettes,
+   title frame and the silver divider are cut but not drawn: the mockups do
+   not use them).  Asked
    for by LeaderboardPanel.jsx as its script loads, never here: the Test
    panel (DevWatch.jsx) imports this file for its faces and must not fetch
    the pieces (the gatekeeper's sitting 10). */
 export const LB_PIECES = ['laurel-left', 'laurel-right', 'crown', 'shield-silver', 'shield-gold', 'shield-bronze',
   'medal-1', 'medal-2', 'medal-3', 'pill-gold', 'pill-plain', 'bar-gold', 'bar-silver', 'bar-bronze', 'bar-plain',
-  'tile-crown', 'tile-sword', 'tile-bow', 'tile-staff', 'divider-gold'];
+  'tile-crown', 'tile-sword', 'tile-bow', 'tile-staff', 'divider-gold',
+  /* v2.3.5503: the gold trophy, the Ranks page's Records tab (RanksPage.jsx) */
+  'trophy-gold'];
 
 /* THE BARS AND PILLS are kept as their two round ends and a strip of middle
    (96 px wide; `ends` 40 px, cut-leaderboard.mjs), so a row or a pill of any

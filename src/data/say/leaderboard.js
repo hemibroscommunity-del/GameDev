@@ -78,6 +78,21 @@ export const SAY = Object.freeze({
   'leaderboard.ranksLabel': 'Ranks',
   'leaderboard.ranksTitle': 'RANKS',
   'leaderboard.listLabel': 'Leaderboards',
+  /* v2.3.5503: the Ranks page in the owner's new style (RanksPage.jsx): the four tabs, the picker, the span, your pinned row */
+  'leaderboard.tabPower': 'Power',
+  'leaderboard.tabStats': 'Stats',
+  'leaderboard.tabRecords': 'Records',
+  'leaderboard.tabSkills': 'Skills',
+  'leaderboard.tabsLabel': 'Kinds of board',
+  'leaderboard.pickerLabel': '{board}: tap to choose a board',
+  'leaderboard.pickerHead': 'Boards',
+  'leaderboard.pickerClose': 'Close the list of boards',
+  'leaderboard.spanAllTime': 'All-time leaderboard',
+  'leaderboard.powerHead': 'Power',
+  'leaderboard.youWord': 'You',
+  'leaderboard.youRank': 'Rank {rank}',
+  'leaderboard.deletedRow': '{name}, a deleted character',
+  'leaderboard.youRow': '{name}, you',
 
   /* the old window (src/ui/panels, behind the legacy menu) */
   'leaderboard.oldTitle': 'Leaderboards',

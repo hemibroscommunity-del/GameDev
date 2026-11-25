@@ -10,6 +10,8 @@ import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.439
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/leaderboard.js';   /* v2.3.6327: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { sw } from '@/game/switches.js';   /* v2.3.5503: `?rankstyle=0`, the page before the Ranks page */
+import { RanksPage } from './RanksPage.jsx';   /* v2.3.5503: the Ranks page in the owner's new style (card LB, part 2) */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -513,13 +515,12 @@ function TableHead({ table, hint, setHint, swap, hintHere }) {
   );
 }
 
-/* ── a ranks board: fetched from the Leaderboard object ── */
-function RankBoard({ board, podium, w }) {
-  const cat = board.id;
-  const [view, setView] = useState(() => firstView(board));
+/* ── a ranks board's rows: fetched from the Leaderboard object ──
+   v2.3.5503: one hook, the old page's RankBoard's and the Ranks page's
+   (RanksPage.jsx) table's: `{ rows, loading }`, the AP board's 0s left off */
+function useRankRows(cat) {
   const [boards, setBoards] = useState(() => Object.create(null));
   const [loading, setLoading] = useState(true);
-  const [hint, setHint] = useState(false);
   /* Fetch per category, cache per category, refresh on a slow timer.  A
      hiscores page is not a live readout — the server's own report throttle
      means a row changes at most once a minute — so 20s is generous.
@@ -543,7 +544,21 @@ function RankBoard({ board, podium, w }) {
     const id = setInterval(load, 20000);
     return () => { alive = false; clearInterval(id); };
   }, [cat]);
+  /* v2.3.3527: the AP board leaves off everyone at 0 */
+  const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
+  return { rows, loading };
+}
 
+/** the line a board with nobody on it says */
+const emptyOf = (board, loading) => (loading ? say(SAY, 'leaderboard.loading') : board.id === 'ap' ? say(SAY, 'leaderboard.emptyAp') : board.id === 'kills' ? say(SAY, 'leaderboard.emptyKills')
+  : board.table === 'stat' ? say(SAY, 'leaderboard.emptyStat') : say(SAY, 'leaderboard.emptySkill'));
+
+/* ── a ranks board ── */
+function RankBoard({ board, podium, w }) {
+  const cat = board.id;
+  const [view, setView] = useState(() => firstView(board));
+  const [hint, setHint] = useState(false);
+  const { rows, loading } = useRankRows(cat);
   const S = getState();
   const meId = S && S.myId;
   /* the index's version (card PW: a number, 1 today), or 0 */
@@ -552,13 +567,8 @@ function RankBoard({ board, podium, w }) {
      level (leaderboard.js SERIES_CATEGORIES), so they keep the levels: every
      board shows the numbers it is ranked by */
   const power = board.id === 'power' ? powerVersion(S) : 0;
-  /* v2.3.3527: the AP board leaves off everyone at 0 */
-  const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
   const faces = useBoardFaces(rows);
-  if (rows.length === 0) {
-    return <BoardEmpty text={loading ? say(SAY, 'leaderboard.loading') : cat === 'ap' ? say(SAY, 'leaderboard.emptyAp') : cat === 'kills' ? say(SAY, 'leaderboard.emptyKills')
-      : board.table === 'stat' ? say(SAY, 'leaderboard.emptyStat') : say(SAY, 'leaderboard.emptySkill')} />;
-  }
+  if (rows.length === 0) return <BoardEmpty text={emptyOf(board, loading)} />;
   const narrow = board.table === 'power' && w > 0 && w < WIDE_TABLE;
   const table = tableOf(board, power, narrow, view);
   const cols = colsOf(table);
@@ -660,6 +670,45 @@ function FlipBoard({ side, setSide }) {
   );
 }
 
+/* ═══ v2.3.5503: WHAT THE RANKS PAGE ASKS OF A BOARD (RanksPage.jsx) ═══
+   The new page draws ONE value column, the board's own number, as the
+   mockup does: the Power on Overall, the weapon's level on its board, the
+   level on Level (whose rows show no second "Lv"), a stat's points, the
+   kills, the AP, a skill's level.  The records (the spin, the flip, the
+   fish) are today's boards in its scrolled part, your row pinned under the
+   spin's and the flip's (the fish board keeps its species inside it). */
+const valueOfRow = (board, r, power) => {
+  if (board.id === 'power') { const p = powerCells(r, power); return p ? compact(p.total) : '-'; }
+  if (board.rank === 'lv') return num(r && r.lv);
+  if (board.rank) return num(series(r)[board.rank]);
+  return board.id === 'ap' ? num(r && r.ap) : num(r && (r.value ?? r.score));
+};
+const headOfBoard = (board) => (board.id === 'power' ? say(SAY, 'leaderboard.powerHead') : board.id === 'ap' ? say(SAY, 'leaderboard.apHead')
+  : board.id === 'kills' ? say(SAY, 'leaderboard.killsHead') : board.label);
+/* `S` the state this panel was handed: the page itself reads none */
+function ranksParts(S, side, setSide, fishWant) {
+  return {
+    me: { id: (S && S.myId) || '', name: (S && S.myName) || '' },
+    Icon: CatIcon,
+    useRows: useRankRows,
+    hasLv: (board) => board.rank !== 'lv',
+    /* the value column: wide enough for its head word at 11 px */
+    valueW: (board) => Math.max(52, Math.min(84, Math.round(headOfBoard(board).length * 6.6) + 6)),
+    headOf: headOfBoard,
+    hintOf: (board) => (board.id === 'power' && powerVersion(S) > 0 ? POWER_HINT : null),
+    valueOf: (board, r) => valueOfRow(board, r, powerVersion(S)),
+    emptyOf,
+    record: (board) => (board.kind === 'fish' ? <FishBoard key={fishWant || 'fish'} initial={fishWant} />
+      : board.kind === 'spin' ? <SpinBoard side={side} setSide={setSide} /> : <FlipBoard side={side} setSide={setSide} />),
+    recordRows: (board) => {
+      const amount = (v) => Math.max(0, Math.floor(Number(v) || 0)).toLocaleString('en-US');
+      if (board.kind === 'spin') { const sb = S && S._spinBoard; return { rows: (sb && (side === 'losses' ? sb.losses : sb.wins)) || [], valueOf: (r) => amount(r.n) }; }
+      if (board.kind === 'flip') { const b = aceFlipBus.board || {}; return { rows: ((side === 'losses' ? b.losses : b.wins) || []).filter(Boolean), valueOf: (r) => amount(r.amount) }; }
+      return null;
+    },
+  };
+}
+
 /** a board's pill: the sheet's pill bar (the gold one when it is the board
  *  showing), its picture and its word; `row` in the narrow page's row of chips */
 function Pill({ b, on, row }) {
@@ -731,6 +780,9 @@ export const LeaderboardPanel = () => {
     const on = nav && nav.querySelector('[data-lb-cat="' + cat + '"]');
     try { if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_e) { /* an old browser: the list is still a list */ }
   }, [cat, sideBySide]);
+
+  /* v2.3.5503: the Ranks page in the owner's new style; `?rankstyle=0` the page below */
+  if (!sw('rankstyle')) return <RanksPage boards={boardsIn} want={catRaw} onBoard={setCat} parts={ranksParts(S, side, setSide, fishWant)} />;
 
   const board = cur.kind === 'fish' ? <FishBoard key={fishWant || 'fish'} initial={fishWant} />
     : cur.kind === 'spin' ? <SpinBoard side={side} setSide={setSide} />
