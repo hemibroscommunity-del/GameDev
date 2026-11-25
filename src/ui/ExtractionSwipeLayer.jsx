@@ -202,7 +202,10 @@ const FREE_TURN_MAX = 2.2;   /* radians, ~126 degrees */
    the fallback for a page where it is not on screen.) */
 export function buttonCueScreenPos(S) {
   if (typeof document === 'undefined') return null;
-  const el = document.querySelector('.bt-rjoy-base');
+  /* v2.3.6550: in the two buttons the button under the node while it shows
+     (panels/ContextButton.jsx; card CT part 17: "Attack button always stays
+     attack"), the Attack disc everywhere else */
+  const el = document.querySelector('.bt-ctx-btn[data-show="1"]') || document.querySelector('.bt-rjoy-base');
   if (el) {
     const r = el.getBoundingClientRect();
     if (r.width) return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, on: 'button' };

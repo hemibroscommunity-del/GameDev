@@ -8,6 +8,8 @@ import { RIDE_KEY } from '@/game/deskKeys.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { Skin, pressOn, pressOff } from './controlSkin.jsx';
 import { RIDE_ICON_URL } from '@/rendering/rideFx.js';
+import { thumbArcLive } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc */
+import { thumbPhase } from '@/game/thumbSide.js';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3776: THE SKATEBOARD BUTTON ═══
@@ -62,6 +64,11 @@ export function rideButtonView(S) {
   /* a fight near: the fight's buttons have this place -- v2.3.4411: but a
      rider keeps it (rideFightHides; a lock does not step you off) */
   if (rideFightHides(S, !isRiding(S) && shieldButtonLive(S, TARGET_PERIMETER_PX))) return null;
+  /* v2.3.6549 (card CT part 16): in the two buttons a fight near is the right
+     thumb's threat (thumbSide.js: in sight, locked, a hit lately, in reach):
+     Block and Charge take the arc then, over this place (thumbArc.js).  A
+     rider keeps it, as above. */
+  if (thumbArcLive() && rideFightHides(S, !isRiding(S) && thumbPhase(S) !== 'calm')) return null;
   var on = isRiding(S);
   var r = S._ride;
   var asking = !!(r && r.asked && Date.now() - r.asked < ASK_MS);

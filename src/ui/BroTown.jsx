@@ -75,7 +75,7 @@ import { swordFeelFrame } from '@/game/swordFeel.js'; /* v2.3.4800: the sword's 
 import { bowFeelOn, bowFeelFrame, bowFeelWalkMult, bowFeelDeskDown } from '@/game/bowFeel.js'; /* v2.3.4802: the bow's feel -- nock, draw back, settle, loose (docs/specs/bow-feel.md) */
 import { WeaponPill } from './panels/WeaponPill.jsx'; /* v2.3.4130: the weapon pill, centred at the foot of the world (it was v2.3.3921's triangle, v2.3.3005's chip) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT, PHONE_GESTURE_HINT, FIRST_HINTS } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
-import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
+import { isTapLock, engagedStance, bodyFacesLock } from '@/game/targeting.js';   /* v2.3.6551: bodyFacesLock, the body faces mode 5's latched lock */ /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
 /* ═══ v2.3.2260: A JOYSTICK YOU HAVE JUST USED STAYS ON SCREEN ═══
@@ -462,7 +462,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js';   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -5361,7 +5361,7 @@ export var BroTown = function BroTown(_ref0) {
           S._dashStrike = null;
         }
         /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2; sitting 58: its idle clock its own, the walk read only through _in) */
-        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); var _lw = twoButtonsLive() ? latchFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1) : null; if (_lw !== null) S.autoAttack = _lw; if (_steps) _steps.to(2, 0);   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3) */
+        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); var _lw = twoButtonsLive() ? latchFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1) : null; if (_lw !== null) S.autoAttack = _lw; if (twoButtonsLive()) thumbFrame(S, Date.now(), _playerDead); if (_steps) _steps.to(2, 0);   /* v2.3.6549: + the right thumb's phase (game/thumbGlue.js: the reach, the threat; card CT part 16) */   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3) */
         var dx = _in.dx, dy = _in.dy;
 
         /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══
@@ -5624,7 +5624,7 @@ export var BroTown = function BroTown(_ref0) {
            but a lock is automatic now, so a bare test would put you in a
            combat stance every time a slime wandered within 220px while you
            were walking somewhere. */
-        var _lkFace = engagedStance(S);
+        var _lkFace = bodyFacesLock(S);   /* v2.3.6551: mode 5's latched lock faces too (game/lockFace.js) */
         S._backpedaling = false;
         if (S.autoAttack) finalSpd *= 0.5;
         if ((S.autoAttack || _lkFace) && S._aimAngle != null
@@ -6140,7 +6140,7 @@ export var BroTown = function BroTown(_ref0) {
         {
           var _lbl = rLabelRef.current, _ring = rRingRef.current;
           var _hint = rHintRef.current;   /* v2.3.2384 */
-          var _ex = S._extraction;
+          var _ctxOn = ctxButtonsLive(); var _ex = _ctxOn ? null : S._extraction;   /* v2.3.6550: in mode 5 the harvest is the button under the node's, and Attack wears none of it (card CT part 17) */
           var _cands = S._targetCands || [];
           /* Priority (control-redesign.md §5.10, revised while building):
              a resource IN REACH beats a monster merely IN THE PERIMETER --
@@ -6192,8 +6192,8 @@ export var BroTown = function BroTown(_ref0) {
               if (_mdx * _mdx + _mdy * _mdy <= _mR * _mR) { _monNear = true; break; }
             }
           }
-          var _harvestCtx = !!(S._nearNode && !_lockHeld && !_monNear);
-          S._btnHarvest = _harvestCtx;
+          S._btnHarvest = !!(S._nearNode && !_lockHeld && !_monNear);
+          var _harvestCtx = S._btnHarvest && !_ctxOn;   /* v2.3.6550: today's condition stays S._btnHarvest (the button under the node reads it); Attack's look leaves it in mode 5 */
           /* ═══ v2.3.3105: WHEN A TAP WOULD JUMP, THE STICK SAYS SO ═══
              The owner, with their JUMP button picture: shown "on the right
              joystick" whenever a tap would jump.  Not while you harvest or
@@ -6260,6 +6260,7 @@ export var BroTown = function BroTown(_ref0) {
             var _showWant = _ex ? '1' : '0';
             if (_lbl.getAttribute('data-show') !== _showWant) _lbl.setAttribute('data-show', _showWant);
           }
+          ctxButtonFrame(ctxBtnRef.current, S, { live: _ctxOn, busy: !!(_lockHeld || _monNear), npcsHere: _npcZone(S.currentZone), shown: S._rBtnShown !== false });   /* v2.3.6550: the button under the one nearest thing (game/contextButton.js; card CT part 17) */
           /* ═══ v2.3.2760: THE CUE -- A MINI TOOL, STILL AND FLASHING UNTIL YOU MOVE ═══
              Owner: "before the player performs the gesture the starting spot of
              the cue should be static but flash.  An effect should show you
@@ -10146,6 +10147,7 @@ export var BroTown = function BroTown(_ref0) {
      joystick visuals (joystickRef / rJoyRef bases) are position:fixed and
      repositioned to the touch point on each touchstart. */
   var lZoneRef = useRef(null);
+  var ctxBtnRef = useRef(null);   /* v2.3.6550: the button under the thing (panels/ContextButton.jsx) */
   var rZoneRef = useRef(null);
   var joystickRef = useRef(null);
   var knobRef = useRef(null);
@@ -10636,9 +10638,11 @@ export var BroTown = function BroTown(_ref0) {
     }
     return best;
   };
-  var tapNpcAtCss = function (cssX, cssY) {
+  /* v2.3.6550: the doors a harvest press and the button under the thing open (game/contextButton.js ctxTap; `at`, the button's place, for the talk's mark) */
+  var _ctxActs = { at: null, extract: function (n, sk) { try { _startExtraction(n, sk); } catch (err) { /* refusal floats its own popup */ } }, cook: function (f) { try { _startCookingAtCampfire(f); } catch (err) { /* the same */ } }, talk: function (npc) { var a = _ctxActs.at; tapNpcAtCss(a ? a.x : 0, a ? a.y : 0, npc); } };
+  var tapNpcAtCss = function (cssX, cssY, given) {   /* v2.3.6550: `given`, the townsperson the TALK button stands under (no search) */
     var S = stateRef.current;
-    var npc = npcAtCss(cssX, cssY);
+    var npc = given || npcAtCss(cssX, cssY);
     /* v2.3.2305: what the scan DECIDED, for the QA harness. The outcome of a
        tap on a character is otherwise only visible as a panel opening or a
        floating line, and a test that reads those is really testing the panel
@@ -11654,16 +11658,11 @@ export var BroTown = function BroTown(_ref0) {
          STARTS the harvest -- exactly what the old shell's tap did.
          Otherwise it is Attack. */
       var Sb = stateRef.current;
-      if (Sb && Sb._extraction) { bSwipe.harvest = true; return; }
+      var _ctxPress = ctxButtonsLive();   /* v2.3.6550: mode 5's Attack never takes the harvest branch: the button under the node does (card CT part 17) */
+      if (Sb && Sb._extraction && !_ctxPress) { bSwipe.harvest = true; return; }
       bSwipe.harvest = false;
-      if (Sb && Sb._btnHarvest && Sb._nearNode) {
-        var _hn = Sb._nearNode;
-        try {
-          if (_hn.nodeType === 'fishSpot') _startExtraction(_hn, 'fishing');
-          else if (_hn.nodeType === 'tree') _startExtraction(_hn, 'woodcutting');
-          else if (_hn.nodeType === 'oreVein') _startExtraction(_hn, 'mining');
-          else if (_hn.nodeType === 'campfire') _startCookingAtCampfire(_hn);
-        } catch (err) { /* refusal floats its own popup */ }
+      if (Sb && Sb._btnHarvest && Sb._nearNode && !_ctxPress) {
+        ctxTap({ kind: 'node', thing: Sb._nearNode, skill: ctxSkillOf(Sb._nearNode) }, _ctxActs);   /* v2.3.6550: its four kinds by nodeType, as inline before (game/contextButton.js) */
         bSwipe.harvest = true;
         return;
       }
@@ -15878,7 +15877,7 @@ export var BroTown = function BroTown(_ref0) {
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
   /* v2.3.4395: manual combat's build-up ring and weapon badge (nothing without `?manual=1`) */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.4800: the timing bar (v2.3.4590) is gone: readiness is on the blade (game/swordFeel.js) */ /* v2.3.4130: the weapon pill, centred at the foot of the world on a phone and a computer alike -- a tap or click on a weapon runs the same swap as the double tap and the keys (WeaponPill.jsx; it was v2.3.3921's triangle). */ /*#__PURE__*/React.createElement(WeaponPill, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /* v2.3.6550: the button under the thing (mode 5): a tap does what Attack did there, or talks (game/contextButton.js ctxTap; card CT part 17) */ React.createElement(ContextButton, { btnRef: ctxBtnRef, onTap: function (p, pos) { _ctxActs.at = pos; window.__btCtxTap = { kind: p.kind, did: ctxTap(p, _ctxActs), ts: Date.now() }; } }), /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.4800: the timing bar (v2.3.4590) is gone: readiness is on the blade (game/swordFeel.js) */ /* v2.3.4130: the weapon pill, centred at the foot of the world on a phone and a computer alike -- a tap or click on a weapon runs the same swap as the double tap and the keys (WeaponPill.jsx; it was v2.3.3921's triangle). */ /*#__PURE__*/React.createElement(WeaponPill, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one
