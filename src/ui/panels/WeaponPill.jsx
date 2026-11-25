@@ -4,7 +4,9 @@ import { weaponDisplayName } from '@/ui/mobile/sheet/equipModel.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { weaponPillAnchor, WPILL, ctlBottom, RBTN, LBTN, discRight, discBottom, sprintAnchor, jumpAnchor, blockAnchor,
   ctlColumn, CTL_SLOT, rightCluster, RCTL_SLOT, leftCluster, LCTL_SLOT } from './ShieldButton.jsx';
-import { WPN_PILL_ICONS } from './controlSkin.jsx';
+import { WPN_PILL_ICONS, padArtUrl } from './controlSkin.jsx';
+import { padNow } from './padSpot.js';   /* v2.3.6641: the controller's three weapon wells (card PAD part 3) */
+import { weaponWell } from '@/game/padSkin.js';
 import { pageAddress } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* ═══ v2.3.4130: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
@@ -262,6 +264,20 @@ export function WeaponPill(props) {
 
   var a = weaponPillAnchor(isLandscape);
   var W = a.well;   /* 40 px; less only on a phone narrower than 360 px (ShieldButton) */
+  /* ═══ v2.3.6641: IN THE CONTROLLER, THE RAIL'S THREE WELLS (card PAD part 3) ═══
+     The owner's redesign puts the weapons in three wells on the shell's rail
+     (padSkin.js padLayout w1..w3, today's order): the same three buttons,
+     the same taps and rules (act, above), each in its own well, wearing the
+     owner's slot ring (the lit one on the weapon in hand) and the weapon's
+     icon (padSkin.js weaponWell; an empty slot the plain well).  The group
+     takes no touch between its wells: the world's taps get through. */
+  var P = padNow(isLandscape);
+  var WELL = ['w1', 'w2', 'w3'];
+  var padStyle = P ? {
+    position: 'fixed', left: 0, bottom: ctlBottom(0), width: P.shell.w, height: P.shell.h,
+    zIndex: 31, pointerEvents: 'none', touchAction: 'none',
+    WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
+  } : null;
 
   var pill = React.createElement('div', {
     className: 'bt-wpill',
@@ -270,7 +286,8 @@ export function WeaponPill(props) {
     'aria-label': 'Weapons',
     onMouseDown: stop,
     onPointerDown: stop,
-    style: {
+    'data-pad': P ? '1' : undefined,
+    style: padStyle || {
       position: 'fixed',
       left: a.left != null ? a.left : 'calc(50% - ' + (a.w / 2) + 'px)',
       bottom: ctlBottom(a.bottomPx),
@@ -290,7 +307,7 @@ export function WeaponPill(props) {
       touchAction: 'none',
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
-  }, view.wells.map(function (x) {
+  }, view.wells.map(function (x, i) {
     var label = !x.owned ? 'No ' + SLOT_WORD[x.slot] + ' yet'
       : x.on ? 'Weapon in hand: ' + x.name : 'Switch to ' + x.name;
     var shaking = nope && nope.slot === x.slot;
@@ -331,10 +348,29 @@ export function WeaponPill(props) {
         WebkitTapHighlightColor: 'transparent',
       },
     };
+    var pw = P && P.wells[WELL[i]];
+    if (pw) {
+      var bx = pw.box;
+      attrs.style = {
+        position: 'absolute', left: Math.round(bx.x - bx.size / 2), bottom: Math.round(bx.y - bx.size / 2),
+        width: Math.round(bx.size), height: Math.round(bx.size), padding: 0, margin: 0, border: 0,
+        background: 'none', cursor: 'pointer', pointerEvents: 'auto', touchAction: 'none', WebkitTapHighlightColor: 'transparent',
+      };
+      attrs['data-pad-well'] = WELL[i];
+    }
     if (x.on) {
       /* the hook mp-weaponswap and the button audits point at */
       attrs['data-weapon-chip'] = x.slot;
       attrs['data-weapon-owned'] = view.owned.length;
+    }
+    if (pw) {
+      var look = weaponWell(x.slot, view.slot, x.owned);
+      var d = Math.round(pw.d), ic = Math.round(pw.d * 0.6);
+      return React.createElement('button', attrs,
+        React.createElement('img', { src: padArtUrl(look.ring), alt: '', draggable: false, width: d, height: d, 'data-pic': look.ring, className: 'bt-pad-wellpic',
+          style: { position: 'absolute', left: '50%', top: '50%', width: d, height: d, marginLeft: -d / 2, marginTop: -d / 2, pointerEvents: 'none' } }),
+        look.icon ? React.createElement('img', { src: padArtUrl(look.icon), alt: '', draggable: false, width: ic, height: ic, 'data-pic': look.icon,
+          style: { position: 'absolute', left: '50%', top: '50%', width: ic, height: ic, marginLeft: -ic / 2, marginTop: -ic / 2, objectFit: 'contain', pointerEvents: 'none' } }) : null);
     }
     return React.createElement('button', attrs, x.src ? React.createElement('img', {
       src: x.src, alt: '', draggable: false, width: a.icon, height: a.icon,

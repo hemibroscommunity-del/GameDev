@@ -191,7 +191,10 @@ export function TouchControls(props) {
   arcA = padAnchor('attack', isLandscape, arcA || { size: isLandscape ? RBTN.wLand : RBTN.w, right: discRight(isLandscape), bottomPx: discBottom(isLandscape) });
   var discW = arcA.size;
   var padL = arcA.pad ? padNow(isLandscape) : null;   /* the stick's socket too */
-  var stick = padL && padL.stick;
+  /* v2.3.6641: the stick's well in the one shell (padSkin.js padLayout): its
+     base the well's size, the thumb the owner's (the shell draws both at
+     rest; this draws them over it while a thumb walks) */
+  var stick = padL && { x: padL.wells.stick.x, y: padL.wells.stick.y, d: Math.round(padL.wells.stick.d), disc: Math.round(padL.wells.stick.d), knob: Math.round(padL.thumb) };
   /* v2.3.3018: the picture on the attack disc -- about two thirds of the face
      inside the ring, the mockup's sword.  v2.3.6640: of the socket's face in
      the controller (a harvest's tool on the empty socket) */
@@ -260,7 +263,7 @@ export function TouchControls(props) {
     style: {
       width: stick ? stick.disc : isLandscape ? 90 : 75,
       height: stick ? stick.disc : isLandscape ? 90 : 75,
-      backgroundImage: stick ? 'url(' + padArtUrl('disc') + ')' : undefined,
+      backgroundImage: stick ? 'url(' + padArtUrl('stick-base') + ')' : undefined,
       /* v2.3.949: DOCKED -- position:absolute centres the base inside its
          left-corner zone container (always visible at 50% opacity).  It no
          longer follows the finger; the knob deflects as a relative drag from
@@ -334,7 +337,7 @@ export function TouchControls(props) {
          v2.3.6640: in the controller, the owner's knob picture */
       width: stick ? stick.knob : isLandscape ? 48 : 42,
       height: stick ? stick.knob : isLandscape ? 48 : 42,
-      backgroundImage: stick ? 'url(' + padArtUrl('knob') + ')' : undefined,
+      backgroundImage: stick ? 'url(' + padArtUrl('stick-thumb') + ')' : undefined,
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by

@@ -823,6 +823,18 @@ export function ctlBottom(px) {
   return 'calc(var(--sheet-h, var(--dash-h)) + ' + px + 'px)';
 }
 
+/* ═══ v2.3.6641: WHETHER BLOCK SHOWS, ONE FUNCTION (card PAD part 3) ═══
+   The owner, 2026-11-25: "Make the jump button turn into the shield button
+   while in combat."  In the controller the big left button is Block exactly
+   when this button would show (padSkin.js wellOf), so JumpButton asks the
+   same function rather than a second rule: the shield in hand and in range
+   (shieldToggle.js shieldButtonLive, true while the guard is up) and the
+   two buttons' moment (controlVisibility.js blockShown). */
+export function blockLive(S) {
+  if (!S || !S.rpg) return false;
+  return !!(shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn));
+}
+
 export function ShieldButton(props) {
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
@@ -838,7 +850,7 @@ export function ShieldButton(props) {
      the shield's cooldown runs out. */
   var flash = useReadyFlash(!!(S && S._shieldCdUntil && Date.now() < S._shieldCdUntil));
   if (!S || !S.rpg) return null;
-  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
+  var live = blockLive(S);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js); v2.3.6641: one function, Jump's well asks it too */
   /* QA probe (house style: __btMonHit, __btCoach): why the button is or is
      not on screen, which a screenshot cannot say. */
   if (typeof window !== 'undefined') {
@@ -861,7 +873,7 @@ export function ShieldButton(props) {
      the diagonal bottom-left of the disc, on its own, for "mental separation
      for combat purpose" -- see blockAnchor. */
   var anchor = thumbAnchor('block', isLandscape) || blockAnchor(isLandscape);   /* v2.3.6549: on the thumb's arc in the two buttons, a spot of its own */
-  anchor = padAnchor('block', isLandscape, anchor);   /* v2.3.6640: its socket in the controller (card PAD) */
+  anchor = padAnchor('block', isLandscape, anchor, live);   /* v2.3.6640: its socket in the controller (card PAD); v2.3.6641: the big well in a fight, the middle one while a raised guard outlives it (padSkin.js wellOf) */
   var size = anchor.size;
   var right = anchor.right;
   var press = function (e) {

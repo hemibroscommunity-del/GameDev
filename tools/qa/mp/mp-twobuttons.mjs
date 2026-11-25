@@ -245,13 +245,14 @@ const FACE_ICON = (P) => P.page.evaluate(() => {
     /* v2.3.6640 (card PAD): in the controller the disc wears the owner's painted face (its sword), never the plain sword or the crosshair */
     pad: !!base && base.getAttribute('data-pad') === '1', face: on(base && base.querySelector('.bt-pad-face')) };
 });
-/* v2.3.6640 (card PAD): the controller's socket a control sits in, on the page (the right housing's box and window.__btPad's layout; mp-padskin's SOCKET) */
+/* v2.3.6640 (card PAD): the controller's socket a control sits in, on the page (window.__btPad's layout; mp-padskin's WELL).
+   v2.3.6641 (part 3): one shell, its wells; in a fight (Block shown) Block is the big well and Jump the middle one (padSkin.js wellOf) */
 const PAD_SOCKETS = (P) => P.page.evaluate(() => {
-  const hr = document.querySelector('[data-padhousing="R"]'), L = window.__btPad && window.__btPad.layout;
-  if (!hr || !L || !L.sockets) return null;
-  const b = hr.getBoundingClientRect(), o = {};
-  for (const k of Object.keys(L.sockets)) o[k] = { x: b.right - L.sockets[k].x, y: b.bottom - L.sockets[k].y, d: L.sockets[k].d };
-  return o;
+  const sh = document.querySelector('[data-padhousing="shell"]'), L = window.__btPad && window.__btPad.layout;
+  if (!sh || !L || !L.wells) return null;
+  const b = sh.getBoundingClientRect(), W = L.wells, fight = !!document.querySelector('[data-shield]');
+  const at = (w) => ({ x: b.left + w.x, y: b.bottom - w.y, d: w.d });
+  return { attack: at(W.attack), special: at(W.special), ctx: at(W.mobility), jump: at(fight ? W.mid : W.big), block: at(fight ? W.big : W.mid) };
 });
 
 /* ═══ v2.3.6545: PART 5's helpers ═══ */

@@ -1895,30 +1895,31 @@ Sources: docs/specs/gathering-hits.md, docs/specs/gesture-cue.md, docs/specs/des
 ## The controller (the touch controls' look, `?padskin=0` the old)
 Screens: pad-controller
 
-**What it is for:** The owner, 2026-11-25, with a mockup and four sheets of art: "Also want a redesign of the controls area to be more like a controller." The touch controls read as ONE built-in game controller instead of loose buttons over the world: a left grip holding the stick, a right grip holding five round buttons, both rising from the dashboard band, the middle left open so the world shows (card PAD, `docs/plan/cards/PAD.md`).
+**What it is for:** The owner, 2026-11-25, first with a mockup and four sheets ("Also want a redesign of the controls area to be more like a controller": part 1, v2.3.6640), then, after trying it on their iPhone, a redesign: *"The controller is too large and doesn't connect in a seamless way to the dashboard. The shape also doesn't make much sense. Here's a redesign showing how it should attach to the dashboard. Make the jump button turn into the shield button while in combat. Tapping attack button or shield button again lowers it"* (part 3, v2.3.6641; `docs/plan/cards/PAD-part3.md`). The touch controls read as ONE object that belongs to the dashboard.
 
 **Decisions, and why:**
-- **A look and a fixed layout, not new controls** (v2.3.6640): what each control does, when it shows and how a touch is read are unchanged (game/controlVisibility.js, stickZones.js, thumbSide.js, thumbArc.js, contextButton.js). Both control modes (the held combat and the two buttons) wear it.
-- **Fixed sockets, the housing's own** (the mockup's "Layout & sizes"; "Fixed button positions for muscle memory"): Attack the big one, low on the right; Jump to its left; above them the context socket (the skateboard in town, Charge when Charge is offered: never both, Charge wins), Block, Special. The places are the gold rings painted on the owner's right housing, measured by the cutter (tools/art/cut-pad.mjs), so a button always sits exactly in its ring. A control the game hides leaves its socket EMPTY (the housing's ring and dark well), and the others never move.
-- **No touch box smaller than before**: each button's box is the larger of its old size and its socket, centred on the socket; the painted face is the socket's size. Attack's socket is 92 px upright (96 sideways), a little over the old 84 / 94, because that is the least at which its box clears Jump's old 64 px box.
-- **The stick is its four pieces** (housing, gold ring, arrow disc, knob), the knob moved by the code as before; never the eleven baked pictures. The ring and the dark well are the housing's, so the stick's socket shows empty until a thumb walks (the stick still appears only while you move). The arrow disc is drawn at the old base's size (76 / 89 px), because the stick's walking reach is measured off it.
-- **One painted face an action, and its grey twin for Disabled**; pressed (pushed in, a dark wash), the cooldown (the wash and an arc in the action's colour round the rim) and the ready glow (a ring of light in the action's colour) are drawn over it by the style sheet, never a CSS filter (an iPhone pays a layer for one on a control always on screen). Attack: grey at rest with nothing to hit, the red sword when there is, glowing in a fight; a tool, a door or a bed sits on the empty socket's face, never on the sword.
-- **The dashboard's height and the world's view do not change** (the owner, 2026-11-25: "No don't change todays dashboard height"): the housings sit over the bottom of the world as the old controls did, and take no touch: a tap on a housing reaches the world as before.
-- **The art law**: the owner's four sheets are kept byte for byte (assets/icons-source/owner-2026-11-25/); the cutter takes each piece by a point inside it, drops the red and yellow fringe specks, scales it to 2 px a CSS px at its biggest, on 96 colours (192 kB for all eighteen); they load behind the loading screen.
-- **Sideways** the sockets are a little bigger (Attack 96 px), and the old sideways nudges of the attack disc and the stick (for the folded band) are undone: the controls sit in their sockets. While the sideways band is open the housings step aside with the controls.
+- **One shell** (v2.3.6641): the owner's `housing.png` is the only backing: the stick's lobe at the left, a low rail in the middle, the taller lobe at the right, its gold outline unbroken, as wide as the play column, its bottom edge ON the band's top edge with the band open or folded. Drawn as three cuts of the one picture (CSS border-image: the lobes at their shape, the rail stretched), so any width keeps the outline whole. Its empty space takes no touch: the world's taps get through.
+- **The owner's sizes** (layout.json, a 920 x 280 reference, scaled to the column and capped at the owner's 430 px phone, never larger): the shell 131 px tall, Attack and the big left button 65, the small wells 37, the weapon wells 40, the stick's base 83. A wider column (sideways) stretches the rail; the lobes and their wells keep to their ends.
+- **Touch boxes are not the art**: each at least 44 x 44 px, holding its art, none over another. Under 430 px the art shrinks with the column and the boxes do not, so where two would touch their wells are spread to 45 px between centres and a top-row box rises off the big buttons'. Under about 390 px the lobe cannot hold three 44 px boxes in its top row with the owner's art at its size: that row's art shrinks (to 0.8 at the least) and its boxes stay 44 (what gives on a narrow phone).
+- **The wells**: the stick (base always drawn, the thumb at its middle at rest, moved by today's stick code); the rail's three weapon wells in today's order, the same taps and rules as the pill they replace; the right lobe's top row Mobility (Skate or Charge by the game's own rules, never both), the middle well, Special; its bottom row the big left button and Attack (the face of the weapon in hand: sword, bow, staff).
+- **Jump becomes the shield in a fight** (the owner's words): the big left button is Block, wearing the shield, exactly when the Block button shows today (ShieldButton blockLive, one rule); Jump moves to the middle well, small, so nothing is lost (where Jump goes was chosen for the owner by the orchestrator). Out of a fight the middle well is empty.
+- **The shield is a tap**: it already was (v2.3.2242, game/shieldToggle.js: a tap raises it, a tap lowers it, the guard door its one writer); Attack lowers it (playerActions.js), as do a break, the stamina, death, riding and the rest, unchanged. A guard still up when the fight's rule ends keeps Block shown (shieldButtonLive), so it can always be lowered; then the big button is Jump again.
+- **States in CSS, no filter**: pressed (the face 0.96 for 100 ms), cooldown (a dark sector over the face inside its ring, never the rim), unavailable (the face dimmed; the sword's own dim face), active (a quiet ring, opacity only), a control hidden right now its EMPTY WELL (action_socket). No number on a cooldown (the game has none).
+- **The art law**: the owner's eighteen pieces kept byte for byte (assets/icons-source/owner-2026-11-25-pad3/); tools/art/cut-pad.mjs takes each to 2 px a CSS px at its biggest, 128 colours, 174 kB in all, warmed on the loading screen. Part 1's sheets and pieces are gone.
 
 **Tried before, and changed:**
-- The gold-ringed drawn buttons of v2.3.3018 (the owner's earlier mockup), each button placed on its own; that look is `?padskin=0`.
+- The gold-ringed drawn buttons of v2.3.3018, each placed on its own: `?padskin=0`.
+- Part 1's two grips (v2.3.6640), a left one for the stick and a right one for five buttons, the middle open: the owner found them too large, not joined to the dashboard, the shape wrong.
 
 **Please don't suggest:**
-- Changing the dashboard's height for the housings (the owner said no).
+- Changing the dashboard's height for the shell (the owner said no).
+- Scaling the controller up on bigger screens (the owner's "too large").
 - Baking states into more pictures where the style sheet can draw them.
 
 **Still open:**
-- The mockup's tab row with icons, the top bar, the minimap, the quest plate and the name plates (out of this card).
-- Buttons with no socket (Sprint, Whirlwind, Shield Bash, Quick eat, the trap, Element Burst) keep their old places and looks, some over a housing's edge; the owner's call where they go.
-- No left-handed setting exists in the game; the layout can mirror (tested), and nothing turns it on.
-- Upright on a phone narrower than 430 px the right housing keeps its size, so the context socket's box reaches up to 36 px past the middle; sideways on a phone shorter than 430 px the top row can sit under the minimap's foot.
+- Buttons with no well (Sprint, Whirlwind, Shield Bash, Quick eat, the trap, Element Burst, the TALK/CHOP button) keep their old places and looks; the owner's call where they go.
+- A phone narrower than about 390 px draws the top row's art a little smaller (above).
+- The mockup's tab row with icons, the top bar and the minimap (out of this card).
 
 ## The two-button controls (a trial, `?manual=5`)
 Screens: two-buttons, two-buttons-sighted, two-buttons-hold, two-buttons-reach, two-buttons-ctx-tree, two-buttons-ctx-talk
