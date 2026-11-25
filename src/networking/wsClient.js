@@ -59,6 +59,7 @@ import { LIFE_SKILL_XP } from '@/data/lifeSkills.js'; /* v2.3.5006: a life skill
 import { levelNear as sfxLevelNear } from '@/data/sfxCache.js'; /* v2.3.5006: a skill near its level: the sting decoded ahead */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { poolsLand } from '@/game/guardBreak.js'; /* v2.3.6554: the pools land, and the worker's guard break takes the phone's shield down (card CT part 20) */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
@@ -3372,9 +3373,13 @@ export function setupWebSocket(ctx) {
                  recalcDerived this handler can run — so a local formula can
                  never clamp away the number the worker just told us.  See
                  the block near the top of this case for the incident. */
-              for (var _pk in _poolsFromServer) {
-                if (_poolsFromServer[_pk] !== null) S.rpg[_pk] = _poolsFromServer[_pk];
-              }
+              /* v2.3.6554: ...through poolsLand (game/guardBreak.js), which then
+                 asks the worker's stamina: at 0 with your shield up it is the
+                 worker's guard break (3 s, no raise), and the phone's shield
+                 goes down with it, the button on its cooldown (the owner: "it
+                 stays like it's showing up even when the energy has been
+                 exhausted and you take damage") */
+              poolsLand(S, _poolsFromServer, Date.now(), dropShield);
               setRpgState(_objectSpread({}, S.rpg));
               /* v2.3.2330: through the debouncer, not inline.  This case runs
                  1.5-5 times a second through combat (every player_state echo),

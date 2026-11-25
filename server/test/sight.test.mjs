@@ -75,7 +75,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
-import { combatButtonsShown, combatReach, blockShown, specialsShown, chargeShown } from '../../src/game/controlVisibility.js';   /* v2.3.6543; v2.3.6549: each button its own moment */
+import { combatButtonsShown, combatReach, blockShown, specialsShown, chargeShown, playerFightHoldsLock } from '../../src/game/controlVisibility.js';   /* v2.3.6543; v2.3.6549: each button its own moment */
 import { latchTo, latchFrame, latchReach, latchLine, sightLineEarly, latchPress, latchCheck } from '../../src/game/latch.js';   /* v2.3.6543; v2.3.6546: the line is combat's */
 import { beamStream, sightStream } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543; v2.3.6544: the leaf only draws (main's leaves guard) */
 import { drawSightLine } from '../../src/rendering/sightLineDraw.js';   /* v2.3.6544: the line made from the state, and its QA record, off the leaf */
@@ -297,6 +297,16 @@ function writesOutside(prop, doorFile, doorFn) {
   check('8. a fight handed as a boolean: true shows, false does not', blockShown(T('calm'), true, true, true) === true && blockShown(T('calm'), true, false, true) === false && specialsShown(T('calm'), true, true, true) === true && specialsShown(T('calm'), true, false, true) === false);
   check('8. no S: Block and the specials hidden', blockShown(null, true, yes, true) === false && specialsShown(null, true, yes, true) === false);
   check('8. Charge: a sword, in sight, out of reach', chargeShown(T('threat', { _sightPhase: 'sighted' }), true, true, true) === true);
+  /* v2.3.6554 (card CT part 20, job 2): Charge is for monsters -- none while a
+     duel, an arena match or a player lock holds you, a monster in sight or not
+     (mutants: each of the three lines of playerFightHoldsLock removed, and the
+     ask in chargeShown removed, each turns one of these red) */
+  const CH = (extra) => chargeShown(T('threat', Object.assign({ _sightPhase: 'sighted' }, extra)), true, true, true);
+  check('8. Charge, a monster in sight: none in a duel (S._inDuel)', CH({ _inDuel: { opponent: 'bp_foe' } }) === false && playerFightHoldsLock({ _inDuel: { opponent: 'bp_foe' } }) === true);
+  check('8. Charge: none in an arena match (S._arenaMatch)', CH({ _arenaMatch: { opponent: 'bp_foe' } }) === false && playerFightHoldsLock({ _arenaMatch: { id: 1 } }) === true);
+  check('8. Charge: none with a player locked', CH({ lockedTarget: { type: 'player', id: 'bp_foe' } }) === false && playerFightHoldsLock({ lockedTarget: { type: 'player', id: 'bp_foe' } }) === true);
+  check('8. Charge: a monster locked, no duel: shown, as before', CH({ lockedTarget: { type: 'monster', id: 'm1' } }) === true && playerFightHoldsLock({ lockedTarget: { type: 'monster', id: 'm1' } }) === false);
+  check('8. ...a duel cleared (null) and no state: no hold', playerFightHoldsLock({ _inDuel: null, _arenaMatch: null }) === false && playerFightHoldsLock(null) === false && CH({ _inDuel: null }) === true);
   check('8. Charge: not in reach, not a bow, not with `?chargebtn=0`, not with nothing in sight', chargeShown(T('reach', { _sightPhase: 'sighted' }), true, true, true) === false && chargeShown(T('threat', { _sightPhase: 'sighted' }), true, false, true) === false && chargeShown(T('threat', { _sightPhase: 'sighted' }), true, true, false) === false && chargeShown(T('threat'), true, true, true) === false);
   const LC = T('threat'); latchTo(LC, 'active', 'm2');
   check('8. Charge: a locked monster out of reach', chargeShown(LC, true, true, true) === true);

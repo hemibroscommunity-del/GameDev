@@ -314,7 +314,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor')],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak') /* v2.3.6554: the shield drawn down at the worker's break (card CT part 20) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

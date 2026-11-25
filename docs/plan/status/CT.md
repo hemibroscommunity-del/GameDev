@@ -1,38 +1,33 @@
 card: CT
-branch: claude/plan-ct-12-join (part 18: #2342 and #2344 joined, on main)
-prs: part 18 (6551 if job 2, the join, draft on main), #2344 (6550, done: in the join), #2342 (6549, done: in the join), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
+branch: claude/plan-ct-14-shield (part 20: the shield that stays up; job 2, Charge in a player fight)
+prs: part 20 (6554, draft on main: the shield drop + Charge for monsters), part 18 (6551 if job 2, the join, draft on main), #2344 (6550, done: in the join), #2342 (6549, done: in the join), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
 state: working
 
 ## Done
-- PRs 1-5 (6540-6544) merged or in via #2330; items 6-8 (6545 rim sprint,
-  6546 the line in combat, 6547 the free arrow, `?freefire=0`) in #2340.
-- Part 16 (6549): each button its own moment (thumbSide.js S._thumbPhase:
-  specials in reach, Block at a threat incl. an unseen hit for 3 s, Charge =
-  the sword's dash), the right thumb's arc (thumbArc.js), the flip's cause
-  (each button's own 550 line, no hold). 4 switches.
-- Part 15 (6548): tap and hold (latch idle/active/auto, `?holdauto=0`).
-- Part 17 (6550, done: #2344): mode 5's Attack always attacks; ONE button under
-  the nearest thing (CHOP/MINE/FISH/COOK on S._btnHarvest, the beat on it in
-  the work, TALK within 120 px). `?ctxbuttons=0`. contextButton.js (35
-  mutants, none left), ContextButton.jsx, mp-contextbuttons. No server file.
-- Part 18: #2342 + #2344 joined once (6 conflicts, both kept; the world
-  button z 29, under the right side's buttons). 6551: mode 5's lock faces
-  (lockFace.js, bodyFacesLock; lock-face.test, 6 mutants, none left).
+- PRs 1-5 (6540-6544), items 6-8 (6545-6547), parts 15-18 (6548-6551): on
+  main or in their PRs (git log; their specs).
+- Part 20 (6554): the owner's "shield ... stays like it's showing up even
+  when the energy has been exhausted". The worker breaks the guard at 0
+  stamina (3 s latch), saying so only by the stamina; the phone's own drop
+  sat behind BroTown's BLOCK_COSTS_STAMINA (false on purpose). Now
+  guardBreak.js poolsLand/followWorkerGuard where the pools land (wsClient
+  player_state): down at once, the button's cooldown the worker's 3 s
+  (owner's list §10 Q1, Q4). mp-shielddrop (red on main, both modes),
+  guard-break-page.test (mutants, none left). No server file.
+  Job 2: no Charge while a duel, a match or a player lock holds you
+  (controlVisibility.js playerFightHoldsLock; sight.test 8).
 
 ## Next
 - #2342 (6549): the helper's clean mp-twobuttons run; the owner plays the arc.
 
 ## Found
-- Item 8's repro (430x775 @3x, a greatsword, one press, 5 s): the body
-  moved 0 px; nothing on mode 5's press reaches maybeSwordDash. Main from
-  #2293 to #2330 (11-24 06:56-10:24 -0800) ran it as mode 4's press: the lunge.
-- 3c/3d flip: the own rules' 550 perimeter, ended in part 16 (combatReach
-  no limit in mode 5; sight.test 8 pins it).
-- Part 16's probe (430x775, 775x430 @3x): the band 257 / 48 px; the
-  weapon pill sits left of Attack upright; Ride and the minimap on the right.
-- Part 17's own runs: TALK, CHOP, the swing, the beats, `ctxbuttons=0` green
-  upright; mode 4's disc press started no chop (pre-existing? the helper's
-  run says what was under the finger).
+- Part 20: a blocked blow breaking the guard on the regen's own tick is
+  refilled before the flush (tick.js: regen, then flush): the phone reads 7,
+  not 0, and keeps that break drawn (~1 in 30). A worker change: not built.
+- Part 20: mp-shielddrop's walk-in ended 270-364 px off a wandering monster
+  here: no real blow in the latch (step 5 a note). mp-twobuttons on this
+  branch: shield steps green; 2b, 2c, 6a (the tap, the latch) and 3h (Charge
+  dashed, its distance unread) red, none in the files this PR touches.
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR

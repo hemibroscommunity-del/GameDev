@@ -1,6 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
+import { GUARD_BREAK_MS } from '@/game/guardBreak.js'; /* v2.3.6554: the cooldown arc is the worker's latch */
 import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
 import { WHEEL_MINI_PX } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side on a phone, in one place */
 import { fightOn } from '@/game/sparTargets.js';
@@ -44,10 +45,11 @@ import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window'
  */
 /* v2.3.3522: the button's picture is the owner's painted shield now
    (controlSkin BlockFace) -- it was the world's wood-shield sprite, SHIELD_SPRITE. */
-/* How long the shield stays out of reach after the stamina ran it down
-   (BroTown's `_shieldCdUntil = now + 2000`), so the cooldown arc can say how
-   far through it is. */
-const SHIELD_CD_MS = 2000;
+/* How long the shield stays out of reach after the stamina ran it down, so
+   the cooldown arc can say how far through it is.  v2.3.6554: the worker's
+   guard break, 3 s (game/guardBreak.js, which sets `_shieldCdUntil` from the
+   worker's word); it was BroTown's 2 s, a branch that is off. */
+const SHIELD_CD_MS = GUARD_BREAK_MS;
 
 /* The disc's geometry, shared with TouchControls (right:50, bottom:+70,
    96/108 wide since v2.3.2242). */
