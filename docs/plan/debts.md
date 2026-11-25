@@ -134,6 +134,13 @@ stays with that PR until it lands, and is marked (held).
   dc615d6f mended).
 - `src/game/freeAttack.js:93`: throws on a null `S` (not reachable in
   play) (63).
+- `tools/qa/mp/mp-twobuttons.mjs:503` `PICK` (sideways pass, :320): the
+  orchestrator's helper on 3c86a24e, 98 of 108 (upright all PASS); all 10
+  FAILs one cascade from "2b. sideways: a TAP", the target wm-mist-1 dead
+  at one tap (`taps: 1`, one attack asked; the kill lets go by the rule).
+  The pass picks the same monster upright's 2b, 2c and 7d left hurt, with
+  no full-health wait: pick a full-health monster (or another id) before
+  each pass's 2a (63).
 
 ## DG
 
