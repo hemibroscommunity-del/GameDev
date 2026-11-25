@@ -15,7 +15,8 @@ state: working
   the nearest thing (CHOP/MINE/FISH/COOK on S._btnHarvest, the beat on it in
   the work, TALK within 120 px). `?ctxbuttons=0`. contextButton.js (35
   mutants, none left), ContextButton.jsx, mp-contextbuttons. No server file.
-- Part 18: #2342 + #2344 joined once (6 conflicts, both sides kept).
+- Part 18: #2342 + #2344 joined once (6 conflicts, both kept; the world
+  button z 29, under the right side's buttons).
 
 ## Next
 - #2342 (6549): the helper's clean mp-twobuttons run; the owner plays the arc.
@@ -23,10 +24,6 @@ state: working
   (targeting.js engagedStance, src 'auto'): left for a next part.
 
 ## Found
-- Part 15's run (before the lift's mend, stopped at 88 PASS): a 150 ms tap
-  went auto both ways: bE's release sat after its findT and missed.
-- #2340's helper run: 92/94, 7d both ways (the arrow flew and hurt; free 0):
-  7d now waits for nothing in sight and counts any arrow loosed.
 - Item 8's repro (430x775 @3x, a greatsword, one press, 5 s): the body
   moved 0 px; nothing on mode 5's press reaches maybeSwordDash. Main from
   #2293 to #2330 (11-24 06:56-10:24 -0800) ran it as mode 4's press: the lunge.
