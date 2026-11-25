@@ -74,6 +74,15 @@ stays with that PR until it lands, and is marked (held).
   heap and buffers' `measured` stale (58).
 - `server/test/frame-pacer.test.mjs:943` (23g, card O's) guards the
   governor's gate by a regular expression, against rule 2 (59).
+- `mp-heldsweep` (stand, town, ride) on the test box is red on `main`
+  53a5257d itself and on #2345's 724cc6d8, a new over-the-line item each
+  run, none in a file the PR moved: the rehearsal (tree 28dccc39) `wrapped >
+  tick2` 22.2 ms and `loadLook > loadSnowmanSprites` 18.8 ms (town); main
+  alone `(anonymous)` 20.3 ms x2 and `wrapped > rememberChar` 20 ms (ride)
+  plus `server-message` 12.4 ms with no note (holdNames.js MADE_AS); the
+  join again `R > J` 16.4 ms x2 and `_sprite > _source` 15.2 ms x3
+  (`makePaletteSource`, town). At 63 it was 6 of 6 green on afc215c6: a
+  sample that one box's noise turns red is not yet a gate (64).
 
 ## CT
 
@@ -141,6 +150,57 @@ stays with that PR until it lands, and is marked (held).
   The pass picks the same monster upright's 2b, 2c and 7d left hurt, with
   no full-health wait: pick a full-health monster (or another id) before
   each pass's 2a (63).
+- v2.3.6276 (sitting 64, #2345 at 724cc6d8; the purpose lane's notes:
+  `docs/plan/census/review-z64.md`). CT's next job, each green in the
+  suites named there:
+- `src/ui/BroTown.jsx:6163` `_lockHeld = engagedStance(S)`: a latched tap
+  lock past 220 px is not "busy", so CHOP/TALK are offered in a latched
+  fight (64).
+- `src/game/controlVisibility.js:149` `chargeShown` never asks `fight`,
+  though its header says so: in a duel with a monster in sight, Charge
+  latches the monster and dashes at the PLAYER lock (`targeting.js:602`
+  returns first) (64).
+- `src/game/thumbSide.js:182`: with `?holdauto=0`, Charge's 'active' lock
+  is let go by the next Attack press; on cooldown Charge still locks (64).
+- `tools/qa/mp/mp-contextbuttons.mjs:216` step 2e counts the ask
+  (`S._tapAttacks`), not a swing (64).
+- `src/game/lockFace.js:27` `type !== 'npc'` (a player's lock faced) green
+  in `lock-face`, against the status's "6 mutants, none left"; the three
+  sites (`BroTown.jsx:5628` `engagedStance` on the next line,
+  `monsterCombat.js:1430` the auto lock nulled first, `entityRenderer.js:12330`
+  asking `engagedStance`) and `targeting.js:809` an early return: green (64).
+- `src/game/contextButton.js:64` `return ctxButtonsOn();` (every mode),
+  `manualMode()===5` for the gate, `BroTown.jsx:10642` TALK without `npc`,
+  `:11665` modes 1-4 press always 'woodcutting', `ContextButton.jsx:122`
+  firing at the lift, `:106` z 29 to 32, `:39` `live:true`,
+  `BroTown.jsx:15880`: green (64; most of the wiring has no node suite).
+- `src/game/thumbGlue.js:31` `S['_thumb'+'Phase'] =` and `Object.assign`
+  through a variable: green in thumb-side, state-ledger, phase-table; the
+  frame gate dropped, `thumbSpot.js:16` `arcOn(true, ...)`,
+  `manualMode()===5`, `RideButton.jsx:71` gate dropped,
+  `ChargeButton.jsx:46` lock dropped, `thumbGlue.js:36` engageGap dropped,
+  the clock, `JumpButton.jsx:150` on Block's spot: green (64).
+- Still green from 63, unclaimed by this head: `targeting.js:516`
+  `=== 'active'`; `BroTown.jsx:5364` `if (_lw)` (64).
+- The tap read as auto (`mp-twobuttons` 2b, 2c, 6a, upright and sideways):
+  on `main`'s base 3c86a24e as well (CT 16's helper, 98/11/1) and on both
+  heads, so it is tap-and-hold's (on `main` since 63), not #2342's or
+  #2344's. The question for CT: the hold's fill reads the wall clock from
+  the touchstart (`latch.js` `latchFill`), so a 600 ms page hitch fills
+  the ring before a queued lift; should the fill read the release's own
+  event time, or count frames (64).
+  Measured at 64 on the page's own clock (a capture listener on window):
+  the harness's 150 ms tap reached the page 774 to 1081 ms after its press,
+  4 to 6 frames apart, the ring filled honestly: the TEST's on this box.
+  `mp-twobuttons` should time its tap by the page's clock (64).
+- `tools/qa/mp/mp-twobuttons.mjs:1146` 3h reads the gap to a monster that
+  moves, after the dash has ended: sideways the body closed 404 -> 215 px at
+  once and the monster came back to 253; upright the dash's `travelled`
+  read 240 with the gap still about 400 (wm-thunder-7 kept its distance and
+  still took the strike, 58 -> 48 hp). Read the body's own travel from the
+  press (or `S._bashDash.travelled`), not the gap. And `BroTown.jsx` ~5340:
+  a step refused by `isSolid` still counts toward `travelled` (mode 0's
+  lunge too, not this PR's) (64).
 
 ## DG
 
