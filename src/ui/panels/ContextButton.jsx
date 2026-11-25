@@ -17,19 +17,47 @@
  * menu), the skill's picture from the Attack disc's own set (RDISC_ICONS,
  * warmed on the loading screen: nothing new to load).
  *
+ * v2.3.6552 (card CT part 19): TALK is the owner's pill, the picture alone
+ * (game/contextButton.js ctxLook says what each pick wears): no brass plate,
+ * no word, 44 x 30 in a clear 48 x 48 touch box; its name "Talk" for a
+ * screen reader.  The picture rides in the script, a data address (controlSkin
+ * TALK_PILL_URL, decoded on the loading screen).  The harvest kinds keep the
+ * brass word button.  The frame dresses the element only when its kind
+ * changes (ctxDress): one class and four styles, compared.
+ *
  * During a harvest the gesture layer (ExtractionSwipeLayer buttonCueScreenPos)
  * anchors on this button while it shows (`data-show="1"`), so the beat is
  * pumped, chopped or reeled here; its pointerdown is left to reach the window.
  */
 import React, { useRef } from 'react';
-import { ctxPick, ctxScreen, CTX_KINDS } from '../../game/contextButton.js';
+import { ctxPick, ctxScreen, ctxLook, CTX_KINDS, CTX_TALK_W, CTX_TALK_H, CTX_TOUCH, CTX_TALK_PIC } from '../../game/contextButton.js';
 import { canvasPlace } from '../mayorScreen.js';
-import { RDISC_ICONS } from './controlSkin.jsx';
+import { npcFigureHeight } from '../../rendering/leaves/entity-townsfolk.js';   /* v2.3.6553: the one fact ctxScreen needs for a townsperson, where his name tag hangs (a leaf: pure) */
+import { RDISC_ICONS, TALK_PILL_URL } from './controlSkin.jsx';
 import { say } from '../../game/say.js';
 import { SAY } from '../../data/say/contextButton.js';
 
 const SKILL_ICONS = RDISC_ICONS.filter(function (ic) { return ic[0] === 'mining' || ic[0] === 'woodcutting' || ic[0] === 'fishing' || ic[0] === 'cooking'; });
 const BTN_H = 48;
+/* v2.3.6552: the two dresses (ctxDress): the brass word button, and the
+   picture alone (TALK) -- no chisel class, no border, no ground */
+const PLATE_CLASS = SAY['contextButton.plateClass'];   /* v2.3.6553: read whole, never through deskWords */
+const PIC_CLASS = SAY['contextButton.picClass'];
+const PLATE_DRESS = { padding: '0 12px 0 8px', minWidth: '72px', background: '', border: '' };
+const PIC_DRESS = { padding: '0', minWidth: CTX_TOUCH + 'px', background: 'none', border: '0' };
+
+/** The element dressed for a look: the plate or the picture alone, and its
+ *  accessible name; the word's span hidden when no word is drawn.  Called
+ *  only when the kind changes (the frame's compared write). */
+function ctxDress(el, look) {
+  const cls = look.plate ? PLATE_CLASS : PIC_CLASS;
+  if (el.className !== cls) el.className = cls;
+  const d = look.plate ? PLATE_DRESS : PIC_DRESS;
+  el.style.padding = d.padding; el.style.minWidth = d.minWidth;
+  el.style.background = d.background; el.style.border = d.border;
+  if (el.getAttribute('aria-label') !== look.label) el.setAttribute('aria-label', look.label);
+  if (el._btWordEl) el._btWordEl.style.display = look.word ? '' : 'none';
+}
 
 /** The frame's stamp: what the button says, where it stands, whether it
  *  shows.  `o` is ctxPick's (live, busy, npcsHere, shown).  Every write is
@@ -37,7 +65,8 @@ const BTN_H = 48;
 export function ctxButtonFrame(el, S, o) {
   if (!el) return null;
   const pick = ctxPick(S, o);
-  const pos = pick ? ctxScreen(pick, S.camera, S._worldScaleX, S._worldScaleY, canvasPlace(), (typeof window !== 'undefined' && window.devicePixelRatio) || 1) : null;
+  const figH = pick && pick.kind === 'talk' ? npcFigureHeight(pick.thing.sprite, pick.thing) : 0;   /* v2.3.6553: "Talk icon below npc" */
+  const pos = pick ? ctxScreen(pick, S.camera, S._worldScaleX, S._worldScaleY, canvasPlace(), (typeof window !== 'undefined' && window.devicePixelRatio) || 1, figH) : null;
   const use = pick && pos ? pick : null;
   el._btPick = use;
   el._btPos = use ? pos : null;
@@ -47,32 +76,35 @@ export function ctxButtonFrame(el, S, o) {
     el.style.display = use ? 'flex' : 'none';
   }
   if (!use) { ctxProbe(null); return null; }
-  if (el._btKind !== use.kind) { el.setAttribute('data-kind', use.kind); el._btKind = use.kind; }
-  const ic = use.skill || 'none';
+  const look = ctxLook(use);
+  if (el._btKind !== use.kind) { el.setAttribute('data-kind', use.kind); el._btKind = use.kind; ctxDress(el, look); }
+  const ic = look.pic;
   if (el._btIcon !== ic) {
     el.setAttribute('data-icon', ic);
     el._btIcon = ic;
     const imgs = el._btImgs || [];   /* kept by the ref (no search a frame) */
     for (let i = 0; i < imgs.length; i++) imgs[i].style.display = imgs[i].getAttribute('data-ctx-icon') === ic ? 'block' : 'none';
   }
-  const w = el._btWord !== use.word ? el._btWordEl : null;
-  if (w) { w.textContent = use.word; el._btWord = use.word; }
+  const w = el._btWord !== look.word ? el._btWordEl : null;
+  if (w) { w.textContent = look.word; el._btWord = look.word; }
   const tf = 'translate(' + pos.x + 'px,' + pos.y + 'px) translate(-50%,-50%)';
   if (el._btTf !== tf) { el.style.transform = tf; el._btTf = tf; }
-  ctxProbe(use);
+  ctxProbe(use, look);
   return use;
 }
 
 /* the probe, in the house style (__btShieldBtn): what is offered, written
    only when it changes */
 let _probeKey = null;
-function ctxProbe(p) {
+function ctxProbe(p, look) {
   if (typeof window === 'undefined') return;
   const t = p && p.thing;
   const key = p ? p.kind + '|' + p.word + '|' + (t.id != null ? t.id : (t.name || '')) : '';
   if (key === _probeKey) return;
   _probeKey = key;
-  window.__btCtxButton = p ? { kind: p.kind, word: p.word, skill: p.skill, id: t.id != null ? t.id : null, name: t.name || null, nodeType: t.nodeType || null, ts: Date.now() } : { kind: null, ts: Date.now() };
+  /* v2.3.6552: and what is drawn (ctxLook): the picture, the word, the plate */
+  window.__btCtxButton = p ? { kind: p.kind, word: p.word, skill: p.skill, id: t.id != null ? t.id : null, name: t.name || null, nodeType: t.nodeType || null,
+    pic: look ? look.pic : null, drawn: look ? look.word : null, plate: look ? look.plate : null, ts: Date.now() } : { kind: null, ts: Date.now() };
 }
 
 export function ContextButton(props) {
@@ -99,7 +131,7 @@ export function ContextButton(props) {
       }
     },
     type: 'button',
-    className: 'bt-chisel bt-chisel--brass bt-ctx-btn bt-desktop-hide',
+    className: PLATE_CLASS,
     'data-show': '0',
     'aria-label': say(SAY, 'contextButton.label'),
     style: {
@@ -133,6 +165,11 @@ export function ContextButton(props) {
       key: ic[0], 'data-ctx-icon': ic[0], src: ic[1], alt: '', draggable: false, width: 28, height: 28,
       style: { display: 'none', width: 28, height: 28, objectFit: 'contain', pointerEvents: 'none' },
     });
+  }),
+  /* v2.3.6552: TALK's pill, the picture alone (ctxLook) */
+  React.createElement('img', {
+    key: CTX_TALK_PIC, 'data-ctx-icon': CTX_TALK_PIC, src: TALK_PILL_URL, alt: '', draggable: false, width: CTX_TALK_W, height: CTX_TALK_H,
+    style: { display: 'none', width: CTX_TALK_W, height: CTX_TALK_H, objectFit: 'contain', pointerEvents: 'none' },
   }),
   React.createElement('span', { 'data-ctx': 'word', style: { pointerEvents: 'none' } }, ''));
 }

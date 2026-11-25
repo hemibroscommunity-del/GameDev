@@ -9,6 +9,7 @@ state: ready
 
 ## Next
 - part 2: merged main 0c648ebb, the word moved to say/broPages.js (the counters' aria "{earned} of {total}"); precheck OK, bro-pages suite green, mp-bropages 55/55. Waits for the gatekeeper.
+- part 2: stacked on #2346's head 2825d8e0, lands it.
 
 ## Found
 - Measured on the test box: the upright Bro page is 184 px tall at 390 wide, 180 at 375 (both Safari-bar heights the same: the band is fixed); 78 px on a phone on its side; a computer's band 480 px wide (one page at a time there).

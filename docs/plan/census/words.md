@@ -8,16 +8,16 @@ yet: this is the count a later card moves into one table (`docs/specs/player-wor
 
 | | strings |
 |---|---|
-| player-facing, all | 6986 |
-| ...in a table (`src/data/*`, `deskWords()`) | 3891 |
+| player-facing, all | 6988 |
+| ...in a table (`src/data/*`, `deskWords()`) | 3893 |
 | ...written in place on the page | 2710 |
 | ...written in place on the worker (`server/src`) | 385 |
-| ...sure (`yes`) / unclear, counted (`?`) | 2899 / 4087 |
+| ...sure (`yes`) / unclear, counted (`?`) | 2899 / 4089 |
 | developer-only (Test panel, `src/debug`, mock data; NOT_SHOWN, v2.3.6355): not player-facing, total only | 3253 |
 | flag: "Wheel" a player reads | 1 |
 | flag: "remnant(s)" a player reads | 0 |
 | flag: "tap" outside `deskWords()` | 128 |
-| files read | 1308 |
+| files read | 1309 |
 
 ## How it reads
 
@@ -368,6 +368,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | WeaponBar | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | WorldChatFeed | 1 | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
 | WorldMapOverlay | 1 | 2 | 1 | 0 | 0 | 0 | 0 | 0 |
+| data: contextButton | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 |
 | data: farmLayout | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 |
 | data: fishBoard | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 1 |
 | data: inventoryDash | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 |
@@ -469,7 +470,6 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | XpTrack | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | ZoneHeader | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | data: characterView | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
-| data: contextButton | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
 | data: statsPanel | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
 | data: wheelSignposts | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
 | farmBus | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -1773,26 +1773,26 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### controlSkin (20)
 
-- `src/ui/panels/controlSkin.jsx:410` P? `M50 34 L50 43`
-- `src/ui/panels/controlSkin.jsx:410` P? `M66 50 L57 50`
-- `src/ui/panels/controlSkin.jsx:410` P? `M50 66 L50 57`
-- `src/ui/panels/controlSkin.jsx:410` P? `M34 50 L43 50`
-- `src/ui/panels/controlSkin.jsx:523` P? `M27 60 L50 36 L73 60`
-- `src/ui/panels/controlSkin.jsx:523` P? `M31 78 L69 78`
-- `src/ui/panels/controlSkin.jsx:525` P? `M50 72 L50 28`
-- `src/ui/panels/controlSkin.jsx:525` P? `M32 45 L50 27 L68 45`
-- `src/ui/panels/controlSkin.jsx:525` P? `M31 82 L69 82`
-- `src/ui/panels/controlSkin.jsx:527` P? `M29 50 L50 30 L71 50`
-- `src/ui/panels/controlSkin.jsx:527` P? `M29 68 L50 48 L71 68`
-- `src/ui/panels/controlSkin.jsx:527` P? `M31 83 L69 83`
-- `src/ui/panels/controlSkin.jsx:529` P? `M24 70 Q50 6 74 62`
-- `src/ui/panels/controlSkin.jsx:529` P? `M62 60 L75 64 L79 50`
-- `src/ui/panels/controlSkin.jsx:529` P? `M18 80 L82 80`
-- `src/ui/panels/controlSkin.jsx:537` P? `M10 88 Q16 60 38 54`
-- `src/ui/panels/controlSkin.jsx:538` P? `M58 31 L50 54`
-- `src/ui/panels/controlSkin.jsx:538` P? `M42 24 L57 35 L75 36`
-- `src/ui/panels/controlSkin.jsx:538` P? `M50 54 L36 58 L28 71`
-- `src/ui/panels/controlSkin.jsx:538` P? `M50 54 L64 63 L60 79`
+- `src/ui/panels/controlSkin.jsx:419` P? `M50 34 L50 43`
+- `src/ui/panels/controlSkin.jsx:419` P? `M66 50 L57 50`
+- `src/ui/panels/controlSkin.jsx:419` P? `M50 66 L50 57`
+- `src/ui/panels/controlSkin.jsx:419` P? `M34 50 L43 50`
+- `src/ui/panels/controlSkin.jsx:532` P? `M27 60 L50 36 L73 60`
+- `src/ui/panels/controlSkin.jsx:532` P? `M31 78 L69 78`
+- `src/ui/panels/controlSkin.jsx:534` P? `M50 72 L50 28`
+- `src/ui/panels/controlSkin.jsx:534` P? `M32 45 L50 27 L68 45`
+- `src/ui/panels/controlSkin.jsx:534` P? `M31 82 L69 82`
+- `src/ui/panels/controlSkin.jsx:536` P? `M29 50 L50 30 L71 50`
+- `src/ui/panels/controlSkin.jsx:536` P? `M29 68 L50 48 L71 68`
+- `src/ui/panels/controlSkin.jsx:536` P? `M31 83 L69 83`
+- `src/ui/panels/controlSkin.jsx:538` P? `M24 70 Q50 6 74 62`
+- `src/ui/panels/controlSkin.jsx:538` P? `M62 60 L75 64 L79 50`
+- `src/ui/panels/controlSkin.jsx:538` P? `M18 80 L82 80`
+- `src/ui/panels/controlSkin.jsx:546` P? `M10 88 Q16 60 38 54`
+- `src/ui/panels/controlSkin.jsx:547` P? `M58 31 L50 54`
+- `src/ui/panels/controlSkin.jsx:547` P? `M42 24 L57 35 L75 36`
+- `src/ui/panels/controlSkin.jsx:547` P? `M50 54 L36 58 L28 71`
+- `src/ui/panels/controlSkin.jsx:547` P? `M50 54 L64 63 L60 79`
 
 ### data: abilities (9)
 
@@ -2376,9 +2376,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/codexStage.js:168` T `QUAKE!`
 - `src/data/codexStage.js:169` T `ENRAGED!`
 
-### data: contextButton (1)
+### data: contextButton (3)
 
 - `src/data/say/contextButton.js:14` T? `Do this here`
+- `src/data/say/contextButton.js:20` T? `bt-chisel bt-chisel--brass bt-ctx-btn bt-desktop-hide`
+- `src/data/say/contextButton.js:21` T? `bt-ctx-btn bt-ctx-btn--pic bt-desktop-hide`
 
 ### data: controlsTutorial (21)
 

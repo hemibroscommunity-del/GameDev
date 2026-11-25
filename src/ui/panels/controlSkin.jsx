@@ -1,6 +1,7 @@
 import React from 'react';
 import { metalIconPath, weaponMaterial } from '../../rendering/traits/materialTints.js';
 import { pageAddress } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
+import { TALK_PILL_DATA } from '../../data/talkPill.js';   /* v2.3.6552: TALK_PILL_URL, below */
 
 /* ═══ v2.3.3018: ONE SKIN FOR EVERY TOUCH CONTROL ═══
  *
@@ -297,6 +298,14 @@ export const WPN_PILL_ICONS = {
   ranged: { on: '/ui/controls/wpn-ranged.webp?v=2.3.4130', off: '/ui/controls/wpn-ranged-grey.webp?v=2.3.4130' },
   staff: { on: '/ui/controls/wpn-staff.webp?v=2.3.4130', off: '/ui/controls/wpn-staff-grey.webp?v=2.3.4130' },
 };
+/* v2.3.6552: the owner's TALK pill (card CT part 19; "Your talk button is
+   intrusive use the left icon I attached here instead"): the button under a
+   townsperson in the two buttons (ContextButton.jsx, game/contextButton.js
+   ctxLook).  132 x 91 on 48 colours, 3.4 kB, written by
+   tools/ui/cut-talk-pill.mjs as a data address in data/talkPill.js: it rides
+   in the script, nothing to fetch.  Warmed (decoded) on the loading screen
+   with the rest (controlsPreload.js). */
+export const TALK_PILL_URL = TALK_PILL_DATA;
 /* The pictures the attack disc can wear (TouchControls), all in the DOM from
    the start and warmed on the loading screen (controlsPreload.js), so a
    change of context never waits on a download -- BroTown's stamp only says
