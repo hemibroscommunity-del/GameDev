@@ -111,18 +111,24 @@ function readBar(bar, clip, up, away, k) {
 /* the shadow pieces the sun casts for your own figure this frame (the shadow
    system's own count, lightfx/shadows.js stats.self): the bars up must add
    none.  Read a few frames, the most often seen (a pose can blink a piece) */
-const selfPieces = async (P) => {
+const selfPieces = async (P, up) => {
+  /* counted only on frames where both bars are fully up (or fully away): the
+     probe's alphas are the same frame's (a slow page at sharpness 3 draws
+     about a frame a second, so a bar can start to fade between two looks) */
   const seen = [];
-  for (let i = 0; i < 5; i++) {
-    seen.push(await P.page.evaluate(() => {
+  for (let i = 0; i < 24 && seen.length < 5; i++) {
+    seen.push(await P.page.evaluate((up) => {
       const p = window.__btLightFx && window.__btLightFx.probe();
       const s = p && p.shadows && p.shadows.self;
-      return s && !s.held ? s.pieces : null;
-    }));
+      const r = window.__btResourceBars;
+      const ok = r && (up ? (r.mp > 0.99 && r.en > 0.99) : (r.mp < 0.01 && r.en < 0.01));
+      return s && !s.held && ok ? s.pieces : null;
+    }, up));
+    if (seen[seen.length - 1] == null) seen.pop();
     await P.page.waitForTimeout(150);
   }
   const n = Object.create(null);
-  for (const v of seen) if (v != null) n[v] = (n[v] || 0) + 1;
+  for (const v of seen) n[v] = (n[v] || 0) + 1;
   const best = Object.keys(n).sort((x, y) => n[y] - n[x])[0];
   return best == null ? null : +best;
 };
@@ -162,7 +168,7 @@ async function onePhone(browser, { wsPort, webPort, rec, res, ob, errors, OUT })
       const fix = (bar) => bar && Object.assign({}, bar, { capL: onPage(bar.capL), mid: onPage(bar.mid), capR: onPage(bar.capR), cells: bar.cells.map(onPage) });
       await refill(P);
       await P.page.waitForTimeout(2600);
-      const awayPieces = await selfPieces(P);
+      const awayPieces = await selfPieces(P, false);
       const away = await H.screenshotPixels(P, clip);
       await spend(P, 0.5, row.n);
       /* the photograph only with the bars at full strength (a slow page at
@@ -173,7 +179,7 @@ async function onePhone(browser, { wsPort, webPort, rec, res, ob, errors, OUT })
         if (a && a.mp && a.en && a.mp.alpha > 0.99 && a.en.alpha > 0.99) break;
       }
       const up = await H.screenshotPixels(P, clip);
-      const upPieces = await selfPieces(P);
+      const upPieces = await selfPieces(P, true);
       b = await boxes(P);
       const k = up.width / clip.width;
       const label = row.n ? `${tag}, a row of ${row.n}` : tag;
@@ -199,9 +205,8 @@ async function onePhone(browser, { wsPort, webPort, rec, res, ob, errors, OUT })
           r.gutterPx > 0 && r.ground === 0 && r.blockDiff > r.blockPx * 0.6, r);
         rec.ok(`${label}: the ${name} bar is marked to cast no shadow`, bar.noCast === true);
       }
-      const upA = Math.min(b.mp ? b.mp.alpha : 0, b.en ? b.en.alpha : 0);
-      rec.ok(`${label}: no shadow of the bars: the sun casts ${upPieces} pieces for your figure with the bars up (alpha ${upA.toFixed(2)}), ${awayPieces} with them away`,
-        awayPieces > 0 && upPieces === awayPieces && upA > 0.9, { awayPieces, upPieces });
+      rec.ok(`${label}: no shadow of the bars: the sun casts ${upPieces} pieces for your figure with the bars fully up, ${awayPieces} with them away`,
+        awayPieces > 0 && upPieces === awayPieces, { awayPieces, upPieces });
     }
   } finally { await P.ctx.close().catch(() => {}); }
 }
