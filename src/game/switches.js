@@ -72,6 +72,7 @@ const FORMS = {
   'bodyretry': '0',
   'bodyworker': '0',
   'bowfeel': '0',
+  'bropages': '0',
   'burnfire': '0',
   'burstnumbers': '0',
   'camsnap': '0',

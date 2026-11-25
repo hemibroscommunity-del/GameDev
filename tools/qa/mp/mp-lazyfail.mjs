@@ -59,6 +59,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const openAchv = async () => {
       await H.unfoldBand(P).catch(() => {});
       await H.openDest(P, 'Bro');
+      /* v2.3.6600 (card BRO): the Bro tab is pages; this door is on Progress */ await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); }); await P.page.waitForTimeout(300);
       const t = P.page.locator('[data-bro-row="achievements"]').first();
       await t.waitFor({ state: 'visible', timeout: 8000 });
       await t.click({ force: true });

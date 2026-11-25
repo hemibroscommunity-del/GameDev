@@ -208,6 +208,9 @@ async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Bro');
+  /* v2.3.6600 (card BRO): on the pages (the computer player B) the door is on Progress; the card ignores it */
+  await P.page.waitForTimeout(300);
+  await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); });
   await P.page.waitForSelector('[data-bro-row="achievements"]', { timeout: 8000 });
   await clickRow(P, '[data-bro-row="achievements"]');
   return P.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
@@ -228,7 +231,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: '(' + WATCH.toString() + ')();' });
+  /* v2.3.6600 (card BRO), the mend: the Bro tab is three pages by default (mp-bropages opens Achievements
+     from them); this reads the card's rows (.bt-bro2-rowt), so it plays the card `?bropages=0` gives back.
+     Before: the default card; after: the same card behind its switch, every check as before. */
+  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'bropages=0', init: '(' + WATCH.toString() + ')();' });
   A.page.on('pageerror', (e) => errs.push('A: ' + String(e && e.message || e).slice(0, 200)));
   let B = null, stopA = () => {}, stopB = () => {};
   try {

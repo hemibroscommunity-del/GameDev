@@ -41,6 +41,10 @@
  *      show, a click on Points opens the window, Esc closes it, L opens Life
  *      Skills and L again closes it; a mouse click on a skill tile picks it
  *      and shows its XP.
+ * v2.3.6600 (card BRO), THE MEND: the Bro tab is three pages by default now (sheet/BroPages.jsx;
+ * mp-bropages plays them), and this card is the one `?bropages=0` gives back.  Before: this played
+ * the default Bro tab.  After: it plays the switch-thrown card, every check as before, both players
+ * with `query: 'bropages=0'` (the plan's rule 4: all new, or exactly one switch thrown).
  * Pictures: tools/qa/mp/out/bro-tab-v2.png (points waiting),
  * bro-tab-v2-bow.png (Bow's tile picked, its stats), bro-tab-v2-desk.png, bro-tab-v2-tablet.png
  * (docs/shots/ has them on 256 colours).
@@ -195,7 +199,7 @@ const FIVE = ['dashboard', 'hero', 'quests', 'leaderboard', 'encyclopedia', 'mor
 const WORDS = { dashboard: 'Gear', hero: 'Bro', quests: 'Quests', leaderboard: 'Ranks', encyclopedia: 'Codex', more: 'More' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Cardbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel' });
+  const P = await H.newPlayer(browser, { name: 'Cardbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel', query: 'bropages=0' });
   const errs = [];
   let stopP = () => {};
   P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
@@ -424,7 +428,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 8. a computer playing wide ── */
   let stopD = () => {};
-  const D = await H.newPlayer(browser, { name: 'Deskcard', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true });
+  const D = await H.newPlayer(browser, { name: 'Deskcard', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true, query: 'bropages=0' });
   try {
     await H.enterWorld(D);
     stopD = H.keepAlive(D);

@@ -2084,6 +2084,151 @@ button.bt-pin-drop{color:inherit;margin:0}
 .bt-bro2-row.is-live .bt-bro2-rowt>span{color:#F6D58A}
 .bt-bro2-chev{flex:none;color:#A0BACE;font-size:22px;line-height:1;padding:0 2px}
 .bt-bro2-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:999px;background:#D8AA58;pointer-events:none}
+/* ═══ v2.3.6600: THE BRO TAB IN PAGES (card BRO; sheet/BroPages.jsx, the rules src/game/broPages.js) ═══
+   The owner, 2026-11-25: "so all related information is shown at once ... the Bro tab becomes a
+   showcase of the player's character".  Three pages, each whole with no scroller, in Lantern Slate
+   (docs/LANTERN-SLATE-SPEC.md: the dashboard's #10222A wells on its tray, brass #D8A85F for what is
+   picked and what waits, text-1 #F7F2E7 values, text-2 #B9C1BF labels; the smallest text the spec's
+   caption, 10 px, and its metric label, 9 px, in the dense cut only).  Upright the page is about
+   190 px tall (measured, 390 and 375 wide): every size below is what fits it.  600 px and wider the
+   three side by side; under 150 px tall (a phone on its side) the dense cut.  Each page may scroll
+   only if it cannot fit (the 2 px it needs on a small phone, say): mp-bropages fails a page that does. */
+.bt-bro3{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:3px 4px 4px;box-sizing:border-box;
+  overflow:hidden;color:#F7F2E7;text-align:left;font-variant-numeric:tabular-nums}
+.bt-bro3[data-bro-wide="1"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+.bt-bro3,.bt-bro3 *{touch-action:manipulation}
+.bt-bro3 button{font-family:inherit;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;color:inherit;text-align:left}
+.bt-bro3 button:active{filter:brightness(.88)}
+.bt-bro3 img{pointer-events:none;object-fit:contain;flex:none}
+.bt-bro3-page{min-width:0;min-height:0;display:flex;flex-direction:column;gap:3px;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
+.bt-bro3-page::-webkit-scrollbar{display:none}
+.bt-bro3-well{display:flex;flex-direction:column;gap:1px;min-width:0;width:100%;padding:3px 7px 3px;box-sizing:border-box;flex:none;
+  border:1px solid rgba(238,242,235,.12);border-radius:8px;background:#10222A}
+.bt-bro3-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0;line-height:12px;
+  color:#E2B866;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.bt-bro3-head>span{overflow:hidden;text-overflow:ellipsis}
+.bt-bro3-head em,.bt-bro3-hint,.bt-bro3-more{font-style:normal;letter-spacing:0;text-transform:none;font-size:10px;font-weight:600;color:#B9C1BF;white-space:nowrap}
+.bt-bro3-more{color:#E2B866;font-size:11px;font-weight:700}
+.bt-bro3-chev{flex:none;font-style:normal;color:#B9C1BF;font-size:16px;line-height:1}
+/* the page marks: the open one lit; on the pages under the Overview its mark is the back chip */
+.bt-bro3-marks{display:flex;gap:4px;flex:none}
+.bt-bro3-mark{flex:1 1 0;min-width:0;height:18px;padding:0 4px;box-sizing:border-box;border:1px solid rgba(238,242,235,.12);border-radius:6px;
+  background:#1A2D36;color:#B9C1BF;font-size:11px;font-weight:700;line-height:16px;text-align:center!important;white-space:nowrap;overflow:hidden}
+.bt-bro3-mark.is-on{border-color:#D8A85F;background:#3B3427;color:#F6D58A}
+.bt-bro3-mark.is-back{color:#E2B866}
+/* OVERVIEW: you */
+.bt-bro3-you{display:flex;align-items:center;gap:7px;min-width:0;height:31px;flex:none}
+.bt-bro3-face{width:31px;height:31px;box-sizing:border-box;border:1.5px solid #C9973F;border-radius:6px;background:#2A3E4C;image-rendering:pixelated;object-fit:cover}
+.bt-bro3-who{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.bt-bro3-name{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:800;line-height:17px;color:#FFFFFF}
+.bt-bro3-title{display:flex;align-items:center;gap:4px;max-width:100%;min-height:14px;padding:0;border:0;background:none;
+  color:#F6D58A;font-size:11px;font-weight:700;line-height:14px}
+.bt-bro3-title.is-none{color:#B9C1BF;font-weight:600}
+.bt-bro3-title img{width:14px;height:14px}
+.bt-bro3-title span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-bro3-lvcol{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.bt-bro3-lv{padding:0 8px;border:1px solid #D8A85F;border-radius:6px;background:#3B3427;color:#F6D58A;font-size:13px;font-weight:800;line-height:18px;white-space:nowrap}
+.bt-bro3-ptchip{position:relative;display:flex;align-items:center;gap:3px;height:15px;padding:0 6px;border:1px solid #C9973F;border-radius:999px;
+  background:linear-gradient(180deg,#3B301D,#2A2417);color:#F6D58A!important;font-size:10px;font-weight:800;line-height:13px;white-space:nowrap}
+.bt-bro3-ptchip img{width:11px;height:11px}
+/* OVERVIEW: combat overview (the well is the "Details" button) */
+.bt-bro3-ov{cursor:pointer}
+.bt-bro3-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));min-width:0}
+.bt-bro3-num{display:flex;flex-direction:column;min-width:0;padding:0 5px;border-left:1px solid rgba(238,242,235,.10)}
+.bt-bro3-num:first-child{border-left:0;padding-left:0}
+.bt-bro3-num b,.bt-bro3-pc b,.bt-bro3-ctr b,.bt-bro3-cell b{color:#F7F2E7;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-bro3-num b{font-size:15px;line-height:16px}
+.bt-bro3-num i,.bt-bro3-cell i,.bt-bro3-ctr i{font-style:normal;color:#B9C1BF;font-size:10px;font-weight:600;line-height:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* OVERVIEW: weapon mastery (a tile: the Combat page on that weapon; the XP flight lands here) */
+.bt-bro3-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.bt-bro3-tile{display:flex;align-items:center;gap:4px;min-width:0;height:26px;padding:0 5px;box-sizing:border-box;border:1px solid rgba(238,242,235,.14);
+  border-radius:6px;background:#19252A}
+.bt-bro3-tile.is-on{border-color:#D8A85F;background:linear-gradient(0deg,rgba(216,170,88,.16),rgba(216,170,88,.16)),#19252A}
+.bt-bro3-tile img{width:20px;height:20px}
+.bt-bro3-tilet{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.bt-bro3-tilet b{font-size:12px;font-weight:800;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-bro3-tilet small{font-size:9px;font-weight:600;line-height:11px;color:#96A2A0;white-space:nowrap}
+.bt-bro3-tile.is-on .bt-bro3-tilet small{color:#E2B866}
+.bt-bro3-tilelv{flex:none;font-size:11px;font-weight:800;color:#F6D58A;white-space:nowrap}
+/* OVERVIEW: your progress, one row */
+.bt-bro3-prow{flex-direction:row;align-items:center;gap:8px;height:22px;padding:0 7px}
+.bt-bro3-prowh{flex:1 1 auto;min-width:0;color:#E2B866;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-bro3-pc{flex:none;display:flex;align-items:center;gap:3px}
+.bt-bro3-pc img{width:14px;height:14px}
+.bt-bro3-pc b{font-size:13px;line-height:15px}
+.bt-bro3-star{flex:none;color:#F2C45A;font-size:13px;line-height:1}
+/* COMBAT: the picker, then the groups (the label over its number) */
+.bt-bro3-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;flex:none}
+.bt-bro3-pick{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;height:24px;padding:0 4px;box-sizing:border-box;
+  border:1px solid rgba(238,242,235,.14);border-radius:6px;background:#19252A;color:#B9C1BF!important;font-size:12px;font-weight:700}
+.bt-bro3-pick.is-on{border-color:#D8A85F;background:#3B3427;color:#F6D58A!important}
+.bt-bro3-pick img{width:18px;height:18px}
+.bt-bro3-group{display:flex;flex-direction:column;gap:1px;min-width:0}
+.bt-bro3-cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+.bt-bro3-group[data-bro-group="move"] .bt-bro3-cells{grid-template-columns:minmax(0,1fr)}
+.bt-bro3-pair{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,1.05fr);gap:4px;min-width:0}
+.bt-bro3-cell{display:flex;flex-direction:column;justify-content:center;min-width:0;height:28px;padding:0 5px;box-sizing:border-box;
+  border:1px solid rgba(238,242,235,.10);border-radius:6px;background:#10222A}
+.bt-bro3-cell b{font-size:13px;line-height:15px}
+/* PROGRESS: the counters and the bar (a tap: Achievements), the doors two across */
+.bt-bro3-ctrs{gap:3px;padding:3px 7px 4px}
+.bt-bro3-ctrrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}
+.bt-bro3-ctr{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:5px;align-items:center;min-width:0;
+  padding:0 5px;border-left:1px solid rgba(238,242,235,.10)}
+.bt-bro3-ctr:first-child{border-left:0;padding-left:0}
+.bt-bro3-ctr>img,.bt-bro3-ctr>.bt-bro3-star{grid-row:1/span 2;width:16px;height:16px;font-size:15px;text-align:center}
+.bt-bro3-ctr b{font-size:14px;line-height:15px}
+.bt-bro3-bar{display:block;height:3px;border-radius:2px;background:#121B20;overflow:hidden}
+.bt-bro3-bar>span{display:block;height:100%;background:#D8A85F}
+.bt-bro3-doors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 4px}
+.bt-bro3-door{position:relative;display:flex;align-items:center;gap:6px;min-width:0;height:26px;padding:0 6px;box-sizing:border-box;
+  border:1px solid rgba(238,242,235,.12);border-radius:6px;background:#10222A}
+.bt-bro3-door.is-live{border-color:#C9973F;background:linear-gradient(180deg,#3B301D,#2A2417)}
+.bt-bro3-door img{width:18px;height:18px}
+.bt-bro3-doort{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.bt-bro3-doort b{font-size:12px;font-weight:800;line-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-bro3-doort small{font-size:10px;font-weight:600;line-height:11px;color:#B9C1BF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-bro3-door.is-live .bt-bro3-doort small{color:#F6D58A}
+/* side by side and not short (a tablet on its side): a page about 270 px wide */
+.bt-bro3[data-bro-wide="1"][data-bro-dense="0"] .bt-bro3-group[data-bro-group="offense"] .bt-bro3-cells{grid-template-columns:repeat(3,minmax(0,1fr))}
+.bt-bro3[data-bro-wide="1"][data-bro-dense="0"] .bt-bro3-pair{grid-template-columns:minmax(0,1fr)}
+/* THE DENSE CUT (a phone on its side: the page about 80 px tall): no heads, one-line cells, the
+   doors three across without their second line; the 9 px metric label is the spec's smallest */
+.bt-bro3[data-bro-dense="1"]{padding:2px 4px 2px;gap:5px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-page{gap:2px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-well{padding:1px 5px;border-radius:6px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-you{height:17px;gap:5px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-face{width:17px;height:17px;border-width:1px;border-radius:4px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-name{font-size:12px;line-height:16px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-lvcol{flex-direction:row;align-items:center;gap:4px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-lv{font-size:10px;line-height:14px;padding:0 5px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-ptchip{height:14px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-num{flex-direction:row;align-items:baseline;gap:3px;padding:0 3px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-num b{font-size:12px;line-height:14px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-num i,.bt-bro3[data-bro-dense="1"] .bt-bro3-cell i{font-size:9px;line-height:11px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-tile{height:16px;padding:0 4px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-tile img{width:13px;height:13px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-tilet b{font-size:10px;line-height:12px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-tilelv{font-size:10px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-prow{height:16px;padding:0 5px;justify-content:space-between}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-pc b{font-size:11px;line-height:13px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-pc img{width:12px;height:12px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-pick{height:18px;font-size:10px;gap:3px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-pick img{width:13px;height:13px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-cells{gap:2px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-pair{gap:2px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-cell{flex-direction:row;align-items:baseline;justify-content:space-between;gap:3px;height:14px;padding:0 3px;border-radius:4px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-cell b{font-size:10px;line-height:12px;flex:none}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-ctrs{gap:1px;padding:1px 5px 2px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-ctr{grid-template-columns:auto auto;justify-content:start}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-ctr>img,.bt-bro3[data-bro-dense="1"] .bt-bro3-ctr>.bt-bro3-star{grid-row:auto;width:12px;height:12px;font-size:11px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-ctr b{font-size:11px;line-height:13px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-bar{height:2px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-doors{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-door{height:17px;gap:3px;padding:0 3px;border-radius:4px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-door img{width:12px;height:12px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-doort b{font-size:10px;line-height:12px}
+.bt-bro3[data-bro-dense="1"] .bt-bro3-chev{display:none}
 /* v2.3.1333: zone header rail — replaces the bt-exit-fab back arrow
    AND the floating zone label (both retired; see ZoneHeader.jsx).
    Recessed navy 9-slice face, deliberately shallower than the bottom

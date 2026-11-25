@@ -32,8 +32,9 @@ export const PACKETS = [
   /* v2.3.4172: the owner's five buttons -- Bro (its card, the two windows over
      it, the two pages under it) is a packet of its own; Quests, the bag, the
      Codex and More share the next */
-  { slug: 'dashboard-bro', title: 'Dashboard: Bro (your card, Points, Equipment, Life Skills, Achievements)',
-    screens: ['guide-arrow', 'dash-bro', 'dash-bro-bow', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
+  /* v2.3.6600 (card BRO): the three pages; dash-bro-bow (Combat on the bow) left out of the packet, nine at most */
+  { slug: 'dashboard-bro', title: 'Dashboard: Bro (its three pages, Points, Equipment, Life Skills, Achievements)',
+    screens: ['guide-arrow', 'dash-bro', 'dash-bro-combat', 'dash-bro-progress', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   /* v2.3.4172: the rare fish's weigh-in card and Ranks' Biggest fish
@@ -42,8 +43,9 @@ export const PACKETS = [
     /* v2.3.4393: + the Leaderboards (their own button on the row) and the daily spin's records; v2.3.5503: + the Ranks page's picker open */
     screens: ['fish-weigh', 'fish-board', 'dash-leaderboard', 'leaderboard-picker', 'leaderboard-skill', 'leaderboard-spin'] },
   /* v2.3.4151: the Gear tab, the resting dashboard's three panels; v2.3.4191: + the card's "⋯" and a material */
-  { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
-    screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-more', 'gear-material', 'gear-filter-open', 'gear-filter-empty'] },
+  /* v2.3.6600: with the Bow's combat stats (Bro's Combat page on the bow: what the bow you wear does) */
+  { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear (and the Bow\'s combat stats)',
+    screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-more', 'gear-material', 'gear-filter-open', 'gear-filter-empty', 'dash-bro-bow'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
     /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES);
        v2.3.4172: Achievements went to Bro, Notifications (the bell) came in */

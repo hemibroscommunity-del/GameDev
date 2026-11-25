@@ -700,6 +700,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `?afterpaint` | page | switch | v2.3.6244 | 2026-11-18 | =0 | logic |  | no | The door prompt is placed inside React's commit, as before (card HB: the coach's and the band's measures too, as their PRs land). |
 | `?bandbeat` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | The band's 200 ms redraw runs in one piece, as before. |
+| `?bropages` | page | switch | v2.3.6600 | 2026-11-25 | =0 | logic |  | no | The Bro tab is the one card of before (you, the stats, the doors; it scrolls), not the three pages. |
 | `?create` | page | lever | v2.3.1861 |  | =1 | none |  | no | Goes straight to the character creator. |
 | `?guest` | page | lever | v2.3.1116 |  | =1 | none |  | no | This tab plays as a fresh guest with its own id. |
 | `?jumpicon` | page | value | v2.3.3721 |  | a glyph's name | logic |  | no | Picks the jump button's glyph. |

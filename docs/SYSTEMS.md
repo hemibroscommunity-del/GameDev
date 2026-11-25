@@ -373,7 +373,7 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
-- **Files**: `src/game/`: windowDoor, guardBreak
+- **Files**: `src/game/`: windowDoor, guardBreak, broPages
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet
