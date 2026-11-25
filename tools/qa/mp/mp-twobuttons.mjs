@@ -98,21 +98,39 @@
  *   distance that follows a path: far, in, back and forth across the edge,
  *   out.  A page-side watcher counts every time Block or Special comes or
  *   goes, each change of the DOM, and every change of the sight's phase)
+ *   (v2.3.6549, card CT part 16: the rule is the right thumb's phase,
+ *   thumbSide.js: Block at a THREAT, the specials IN REACH, Charge with a
+ *   sword in sight but out of reach; each on its own spot of the thumb's arc)
  *   3a. far off (700 px), nothing in sight: the right side is Attack and
- *       Jump only (no Block, no Special, no Whirlwind) and no line drawn;
- *   3b. walked in to 435 px (inside the sword's 440): sighted, Block and
- *       Special on screen around Attack (v2.3.6546: and NO line: the latch
- *       is idle, and the line is combat's, 6d to 6f);
+ *       Jump only (no Block, no Special, no Whirlwind, no Charge) and no line
+ *       drawn;
+ *   3b. walked in to 435 px (inside the sword's 440): sighted, the phase a
+ *       threat: Block and Charge on screen, Special NOT (out of the sword's
+ *       reach) (v2.3.6546: and NO line: the latch is idle, and the line is
+ *       combat's, 6d to 6f);
  *   3c. walked back and forth between 435 and 520 px (past the 440 a new
  *       sighting needs, inside the 550 the sight is held to) six times: the buttons and the phase never
  *       changed (no flicker at the edge);
- *   3d. out to 700 px: the phase gone, the line gone, Block and Special gone,
- *       each in ONE change (came once, went once over the whole walk; v2.3.6544:
+ *   3d. out to 700 px: the phase gone, the line gone, Block and Charge gone,
+ *       each in ONE change, Special never came (came once, went once over the whole walk; v2.3.6544:
  *       each button counted on its own, and 3c a SKIP with the frame time where
  *       this page draws a frame wider than the sight's 400 ms hold: TRAPS 200);
  *   3e. the mode off (part 2f's page, mode 4): with a shield and a sword
  *       Block comes by today's rule (a monster within reach), no sight
- *       line, the resolver not asked to hide it.
+ *       line, the resolver not asked to hide it; and no Charge, Attack at
+ *       its old place (v2.3.6549: modes 1 to 4 untouched);
+ *   3f. (v2.3.6549) the spots: Attack, Jump, Block and Charge as drawn,
+ *       each 44 px or more, 8 px or more of air between any two (their
+ *       circles), all on the right half;
+ *   3g. hopped beside the monster (in the sword's reach): the phase reach,
+ *       Special on screen, Charge gone, Block still there AT THE SAME SPOT
+ *       as in 3b, Special's spot clear of the others;
+ *   3h. hopped back out to 400 px on its line, sighted: Charge again; a tap
+ *       on it: the dash went (its probe), the body carried toward the
+ *       monster (150 px or more nearer), then in reach;
+ *   3i. hopped far off (nothing in sight), a monster's hit stamped as the
+ *       worker's would: Block comes, Special does not; Block gone again
+ *       about 3 s after the hit.
  *
  * PART 4 (PR 5, tag 6544): THE TEST PANEL'S ROW AND THE TEACHING WORDS
  *   (part 2f's page, mode 4, upright)
@@ -174,6 +192,10 @@ const PICK = (S, o) => {
   for (const m of live) {
     const d = Math.hypot(m.x - P0.x, m.y - P0.y);
     if (d > o.maxD) continue;
+    /* v2.3.6549 (the gatekeeper's sitting 63): never one an earlier pass hit (upright's 2b, 2c and 7d leave it at
+       1 hp, so sideways it died at the first tap and ten steps went red), and only one at full health */
+    if (Array.isArray(o.skip) && o.skip.indexOf(String(m.id)) >= 0) continue;
+    if (typeof m.curHp === 'number' && typeof m.maxHp === 'number' && m.curHp < m.maxHp) continue;
     let nn = Infinity;
     for (const q of live) if (q !== m) nn = Math.min(nn, Math.hypot(q.x - m.x, q.y - m.y));
     for (const face of Object.keys(FACE)) {
@@ -317,6 +339,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const players = [];
   const errs = [];
   try {
+    const used = [];   /* v2.3.6549: the monsters a pass has picked (PICK's skip) */
     for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
       const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5&wheelwhole' });   /* v2.3.6542: wheelwhole: every Wheel monster in the arrival's list (server/src/wheelnear.js; mp-blockcost's), for part 2's real monster */
       players.push(P);
@@ -500,7 +523,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          out, 480 px from any other: the sight takes a NEW monster at 440, its
          550 holds only the one already in sight; the fourth run: 506 px the most
          room near BroTown, 650 asked too much) */
-      const mon0 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
+      const mon0 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000, skip: used }));
+      if (mon0) used.push(mon0.id);
       rec.ok(`2. ${label}: a real monster of the Wheel with no other near its path (${mon0 && mon0.room} px; guard)`, !!mon0 && mon0.room >= 480, mon0);
       if (!mon0 || mon0.room < 480) continue;
       await H.hopTo(P, Math.round(mon0.x - 170 * Math.cos(mon0.a)), Math.round(mon0.y - 170 * Math.sin(mon0.a)), { tries: 90 });
@@ -856,7 +880,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          nothing; the first run hid the object, which a tick replaces) until
          the free arrow leaves, then shows it again: the arrow,
          loosed at nothing, meets it, and the worker takes the claim */
-      const mon7 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
+      const mon7 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000, skip: used }));
+      if (mon7) used.push(mon7.id);
       let hit7 = null;
       if (mon7) {
         await H.hopTo(P, Math.round(mon7.x - 150 * Math.cos(mon7.a)), Math.round(mon7.y - 150 * Math.sin(mon7.a)), { p7Tries: 60 });
@@ -933,7 +958,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          480 px from any other live monster (a NEW sighting is at 440; the
          550 holds only the one in sight); then the body turned to face it from that side, so the
          keeper's line (the drawn facing's) is that side */
-      const mon3 = await H.readState(P, bind(PICK, { dMin: 400, dMax: 730, maxD: 4000 }));
+      const mon3 = await H.readState(P, bind(PICK, { dMin: 400, dMax: 730, maxD: 4000, skip: used }));
+      if (mon3) used.push(mon3.id);
       rec.ok(`3. ${label}: a live monster with no other near the path (${mon3 && mon3.room} px, from the ${mon3 && mon3.face}; guard)`, !!mon3 && mon3.room >= 480, mon3);
       if (!mon3 || mon3.room < 480) continue;
       await H.hopTo(P, Math.round(mon3.x - 700 * Math.cos(mon3.a)), Math.round(mon3.y - 700 * Math.sin(mon3.a)), { tries: 260 });
@@ -956,12 +982,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         let fLast = 0;
         const fr = (ts) => { if (fLast && w.gaps.length < 2000) w.gaps.push(ts - fLast); fLast = ts; if (w.fOn) requestAnimationFrame(fr); };
         requestAnimationFrame(fr);
-        const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]') });
+        const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]'), charge: !!document.querySelector('[data-charge]') });   /* v2.3.6549: + Charge */
         let was = JSON.stringify(shown());
         w.dom.push({ t: Date.now(), v: JSON.parse(was) });
         /* v2.3.6546 (part 12's Found: Block and Special changed 8 times in 3c upright while the phase held): each change says what the buttons' rules read then -- the sight, the latch, the nearest live monster, the last hurt, the shield, the frame */
         const why = () => { const S = window._gameState && window._gameState.current; if (!S || !S.player) return null; let near = null; for (const m of S.monsters || []) { if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0)) continue; const d = Math.hypot(m.x - S.player.x, m.y - S.player.y); if (near == null || d < near) near = d; }
-          return { p: S._sightPhase || 'none', sAge: S._sightAt ? Date.now() - S._sightAt : null, l: S._latchPhase || 'idle', near: near == null ? null : Math.round(near), hurt: S.lastDamageTaken ? Date.now() - S.lastDamageTaken : null, up: !!S._shieldUp, f: S._frameCount || 0, sh: window.__btShieldBtn ? window.__btShieldBtn().shown : null, sp: window.__btSpecialBtn ? window.__btSpecialBtn().shown : null }; };
+          return { p: S._sightPhase || 'none', sAge: S._sightAt ? Date.now() - S._sightAt : null, l: S._latchPhase || 'idle', near: near == null ? null : Math.round(near), hurt: S.lastDamageTaken ? Date.now() - S.lastDamageTaken : null, up: !!S._shieldUp, sw: !!(S._wheelSwim && S._wheelSwim.on), f: S._frameCount || 0, sh: window.__btShieldBtn ? window.__btShieldBtn().shown : null, sp: window.__btSpecialBtn ? window.__btSpecialBtn().shown : null }; };
         const mo = w.mo = new MutationObserver(() => { const n = JSON.stringify(shown()); if (n !== was) { was = n; w.dom.push({ t: Date.now(), v: JSON.parse(n), d: Math.round(w.at), why: why() }); } });
         mo.observe(document.body, { childList: true, subtree: true });
         let ph = null;
@@ -995,7 +1021,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const w = window._ctEdge, S = window._gameState && window._gameState.current;
         const ln = window.__btSightLine ? window.__btSightLine() : null;
         return { at: Math.round(w.at), real: w.real == null ? null : Math.round(w.real), phase: S && S._sightPhase || 'none', id: S && S._sightId != null ? String(S._sightId) : null, line: ln,
-          block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]'),
+          block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]'), charge: !!document.querySelector('[data-charge]'), thumb: S && S._thumbPhase || 'calm', swim: !!(S && S._wheelSwim && S._wheelSwim.on),
           attack: !!document.querySelector('.bt-rjoy-base'), jump: !!document.querySelector('[data-jump]'), latch: S && S._latchPhase || 'idle',
           phases: w.phase.length, doms: w.dom.length, lost: w.lost, ticks: w.ticks };
       });
@@ -1010,18 +1036,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'none', { timeout: 8000, label: 'nothing in sight' }).catch(() => null);
       await P.page.waitForTimeout(600);   /* the buttons' 200 ms render tick, twice and more */
       const q0 = await EDGE(P);
-      rec.ok(`3a. ${label}: far off (${q0.at} px), nothing in sight: Attack and Jump only (Block ${q0.block}, Special ${q0.special}, Whirlwind ${q0.ability}), no line`,
-        q0.phase === 'none' && q0.attack && q0.jump && !q0.block && !q0.special && !q0.ability && !!q0.line && !q0.line.drawn && q0.latch === 'idle', q0);
+      rec.ok(`3a. ${label}: far off (${q0.at} px), nothing in sight: Attack and Jump only (Block ${q0.block}, Special ${q0.special}, Whirlwind ${q0.ability}, Charge ${q0.charge}), no line`,
+        q0.phase === 'none' && q0.attack && q0.jump && !q0.block && !q0.special && !q0.ability && !q0.charge && !!q0.line && !q0.line.drawn && q0.latch === 'idle', q0);
       const marks = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length }));
       /* 3b: in to 435; this box draws a frame every few hundred ms, so wait on the page's own sight (TRAPS 200) */
       await walkTo(435, 0);
       const s1 = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 15000, label: 'sighted at 435' }).catch(() => null);
-      await H.waitFor(P, () => !!document.querySelector('[data-shield]') && !!document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special' }).catch(() => null);
+      await H.waitFor(P, () => !!document.querySelector('[data-shield]') && !!document.querySelector('[data-charge]'), (v) => v, { timeout: 8000, label: 'Block and Charge' }).catch(() => null);
       await frames(P, 2);
       const q1 = await EDGE(P);
-      /* v2.3.6546: no line before the press (the owner: "It's only the line drawn that snaps"); the line is combat's (6d to 6f) */
-      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, Block and Special around Attack, and no line before the press (drawn ${q1.line && q1.line.drawn})`,
-        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && !q1.line.drawn && q1.block && q1.special && q1.attack && q1.jump, q1);
+      const RECT = (sel) => P.page.evaluate((q) => { const el = document.querySelector(q); if (!el) return null; const b = el.getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; }, sel);
+      const blockAt3b = await RECT('[data-shield]');
+      /* v2.3.6546: no line before the press (the owner: "It's only the line drawn that snaps"); the line is combat's (6d to 6f).
+         v2.3.6549: out of the sword's reach: Block and Charge, not Special */
+      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, a threat: Block and Charge on the arc, Special not yet (out of reach), and no line before the press (drawn ${q1.line && q1.line.drawn})`,
+        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && q1.thumb === 'threat' && !!q1.line && !q1.line.drawn && q1.block && q1.charge && !q1.special && q1.attack && q1.jump, q1);
       /* 3c: back and forth across the edge, inside the held 550.  v2.3.6543:
          out to 520, not 545 (the helper's run on 9af138bb, sideways: a frame
          every 767 ms, and the monster's wander past 550 on ONE frame is more
@@ -1033,7 +1062,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const w2 = await P.page.evaluate((o) => { const gs = window._ctEdge.gaps.slice(o.g).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(o.d), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, { g: mid.g, d: mid.d });
       if (w2.dom.length) console.log(`  3c ${label}: the buttons changed ${w2.dom.length} times (v2.3.6546: each with what their rules read): ${JSON.stringify(w2.dom)}`);   /* v2.3.6546: every change in 3c, not the last six */
       const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted, no line before the press`;
-      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && !q2.line.drawn && !q2.lost;   /* v2.3.6546: no line before the press */
+      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.charge && !q2.special && q2.line && !q2.line.drawn && !q2.lost;   /* v2.3.6546: no line before the press; v2.3.6549: Block and Charge, not Special */
       /* v2.3.6544 (TRAPS 200): the sight holds 400 ms past its last sighting (sight.js SIGHT.HOLD_MS), counted on the
          game's own clock and stepped once a frame.  A page that draws a frame wider than that (this box sideways: 767
          to 1117 ms) drops the sight on ONE frame that misses (the monster's wander past the held 550 between two
@@ -1041,7 +1070,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
          were that: the game's record (each change's gap, facing and angle) shows no flap on a page that can hold.
          So: a SKIP with the frame time there, never a red; on a page whose frames fit inside the hold, the strict check. */
       const HOLD_MS = 400;
-      if (!edgeHeld && !q2.lost && w2.frameMs != null && w2.frameMs >= HOLD_MS) {
+      /* v2.3.6549: Block and Jump are not drawn in the water (shieldToggle.js, JumpButton.jsx: by design); a walk
+         whose path crosses a shore changes them there, which is the place's, not this rule's (the run on this
+         part, upright: Block and Jump went at 435 px each time, swimming, the phase a threat throughout) */
+      const wet = w2.dom.some((x) => x.why && x.why.sw) || q2.swim;
+      if (!edgeHeld && wet && q2.phases === mid.p) {
+        rec.skip(name3c, `the walk's path crosses the water there (Block and Jump are not drawn while swimming, by design): the phase held (${q2.phases - mid.p} changes), Charge held; the changes: ${JSON.stringify(w2.dom.map((x) => ({ v: x.v, sw: x.why && x.why.sw })))}`);
+      } else if (!edgeHeld && !q2.lost && w2.frameMs != null && w2.frameMs >= HOLD_MS) {
         rec.skip(name3c, `this page drew a frame every ${w2.frameMs} ms (its median over the walk, ${w2.frames} frames), wider than the sight's ${HOLD_MS} ms hold, so one frame's miss is past the hold; the changes: ${JSON.stringify(w2.phase)}`);
       } else {
         rec.ok(name3c, edgeHeld, { q2, w2 });
@@ -1050,7 +1085,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* 3d: out */
       await walkTo(700, 0);
       await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'none', { timeout: 15000, label: 'lost at 700' }).catch(() => null);
-      await H.waitFor(P, () => !document.querySelector('[data-shield]') && !document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special gone' }).catch(() => null);
+      await H.waitFor(P, () => !document.querySelector('[data-shield]') && !document.querySelector('[data-charge]'), (v) => v, { timeout: 8000, label: 'Block and Charge gone' }).catch(() => null);
       await P.page.waitForTimeout(600);
       const q3 = await EDGE(P);
       const w3 = await P.page.evaluate(() => { const w = window._ctEdge; clearInterval(window.__ctEdgeT); w.mo.disconnect(); w.fOn = false; return { phase: w.phase, dom: w.dom }; });
@@ -1061,9 +1096,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const strict = q2.phases === mid.p;
       const from = strict ? marks : after3c;
       const flips = (k) => { let n = 0; for (let j = Math.max(1, from.d); j < w3.dom.length; j++) if (w3.dom[j].v[k] !== w3.dom[j - 1].v[k]) n++; return n; };
-      const fb = flips('block'), fs = flips('special'), fa = flips('ability'), want = strict ? 2 : 1;
-      rec.ok(`3d. ${label}: out to ${q3.at} px: the phase, the line, Block and Special gone, each in one change (${strict ? 'over the whole walk: in, out' : 'after the edge'}: the phase ${q3.phases - from.p} changes, Block ${fb}, Special ${fs}, Whirlwind ${fa})`,
-        q3.phase === 'none' && q3.line && !q3.line.drawn && !q3.block && !q3.special && q3.phases - from.p === want && fb === want && fs === want, { q3, w3 });
+      const fb = flips('block'), fs = flips('special'), fa = flips('ability'), fc = flips('charge'), want = strict ? 2 : 1;
+      const wet3 = w3.dom.some((x) => x.why && x.why.sw);
+      const name3d = `3d. ${label}: out to ${q3.at} px: the phase, the line, Block and Charge gone, each in one change, Special never came`;
+      if (wet3 && fc === want && fs === 0 && q3.phases - from.p === want && !q3.block && !q3.charge) rec.skip(name3d, `the path crossed the water (Block not drawn while swimming, by design): Block changed ${fb} times, Charge ${fc}, Special ${fs}, the phase ${q3.phases - from.p}`);
+      else rec.ok(`3d. ${label}: out to ${q3.at} px: the phase, the line, Block and Charge gone, each in one change, Special never came (${strict ? 'over the whole walk: in, out' : 'after the edge'}: the phase ${q3.phases - from.p} changes, Block ${fb}, Charge ${fc}, Special ${fs}, Whirlwind ${fa})`,
+        q3.phase === 'none' && q3.line && !q3.line.drawn && !q3.block && !q3.special && !q3.charge && q3.phases - from.p === want && fb === want && fc === want && fs === 0, { q3, w3 });
+      /* ── v2.3.6549 (card CT part 16): the spots, the reach, Charge, an unseen hit ── */
+      const CIRCLES = (sels) => P.page.evaluate((qs) => { const o = {}; for (const [k, q] of qs) { const el = document.querySelector(q); if (!el) continue; const b = el.getBoundingClientRect(); o[k] = { x: b.left + b.width / 2, y: b.top + b.height / 2, d: Math.min(b.width, b.height), l: b.left, w: innerWidth }; } return o; }, sels);
+      const SELS = [['attack', '.bt-rjoy-base'], ['jump', '[data-jump]'], ['block', '[data-shield]'], ['charge', '[data-charge]'], ['special', '[data-special]'], ['whirl', '[data-ability="whirl"]'], ['bash', '[data-ability="bash"]']];
+      const spotsOk = (c) => { const ks = Object.keys(c), bad = []; for (const k of ks) { if (c[k].d < 44) bad.push(k + ' ' + Math.round(c[k].d)); if (c[k].l < c[k].w / 2 - 1) bad.push(k + ' left half'); }
+        for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = c[ks[i]], b = c[ks[j]]; const air = Math.hypot(a.x - b.x, a.y - b.y) - a.d / 2 - b.d / 2; if (air < 8) bad.push(ks[i] + '/' + ks[j] + ' ' + Math.round(air)); } return bad; };
+      const sameSpot = (a, b) => !!a && !!b && Math.abs(a.l - b.l) <= 1 && Math.abs(a.t - b.t) <= 1 && a.w === b.w;
+      /* 3f, 3g: hop beside it, on the line it stands on from the body (the walker is off now) */
+      const onLine = (d) => P.page.evaluate((o) => { const S = window._gameState.current, m = (S.monsters || []).find((x) => x && String(x.id) === o.id); if (!m || !m.alive) return null; const a = Math.atan2(m.y - S.player.y, m.x - S.player.x); return { x: Math.round(m.x - Math.cos(a) * o.d), y: Math.round(m.y - Math.sin(a) * o.d) }; }, { id: mon3.id, d });
+      /* a hop to `d` px on that line, or the nearest of a few beside it out of the water (Block and Jump are not drawn in it) */
+      const dryHop = async (d) => { for (const dd of [d, d - 30, d + 30, d - 60, d + 60, d + 90]) { const t = await onLine(dd); if (!t) return null; await H.hopTo(P, t.x, t.y, { tries: 160 }); await P.page.waitForTimeout(700); const wet = await P.page.evaluate(() => { const S = window._gameState.current; return !!(S._wheelSwim && S._wheelSwim.on); }); if (!wet) return dd; } return null; };
+      await dryHop(50);
+      const inReach = await H.waitFor(P, (S) => S._thumbPhase || 'calm', (v) => v === 'reach', { timeout: 15000, label: 'in reach' }).catch(() => null);
+      await H.waitFor(P, () => !!document.querySelector('[data-special]') && !document.querySelector('[data-charge]'), (v) => v, { timeout: 8000, label: 'Special, no Charge' }).catch(() => null);
+      const q4 = await EDGE(P);
+      const blockAt3g = await RECT('[data-shield]');
+      const c4 = await CIRCLES(SELS);
+      rec.ok(`3g. ${label}: beside it, in the sword's reach: Special came, Charge went, Block stayed at its spot (${JSON.stringify(blockAt3b)} then ${JSON.stringify(blockAt3g)})`,
+        !!inReach && q4.special && !q4.charge && q4.block && sameSpot(blockAt3b, blockAt3g), { q4, blockAt3b, blockAt3g });
+      const bad4 = spotsOk(c4);
+      rec.ok(`3f. ${label}: the arc's spots as drawn (${Object.keys(c4).join(', ')}): 44 px or more, 8 px or more of air, on the right half`, bad4.length === 0 && !!c4.attack && !!c4.jump && !!c4.block && !!c4.special, { bad4, c4 });
+      /* 3h: Charge -- out to 400 on its line, facing it (the line from the monster through the body: the drawn facing turns with the hop's walk) */
+      await dryHop(400);
+      await touch('touchStart', [c]);
+      await P.page.waitForTimeout(80);
+      const fa3 = await P.page.evaluate((id) => { const S = window._gameState.current, m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? Math.atan2(m.y - S.player.y, m.x - S.player.x) : 0; }, mon3.id);
+      await touch('touchMove', [{ x: c.x + 0.2 * R * Math.cos(fa3), y: c.y + 0.2 * R * Math.sin(fa3), id: 1 }]);
+      await P.page.waitForTimeout(400);
+      await touch('touchEnd', [{ x: c.x + 0.2 * R * Math.cos(fa3), y: c.y + 0.2 * R * Math.sin(fa3), id: 1 }]);
+      const chg = await H.waitFor(P, () => (window.__btChargeBtn ? Object.assign({ el: !!document.querySelector('[data-charge]') }, window.__btChargeBtn()) : null), (v) => !!v && v.shown && v.el, { timeout: 15000, label: 'Charge shown' }).catch(() => null);
+      const cAt = await P.page.evaluate(() => { const el = document.querySelector('[data-charge]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2) }; });
+      const d0 = await P.page.evaluate((id) => { const S = window._gameState.current, m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null; }, mon3.id);
+      let dashed = null, d1 = null;
+      if (chg && cAt) {
+        const before = chg.dashes;
+        await touch('touchStart', [{ x: cAt.x, y: cAt.y, id: 7 }]);
+        await P.page.waitForTimeout(60);
+        await touch('touchEnd', [{ x: cAt.x, y: cAt.y, id: 7 }]);
+        dashed = await H.waitFor(P, () => window.__btChargeBtn(), (v) => v.dashes > before, { timeout: 5000, label: 'the dash' }).catch(() => null);
+        d1 = await H.waitFor(P, (S) => { const m = (S.monsters || []).find((x) => x && String(x.id) === mon3.id); return m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null; }, (v) => v != null && d0 != null && v <= d0 - 150, { timeout: 6000, label: 'carried in' }).catch(() => null);
+      }
+      const q5 = await EDGE(P);
+      rec.ok(`3h. ${label}: at ${d0} px, sighted, Charge on screen; a tap dashed (${!!dashed}) and carried the body in (${d0} -> ${d1} px)`, !!chg && !!dashed && d1 != null, { chg, dashed, d0, d1, q5 });
+      /* 3i: an unseen hit -- far off, nothing in sight, the worker's stamp (gameEvents.js: S.lastDamageTaken = Date.now()) */
+      await dryHop(1100);
+      await H.waitFor(P, (S) => [S._sightPhase || 'none', S._thumbPhase || 'calm', S._latchPhase || 'idle'].join(), (v) => v === 'none,calm,idle' || v === 'none,calm,active', { timeout: 15000, label: 'calm' }).catch(() => null);
+      const calm = await EDGE(P);
+      await P.page.evaluate(() => { window._gameState.current.lastDamageTaken = Date.now(); window.__ctHurtAt = Date.now(); });
+      const up = await H.waitFor(P, () => !!document.querySelector('[data-shield]'), (v) => v, { timeout: 3000, label: 'Block at the hit' }).catch(() => null);
+      const q6 = await EDGE(P);
+      const gone = await H.waitFor(P, () => ({ b: !!document.querySelector('[data-shield]'), t: Date.now() - window.__ctHurtAt }), (v) => !v.b, { timeout: 8000, label: 'Block gone' }).catch(() => null);
+      rec.ok(`3i. ${label}: nothing in sight, a monster's hit: Block came (${!!up}), Special did not (${q6.special}); gone ${gone ? gone.t : '?'} ms after the hit (3 s and a render)`,
+        calm.phase === 'none' && !calm.block && !!up && !q6.special && q6.thumb === 'threat' && !!gone && gone.t >= 2800 && gone.t <= 4500, { calm, q6, gone });
     }
 
     /* 2f: the mode off -- today's default, the held attack on the right half */
@@ -1099,6 +1189,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
           line: window.__btSightLine ? window.__btSightLine().drawn : 'no probe', phase: (window._gameState.current || {})._sightPhase || 'none' }));
         rec.ok(`3e. the mode off: the two buttons' resolver hides nothing (Block ${off.shield}, Special ${off.special}), no sight line (${off.line})`,
           off.shield === true && off.special === true && off.line === false && off.phase === 'none', off);
+        /* v2.3.6549: and the right thumb's part touches nothing: no Charge, Attack at its old place (ShieldButton.jsx RBTN: upright 36 px in, 72 over the band, 84 across) */
+        const off2 = await Q.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-zone'), dash = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 0; const b = el ? el.getBoundingClientRect() : null;
+          return { charge: !!document.querySelector('[data-charge]'), probe: window.__btChargeBtn ? window.__btChargeBtn().shown : 'no probe', at: b ? { right: Math.round(innerWidth - b.right), bottom: Math.round(innerHeight - b.bottom - dash), w: Math.round(b.width) } : null, phase: (window._gameState.current || {})._thumbPhase || 'calm' }; });
+        rec.ok(`3e. the mode off: no Charge (${off2.charge}), Attack at its old place (${JSON.stringify(off2.at)}), the thumb's phase never written (${off2.phase})`,
+          !off2.charge && off2.probe !== true && !!off2.at && off2.at.right === 36 && Math.abs(off2.at.bottom - 72) <= 1 && off2.at.w === 84 && off2.phase === 'calm', off2);
 
         /* 5g (v2.3.6545): the mode off: the sprint button as today, and the
            left disc pushed far past its rim sprints nothing */

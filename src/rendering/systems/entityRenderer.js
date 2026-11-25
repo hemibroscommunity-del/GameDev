@@ -136,7 +136,7 @@ import { PET_ART, petTint, petLevelScale, petDisplayName, petKindOfOld, worldSaf
 import { elemLook } from '../../game/elemHits.js'; /* v2.3.3123: the ward's ring in its element's colour */
 const WARD_RING_MS = 520;   /* v2.3.3123: the land ward's ring after a hit the pet softened */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
-import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
+import { engagedStance, bodyFacesLock } from '@/game/targeting.js'; /* v2.3.6551: + bodyFacesLock */ /* v2.3.2251: a lock is automatic; intent is not */
 import { staffCastPose, staffTipWorld, staffCharge } from '../staffCastFx.js'; /* v2.3.2841: the staff kick + where its crystal is */
 /* v2.3.2841: scratch for staffTipWorld, reused every frame (no allocation). */
 const _staffTipOut = { x: 0, y: 0 };
@@ -12326,7 +12326,7 @@ export class EntityRenderer {
     /* v2.3.2251: the RENDER twin of BroTown's _lkFace, and it has to use the
        same predicate or the sprite faces the target while the movement code
        does not.  A bare lock is automatic now — see targeting.engagedStance. */
-    const lockFacing = engagedStance(S);
+    const lockFacing = bodyFacesLock(S);   /* v2.3.6551: the same rule as _lkFace (game/lockFace.js) */
     const aimAttackActive = S._aimAngle != null && (lockFacing || S._backpedaling || (!isMoving && S.autoAttack));
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in
