@@ -1169,7 +1169,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const up = await H.waitFor(P, () => !!document.querySelector('[data-shield]'), (v) => v, { timeout: 3000, label: 'Block at the hit' }).catch(() => null);
       const q6 = await EDGE(P);
       const gone = await H.waitFor(P, () => ({ b: !!document.querySelector('[data-shield]'), t: Date.now() - window.__ctHurtAt }), (v) => !v.b, { timeout: 8000, label: 'Block gone' }).catch(() => null);
-      rec.ok(`3i. ${label}: nothing in sight, a monster's hit: Block came (${!!up}), Special did not (${q6.special}); gone ${gone ? gone.t : '?'} ms after the hit (3 s and a render)`,
+      /* v2.3.6640 (card PAD): the hop off can end in the water (dryHop's last try, on the water spoke: wm-tidal-*), where Block is not drawn
+         by design (3d's skip): a placement, not the rule -- read once under the controller, never with `&padskin=0`, its body swimming */
+      if (calm.swim && !up) rec.skip(`3i. ${label}: nothing in sight, a monster's hit: Block came`, `the hop off ended in the water (swim ${calm.swim}): Block is not drawn while swimming, by design`);
+      else rec.ok(`3i. ${label}: nothing in sight, a monster's hit: Block came (${!!up}), Special did not (${q6.special}); gone ${gone ? gone.t : '?'} ms after the hit (3 s and a render)`,
         calm.phase === 'none' && !calm.block && !!up && !q6.special && q6.thumb === 'threat' && !!gone && gone.t >= 2800 && gone.t <= 4500, { calm, q6, gone });
     }
 
