@@ -48,6 +48,7 @@ const LOOK = (P) => P.page.evaluate(([sel, face]) => {
   const band = parseFloat(cs.getPropertyValue('--sheet-h')) || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
   const out = { vw: window.innerWidth, vh: window.innerHeight, pad: window.__btPad ? window.__btPad.layout : null, c: {} };
   out.shell = rect(document.querySelector('[data-padhousing="shell"]'));
+  out.shellShown = vis(document.querySelector('[data-padhousing="shell"]'));
   out.bandTop = window.innerHeight - band;
   out.pill = !!document.querySelector('[data-weapon-pill]:not([data-pad])');
   for (const k of Object.keys(sel)) {
@@ -93,26 +94,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!inW) continue;
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'kit', me, { what: 'weapons' }).catch(() => null);
+      /* the bow owned, the sword in hand (5 swaps between them) */
+      const eqB = await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged').catch((e) => ({ ok: false, why: String(e) }));
+      const eqS = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));
+      rec.ok(`${label}: a bow owned and the sword in hand (guard)`, !!(eqB && eqB.ok) && !!(eqS && eqS.ok), { eqB, eqS });
       await H.unfoldBand(P).catch(() => null);
       await P.page.waitForTimeout(2500);
-      const L = await LOOK(P);
-      if (shots) await P.page.screenshot({ path: shots + '/pad3-' + (label === 'upright' ? 'town' : 'sideways') + '.png' });
+      const O1 = await LOOK(P);
 
       /* 1 */
-      rec.ok(`1a. ${label}: one shell, as wide as the column, its bottom on the band's top (${L.shell && (L.shell.b - L.bandTop).toFixed(1)} px)`,
-        !!L.shell && !!L.pad && Math.abs(L.shell.b - L.bandTop) <= 0.5 && Math.abs(L.shell.w - L.pad.shell.w) <= 0.5 && Math.abs(L.shell.h - L.pad.shell.h) <= 0.5,
-        { shell: L.shell, bandTop: L.bandTop, pad: L.pad && L.pad.shell });
-      if (!L.shell || !L.pad) continue;
+      rec.ok(`1a. ${label}: one shell, as wide as the column, its bottom on the band's top (${O1.shell && (O1.shell.b - O1.bandTop).toFixed(1)} px)`,
+        !!O1.shell && !!O1.pad && Math.abs(O1.shell.b - O1.bandTop) <= 0.5 && Math.abs(O1.shell.w - O1.pad.shell.w) <= 0.5 && Math.abs(O1.shell.h - O1.pad.shell.h) <= 0.5,
+        { shell: O1.shell, bandTop: O1.bandTop, pad: O1.pad && O1.pad.shell });
+      if (!O1.shell || !O1.pad) continue;
+      if (shots && label === 'upright') await P.page.screenshot({ path: shots + '/pad3-town.png' });
       const folded = await H.foldBand(P).catch(() => null);
       await P.page.waitForTimeout(800);
       const F = await LOOK(P);
-      if (shots && label === 'upright') await P.page.screenshot({ path: shots + '/pad3-folded.png' });
+      if (shots) await P.page.screenshot({ path: shots + '/pad3-' + (label === 'upright' ? 'folded' : 'sideways') + '.png' });
       rec.ok(`1b. ${label}: the band folded (${folded && folded.now}), the shell still on its top edge (${F.shell && (F.shell.b - F.bandTop).toFixed(1)} px), the same height`,
-        !!F.shell && Math.abs(F.shell.b - F.bandTop) <= 0.5 && Math.abs(F.shell.h - L.shell.h) <= 0.5 && F.bandTop !== L.bandTop, { folded, F: F.shell, bandTop: [L.bandTop, F.bandTop] });
-      const near2 = ['jump', 'attack', 'w1', 'w2', 'w3', 'stick'].filter((k) => !F.c[k] || !L.c[k] || Math.abs((F.c[k].face.y - F.bandTop) - (L.c[k].face.y - L.bandTop)) > 1);
-      rec.ok(`1c. ${label}: the controls ride the band with the shell`, near2.length === 0, near2);
-      await H.unfoldBand(P).catch(() => null);
-      await P.page.waitForTimeout(800);
+        !!F.shell && Math.abs(F.shell.b - F.bandTop) <= 0.5 && Math.abs(F.shell.h - O1.shell.h) <= 0.5 && F.bandTop !== O1.bandTop, { folded, F: F.shell, bandTop: [O1.bandTop, F.bandTop] });
+      /* upright the controls ride the band with the shell; sideways the open
+         band is a page over the world and every control (the shell too) steps
+         aside under it, as today (game.css html.bt-band-side-open) */
+      const KS = ['jump', 'attack', 'w1', 'w2', 'w3', 'stick'];
+      const near2 = label === 'upright'
+        ? KS.filter((k) => !F.c[k] || !O1.c[k] || Math.abs((F.c[k].face.y - F.bandTop) - (O1.c[k].face.y - O1.bandTop)) > 1)
+        : KS.filter((k) => !F.c[k] || O1.c[k] || O1.shellShown);
+      rec.ok(`1c. ${label}: ${label === 'upright' ? 'the controls ride the band with the shell' : 'the open band hides the shell and the controls, the folded one shows them'}`, near2.length === 0, near2);
+      /* the rest on the band as a player plays: upright open, sideways folded */
+      if (label === 'upright') { await H.unfoldBand(P).catch(() => null); await P.page.waitForTimeout(800); }
+      const L = label === 'upright' ? await LOOK(P) : F;
 
       /* 2 */
       const at = [['jump', 'big'], ['attack', 'attack'], ['w1', 'w1'], ['w2', 'w2'], ['w3', 'w3'], ['stick', 'stick']];
@@ -153,8 +165,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`5. ${label}: the bow's well puts the bow in hand and lights (${B.c.w2 && B.c.w2.pic}), the sword's puts it back`,
         bow === 'ranged' && B.c.w2 && B.c.w2.pic === 'slot-on' && B.c.w1 && B.c.w1.pic === 'slot' && sword === 'melee', { bow, sword });
 
-      /* 6: a fight.  The kit's shield lands in the stash: worn the bag's way
-         (mp-twobuttons 3's) */
+      /* 6: a fight, the band folded as in the owner's mockup.  The kit's
+         shield lands in the stash: worn the bag's way (mp-twobuttons 3's) */
+      await H.foldBand(P).catch(() => null);
       await H.devOp(wsPort, 'kit', me, { what: 'shield' }).catch(() => null);
       const wear = () => P.page.evaluate(() => {
         const S = window._gameState && window._gameState.current, R = S && S.rpg;
