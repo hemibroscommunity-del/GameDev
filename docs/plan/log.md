@@ -8,6 +8,8 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 65 | (no box) | listed at 65: CT's #2350 (the shield drops at the worker's guard break; Charge is for monsters), QP's #2348 (the Quests tab in pages), LB's #2351 (the Ranks page's new style); #2346 and #2349 need a merge of main (`docs/plan/status/Z.md`) | the owner's play; the debts: `docs/plan/debts.md` PH, BRO (65) |
+| 65 | 5.4b, (no box) | merged before 65 (main 096d7000): sitting 64's whole list (#2345) | as at 64 |
 | 64 | 5.4b | listed at 64: CT's #2345 (the join: lands #2342, the right side's buttons, and #2344, the button under things; the body faces its lock) | the owner's play (part 9 item 7); the debts: `docs/plan/debts.md` CT (64), PH (64) |
 | 64 | 5.4b, (no box) | merged before 64 (main 53a5257d): sitting 63's whole list (#2341 with #2340; #2343) | as at 63 |
 | 63 | 5.4b | listed at 63: CT's #2340 (free arrows, Attack's press moves nothing), #2341 (tap and hold) | `legacy` empty; the owner's play (part 9 item 7); the debts: `docs/plan/debts.md` CT (63) |
