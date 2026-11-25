@@ -1,25 +1,23 @@
 card: CT
-branch: claude/plan-ct-13-talkicon (#2346: parts 19 and 21, TALK's pill and its place; part 22: main 0c648ebb in)
-prs: #2346 (6552 + 6553, ready on main), part 20 (6554, merged #2350), #2345 (6551, part 18: the join), #2344 (6550, in the join), #2342 (6549, in the join), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547), #2282, #2293 (merged), #2308, #2327, #2330, items 6-7 (6545-6546)
-state: ready
+branch: claude/plan-ct-23-nearpick (part 23 PR 1, tag 6556); claude/plan-ct-24-bowspecial (PR 2, tag 6557, stacked)
+prs: part 23 PR 1 (6556, draft), part 23 PR 2 (6557, next); before: #2346 (6552 + 6553), part 20 (6554, merged #2350), #2345 (6551), #2344 (6550), #2342 (6549), 6548, #2340 (6547), #2282, #2293, #2308, #2327, #2330, 6545-6546
+state: working
 
 ## Done
-- PRs 1-5 (6540-6544), items 6-8 (6545-6547), parts 15-18 (6548-6551): on
+- PRs 1-5 (6540-6544), items 6-8 (6545-6547), parts 15-22 (6548-6554): on
   main or in their PRs (git log; their specs).
-- Part 19 (6552): TALK is the owner's pill, no word, no plate (ctxLook;
-  cut-talk-pill.mjs, 3.4 kB inline; 19 mutants, none left).
-- Part 20 (6554, #2350): the shield drops at 0 stamina (guardBreak.js
-  poolsLand/followWorkerGuard; mp-shielddrop, guard-break-page.test). Job 2:
-  no Charge while a duel, a match or a player lock holds you (sight.test 8).
-- Part 21 (6553; the owner: "Talk icon below npc"): TALK's pill below the
-  name tag and the quest line, 6 px under the lowest (ctxTalkBelow, 20/20 px
-  measured off mp-contextbuttons' 3x shot; ctxPlateTop the renderer's drop;
-  held on screen at the foot). context-button.test 3b-3h, 9f-9g, 23 mutants,
-  none left; mp-contextbuttons 1b green on the test box.
-- Part 22: merged main 0c648ebb, the 2 words moved to say/contextButton.js.
+- Part 23 PR 1 (6556): the nearest threat first. sight.js sightPick: the
+  nearest in the cone and range wins (the angle within 15%), one in view
+  before one out of it, the kept one held unless a newcomer is 20% nearer
+  or it left the view; latch.js latchAway: a lock out of view moves to the
+  nearest in view in range after 400 ms; `?nearpick=0` the old. The view is
+  S.camera + S._viewW/_viewH (latch.js sightView): no BroTown.jsx change.
+  sight.test 12, latch.test 7: the card's plants (a)-(g) red; 156 mutants
+  of the added lines, 10 left, all equivalent (in the PR body).
+  mp-nearpick: written, once on the test box.
 
 ## Next
-- #2346 at the gate.
+- PR 2 (6557): the bow's special at once, on claude/plan-ct-24-bowspecial.
 
 ## Found
 - 3c/3d flip: the own rules' 550 perimeter, ended in part 16 (combatReach
@@ -27,10 +25,8 @@ state: ready
 - Part 20: a blocked blow breaking the guard on the regen's own tick is
   refilled before the flush (tick.js: regen, then flush): the phone reads 7,
   not 0, and keeps that break drawn (~1 in 30). A worker change: not built.
-- Part 20: mp-shielddrop's walk-in ended 270-364 px off a wandering monster
-  here: no real blow in the latch (step 5 a note). mp-twobuttons on that
-  branch: shield steps green; 2b, 2c, 6a (the tap, the latch) and 3h (Charge
-  dashed, its distance unread) red, none in the files it touched.
+- Part 20: mp-twobuttons on that branch: shield steps green; 2b, 2c, 6a
+  and 3h red, none in the files it touched.
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR

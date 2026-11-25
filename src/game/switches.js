@@ -181,6 +181,7 @@ const FORMS = {
   'movementreset': '0',
   'musicdecode': '',
   'narrow': '',
+  'nearpick': '0',
   'nmlask': '0',
   'nmlaskms': '*',
   'noauras': '',

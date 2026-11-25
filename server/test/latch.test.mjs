@@ -35,6 +35,15 @@
  *
  *   5. (v2.3.6548) plays today's press under `?holdauto=0`: a lock is 'auto'
  *      at once (the held attack on), the kill moves the lock;
+ *   7. (v2.3.6556, card CT part 23) A LOCK OUT OF VIEW LETS GO TO ONE IN
+ *      VIEW: locked on a monster out of the view (S.camera, S._viewW/_viewH)
+ *      with one in view in range, the lock moves to the nearest in view at
+ *      AWAY_MS (400), the phase kept; a lock IN view is never taken by a
+ *      nearer one; the press locks the nearest in view (sight.js 12);
+ *      `?nearpick=0` neither.  The card's plants, each FAILs 7: (e) the
+ *      move dropped (a lock out of view held 2 s with one in view in range);
+ *      (f) the move made for a lock in view (taken by a nearer one); (g) the
+ *      switch ignored (nearpick=0 not giving the old answers).
  *   6. TAP AND HOLD (v2.3.6548, card CT part 15), the page's rule: a tap
  *      locks ('active', no held attack) and the lock stays; a press on it is
  *      'strike'; a hold fills at 600 ms ('auto'; `?autohold=<ms>` clamped
@@ -52,6 +61,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { AUTOHOLD, holdAutoOn, autoHoldMs, latchLocked, latchHoldStart, latchRelease, latchSlide, latchFill, latchRing, latchRingOff, latchLine } from '../../src/game/latch.js';   /* v2.3.6548: tap and hold (6) */
+import { AWAY_MS, nearPickOn, latchAway, sightView } from '../../src/game/latch.js';   /* v2.3.6556: a lock out of view lets go to one in view (7) */
 import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear, latchFrame, latchAttackPress, latchHolds, latchLook, sightNow, twoButtonsLive } from '../../src/game/latch.js';   /* v2.3.6542: + the wiring (card CT PR 3) */
 import { sightRange, SIGHT_PHASES, SIGHT, sightPhase, sightPick, drawnFace } from '../../src/game/sight.js';
 import { STICK_PHASES } from '../../src/game/stickZones.js';   /* v2.3.6540: G2 below */
@@ -199,12 +209,12 @@ globalThis.location = { search: '?holdauto=0' };
   {
     const a = mon('a', 300, 40), b = mon('b', 200, 20), c = mon('c', 400, -10), S = page([a, b, c]);
     frame(S); latchAttackPress(S);
-    check('5c. three ahead: the one nearest the facing\'s line locked', S._latchId === 'c', S._latchId);
-    c.alive = false;
-    check('5c. it dies: the lock moves to the nearest other in sight (b), still attacking', frame(S) === true && S._latchId === 'b' && latchPhase(S) === 'auto');
-    b.curHp = 0;
-    check('5c. at 0 hp it counts as dead: moves to a', frame(S) === true && S._latchId === 'a');
-    S.monsters = [b];
+    check('5c. three ahead: the nearest locked (v2.3.6556: was the one nearest the facing\'s line, c)', S._latchId === 'b', S._latchId);
+    b.alive = false;
+    check('5c. it dies: the lock moves to the nearest other in sight (a), still attacking', frame(S) === true && S._latchId === 'a' && latchPhase(S) === 'auto');
+    a.curHp = 0;
+    check('5c. at 0 hp it counts as dead: moves to c', frame(S) === true && S._latchId === 'c');
+    S.monsters = [a];
     check('5c. gone from the list, none other in sight: let go (\'killed\')', frame(S) === false && S._latchEnd === 'killed');
   }
   /* 5d. none other IN SIGHT: one behind you does not take the lock */
@@ -501,6 +511,121 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
     const n = Object.create(null); for (const a of found) n[a] = (n[a] || 0) + 1;
     check('H2. every caller of twoButtonsOn in src/ is on the ALLOW list (the sites ask twoButtonsLive), as many times as listed', bad.length === 0 && Object.keys(ALLOW).every((k) => n[k] === ALLOW[k]) && Object.keys(n).length === Object.keys(ALLOW).length, { bad, n });
   }
+}
+
+/* ── 7. v2.3.6556: a lock out of view lets go to one in view (card CT part 23) ── */
+{
+  globalThis.location = { search: '' };
+  const mon = (id, x, y = 0, alive = true) => ({ id, x, y, alive });
+  /* the bow (675 in, 825 out); the view 400 px each side, 300 up and down */
+  const page = (mons) => ({ player: { x: 0, y: 0 }, _renderFacing: 'east', monsters: mons, currentZone: 'wheel7', camera: { x: -400, y: -300 }, _viewW: 800, _viewH: 600 });
+  let t = 50000;
+  const frame = (S, slot) => latchFrame(S, (t += 50), false, slot || 'ranged', 1);
+  const run = (S, ms, slot) => { const end = t + ms; let r; while (t < end) r = frame(S, slot); return r; };
+  check('7. the numbers: 400 ms; the switch on by default, off only at ?nearpick=0', AWAY_MS === 400 && nearPickOn('') === true && nearPickOn('?nearpick=0') === false && nearPickOn('?nearpick=1') === true);
+  /* (e) locked out of view, one in view in range: moves after 400 ms */
+  {
+    const S = page([mon('far', 600), mon('near', 0, 200)]);
+    frame(S); latchTo(S, 'active', 'far');
+    frame(S);
+    run(S, 300);
+    check('7e. 350 ms out of view: still on the one out of view', S._latchId === 'far' && S._latchAwayAt > 0);
+    run(S, 100);
+    check('7e. at 400 ms: moved to the one in view, the phase kept (a tap\'s lock)', S._latchId === 'near' && latchPhase(S) === 'active' && S._latchAwayAt === 0);
+    const T = page([mon('far', 600), mon('n1', 0, 250), mon('n2', -150, 0), mon('n3', 300, 200)]);
+    frame(T); latchTo(T, 'auto', 'far');
+    const held = run(T, 2000);
+    check('7e. held 2 s: on the NEAREST in view (n2, behind you), still attacking', T._latchId === 'n2' && latchPhase(T) === 'auto' && held === true, T._latchId);
+    const U = page([mon('far', 600), mon('n2', -150, 0), mon('n1', 0, 250)]);
+    frame(U); latchTo(U, 'auto', 'far'); run(U, 2000);
+    check('7e. ...whichever comes first in the list', U._latchId === 'n2', U._latchId);
+  }
+  /* the move needs one in view IN RANGE, and lasting 400 ms */
+  {
+    const S = page([mon('far', 450), mon('corner', 390, 290)]);   /* a sword: 440 in; the corner is 486 off */
+    frame(S, 'melee'); latchTo(S, 'active', 'far'); run(S, 2000, 'melee');
+    check('7. a sword, the only one in view out of its range: the lock stays', S._latchId === 'far' && latchPhase(S) === 'active');
+    const n = mon('n', 0, 200), T = page([mon('far', 600), n]);
+    frame(T); latchTo(T, 'active', 'far');
+    run(T, 300); n.alive = false; frame(T); n.alive = true; run(T, 300);
+    check('7. the one in view gone for a frame: the 400 ms start again', T._latchId === 'far');
+    run(T, 200);
+    check('7. ...and run out after', T._latchId === 'n');
+    const W = page([mon('far', 600), mon('n', 0, 200)]);
+    delete W.camera;
+    frame(W); latchTo(W, 'active', 'far'); run(W, 2000);
+    check('7. no camera (no view): no move', W._latchId === 'far');
+    const X = page([mon('far', 600), mon('n', 0, 200)]); X._viewH = 0;
+    frame(X); latchTo(X, 'active', 'far'); run(X, 2000);
+    check('7. a view of no size: no move', X._latchId === 'far');
+  }
+  /* (f) a lock IN view is never taken by a nearer one */
+  {
+    const S = page([mon('a', 300), mon('b', 100, 50), mon('c', -50, 0)]);
+    frame(S); latchTo(S, 'auto', 'a');
+    const r = run(S, 2000);
+    check('7f. locked in view, nearer ones in view: the lock stays (the player chose it)', S._latchId === 'a' && r === true && !(S._latchAwayAt > 0));
+    const T = page([mon('a', 400, 300), mon('b', 100, 0)]);   /* on the view's corner: in it */
+    frame(T); latchTo(T, 'active', 'a'); run(T, 2000);
+    check('7f. a lock on the view\'s very edge is in it: stays', T._latchId === 'a');
+  }
+  /* the press: the nearest in view (sight.js 12 through sightNow) */
+  {
+    const S = page([mon('line', 500, 0), mon('near', 250, 150)]);
+    frame(S);
+    check('7. the press locks the nearest in view, not the one on the line out of view', latchAttackPress(S) === 'lock' && S._latchId === 'near', S._latchId);
+    const N = page([mon('upper', 200, 150), mon('in', 390, 0)]);   /* a short view: 100 px up and down */
+    N.camera = { x: -400, y: -100 }; N._viewH = 200;
+    frame(N);
+    check('7. the press: one in view (390 off) before a nearer one out of view (250 off, under the view)', latchAttackPress(N) === 'lock' && N._latchId === 'in', N._latchId);
+    check('7. sightView: the camera and the drawn size, as numbers', (() => { const v = sightView(S); return v && v.x === -400 && v.y === -300 && v.w === 800 && v.h === 600; })() && sightView({ camera: { x: 0, y: 0 }, _viewW: 10 }) === null && sightView({ camera: { x: 0, y: 0 }, _viewH: 10 }) === null && sightView({ camera: { x: NaN, y: 0 }, _viewW: 10, _viewH: 10 }) === null && sightView({ camera: { x: 0, y: NaN }, _viewW: 10, _viewH: 10 }) === null && sightView({ _viewW: 10, _viewH: 10 }) === null && sightView(null) === null);
+  }
+  /* (g) `?nearpick=0`: the old pick and no move */
+  {
+    globalThis.location = { search: '?nearpick=0' };
+    const S = page([mon('line', 500, 0), mon('near', 250, 150)]);
+    frame(S);
+    check('7g. ?nearpick=0: the press locks the one nearest the facing\'s line, out of view', latchAttackPress(S) === 'lock' && S._latchId === 'line', S._latchId);
+    run(S, 2000);
+    check('7g. ?nearpick=0: the lock out of view held 2 s, one in view in range', S._latchId === 'line' && !(S._latchAwayAt > 0));
+    globalThis.location = { search: '' };
+  }
+  /* the mutants' edges (v2.3.6556) */
+  {
+    const S = { player: { x: 1000, y: 500 }, _renderFacing: 'east', monsters: [mon('far', 1600, 500), mon('a', 1000, 700), mon('b', 800, 500)], currentZone: 'wheel7', camera: { x: 600, y: 200 }, _viewW: 800, _viewH: 600 };
+    frame(S); latchTo(S, 'active', 'far'); run(S, 1000);
+    check('7. away from the world\'s corner: the two in view the same distance, the first', S._latchId === 'a', S._latchId);
+    const T = page([mon('far', 520), mon('edge', 0, 440)]);
+    T.camera = { x: -500, y: -500 }; T._viewW = 1000; T._viewH = 1000;
+    frame(T, 'melee'); latchTo(T, 'active', 'far'); run(T, 1000, 'melee');
+    check('7. a sword: one in view at exactly its 440 is in range', T._latchId === 'edge', T._latchId);
+    check('7. sightView: a view of no height or no width is none', sightView({ camera: { x: 0, y: 0 }, _viewW: 10, _viewH: 0 }) === null && sightView({ camera: { x: 0, y: 0 }, _viewW: 0, _viewH: 10 }) === null);
+  }
+  /* latchAway, the rule alone */
+  {
+    const S = {}; latchTo(S, 'active', 'a');
+    const N = { id: 'b', d: 100 };
+    check('7. latchAway: the first frame away starts the time', latchAway(S, 1000, true, N) === null && S._latchAwayAt === 1000);
+    check('7. ...399 ms: nothing; 400: moved', latchAway(S, 1399, true, N) === null && S._latchId === 'a' && latchAway(S, 1400, true, N) === 'moved' && S._latchId === 'b' && S._latchAwayAt === 0);
+    check('7. not away: the time cleared', latchAway(S, 1500, true, { id: 'c', d: 1 }) === null && S._latchAwayAt === 1500 && latchAway(S, 1600, false, { id: 'c', d: 1 }) === null && S._latchAwayAt === 0);
+    latchAway(S, 1700, true, { id: 'c', d: 1 });
+    check('7. away with no one in view: the time cleared', latchAway(S, 1800, true, null) === null && S._latchAwayAt === 0);
+    latchAway(S, 1850, true, { id: 'c', d: 1 });
+    check('7. only exactly true is away', latchAway(S, 1900, 1, { id: 'c', d: 1 }) === null && S._latchAwayAt === 0);
+    latchAway(S, 1950, true, { id: 'c', d: 1 });
+    check('7. the one in view the lock itself: nothing, the time cleared', latchAway(S, 2000, true, { id: 'b', d: 1 }) === null && S._latchAwayAt === 0);
+    const Q = {}; latchTo(Q, 'active', 7); latchAway(Q, 1950, true, { id: 'c', d: 1 });
+    check('7. ...its id as a number', latchAway(Q, 2000, true, { id: '7', d: 1 }) === null && Q._latchAwayAt === 0);
+    latchAway(S, 2050, true, { id: 'c', d: 1 });
+    check('7. an id of none in view: nothing', latchAway(S, 2100, true, { id: null, d: 1 }) === null && S._latchAwayAt === 0);
+    const I = { _latchAwayAt: 900 };
+    check('7. idle: nothing, the time cleared', latchAway(I, 2000, true, N) === null && I._latchAwayAt === 0 && latchAway(null, 1, true, N) === null);
+    const Z = {}; latchTo(Z, 'active', 'a'); latchAway(Z, 1000, true, N);
+    check('7. latchTo zeroes the time: a new lock', latchTo(Z, 'auto', 'q') === true && Z._latchAwayAt === 0);
+    latchAway(Z, 1100, true, N);
+    check('7. ...and an end', latchTo(Z, 'idle', null, 'press') === true && Z._latchAwayAt === 0);
+  }
+  delete globalThis.location;
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
