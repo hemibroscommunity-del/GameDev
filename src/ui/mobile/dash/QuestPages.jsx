@@ -38,7 +38,7 @@
  * `?questpages=0` gives back the old page (QuestsPanel.jsx).
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { COL, panelStyle, getState } from './common.js';
+import { COL, panelStyle } from './common.js';
 import { deskWords } from '@/game/deskWords.js';
 import { coinArtFor } from '@/game/coinArt.js';
 import { sw } from '@/game/switches.js';
@@ -125,7 +125,7 @@ const tileInner = (t, big) => {
   );
 };
 
-export const QuestPages = () => {
+export const QuestPages = ({ getS }) => {
   const [, force] = useState(0);
   const [boxRef, boxW, boxH] = useBoxSize();
   const tap = useJournalTap();
@@ -138,7 +138,8 @@ export const QuestPages = () => {
     return () => clearInterval(id);
   }, []);
 
-  const S = getState();
+  /* the game, handed in by QuestsPanel.jsx (the page's one reader of it, as before) */
+  const S = getS();
   const ctx = journalCtx(S);
   const L = questJournalList(S, ctx);
   const groupOf = (id) => (L.active.some((r) => r.id === id) ? 'active' : L.available.some((r) => r.id === id) ? 'available' : L.done.some((r) => r.id === id) ? 'done' : null);
@@ -147,7 +148,7 @@ export const QuestPages = () => {
     const qid = pendingOpen;
     pendingOpen = null;
     setAt(questPagesStep(lastAt, qid && questById(qid) ? { kind: 'quest', id: qid, group: groupOf(qid) } : { kind: 'open' }));
-  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const dailyOn = !!dailyRewardsBus.get() && (questsLive() || spinLive());
   const quest = shownQuest(at, groupOf, L.focusId);
@@ -166,7 +167,7 @@ export const QuestPages = () => {
     const box = stepsRef.current;
     const on = box && box.querySelector('[data-step-focus="1"]');
     try { if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' }); } catch (_e) { /* an old browser: the list is still a list */ }
-  }, [view, page && page.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [view, page && page.id]);
 
   const toggleTrack = (qid) => {
     const on = trackedQuestId() !== qid;
@@ -199,11 +200,11 @@ export const QuestPages = () => {
       {tabBtn('done', say(SAY, 'questPages.tabDone'), <span aria-hidden="true" style={{ color: GREEN_TEXT, flex: 'none' }}>✓</span>, { 'data-quest-nav': 'done' })}
     </div>
   );
-  const MARK_WORD = { quest: 'questPages.markQuest', journey: 'questPages.markJourney', rewards: 'questPages.markRewards' };
+  const markWord = (pg) => say(SAY, pg === 'quest' ? 'questPages.markQuest' : pg === 'journey' ? 'questPages.markJourney' : 'questPages.markRewards');
   const marks = !wide && page ? (
     <div role="tablist" aria-label={say(SAY, 'questPages.marksAria')} data-quest-marks="" style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
       {pageMarks(view).map((m) => (
-        <button key={m.page} type="button" role="tab" aria-selected={m.lit} aria-label={say(SAY, MARK_WORD[m.page])} title={say(SAY, MARK_WORD[m.page])}
+        <button key={m.page} type="button" role="tab" aria-selected={m.lit} aria-label={markWord(m.page)} title={markWord(m.page)}
           data-quest-mark={m.page} data-lit={m.lit ? '1' : '0'} {...tap(() => go({ kind: 'mark', page: m.page }))} style={{
             width: 26, height: TOP_H, margin: 0, padding: 0, background: 'transparent', border: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation',
@@ -216,9 +217,9 @@ export const QuestPages = () => {
       ))}
     </div>
   ) : null;
-  const pageName = (key) => (
+  const pageName = (word) => (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span data-quest-page-name="" style={{ ...LABEL, ...ONE_LINE, fontSize: 14 }}>{say(SAY, key)}</span>
+      <span data-quest-page-name="" style={{ ...LABEL, ...ONE_LINE, fontSize: 14 }}>{word}</span>
       <span aria-hidden="true" style={{ flex: 1, height: 1, background: COL.accent, opacity: 0.55 }} />
     </div>
   );
@@ -474,7 +475,7 @@ export const QuestPages = () => {
   if (page) {
     return (
       <div ref={boxRef} data-quests-page="pages" {...hooks} style={rootStyle}>
-        {top(view === 'journey' ? 'questPages.journey' : view === 'rewards' ? 'questPages.completion' : null)}
+        {top(view === 'journey' ? say(SAY, 'questPages.journey') : view === 'rewards' ? say(SAY, 'questPages.completion') : null)}
         <div data-journal-focus={page.id} data-journal-page={page.id} data-journal-status={page.status} style={{ display: 'flex', flexDirection: 'column', gap: GAP, flex: 1, minHeight: 0 }}>
           {head(view === 'rewards')}
           {view === 'journey' ? col('journey', journey())
@@ -493,7 +494,7 @@ export const QuestPages = () => {
         ? { 'data-quest-row': r.id, 'data-quest-row-ready': r.ready ? '1' : '0', 'data-quest-row-track': r.tracked ? 'on' : 'off' }
         : { 'data-quest-offer-row': r.id })}
         title={r.title} {...tap(() => go({ kind: 'choose', id: r.id, group }))} style={pillHit(false)}>
-        <span data-quest-pill="" style={{ ...pillStyle(quest && quest.id === r.id, r.ready), width: '100%' }}>
+        <span data-quest-pill="" style={Object.assign({}, pillStyle(quest && quest.id === r.id, r.ready), { width: '100%' })}>
           <FaceIcon npc={r.npc} kind={group === 'available' ? 'offer' : r.tracked ? 'tracked' : r.ready ? 'ready' : 'waiting'} />
           <span style={{ ...ONE_LINE, flex: 1, fontSize: 14 }}>{r.title}</span>
         </span>

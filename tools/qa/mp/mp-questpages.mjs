@@ -102,7 +102,6 @@ async function body({ P, wsPort, webPort, browser, rec, OUT }) {
     { timeout: 120000, label: 'into the world' }).catch(() => null);
   rec.ok('in the world\'s BroTown (guard)', !!inWorld, inWorld);
   if (!inWorld) return;
-  if (await P.page.$('[data-chest-window]')) { await P.page.click('text=Later').catch(() => {}); await P.page.waitForTimeout(300); }
   await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, [data-coach-card], [data-coach-ring] { visibility: hidden !important; }' }).catch(() => {});
   const me = await H.readState(P, (S) => S.myId);
   const top = await P.page.evaluate(() => { const e = document.querySelector('.bt-zone-header, [data-zone-header]'); return e ? e.textContent : null; });
@@ -242,7 +241,6 @@ async function body({ P, wsPort, webPort, browser, rec, OUT }) {
   try {
     await H.enterWorld(D);
     await H.waitFor(D, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: 'computer: in the world' }).catch(() => null);
-    if (await D.page.$('[data-chest-window]')) { await D.page.click('text=Later').catch(() => {}); }
     await D.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, [data-coach-card], [data-coach-ring] { visibility: hidden !important; }' }).catch(() => {});
     await D.page.evaluate(() => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
     await H.waitFor(D, (S) => ((S.rpg && S.rpg._quests) || {}).tut_1 || null, (v) => v === 'active', { timeout: 15000, label: 'computer: tut_1' }).catch(() => null);
@@ -261,7 +259,6 @@ async function body({ P, wsPort, webPort, browser, rec, OUT }) {
   try {
     await H.enterWorld(O);
     await H.waitFor(O, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: 'old page: in the world' }).catch(() => null);
-    if (await O.page.$('[data-chest-window]')) { await O.page.click('text=Later').catch(() => {}); }
     await openQuests(O);
     const old = await O.page.evaluate(() => { const e = document.querySelector('[data-quests-page]'); return e ? e.dataset.questsPage : null; });
     rec.ok(`9. ?questpages=0 gives back the old page (${old})`, old === 'list' || old === 'chips', old);

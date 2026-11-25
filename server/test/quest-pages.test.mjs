@@ -27,7 +27,6 @@
  * theirs).
  */
 import fs from 'fs';
-import { QUEST_CHAINS } from '../../src/data/gameSystems.js';
 import { QUEST_AP_REWARD } from '../../src/data/items.js';
 import * as J from '../../src/game/questJournal.js';
 import * as Q from '../../src/game/questPages.js';
@@ -112,7 +111,19 @@ const step = (at, tap) => Q.questPagesStep(at, tap);
 
 /* ── 4. the journey, from the journal's real page ── */
 const ctx = { home: 'BroTown', landNames: { verdant: 'Earth Forest' }, landDirs: { verdant: 'west' }, meet: { 'Mayor Bro': 'at the Town Hall' }, canMap: true, roadTo: null };
-const tut = QUEST_CHAINS.tut_1;
+/* Into the Blue (tut_1) as the quest table writes it (the suites read code by system, never the big
+   table by its path: tools/guards/tests-by-system); mp-questpages plays the real one */
+const tut = {
+  id: 'tut_1', npc: 'Mayor Bro', title: 'Into the Blue', zone: 'verdant',
+  desc: 'Bring 4 Slime Remains from the Earth Forest.', need: { key: 'slime-remnants', n: 4 },
+  reward: { gold: 25, xp: 0 }, next: null,
+  gives: [
+    { when: 'accept', icon: '/icons/items/great-sword-copper.webp', label: 'Copper Great Sword' },
+    { when: 'accept', icon: '/icons/items/shield.webp', label: 'Pine Shield' },
+    { when: 'complete', icon: '/icons/items/bow.webp', label: 'Pine Bow' },
+    { when: 'complete', icon: '/icons/items/staff.webp', label: 'Pine Staff' },
+  ],
+};
 const pageOf = (status, rpg, steps, quest = tut) => J.journalPage({ quest, status, rpg: rpg || {}, steps: steps || null, ap: QUEST_AP_REWARD, after: null, ctx });
 {
   const p = pageOf('active', { inventory: { 'slime-remnants': 1 } });
@@ -183,7 +194,7 @@ const pageOf = (status, rpg, steps, quest = tut) => J.journalPage({ quest, statu
   const page = read('../../src/ui/mobile/dash/QuestPages.jsx');
   check('the page changes its view only through the transition', /questPagesStep\(lastAt, t\)/.test(page) && !/view:\s*'/.test(page.replace(/\/\*[\s\S]*?\*\//g, '')));
   check('the page reads the switch, and the old page stays behind it',
-    /sw\('questpages'\)/.test(page) && /QUEST_PAGES \? QuestPages : OldQuestsPanel/.test(read('../../src/ui/mobile/dash/QuestsPanel.jsx'))
+    /sw\('questpages'\)/.test(page) && /QUEST_PAGES \? <QuestPages getS=\{getState\} \/> : <OldQuestsPanel/.test(read('../../src/ui/mobile/dash/QuestsPanel.jsx'))
     && /QUEST_PAGES \? QuestDetailToPages : OldQuestDetailPanel/.test(read('../../src/ui/mobile/dash/QuestDetailPanel.jsx')));
   check('a quest\'s pages have no Accept and no Turn In (owner, v2.3.1704 and v2.3.2195)', !/quest_accept|quest_turn_in|turnInQuest|acceptQuest/.test(page));
   check('every control is touch-action: manipulation, and taps swallow the click that follows (useJournalTap)',

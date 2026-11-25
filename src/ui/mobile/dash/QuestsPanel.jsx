@@ -90,7 +90,7 @@ const SIDE_MIN_H = 140;
    (dropped when the quest changes hands), or '@done' / '@daily' */
 let lastPick = null;
 
-const OldQuestsPanel = () => {
+const OldQuestsPanel = ({ getS }) => {
   const [, force] = useState(0);
   const [boxRef, boxW, boxH] = useBoxSize();
   const tap = useJournalTap();
@@ -99,7 +99,7 @@ const OldQuestsPanel = () => {
     return () => clearInterval(id);
   }, []);
 
-  const S = getState();
+  const S = getS();
   const ctx = journalCtx(S);
   const L = questJournalList(S, ctx);
   const groupOf = (id) => (L.active.some((r) => r.id === id) ? 'active' : L.available.some((r) => r.id === id) ? 'available' : L.done.some((r) => r.id === id) ? 'done' : null);
@@ -137,7 +137,7 @@ const OldQuestsPanel = () => {
   const pill = ({ id, hook, icon, npc, label, title, count, warm }) => (
     <button key={id} type="button" role="tab" aria-selected={lit === id} data-quest-lit={lit === id ? '1' : undefined} title={title || label}
       {...hook} {...tap(() => (id === '@done' || id === '@daily' ? setPick(id) : pickQuest(id)))} style={pillHit(!side)}>
-      <span data-quest-pill="" style={{ ...pillStyle(lit === id, warm), width: side ? '100%' : 'auto', maxWidth: side ? undefined : 220 }}>
+      <span data-quest-pill="" style={Object.assign({}, pillStyle(lit === id, warm), { width: side ? '100%' : 'auto', maxWidth: side ? undefined : 220 })}>
         {npc ? <FaceIcon npc={npc} kind={icon} /> : <PinIcon kind={icon} px={18} />}
         <span style={{ minWidth: 0, flex: side ? 1 : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
         {count != null ? <span style={{ flex: 'none', fontSize: 13, fontWeight: 800, color: lit === id ? COL.accent : COL.text2, fontVariantNumeric: 'tabular-nums' }}>{count}</span> : null}
@@ -233,4 +233,5 @@ const OldQuestsPanel = () => {
    next, each whole with no scrolling).  The pages are QuestPages.jsx (their
    rules game/questPages.js); `?questpages=0` gives back the page above,
    the list beside the quest (v2.3.4394), as it was. */
-export const QuestsPanel = QUEST_PAGES ? QuestPages : OldQuestsPanel;
+/* the page's one reader of the game, handed to whichever page draws (the open hand: grand plan 5.7) */
+export const QuestsPanel = () => (QUEST_PAGES ? <QuestPages getS={getState} /> : <OldQuestsPanel getS={getState} />);
