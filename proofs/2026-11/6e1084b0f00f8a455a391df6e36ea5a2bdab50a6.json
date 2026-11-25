@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6e1084b0f00f8a455a391df6e36ea5a2bdab50a6",
+  "tree": "34ffe6a6bb4cd725d7b2be1578315938f7e6d613",
+  "committedAt": "2026-11-25T01:17:10-08:00",
+  "subject": "Merge pull request #2349 from hemibroscommunity-del/claude/plan-bro-1-pages",
+  "files": 8620,
+  "bytes": 968817697,
+  "listingSha256": "346006123922a4d2daf3c3527f2c65241d9efe683fdc5e2f7d8fe3881a2d32c4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
