@@ -25,6 +25,7 @@ import React, { useRef } from 'react';
 import { ctxPick, ctxScreen, CTX_KINDS } from '../../game/contextButton.js';
 import { canvasPlace } from '../mayorScreen.js';
 import { RDISC_ICONS } from './controlSkin.jsx';
+import { say } from '../../game/say.js';
 import { SAY } from '../../data/say/contextButton.js';
 
 const SKILL_ICONS = RDISC_ICONS.filter(function (ic) { return ic[0] === 'mining' || ic[0] === 'woodcutting' || ic[0] === 'fishing' || ic[0] === 'cooking'; });
@@ -100,7 +101,7 @@ export function ContextButton(props) {
     type: 'button',
     className: 'bt-chisel bt-chisel--brass bt-ctx-btn bt-desktop-hide',
     'data-show': '0',
-    'aria-label': SAY['contextButton.label'],
+    'aria-label': say(SAY, 'contextButton.label'),
     style: {
       position: 'fixed', left: 0, top: 0, zIndex: 31, display: 'none',
       height: BTN_H, minWidth: 72, padding: '0 12px 0 8px', boxSizing: 'border-box',

@@ -29,13 +29,15 @@
  *
  * Doors and the notice board stay taps on the world (not here).
  *
- * Pure rules: no DOM, no game state of its own.  Three imports, the page's
- * switch reader (switches.js), mode 5's gate (latch.js twoButtonsLive) and its
- * words (data/say/contextButton.js), by relative paths: tools/guards/context-button.test.mjs plays it bare.  The DOM button is
+ * Pure rules: no DOM, no game state of its own.  Four imports, the page's
+ * switch reader (switches.js), mode 5's gate (latch.js twoButtonsLive), its
+ * words (data/say/contextButton.js) and their reader (say.js), by relative
+ * paths: tools/guards/context-button.test.mjs plays it bare.  The DOM button is
  * src/ui/panels/ContextButton.jsx (one reused element, moved by transform).
  */
 import { readerFor, sw } from './switches.js';
 import { twoButtonsLive } from './latch.js';
+import { say } from '../game/say.js';   /* spelt by its folder (guards/say.test reads the path) */
 import { SAY } from '../data/say/contextButton.js';   /* its words (docs/specs/player-words.md) */
 
 /** How near a townsperson stands for his TALK button (world px, from the
@@ -44,10 +46,10 @@ import { SAY } from '../data/say/contextButton.js';   /* its words (docs/specs/p
 export const CTX_TALK_REACH = 120;
 
 /** The node's word before the work starts (its skill's verb). */
-export const CTX_NODE_WORDS = Object.freeze({ tree: SAY['contextButton.chop'], oreVein: SAY['contextButton.mine'], fishSpot: SAY['contextButton.fish'], campfire: SAY['contextButton.cook'] });
+export const CTX_NODE_WORDS = Object.freeze({ tree: say(SAY, 'contextButton.chop'), oreVein: say(SAY, 'contextButton.mine'), fishSpot: say(SAY, 'contextButton.fish'), campfire: say(SAY, 'contextButton.cook') });
 /** The beat's word while the window is open: Attack's own words before
  *  v2.3.6550 (BroTown's stamp), moved here for mode 5. */
-export const CTX_BEAT_WORDS = Object.freeze({ mining: SAY['contextButton.pump'], woodcutting: SAY['contextButton.chop'], fishing: SAY['contextButton.reel'], cooking: SAY['contextButton.flip'] });
+export const CTX_BEAT_WORDS = Object.freeze({ mining: say(SAY, 'contextButton.pump'), woodcutting: say(SAY, 'contextButton.chop'), fishing: say(SAY, 'contextButton.reel'), cooking: say(SAY, 'contextButton.flip') });
 /** The kinds of button, and what a tap on each does (ctxTap). */
 export const CTX_KINDS = Object.freeze(['node', 'beat', 'talk']);
 
@@ -114,7 +116,7 @@ export function ctxPick(S, o) {
   if (ex) {
     const n = ctxExtractionNode(S, ex);
     if (!n) return null;
-    const word = ex.status === 'ready' ? (CTX_BEAT_WORDS[ex.skill] || SAY['contextButton.go']) : SAY['contextButton.wait'];
+    const word = ex.status === 'ready' ? (CTX_BEAT_WORDS[ex.skill] || say(SAY, 'contextButton.go')) : say(SAY, 'contextButton.wait');
     return { kind: 'beat', thing: n, word: word, skill: ex.skill || ctxSkillOf(n, S._campfire) };
   }
   let best = null, bestD = Infinity;
@@ -130,7 +132,7 @@ export function ctxPick(S, o) {
       const npc = S.npcs[i];
       if (!npc || npc.alive === false) continue;
       const dd = d2(npc, P);
-      if (dd <= r2 && dd < bestD) { bestD = dd; best = { kind: 'talk', thing: npc, word: SAY['contextButton.talk'], skill: null }; }
+      if (dd <= r2 && dd < bestD) { bestD = dd; best = { kind: 'talk', thing: npc, word: say(SAY, 'contextButton.talk'), skill: null }; }
     }
   }
   return best;
