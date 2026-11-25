@@ -46,8 +46,8 @@ const spend = (P, frac, blocks) => P.page.evaluate(({ frac, blocks }) => {
   const R = S.rpg;
   if (!R) return false;
   /* HELD up: a drop re-arms the bar's second of hold, a rise is a refill
-     (no reveal), so a pool stepping between two values a hair apart keeps the
-     bar up as long as the test looks, at the same blocks lit (a floor) */
+     (no reveal), so a pool stepping down a hair at a time keeps the bar up
+     as long as the test looks, at the same blocks lit (a floor) */
   clearInterval(window.__qaResHold);
   let tick = 0;
   /* the rpg record is read again each tick: a state from the worker can
@@ -57,7 +57,10 @@ const spend = (P, frac, blocks) => P.page.evaluate(({ frac, blocks }) => {
     const r = window._gameState.current.rpg;
     if (!r) return;
     if (blocks) { r.manaBlocks = blocks; r.stamBlocks = blocks; }
-    const d = (tick % 2) ? 0 : 0.05;
+    /* a step DOWN every tick (a reset up every 20th, a refill): any frame,
+       however slow, sees a drop since the last one; 0.4 of a point at most,
+       so the blocks lit stay put */
+    const d = 0.02 * (tick % 20);
     r.mana = (r.maxMana || 100) * frac - d;
     r.stamina = (r.maxStamina || 100) * frac - d;
   };
@@ -162,7 +165,13 @@ async function onePhone(browser, { wsPort, webPort, rec, res, ob, errors, OUT })
       const awayPieces = await selfPieces(P);
       const away = await H.screenshotPixels(P, clip);
       await spend(P, 0.5, row.n);
-      await P.page.waitForTimeout(600);
+      /* the photograph only with the bars at full strength (a slow page at
+         sharpness 3 draws a frame in a few hundred ms) */
+      for (let i = 0; i < 40; i++) {
+        await P.page.waitForTimeout(250);
+        const a = await boxes(P);
+        if (a && a.mp && a.en && a.mp.alpha > 0.99 && a.en.alpha > 0.99) break;
+      }
       const up = await H.screenshotPixels(P, clip);
       const upPieces = await selfPieces(P);
       b = await boxes(P);
