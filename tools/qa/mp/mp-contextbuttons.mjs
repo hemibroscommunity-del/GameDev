@@ -231,10 +231,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bt = await byTree(B.P), t = bt.t;
       rec.ok('3. sideways: beside a pine (guard)', !!t, bt);
       if (t) {
-        await B.P.page.waitForTimeout(600);
+        await B.P.page.waitForTimeout(2000);   /* the camera settled after the hop (this box draws a few frames a second) */
         const L = await LOOK(B.P);
         const f = await FEET(B.P, 'node', t.id);
-        rec.ok('3a. sideways: CHOP under the tree, inside the window, Attack the weapon\'s', L.show === '1' && L.word === 'CHOP' && !!L.box && !!f && L.box.top > f.y && L.box.left >= 0 && L.box.right <= L.vw && L.box.bottom <= L.vh && L.box.h >= 44 && weaponIcon(L.ricon), { L, f });
+        rec.ok('3a. sideways: CHOP under the tree, inside the window, Attack the weapon\'s', L.show === '1' && L.word === 'CHOP' && !!L.box && !!f && L.box.y >= f.y + 20 && Math.abs(L.box.x - f.x) < 8 && L.box.left >= 0 && L.box.right <= L.vw && L.box.bottom <= L.vh && L.box.h >= 44 && weaponIcon(L.ricon), { L, f });
         if (L.box) await B.touch(L.box);
         const st = await H.waitFor(B.P, (S) => (S._extraction ? S._extraction.skill : null), (v) => v === 'woodcutting', { timeout: 5000, label: 'the chop' }).catch(() => null);
         rec.ok('3b. sideways: its touch starts the chop', st === 'woodcutting');
@@ -254,9 +254,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const L = await LOOK(C.P);
       rec.ok(`${label}: no button; Attack is the harvest's (${L.label}, ${L.ricon})`, L.show !== '1' && L.ricon === 'woodcutting' && L.label === 'HARVEST', L);
       const rd = await rdCentre(C.P);
+      const under = rd ? await C.P.page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); const b = e && e.closest ? e.closest('.bt-rjoy-base') : null; return { el: e ? (e.className && e.className.baseVal != null ? e.className.baseVal : e.className) || e.tagName : null, onDisc: !!b }; }, [rd.x, rd.y]) : null;
       if (rd) await C.touch(rd, 2);
       const st = await H.waitFor(C.P, (S) => (S._extraction ? S._extraction.skill : null), (v) => v === 'woodcutting', { timeout: 5000, label: 'the chop' }).catch(() => null);
-      rec.ok(`${label}: a press of Attack starts the chop, as before`, st === 'woodcutting');
+      rec.ok(`${label}: a press of Attack starts the chop, as before`, st === 'woodcutting', { rd, under, after: await LOOK(C.P) });
     }
 
     rec.ok('6. no page errors', errs.length === 0, errs.slice(0, 4));

@@ -11824,7 +11824,7 @@ export var BroTown = function BroTown(_ref0) {
       }
     };
     var bE = function bE(e) {
-      if (bTouchId.current === null) return;
+      if (bTouchId.current === null) return; if (twoButtonsLive() && !findT(e.touches || [], bTouchId.current)) twoButtonRelease(stateRef.current, rJoyRef.current);   /* v2.3.6548: Attack's finger is off the screen: its hold ends HERE, before the changedTouches lookup below (the phone run: a 150 ms tap's lift missed it there and the ring filled to auto) */
       var t = findT(e.changedTouches, bTouchId.current);
       if (!t) return;
       bTouchId.current = null; if (twoButtonsLive()) twoButtonRelease(stateRef.current, rJoyRef.current);   /* v2.3.6548: a lift or a cancel ends Attack's hold, the ring empties (before the fill it was a tap: game/freeAttack.js) */
