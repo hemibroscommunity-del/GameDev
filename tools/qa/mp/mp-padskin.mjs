@@ -142,18 +142,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'kit', me, { what: 'weapons' }).catch(() => null);
       await P.page.waitForTimeout(1500);
+      /* v2.3.6640: the disc takes a touch only once BroTown's resolver raises
+         it (pointer-events auto, TouchControls v2.3.2246) after the kit; part
+         1's run read 5b red sideways once on a loaded box (unseen in the next
+         run): wait for the disc to be live, not for a fixed time */
+      await P.page.waitForFunction(() => { const b = document.querySelector('.bt-rjoy-base'); return !!b && getComputedStyle(b).pointerEvents === 'auto'; }, null, { timeout: 8000 }).catch(() => null);
       const M = await LOOK(P);
       const A = M.c.attack && M.c.attack.box;
       let held = null, after = null;
+      let probe = null;
+      if (A && process.env.PAD_SHOTS) await P.page.screenshot({ path: process.env.PAD_SHOTS + '/pad-5b-' + label + '.png' });
+      if (A) probe = await P.page.evaluate(([x, y]) => { const out = []; for (const el of document.elementsFromPoint(x, y).slice(0, 6)) { const cs = getComputedStyle(el); out.push(((el.className && el.className.baseVal === undefined ? el.className : el.tagName) + '').slice(0, 50) + ' z' + cs.zIndex + ' pe' + cs.pointerEvents + ' op' + cs.opacity); } const b = document.querySelector('.bt-rjoy-base'); return { at: out, basePe: b && getComputedStyle(b).pointerEvents, zonePe: b && getComputedStyle(b.parentElement).pointerEvents, zoneOp: b && getComputedStyle(b.parentElement).opacity }; }, [A.x, A.y]);
       if (A) {
         await touch('touchStart', [{ x: A.x, y: A.y, id: 2 }]);
-        await P.page.waitForTimeout(900);
-        held = await H.readState(P, (S) => !!S.autoAttack);
+        /* held: read until it holds (the renderer's clock on this box, TRAPS §200), at most 3 s */
+        for (let i = 0; i < 10 && held !== true; i++) { await P.page.waitForTimeout(300); held = await H.readState(P, (S) => !!S.autoAttack); }
         await touch('touchEnd', [{ x: A.x, y: A.y, id: 2 }]);
-        await P.page.waitForTimeout(500);
-        after = await H.readState(P, (S) => !!S.autoAttack);
+        for (let i = 0; i < 10 && after !== false; i++) { await P.page.waitForTimeout(300); after = await H.readState(P, (S) => !!S.autoAttack); }
       }
-      rec.ok(`5b. ${label}: holding Attack in its socket attacks while held (${held}) and letting go stops it (${after})`, held === true && after === false, { A, held, after });
+      rec.ok(`5b. ${label}: holding Attack in its socket attacks while held (${held}) and letting go stops it (${after})`, held === true && after === false, { A, held, after, probe });
       /* 5c: after the walk, the kit and the press, nothing moved */
       const moved = ['jump', 'skate', 'attack'].filter((k) => !M.c[k] || !L.c[k] || !near(M.c[k].box, L.c[k].box, 1));
       rec.ok(`5c. ${label}: the controls stay in their sockets (after a walk, a weapon, a press)`, moved.length === 0, ['jump', 'skate', 'attack'].map((k) => [k, L.c[k] && L.c[k].box, M.c[k] && M.c[k].box]));
