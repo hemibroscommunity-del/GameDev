@@ -8,6 +8,9 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 65 tail | (no box) | listed at 65's tail (main 0c648ebb): #2349 landing #2346 (head 3d0846c8, base main, one merge base, draft; tree 34ffe6a6, the head's own); `test` green; this notes PR (6278) | the owner's play; the debt: `docs/plan/debts.md` CT (65 tail) |
+| 65 tail | (no box) | rehearsed main + #2349: precheck (0 FAIL), build, questline 187/187; suites context-button and bro-pages green; helper on 3d0846c8: mp-contextbuttons 27/27 twice, mp-bropages 55/55 | as above |
+| 65 tail | (no box) | the diff since the reviewed heads (1084cbcf, b0b912ab): main's merges, three words to SAY keys (two in `say/contextButton.js`, `broPages.achvOf`), 9c's mend, the status lines, `words.md`; no closing keyword in either body | as above |
 | 65 | (no box) | listed at 65: CT's #2350 (the shield drops at the worker's guard break; Charge is for monsters), QP's #2348 (the Quests tab in pages), LB's #2351 (the Ranks page's new style); #2346 and #2349 need a merge of main (`docs/plan/status/Z.md`) | the owner's play; the debts: `docs/plan/debts.md` PH, BRO (65) |
 | 65 | 5.4b, (no box) | merged before 65 (main 096d7000): sitting 64's whole list (#2345) | as at 64 |
 | 64 | 5.4b | listed at 64: CT's #2345 (the join: lands #2342, the right side's buttons, and #2344, the button under things; the body faces its lock) | the owner's play (part 9 item 7); the debts: `docs/plan/debts.md` CT (64), PH (64) |

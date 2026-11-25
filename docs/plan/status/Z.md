@@ -1,30 +1,27 @@
 card: Z
-branch: claude/plan-z-sitting-65
-prs: 3 lines listed (#2350 CT part 20, #2348 QP, #2351 LB part 2); 2 need a merge of main (#2346 CT parts 19+21, #2349 BRO); this PR (tag 6277), the last line
+branch: claude/plan-z-sitting-65-tail
+prs: 1 line listed (#2349 landing #2346, head 3d0846c8); this PR (tag 6278), the last line
 state: ready
 
-## Done
-- Five drafts on `main` 096d7000, `test` green on each, no `server/src`;
-  four DEPLOY by `server/test` files. Conflicts, the mends and the runs:
-  `docs/plan/census/review-z65.md`.
-- Rehearsed: the merged tree 94b52d3c36ea9fd0ebdda5a0d3978c12b266c427
-  green (precheck, switches thrown, claims-gain, build, questline);
-  heldsweep's sample red on `main` alone too (`debts.md` PH, 65).
+## Done (sitting 65's tail, main 0c648ebb)
+- #2346 (CT, 2825d8e0) and #2349 (BRO) were reviewed and passed at
+  sitting 65 (1084cbcf, b0b912ab). #2349 now stacks on #2346: head
+  3d0846c8f6f89095f49478706a75bb9c208b4abe (parents 54964d66, 2825d8e0),
+  base main, ONE merge base (main itself), a draft. `test` green.
+- Rehearsed main + #2349 (`git merge --no-ff`): tree
+  34ffe6a6bb4cd725d7b2be1578315938f7e6d613, the head's own; precheck
+  0 FAIL, build, questline 187/187. Suites context-button, bro-pages green.
+  Helper on the head: mp-contextbuttons 27/27 twice, mp-bropages 55/55.
+- The diff since the reviewed heads: main's merges, three words moved to
+  SAY keys, context-button.test 9c's mend, the status lines, the
+  generated `words.md`. Nothing else. No closing keyword in either body.
 ## The list: merge in this order, "Create a merge commit"
-1 #2350 (CT part 20, 6554; draft: mark ready). DEPLOYS (tests only).
-2 #2348 (QP, 6620; draft: mark ready). DEPLOYS (tests only).
-3 #2351 (LB part 2, 5503; draft: mark ready). DEPLOYS (tests only).
-4 Z (6277, a draft: mark it ready first).
-## Needs a merge of main (after 1-3 land)
-- #2346: `docs/plan/status/CT.md` (keep both parts' lines); its 2 new
-  words in place into `src/data/say/contextButton.js`.
-- #2349: `tools/dev/tag-blocks.json` (both rows, BRO then QP, nextBlock
-  6640); `tools/guards/lib/systems.mjs` ui `windowDoor|guardBreak|broPages`;
-  `docs/SYSTEMS.md` by `node tools/guards/systems.test.mjs --write`; its
-  1 new word in place into `src/data/say/broPages.js`. Never raise
-  `PAGE_LINE`.
+1 #2349 (BRO 6600, with CT's #2346 6552+6553 inside it; draft: mark
+  ready). DEPLOYS (`server/test/bro-pages.test.mjs`). Merging it merges
+  #2346's commits; GitHub then shows #2346 as merged.
+2 Z (6278, a draft: mark it ready first).
 ## Held / To 66
 - Nothing held.
 ## Found
-- `docs/plan/debts.md` (65): PH's heldsweep sample, BRO's two main reds,
-  `state-census --check` red on `main`.
+- `docs/plan/debts.md` CT (65 tail): mp-contextbuttons steps 4-5 come
+  and go on this box; the TEST's, its next job.
