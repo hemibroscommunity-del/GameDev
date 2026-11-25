@@ -158,6 +158,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
        move inside Bro"); the Bro card's Life Skills row wears the L; L again
        closes it */
     await key(P, 'KeyP', 900);
+    /* v2.3.6600 (card BRO): the Bro tab is pages; this door is on Progress */ await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); }); await P.page.waitForTimeout(300);
     const lCap = await capOf(P, '[data-bro-row="skills"]');
     await key(P, 'KeyP');
     await key(P, 'KeyL');

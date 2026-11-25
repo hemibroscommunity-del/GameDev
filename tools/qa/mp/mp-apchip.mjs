@@ -107,6 +107,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 3. the Bro card reads the points ── */
   await P.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) { /* */ } });
+  await P.page.waitForTimeout(600);
+  /* v2.3.6600 (card BRO): the Bro tab is pages; the AP is on Progress's counters (data-bro-ap) */
+  await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); });
   let card = null;
   for (let i = 0; i < 30; i++) {
     card = await P.page.evaluate(() => { const e = document.querySelector('[data-bro-ap]'); return e ? Number(e.getAttribute('data-bro-ap')) : null; });

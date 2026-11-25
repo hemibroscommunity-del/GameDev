@@ -20,6 +20,14 @@ import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { SAY } from '@/data/say/broCard.js';   /* v2.3.6343: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say, sayPieces } from '@/game/say.js';
+import { sw } from '@/game/switches.js';
+import { broPagesStart, broPageTo, broPagesLayout, broOpen } from '@/game/broPages.js';   /* v2.3.6600: the pages' rules */
+import { BroPages } from './BroPages.jsx';   /* v2.3.6600 (card BRO): the Bro tab in pages */
+
+/* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
+   to be displayed together (instead of scrolling little by little)"): the Bro tab is three pages
+   (BroPages.jsx; the rules src/game/broPages.js).  `?bropages=0` gives back the card below. */
+export const BRO_PAGES_ON = (function () { try { return !sw('bropages'); } catch (e) { return true; } })();
 
 /* ═══ v2.3.4172: THE BRO PAGE, AS THE OWNER DREW IT ═══
  * The owner, of the first cut (your own Inspect card): "I'll need to change
@@ -96,7 +104,10 @@ function levelOf(R) {
 }
 
 /* the weapon picked here, kept while the page is visited (the Points window
-   over it and back keeps it); a fresh visit starts on the weapon out */
+   over it and back keeps it); a fresh visit starts on the weapon out.
+   v2.3.6600: the pages' whole state, { page, weapon } (broPages.js): the page
+   too is kept across the Points window and a page pushed under Bro, and a
+   fresh visit opens the Overview */
 let _pick = null;
 dashboardPanelBus.subscribe(() => { if (dashboardPanelBus.state.mode === 'bar') _pick = null; });
 
@@ -146,9 +157,16 @@ export const BroCard = ({ points, onPoints }) => {
   const n = Math.max(0, Math.floor(Number(points) || 0));
   const apOn = achvLive(S);
   const box = useRef(null);
-  const [cols, setCols] = useState(2);
-  const [weapon, setWeaponState] = useState(() => _pick || broStartWeapon(R));
-  const setWeapon = (c) => { _pick = c; setWeaponState(c); };
+  /* v2.3.6600: the box's size, its width as before (the columns) and its height from the observer
+     (the pages' dense cut); 0 until measured (two columns, roomy) */
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const cols = broCols(size.w);
+  const L = broPagesLayout(size.w, size.h);
+  const [bp, setBp] = useState(() => _pick || broPagesStart(broStartWeapon(R)));
+  /* v2.3.6600: the ONE transition (broPages.js broPageTo); the card's weapon is the pages' */
+  const move = (a) => setBp((prev) => { const next = broPageTo(prev, a); _pick = next; return next; });
+  const weapon = bp.weapon;
+  const setWeapon = (c) => move({ weapon: c });
   /* v2.3.4172: the skill tile showing its XP (one at a time), back to its
      picture after SKILL_XP_HOLD_MS or a second tap */
   const [xpCat, setXpCat] = useState(null);
@@ -188,7 +206,13 @@ export const BroCard = ({ points, onPoints }) => {
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return undefined;
-    const measure = () => { const w = el.clientWidth; if (w > 0) setCols(broCols(w)); };
+    /* v2.3.6600: the height from the observer's own entry (no second read of the page) */
+    const measure = (entries) => {
+      const w = el.clientWidth;
+      const box = entries && entries[0] && entries[0].contentRect;
+      const h = box ? Math.round(box.height) : 0;
+      if (w > 0) setSize((o) => (o.w === w && o.h === h ? o : { w, h }));
+    };
     /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): not measured in the commit of the window that put the card in (the
        first read after React changed the page lays the whole page out there: `measure2`, 67.9 to 80.8 ms on
        budget-android at `windows`).  The ResizeObserver below tells the size on observe, after the browser's own
@@ -200,8 +224,9 @@ export const BroCard = ({ points, onPoints }) => {
   }, []);
   /* QA: the shape and the weapon (window.__btBroCard) */
   useEffect(() => {
-    try { window.__btBroCard = { cols, weapon, xp: xpCat }; } catch (e) { /* no window */ }
-  }, [cols, weapon, xpCat]);
+    /* v2.3.6600: the pages' state, its shape, and `to` (a tap's action, broPageTo) */
+    try { window.__btBroCard = { cols, weapon, xp: xpCat, pages: BRO_PAGES_ON, page: bp.page, wide: L.wide, dense: L.dense, w: size.w, h: size.h, to: move }; } catch (e) { /* no window */ }
+  }, [cols, weapon, xpCat, bp, size]);
   useEffect(() => () => { try { window.__btBroCard = null; } catch (e) { /* no window */ } }, []);
 
   let p = null;
@@ -243,6 +268,43 @@ export const BroCard = ({ points, onPoints }) => {
   const skills = WEAPON_SKILLS.map((sk) => ({ s: sk, k: combatSkillState(R, sk) }));
   const clanWords = clan ? `${clan.name || clan.tag} [${clan.tag}]` : say(SAY, party ? 'broCard.noParty' : 'broCard.noClan');
   const wLabel = (BRO_WEAPONS.find((w) => w.cat === stats.cat) || BRO_WEAPONS[0]).label;
+
+  /* ═══ v2.3.6600 (card BRO): THE PAGES ═══
+     The same readings as the card below, laid out as three pages (BroPages.jsx); what a tap opens
+     is broPages.js's word, acted on with today's own roads. */
+  if (BRO_PAGES_ON) {
+    const held = broStartWeapon(R);
+    const open = (word) => {
+      const o = broOpen(word);
+      if (!o) return;
+      if (o.kind === 'page') go(o.page);
+      else if (o.kind === 'titles') openTitles();
+      else if (o.kind === 'points') { if (onPoints) onPoints(); }
+      else if (o.kind === 'gear') openGear();
+      else if (o.kind === 'farm') farmInfo();
+    };
+    const d = {
+      portrait: portraitSrc(S), name, level, title, apOn, sum, ap, kills, pet, plots, worn, slots,
+      lifeTotal, lifeNew, party, clanWords, icon: ICON,
+    };
+    const tiles = skills.map(({ s: sk, k }) => ({
+      s: sk, k, cat: k.cat || 'sword',
+      /* the XP flight's landing and its held number (v2.3.4191), as the card's tiles carried them */
+      xpAttrs: {
+        'data-xpbar': k.p3cat || undefined,
+        'data-xpprog': k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined,
+        'data-xpthresh': k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined,
+      },
+    }));
+    return (
+      <div ref={box} className="bt-bro3" data-bro-card="pages" data-bro-cols={cols} data-bro-page-open={bp.page}
+        data-bro-wide={L.wide ? 1 : 0} data-bro-dense={L.dense ? 1 : 0}>
+        <BroPages d={d} n={n} held={held} bp={bp} move={move} open={open} explain={explain}
+          statsHeld={held === stats.cat ? stats : broWeaponStats(R, held)} statsPick={stats} skills={tiles}
+          wide={L.wide} dense={L.dense} />
+      </div>
+    );
+  }
 
   /* ── LEFT: you ── */
   const left = (

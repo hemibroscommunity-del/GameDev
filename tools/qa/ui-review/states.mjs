@@ -644,37 +644,70 @@ export const STATES = [
      you, the weapon's combat stats, the doors (sheet/BroCard.jsx) -- with
      Points and Equipment as windows over it, Life Skills and Achievements as
      pages under it: each its own screen here, dash-bro-* */
+  /* v2.3.6600 (card BRO): the Bro tab is three pages (sheet/BroPages.jsx; the rules
+     src/game/broPages.js), each whole with no scroller: the Overview (dash-bro), Combat
+     (dash-bro-combat, dash-bro-bow) and Progress (dash-bro-progress).  `?bropages=0` is the card of
+     before. */
   {
-    id: 'dash-bro', group: 'Dashboard', title: 'Bro: your card',
-    about: 'The Bro page, as the owner drew it: three panels, laid out from the page\'s own width (side by side from 600 px; on an upright phone you beside the doors, the stats under them; sideways stacked). You: your portrait in a gold frame, name, "Lv N" (no XP bar), your title as a gold ribbon ("No title"), your clan ("No clan"), your AP, and Achievements n / total and Lifetime Kills tiles. Over the combat stats, the three combat skills (Melee, Bow, Magic: the Gear tab\'s tiles, "Lv N" above each big picture), the one whose weapon the stats show gold-edged (starting on the one in your hand): thirteen rows, Damage to Move Speed. The doors, a chevron each: Achievements, Life Skills, Points (gold and glowing while points wait), Equipment, Homestead, Pet, Titles, Clan.',
+    id: 'dash-bro', group: 'Dashboard', title: 'Bro: the Overview',
+    about: 'The Bro tab opens on its Overview, a showcase of your character with no scroll: three page marks (Overview lit, Combat, Progress); your portrait, name, title ("No title equipped") and "LV N" (no XP bar), a gold "N points" chip while points wait; Combat overview (DPS, Damage, Defense of the weapon in hand, Gear worn n/6; a tap: Details); Weapon mastery (Sword, Bow, Staff with their levels, "Equipped" on the one in hand; a tap: its combat stats); and one Your progress row (achievements n/33, lifetime kills, achievement points; a tap: Progress). 600 px and wider the three pages stand side by side.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
-      if (!(await has(P, '[data-bro-page="Card"] [data-bro-card="v2"]'))) return 'the card is not up';
+      await evalIn(P, () => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'overview' }); });
+      await wait(P, 300);
+      if (!(await has(P, '[data-bro-page="Card"] [data-bro-card="pages"] [data-bro-pg="overview"]'))) return 'the Overview is not up';
     },
   },
   {
-    /* v2.3.4172: a combat-skill tile tapped (the owner: "Move the 3 primary
-       combat skills out of the gear menu and put them into the bro menu") */
-    id: 'dash-bro-bow', group: 'Dashboard', title: 'Bro: the Bow\'s combat stats',
-    about: 'The Bro page with Bow\'s skill tile just tapped: the tile gold-edged and showing its XP bar ("N / M XP", for 4 s, then its picture again), and the thirteen combat stats as the bow would fight (its damage, swings a second, reach in tiles, the Bow lane\'s crit, special and elemental power; the shared five the same under every weapon), "No bow equipped" and dashes when there is none.',
+    id: 'dash-bro-combat', group: 'Dashboard', title: 'Bro: Combat stats',
+    about: 'The Combat page, from the Overview\'s Details: "‹ Overview" (the back chip) and the page marks, the Sword | Bow | Staff picker on the weapon in hand, then all thirteen stats at once in small cells, the label over its number: Offense (Damage, DPS, Attack speed, Range, Crit chance, Crit damage, Special damage, Element power, with the weapon\'s XP or "No sword equipped" beside the heading), Survivability (Defense, Armor, Dodge, Resist) and Mobility (Move speed). A cell is a tap to its explainer.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
+      await evalIn(P, () => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'overview' }); });
+      await wait(P, 300);
+      const t = await tapSel(P, '[data-bro-details]');
+      if (t) return t;
+      await wait(P, 400);
+      if (!(await has(P, '[data-bro-pg="combat"]'))) return 'Combat did not open';
+    },
+  },
+  {
+    /* v2.3.4172: a combat-skill tile tapped; v2.3.6600: the Overview's Bow tile, Combat on the bow */
+    id: 'dash-bro-bow', group: 'Dashboard', title: 'Bro: the Bow\'s combat stats',
+    about: 'The Combat page opened from the Overview\'s Bow tile: the picker on Bow, and the thirteen stats as the bow would fight (its damage, swings a second, reach in tiles, the Bow lane\'s crit, special and elemental power; the shared five the same under every weapon), "No bow equipped" and dashes when there is none.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      await wait(P, 900);
+      await evalIn(P, () => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'overview' }); });
+      await wait(P, 300);
       const t = await tapSel(P, '[data-bro-skill="bow"]');
       if (t) return t;
       await wait(P, 400);
-      if (!(await has(P, '[data-bro-panel="stats"][data-bro-weapon="bow"]'))) return 'the Bow was not picked';
-      await evalIn(P, () => {
-        const c = document.querySelector('[data-bro-card="v2"]');
-        const st = c && c.querySelector('[data-bro-panel="stats"]');
-        if (c && st && c.scrollHeight > c.clientHeight) c.scrollTop += st.getBoundingClientRect().top - c.getBoundingClientRect().top - 4;
-      });
+      if (!(await has(P, '[data-bro-pg="combat"][data-bro-weapon="bow"]'))) return 'the Bow was not picked';
+    },
+  },
+  {
+    id: 'dash-bro-progress', group: 'Dashboard', title: 'Bro: Progress',
+    about: 'The Progress page, from the Overview\'s progress row: the back chip and marks, the three counters (achievements n/33, lifetime kills, achievement points; a tap: Achievements) over the achievements bar, then every door of the Bro tab as tiles two across: Life Skills, Titles, Homestead, Pet, Party or Clan, Points (gold and glowing while points wait), Achievements, Equipment.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      await wait(P, 900);
+      await evalIn(P, () => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'overview' }); });
       await wait(P, 300);
+      const t = await tapSel(P, '[data-bro-progress]');
+      if (t) return t;
+      await wait(P, 400);
+      if (!(await has(P, '[data-bro-pg="progress"]'))) return 'Progress did not open';
     },
   },
   {
@@ -690,7 +723,7 @@ export const STATES = [
   },
   {
     id: 'dash-bro-points', group: 'Dashboard', title: 'Bro: Points (a window over the card)',
-    about: 'The Points window, opened from the card\'s Points row: spending points on each weapon skill and on the character, under a title row with a close back to the card.',
+    about: 'The Points window, opened from the Bro tab\'s Points door (Progress) or its gold points chip (Overview): spending points on each weapon skill and on the character, under a title row with a close back to the card.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       await bus(P, 'open', 'hero');
@@ -701,6 +734,9 @@ export const STATES = [
          rise out, press the tab by its id (its words are the owner's copy),
          and check it took: a miss is SKIPPED, never the wrong picture. */
       await wait(P, 900);
+      /* v2.3.6600 (card BRO): with no point waiting the Points door is on the Progress page */
+      await evalIn(P, () => { const c = window.__btBroCard; if (c && c.to && !document.querySelector('[data-section="Build"]')) c.to({ to: 'progress' }); });
+      await wait(P, 300);
       const e = await tapSel(P, '[data-section="Build"]');
       if (e) return e;
       await wait(P, 400);

@@ -228,7 +228,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: '(' + WATCH.toString() + ')();' });
+  /* v2.3.6600 (card BRO), the mend: the Bro tab is three pages by default (mp-bropages opens Achievements
+     from them); this reads the card's rows (.bt-bro2-rowt), so it plays the card `?bropages=0` gives back.
+     Before: the default card; after: the same card behind its switch, every check as before. */
+  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'bropages=0', init: '(' + WATCH.toString() + ')();' });
   A.page.on('pageerror', (e) => errs.push('A: ' + String(e && e.message || e).slice(0, 200)));
   let B = null, stopA = () => {}, stopB = () => {};
   try {
