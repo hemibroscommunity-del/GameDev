@@ -1,7 +1,7 @@
 {
   "about": "v2.3.5027: every file git tracks under assets/, named by the SHA-256 of its bytes (grand plan step 9.0). Written by tools/assets/weights.mjs --write-sources; never by hand.",
-  "files": 361,
-  "bytes": 412061713,
+  "files": 365,
+  "bytes": 420632028,
   "rows": [
     {"path":"assets/armor boards/fullset-steel-jog-east.png","bytes":2441342,"sha256":"c0b8f40f4f2345599442937916311a82d65ab4e00a98e8f99f1b5bb0cda2bbbc"},
     {"path":"assets/character animations/hit-east.mov","bytes":869586,"sha256":"5cb25f298075213288d907bf9c753026e5a8f8247348a6bbd443ac2e01ebe3f4"},
@@ -77,6 +77,10 @@
     {"path":"assets/icons-source/owner-2026-11-04/brotown_fish_transparent_sheet.png","bytes":124566,"sha256":"8bcbe08ea2d854a638ff581d7cd8c032df2168169937fb5672160cfb692ccaf0"},
     {"path":"assets/icons-source/owner-2026-11-04/brotown_inventory_batch_03_transparent_sheet.png","bytes":175702,"sha256":"f1fd550f4ec7f6b901308b3ae8d0d836dd5fc44c6bb449939f4f1d0b6e6df7e2"},
     {"path":"assets/icons-source/owner-2026-11-04/brotown_inventory_batch_04_transparent_sheet.png","bytes":193356,"sha256":"6dd05726c7610f6593303fe01e46a62bdd3dcea83fd7c83423ef40688b7f5c3e"},
+    {"path":"assets/icons-source/owner-2026-11-25/pad-art-01-stick.png","bytes":2167771,"sha256":"671dcbe6230841591f287477e69e4d70d2e35555de4874f1eeb12e7a805420f7"},
+    {"path":"assets/icons-source/owner-2026-11-25/pad-art-02-buttons.png","bytes":1907824,"sha256":"16a501e3b24e9e8fe3a48e0121f05b3af9b18a23bc87873e3cf768300f7fbe3c"},
+    {"path":"assets/icons-source/owner-2026-11-25/pad-art-03-attack.png","bytes":2438331,"sha256":"0b98a8195fc7c5c252b5b6f5ef0ff8d61263afcb7bc129c712d6c427bef8e709"},
+    {"path":"assets/icons-source/owner-2026-11-25/pad-art-04-housings.png","bytes":2056389,"sha256":"0455d31948f70054d5e1ecd8b77cb65896f752ede40ede5e8b89b6d73721cde5"},
     {"path":"assets/icons-source/owner-2026-11-25/talk-icon-owner.png","bytes":81122,"sha256":"4dc0ba2ebcb284645eee914a7b381fb3d7eae3bf054cacb9753f295100834a7c"},
     {"path":"assets/icons-source/rank-trophies-2026-11-09/rank-trophies.png","bytes":2619860,"sha256":"40bed050f61a20ac5ce92af408484c3631349a162ed2b18fd3ffc6f423fa6cfd"},
     {"path":"assets/icons-source/sheet-a.png","bytes":1284333,"sha256":"642a2a5d729e6fb008079d34ad91403b0a48e5be4eb7218dd14dc6ae726cd52c"},
