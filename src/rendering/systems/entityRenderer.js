@@ -172,7 +172,7 @@ import { _hideExceptDeep, drawnAsContent } from '../leaves/entity-render.js';   
 import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.js';   /* v2.3.6200: its leaves (card EN) */
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
 import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, folkSheetsStep, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
-import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
+import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, resBarBoxes, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
 export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
 export { MONSTER_SIZE_MULT, MINE_TRAIT_MUL, FISH_TRAIT_MUL };   /* v2.3.5345: still the renderer's exports (moved to ../tables/) */
@@ -16454,11 +16454,20 @@ export class EntityRenderer {
         sp._mid = mk(parts && parts.mid);
         sp._capR = mk(parts && parts.capR);
         sp._cells = [];
+        /* v2.3.6206: the bars cast no shadow (the owner, 2026-11-25: "Also
+           remove the shadows they cast on the game area").  They sit on the
+           display, not its _uiLayer, so the shadow casters walked them as
+           body (lightfx/casters.js walkDisplay skips this mark). */
+        sp._castsNoShadow = true;
         d.addChild(sp);
         return sp;
       };
       d._resMpBlocks = mkBlocks('mana');
       d._resEnBlocks = mkBlocks('stamina');
+      /* v2.3.6206: where each bar's pieces are drawn, on the stage, asked only
+         when a test calls it (mp-resbars reads the pixels between the blocks
+         from it; nothing measures it in a frame). */
+      if (typeof window !== 'undefined') window.__btResBarBoxes = () => resBarBoxes(d);
     }
     /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
        _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
