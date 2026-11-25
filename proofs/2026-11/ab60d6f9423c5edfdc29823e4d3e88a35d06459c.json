@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ab60d6f9423c5edfdc29823e4d3e88a35d06459c",
+  "tree": "9715da58042ac99ee9fbcc1c555a60e11703220d",
+  "committedAt": "2026-11-24T23:36:26-08:00",
+  "subject": "Merge pull request #2350 from hemibroscommunity-del/claude/plan-ct-14-shield",
+  "files": 8574,
+  "bytes": 965970448,
+  "listingSha256": "2ca5e8973b5a08d3b81f9759cfd05b14b32197a3e37c315bdad825cae7f8d221",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

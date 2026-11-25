@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c516d13d338fb778a58ac2e7d45fd253911a8496",
+  "tree": "0f036f38b568d7854251ed2bd36f0bf271a79b59",
+  "committedAt": "2026-11-24T23:36:35-08:00",
+  "subject": "Merge pull request #2348 from hemibroscommunity-del/claude/plan-qp-1-pages",
+  "files": 8589,
+  "bytes": 966757274,
+  "listingSha256": "f1dae2eef4c101db49a17e378e10039a8ab5c5a73929e2542bdd9a8f1eb9aa21",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
