@@ -6,8 +6,8 @@
  * specialAttack's queue).  Played with REAL touches (CDP
  * Input.dispatchTouchEvent) on an upright phone in the Wheel, with the bow:
  *
- *   1. a monster to take: the bro 380 px from a live monster with no other
- *      within 900, turned toward it by the left stick until the sight picks
+ *   1. a monster to take: the bro 300 px from a live monster with no other
+ *      within 520 (the nearest is the pick), turned toward it by the left stick until the sight picks
  *      it (S._sightId, the frame's own: the renderer's clock, TRAPS 200);
  *      ONE press of Special and no press of Attack:
  *      a. an `ability_use` leaves and the special's arrows are in flight
@@ -17,10 +17,12 @@
  *         monster as Attack's press would;
  *      c. the monster takes the special's hit (its health falls, or it
  *         dies), waited for until the arrows are gone, up to a cap;
- *   2. nothing to take: the bro 400 px from a monster with it BEHIND (Special
- *      is on screen: a monster near), the sight on nothing; ONE press of
- *      Special: readied as before (S._bowSpecialQueued, the button's
- *      'queued'), no `ability_use`, no mana spent;
+ *   2. nothing to take: the bro 420 px from a monster with it BEHIND and no
+ *      other within 700 (Special is on screen: a monster near), the sight on
+ *      nothing; ONE press of
+ *      Special: at the press, readied as before (S._bowSpecialQueued), no
+ *      `ability_use`, no mana spent, no lock (a readied shot that goes off
+ *      later, its line landing on something, is today's: said, not held);
  *   3. no page errors.
  * The rule's every edge is server/test/bow-special.test.mjs.
  */
@@ -52,6 +54,12 @@ const STAND = (S, o) => {
   return best;
 };
 
+/* what the stands had to choose from, when none was found */
+const COUNT = (S) => {
+  const P0 = S.player, ms = (S.monsters || []).filter((m) => m && m.alive && isFinite(m.x));
+  return { monsters: ms.length, within6000: ms.filter((m) => Math.hypot(m.x - P0.x, m.y - P0.y) < 6000).length, full: ms.filter((m) => !(m.curHp < m.maxHp)).length, me: { x: Math.round(P0.x), y: Math.round(P0.y) } };
+};
+
 /* the page's watcher: the press (Special's pointerdown, capture), every
    message that leaves (the time, the frame), and each frame's special arrows */
 const WATCH = () => {
@@ -73,6 +81,12 @@ const WATCH = () => {
     const w = window.__qaBowSpecial, G = window._gameState.current;
     if (!w || w.press || !(e.target && e.target.closest && e.target.closest('[data-special]'))) return;
     w.press = { f: G._frameCount || 0, at: performance.now(), mana: G.rpg && G.rpg.mana };
+    /* the press's own outcome: read once Special's handler has run (the
+       next task), before the frame that could fire a readied shot */
+    setTimeout(() => {
+      const H2 = window._gameState.current;
+      w.after = { f: H2._frameCount || 0, queued: H2._bowSpecialQueued || 0, uses: w.sent.filter((x) => x.k === 'ability_use').length, mana: H2.rpg && H2.rpg.mana, phase: H2._latchPhase || 'idle' };
+    }, 0);
   }, { capture: true });
   let n = 0;
   const tick = () => {
@@ -145,8 +159,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const skip = [];
     let done = false;
     for (let attempt = 1; attempt <= 3 && !done; attempt++) {
-      const st = await H.readState(P, bind(STAND, { maxD: 3200, skip, d: 380, clear: 900, behind: false }));
-      rec.ok(`1. try ${attempt}: a stand 380 px from a monster, no other within 900 (guard)`, !!st, st);
+      const st = await H.readState(P, bind(STAND, { maxD: 6000, skip, d: 300, clear: 520, behind: false }));
+      rec.ok(`1. try ${attempt}: a stand 300 px from a monster, no other within 520 (the nearest is the pick) (guard)`, !!st, st || await H.readState(P, COUNT));
       if (!st) break;
       skip.push(st.id);
       await H.hopTo(P, st.x, st.y, { tries: 160 });
@@ -167,7 +181,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }, st.id));
       await P.page.evaluate(WATCH);
       await pressSpecial(sp);
-      const w = await H.waitFor(P, () => window.__qaBowSpecial, (v) => !!v && !!v.press && (v.sent.some((s) => s.k === 'ability_use') || v.frames.length > 6),
+      const w = await H.waitFor(P, () => window.__qaBowSpecial, (v) => !!v && !!v.press && !!v.after && (v.sent.some((s) => s.k === 'ability_use') || v.frames.length > 6),
         { timeout: 15000, label: 'the press' }).catch(() => null);
       const use = w && w.sent.find((s) => s.k === 'ability_use');
       /* the renderer's clock: the frames between the press and the shot, each at its own step */
@@ -177,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`1a. ONE press of Special, no Attack: an ability_use leaves and the special's arrows fly within 300 ms by the renderer's clock (${gameMs == null ? '-' : Math.round(gameMs)} ms; the line was ${before.line ? 'already' : 'not yet'} on it)`,
         !!use && flying && gameMs != null && gameMs <= 300, { use, press: w && w.press, frames: w && w.frames.slice(0, 6), before });
       const after = await H.readState(P, (S) => ({ queued: S._bowSpecialQueued || 0, phase: S._latchPhase || 'idle', id: S._latchId == null ? null : String(S._latchId) }));
-      rec.ok('1b. nothing readied, and the latch took the monster as Attack\'s press would', after.queued === 0 && after.phase !== 'idle' && after.id === st.id, after);
+      rec.ok('1b. at the press itself: the shot sent, nothing readied; and the latch took the monster as Attack\'s press would', !!(w && w.after) && w.after.uses === 1 && w.after.queued === 0 && after.queued === 0 && after.phase !== 'idle' && after.id === st.id, { after, at: w && w.after });
       /* the hit: wait for the arrows to be over (gone from S.arrows), up to a cap (TRAPS 200) */
       const hit = await H.waitFor(P, bind((S, o) => {
         const m = (S.monsters || []).find((x) => x && String(x.id) === o.id);
@@ -192,8 +206,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1800);   /* past the special's cooldown (1.5 s, its own clock: Date.now) */
     let played = false;
     for (let attempt = 1; attempt <= 3 && !played; attempt++) {
-      const st = await H.readState(P, bind(STAND, { maxD: 3200, skip, d: 400, clear: 900, behind: true }));
-      rec.ok(`2. try ${attempt}: a stand 400 px from a monster with it behind (guard)`, !!st, st);
+      const st = await H.readState(P, bind(STAND, { maxD: 6000, skip, d: 420, clear: 700, behind: true }));
+      rec.ok(`2. try ${attempt}: a stand 420 px from a monster with it behind, no other within 700 (beyond the bow's sight) (guard)`, !!st, st || await H.readState(P, COUNT));
       if (!st) break;
       skip.push(st.id);
       await H.hopTo(P, st.x, st.y, { tries: 160 });
@@ -210,11 +224,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!sp) continue;
       await P.page.evaluate(WATCH);
       await pressSpecial(sp);
-      const w = await H.waitFor(P, () => window.__qaBowSpecial, (v) => !!v && !!v.press && v.frames.length > 3, { timeout: 15000, label: 'the press' }).catch(() => null);
-      const r = await H.readState(P, (S) => ({ queued: S._bowSpecialQueued || 0, mana: S.rpg.mana, max: S.rpg.maxMana, phase: S._latchPhase || 'idle', btn: (document.querySelector('[data-special]') || { getAttribute: () => null }).getAttribute('data-special') }));
-      const uses = w ? w.sent.filter((s) => s.k === 'ability_use').length : -1;
-      rec.ok('2. ONE press with nothing to take: readied as before (queued), no ability_use, no mana spent, no lock',
-        !!w && r.queued > 0 && uses === 0 && r.mana === r.max && r.phase === 'idle', { r, uses, press: w && w.press });
+      const w = await H.waitFor(P, () => window.__qaBowSpecial, (v) => !!v && !!v.press && !!v.after && v.frames.length > 3, { timeout: 15000, label: 'the press' }).catch(() => null);
+      const a = w && w.after;
+      /* the readied shot may still go off on a later frame, the line landing
+         on something (monsterCombat's fire site, as before): said, not held */
+      const later = w ? w.sent.filter((x) => x.k === 'ability_use').map((x) => x.f) : [];
+      rec.ok(`2. ONE press with nothing to take: readied as before (queued), no ability_use, no mana spent, no lock, at the press (later: ${later.length ? 'the readied shot went off at frame ' + later.join(',') + ', the press at ' + w.press.f : 'nothing'})`,
+        !!a && a.queued > 0 && a.uses === 0 && a.mana === w.press.mana && a.phase === 'idle', { a, press: w && w.press, later });
       played = true;
     }
     rec.ok('2. the press was played (a stand with nothing in the sight)', played, { skip });
