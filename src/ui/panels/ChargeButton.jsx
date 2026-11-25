@@ -7,7 +7,7 @@ import { chargeShown } from '@/game/controlVisibility.js';
 import { chargeLock } from '@/game/thumbSide.js';
 import { thumbAnchor } from './thumbSpot.js';
 import { ctlBottom, rightCluster } from './ShieldButton.jsx';
-import { Skin, WPN_PILL_ICONS, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx';
+import { Skin, SkinTag, WPN_PILL_ICONS, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx';
 
 /* ═══ v2.3.6549: CHARGE, THE SWORD'S DASH AS ITS OWN BUTTON (card CT part 16) ═══
  * The owner, 2026-11-24: "I want to change the melee behavior so that it
@@ -29,7 +29,8 @@ import { Skin, WPN_PILL_ICONS, pressOn, pressOff, useReadyFlash } from './contro
  * always has: nothing on the worker changes).  During the cooldown the button
  * is dimmed with the sweep, as Whirlwind is.  Its picture is the game's own
  * sword (the weapon pill's, warmed on the loading screen: controlsPreload.js)
- * with three speed lines drawn behind it (no new picture).
+ * with three bold speed lines drawn behind it (no new picture), and its word,
+ * "Charge", in the skin's tag (as Special's AIM / ON).
  * Its spot is its own on the right thumb's arc (thumbArc.js: the outer ring,
  * up and left of Block); off the arc it hangs where Whirlwind's slot would.
  * No key on a computer: the two buttons are a touch screen's only (latch.js
@@ -56,14 +57,17 @@ export function chargeMelee(S) {
   return !!(st && st.visible && st.equipped !== false);
 }
 
+/* the three speed lines, bold and outlined dark as the painted icons are, so
+   they read plainly at 44 points (the orchestrator, for the owner's "ease and
+   clarity": Charge must not read as a second Attack) */
+const LINES = [[12, 34, 38], [6, 50, 36], [12, 66, 38]];
 function SpeedLines(props) {
   const s = props.size;
+  const line = function (l, i, w, c) { return React.createElement('line', { key: i, x1: l[0], y1: l[1], x2: l[2], y2: l[1], stroke: c, strokeWidth: w, strokeLinecap: 'round' }); };
   return React.createElement('svg', { width: s, height: s, viewBox: '0 0 100 100', 'aria-hidden': 'true',
     style: { position: 'absolute', left: 0, top: 0, pointerEvents: 'none' } },
-  React.createElement('g', { stroke: props.grey ? '#8a9096' : '#f4d58a', strokeWidth: 6, strokeLinecap: 'round', opacity: 0.85 },
-    React.createElement('line', { x1: 14, y1: 40, x2: 34, y2: 40 }),
-    React.createElement('line', { x1: 8, y1: 54, x2: 32, y2: 54 }),
-    React.createElement('line', { x1: 14, y1: 68, x2: 34, y2: 68 })));
+  LINES.map(function (l, i) { return line(l, 'o' + i, 14, '#141a1e'); }),
+  LINES.map(function (l, i) { return line(l, 'f' + i, 8, props.grey ? '#9aa1a8' : '#ffd36a'); }));
 }
 
 export function ChargeButton(props) {
@@ -141,5 +145,7 @@ export function ChargeButton(props) {
     React.createElement('span', { className: 'bt-skin-art', 'data-icon': 'charge', style: { position: 'relative', display: 'block', width: size, height: size } },
       React.createElement(SpeedLines, { size: size, grey: grey }),
       React.createElement('img', { src: grey ? WPN_PILL_ICONS.melee.off : WPN_PILL_ICONS.melee.on, alt: '', draggable: false, width: art, height: art,
-        style: { position: 'absolute', left: '58%', top: '50%', width: art, height: art, transform: 'translate(-50%,-50%)', objectFit: 'contain', pointerEvents: 'none' } }))));
+        style: { position: 'absolute', left: '60%', top: '50%', width: art, height: art, transform: 'translate(-50%,-50%)', objectFit: 'contain', pointerEvents: 'none' } })),
+    /* its word, as Special's state words (SkinTag): the right side's buttons carry words there */
+    React.createElement(SkinTag, null, 'Charge')));
 }
