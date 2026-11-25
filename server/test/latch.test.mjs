@@ -520,7 +520,7 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
   /* the bow (675 in, 825 out); the view 400 px each side, 300 up and down */
   const page = (mons) => ({ player: { x: 0, y: 0 }, _renderFacing: 'east', monsters: mons, currentZone: 'wheel7', camera: { x: -400, y: -300 }, _viewW: 800, _viewH: 600 });
   let t = 50000;
-  const frame = (S, slot) => latchFrame(S, (t += 50), false, slot || 'ranged', 1);
+  const frame = (S, slot) => latchFrame(S, (t += 50), false, slot || 'ranged', 1, S._viewW, S._viewH);
   const run = (S, ms, slot) => { const end = t + ms; let r; while (t < end) r = frame(S, slot); return r; };
   check('7. the numbers: 400 ms; the switch on by default, off only at ?nearpick=0', AWAY_MS === 400 && nearPickOn('') === true && nearPickOn('?nearpick=0') === false && nearPickOn('?nearpick=1') === true);
   /* (e) locked out of view, one in view in range: moves after 400 ms */
@@ -578,7 +578,11 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
     N.camera = { x: -400, y: -100 }; N._viewH = 200;
     frame(N);
     check('7. the press: one in view (390 off) before a nearer one out of view (250 off, under the view)', latchAttackPress(N) === 'lock' && N._latchId === 'in', N._latchId);
-    check('7. sightView: the camera and the drawn size, as numbers', (() => { const v = sightView(S); return v && v.x === -400 && v.y === -300 && v.w === 800 && v.h === 600; })() && sightView({ camera: { x: 0, y: 0 }, _viewW: 10 }) === null && sightView({ camera: { x: 0, y: 0 }, _viewH: 10 }) === null && sightView({ camera: { x: NaN, y: 0 }, _viewW: 10, _viewH: 10 }) === null && sightView({ camera: { x: 0, y: NaN }, _viewW: 10, _viewH: 10 }) === null && sightView({ _viewW: 10, _viewH: 10 }) === null && sightView(null) === null);
+    const C = { camera: { x: 0, y: 0 } };
+    check('7. sightView: the camera and the size handed in, as numbers', (() => { const v = sightView(S, 800, 600); return v && v.x === -400 && v.y === -300 && v.w === 800 && v.h === 600; })() && sightView(C, 10) === null && sightView(C, undefined, 10) === null && sightView({ camera: { x: NaN, y: 0 } }, 10, 10) === null && sightView({ camera: { x: 0, y: NaN } }, 10, 10) === null && sightView({}, 10, 10) === null && sightView(null, 10, 10) === null);
+    const Y = page([mon('upper', 200, 150), mon('in', 390, 0)]); Y.camera = { x: -400, y: -100 }; Y._viewH = 200;
+    latchFrame(Y, (t += 50), false, 'ranged', 1);
+    check('7. no size handed to the frame: everything in view (the nearest, out of the drawn view, locked)', latchAttackPress(Y) === 'lock' && Y._latchId === 'upper', Y._latchId);
   }
   /* (g) `?nearpick=0`: the old pick and no move */
   {
@@ -599,7 +603,7 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
     T.camera = { x: -500, y: -500 }; T._viewW = 1000; T._viewH = 1000;
     frame(T, 'melee'); latchTo(T, 'active', 'far'); run(T, 1000, 'melee');
     check('7. a sword: one in view at exactly its 440 is in range', T._latchId === 'edge', T._latchId);
-    check('7. sightView: a view of no height or no width is none', sightView({ camera: { x: 0, y: 0 }, _viewW: 10, _viewH: 0 }) === null && sightView({ camera: { x: 0, y: 0 }, _viewW: 0, _viewH: 10 }) === null);
+    check('7. sightView: a view of no height or no width is none', sightView({ camera: { x: 0, y: 0 } }, 10, 0) === null && sightView({ camera: { x: 0, y: 0 } }, 0, 10) === null);
   }
   /* latchAway, the rule alone */
   {

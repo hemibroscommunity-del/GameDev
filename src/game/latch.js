@@ -275,15 +275,21 @@ const _T = { alive: false, d: NaN };
 const _V = { x: 0, y: 0, w: 0, h: 0 };
 const _N = { id: null, d: 0 };
 
+/* v2.3.6556: the size of the view the frame was handed (latchFrame's vw,
+   vh), for the press: the frame runs before any touch is read again */
+let _vw = 0, _vh = 0;
+
 /** v2.3.6556: the world's rectangle the page draws, as numbers: the
- *  camera's top-left (S.camera) and the size the renderer draws (S._viewW,
- *  S._viewH: written by the loop and the renderer, never measured here;
- *  docs/specs/layout-reads.md).  null when there is none (everything then
- *  counts as in view).  One reused object. */
-export function sightView(S) {
+ *  camera's top-left (S.camera) and the size the renderer draws (`vw`, `vh`,
+ *  world px: HANDED IN by the frame's one caller, BroTown's step `input`,
+ *  from the renderer's own numbers; nothing here reads or measures the view:
+ *  docs/specs/layout-reads.md, and TRAPS 237's census of the page rules
+ *  that read its size).  null when there is none (everything then counts as
+ *  in view).  One reused object. */
+export function sightView(S, vw, vh) {
   const C = S && S.camera;
-  if (!C || !isFinite(C.x) || !isFinite(C.y) || !(S._viewW > 0) || !(S._viewH > 0)) return null;
-  _V.x = C.x; _V.y = C.y; _V.w = S._viewW; _V.h = S._viewH;
+  if (!C || !isFinite(C.x) || !isFinite(C.y) || !(vw > 0) || !(vh > 0)) return null;
+  _V.x = C.x; _V.y = C.y; _V.w = vw; _V.h = vh;
   return _V;
 }
 
@@ -300,7 +306,7 @@ function monUp(m) { return !!m && !!m.alive && !(typeof m.curHp === 'number' && 
 export function sightNow(S, range) {
   if (!S || !S.player) return null;
   const near = nearPickOn();   /* v2.3.6556: the nearest threat first, in view first; `?nearpick=0` the old pick */
-  return sightPick(S.player, drawnFace(S), S.monsters, range || _range, S._sightId == null ? null : S._sightId, near ? sightView(S) : null, !near);
+  return sightPick(S.player, drawnFace(S), S.monsters, range || _range, S._sightId == null ? null : S._sightId, near ? sightView(S, _vw, _vh) : null, !near);
 }
 
 /** Is the latch's attack held now?  Active, and nothing that holds an attack
@@ -314,13 +320,15 @@ export function latchHolds(S) {
 
 /** The step `input`'s read for the two buttons, once a frame.  `dead` your
  *  death this frame; `slot` the active weapon's (S.rpg.activeSlot), `mult`
- *  its range multiplier.  Sights (sight.js sightStep), checks the lock
+ *  its range multiplier; v2.3.6556: `vw`, `vh` the view's size in world px
+ *  (the renderer's; sightView).  Sights (sight.js sightStep), checks the lock
  *  (latchCheck: its ends and the move) and returns what the held attack
  *  should be: true (attacking), false (let go: an end, or held off), or null
  *  (nothing to say: the latch is idle). */
-export function latchFrame(S, now, dead, slot, mult) {
+export function latchFrame(S, now, dead, slot, mult, vw, vh) {
   if (!S || typeof S !== 'object') return null;
   _range = sightRange(slot, mult);
+  _vw = vw; _vh = vh;   /* v2.3.6556: the view's size, world px (sightView) */
   const was = latchLocked(S);
   const zone = S.currentZone;
   if (_zoneWas !== undefined && zone !== _zoneWas) { latchClear(S, 'zone'); sightClear(S); }
@@ -356,7 +364,7 @@ export function latchFrame(S, now, dead, slot, mult) {
   if (!end && nearPickOn()) {
     /* v2.3.6556: the lock out of view, the nearest in view in range (only
        scanned while the lock is out of view) */
-    const view = sightView(S), P = S.player;
+    const view = sightView(S, _vw, _vh), P = S.player;
     const away = !!view && !inSightView(view, m.x, m.y);
     let near = null;
     if (away) for (const o of Array.isArray(S.monsters) ? S.monsters : []) {
