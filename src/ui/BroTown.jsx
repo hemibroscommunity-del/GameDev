@@ -455,6 +455,7 @@ import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, S
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
 import { rideMult, rideCheck, isRiding, rideFeel, rideStepped, rideLineDue } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js); v2.3.5440: its push start and roll-off */
+import { followCamera } from '@/game/cameraFollow.js';   /* v2.3.6660: the view follows your step, not your speed (card GR part 2) */
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
 import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): the step's cap is the lane's */
 /* the longest step one frame may move the world: three of the lane's frames
@@ -7877,37 +7878,8 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Camera centers player in game area — with directional lead */
-        var _camLead = 30; /* pixels ahead in movement direction */
-        var _camLeadX = Math.abs(dx) > 0.1 ? dx * _camLead : 0;
-        var _camLeadY = Math.abs(dy) > 0.1 ? dy * _camLead : 0;
-        /* Camera punch — directional kick on big hits */
-        var _camPunchX = 0,
-          _camPunchY = 0;
-        if (S._camPunch) {
-          var cpAge = (Date.now() - S._camPunch.ts) / 300;
-          if (cpAge < 1) {
-            var cpDecay = 1 - cpAge * cpAge; /* ease-out */
-            _camPunchX = S._camPunch.dx * cpDecay;
-            _camPunchY = S._camPunch.dy * cpDecay;
-          } else {
-            S._camPunch = null;
-          }
-        }
-        var camTargetX = P.x - W / 2 + _camLeadX + _camPunchX;
-        var camTargetY = P.y - H / 2 + _camLeadY + _camPunchY;
-        /* Adaptive lerp — snappier during fast movement / combat */
-        var _camSpeed = S.isSwinging || S._dodgeRoll ? 0.18 : Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 ? 0.14 : 0.08;
-        /* v2.3.1769: the camera chases with an exponential approach, so like
-           the ice decay its frame-rate term is a POWER — closing 8% of the gap
-           once per frame closes 1-(1-0.08)^dt over dt frames.  Left raw, the
-           camera converged 2.4x faster on a 144Hz screen (glued to the player)
-           and visibly lagged behind on a phone mid-dip.  Camera feel is a
-           large part of why the owner said desktop "was COMPLETELY different",
-           and it is the same one-line shape as every other fix in this PR. */
-        var _camK = 1 - Math.pow(1 - _camSpeed, S._dtScale || 1);
-        S.camera.x += (camTargetX - S.camera.x) * _camK;
-        S.camera.y += (camTargetY - S.camera.y) * _camK;
+        /* v2.3.6660: the camera moves by your step, then closes what gap is left, so the view follows you, not your speed: no slide forward on a push, back on a roll-off; the punch, the chase's rates and their frame-rate power moved whole (game/cameraFollow.js; `?camfollow=0` the old lead and chase; card GR part 2) */
+        followCamera(S, P.x, P.y, W, H, dx, dy, Date.now(), !sw('camfollow'));
         /* v2.3.819: clamp the camera to the map so the viewport never shows
            the out-of-bounds void.  Player movement is already bounded to the
            same ZONE_W/ZONE_H (the P.x/P.y clamp above), so the player keeps

@@ -75,6 +75,7 @@ const FORMS = {
   'bropages': '0',
   'burnfire': '0',
   'burstnumbers': '0',
+  'camfollow': '0',
   'camsnap': '0',
   'canvascheck': '0',
   'capehood': '0',
