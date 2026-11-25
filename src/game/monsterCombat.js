@@ -67,7 +67,7 @@ import { staffFeelCycle, staffFireWaiting, staffFireTake, staffShotLife, STAFF_F
 import { bowFeelGapMs, bowFeelWire, bowFeelLoosed } from '@/game/bowFeel.js'; /* v2.3.4802: the bow's draw -- a drawn bow looses at once for its share, its relay carries the draw (`dr`), its arrow leaves on the loose */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
-import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
+import { bodyFacesLock } from '@/game/targeting.js'; /* v2.3.2251: engagedStance; v2.3.6551: bodyFacesLock, which asks it, and mode 5's latched lock faces too */
 import { brewMulNow, pvpClaim } from '@/game/fightFood.js'; /* v2.3.3133: the brew, read once and claimed right in a duel */
 import { pvpBalanceOn, pvpSwingClaimOk, pvpLockInReach, PVP_SWING } from '@/game/pvpSwing.js'; /* v2.3.3260: one sword claim a swing */
 import { fightersInSwing, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: every swing lands on the sparring clones in its arc, locked or not; v2.3.3268: and on the players you chose to attack */
@@ -1427,7 +1427,7 @@ export function updateMonsterCombat(S, deps) {
              perimeter while you were walking past.  engagedStance is the
              intent test; the AIM POINT below still comes from the bare lock,
              because that is the target either way. */
-          if (_lkRef && (S.autoAttack || (_lkMon && engagedStance(S)))) {
+          if (_lkRef && (S.autoAttack || (_lkMon && bodyFacesLock(S)))) {
             var _lkPt = lockAimPoint(_lkRef);
             if (_lkPt) {
               S._aimAngle = Math.atan2(_lkPt.y - P.y, _lkPt.x - P.x);

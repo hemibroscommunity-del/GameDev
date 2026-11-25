@@ -4,7 +4,9 @@ import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
 import { RideButton } from './RideButton.jsx'; /* v2.3.3776: the skateboard */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
+import { ChargeButton } from './ChargeButton.jsx'; /* v2.3.6549: card CT part 16 */
 import { Skin, RDISC_ICONS, AimReticle, WPN_PILL_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control; v2.3.6546: the plain sword, the two buttons' Attack */
+import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
 import { turnRingRadius, rimSprintOn, rimSprinting } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call); v2.3.6545: the rim's sprint lights it */
 
@@ -181,7 +183,8 @@ export function TouchControls(props) {
     lWrapRef = props.lWrapRef,   /* v2.3.2246: the left disc's corner box — the visibility gate */
     rWrapRef = props.rWrapRef,   /* v2.3.2246: the right button's corner box — ditto */
     isLandscape = props.isLandscape;
-  var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  var arcA = thumbAnchor('attack', isLandscape);   /* v2.3.6549: Attack where the right thumb rests, in the two buttons (game/thumbArc.js) */
+  var discW = arcA ? arcA.size : isLandscape ? RBTN.wLand : RBTN.w;
   /* v2.3.3018: the picture on the attack disc -- about two thirds of the face
      inside the ring, the mockup's sword. */
   var rIcon = Math.round(discW * 0.6);   /* v2.3.3721: 58/64 on the 96/108 disc; 50/56 on the 84/94 one, the same share */
@@ -198,7 +201,7 @@ export function TouchControls(props) {
   }), /* v2.3.3006: the sprint button, right of the movement disc (SprintButton.jsx).
      Rendered here, with the stick it belongs to, after the zones it sits on:
      it swallows its own touches, so the walk and the roll beneath never see
-     a tap on it. */ React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3776: the skateboard's button, in Shield Bash's place while no fight is near (RideButton.jsx) */ React.createElement(RideButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3260: quick eat, over the movement disc (QuickEatButton.jsx) -- it swallows its own touches, so a bite never starts a walk */ React.createElement(QuickEatButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3017: the jump button, beneath the attack disc (JumpButton.jsx) -- on the R zone, whose touches it swallows, so a jump never swings */ React.createElement(JumpButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
+     a tap on it. */ React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3776: the skateboard's button, in Shield Bash's place while no fight is near (RideButton.jsx) */ React.createElement(RideButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3260: quick eat, over the movement disc (QuickEatButton.jsx) -- it swallows its own touches, so a bite never starts a walk */ React.createElement(QuickEatButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3017: the jump button, beneath the attack disc (JumpButton.jsx) -- on the R zone, whose touches it swallows, so a jump never swings */ React.createElement(JumpButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.6549: Charge, the sword's dash, in the two buttons (ChargeButton.jsx; card CT part 16) */ React.createElement(ChargeButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
     ref: lWrapRef,
     'data-disc': 'L',
@@ -363,8 +366,8 @@ export function TouchControls(props) {
          a tap on empty screen should do. */
       opacity: 0,
       position: 'fixed',
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + discBottom(isLandscape) + 'px)', /* v2.3.1307: disc rides above the open sheet; v2.3.3740: lower and righter upright (ShieldButton RBTN) */
-      right: discRight(isLandscape),
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (arcA ? arcA.bottomPx : discBottom(isLandscape)) + 'px)', /* v2.3.1307: disc rides above the open sheet; v2.3.3740: lower and righter upright (ShieldButton RBTN); v2.3.6549: the arc's */
+      right: arcA ? arcA.right : discRight(isLandscape),
       zIndex: 30,
       /* v2.3.2242: the container is still pass-through; the DISC inside it
          is the touch target (see rJoyRef below). */

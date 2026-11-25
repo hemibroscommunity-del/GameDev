@@ -30,7 +30,8 @@
  */
 
 import { sightPhase } from './sight.js';   /* v2.3.6543: the two buttons' sight (card CT PR 4) */
-import { latchLocked, latchReach } from './latch.js';   /* v2.3.6543: ...and their latch, and its range */
+import { latchLocked } from './latch.js';   /* v2.3.6543: ...and their latch */
+import { specialsUp, blockUp, chargeUp, reachSpecialsOn, threatBlockOn, chargeBtnOn } from './thumbSide.js';   /* v2.3.6549: the reach, the threat and Charge (card CT part 16) */
 
 /* Object.create(null), not {}: the keys are 'L' / 'R' here, but this is the
    house rule for any map that is looked up by a caller-supplied string
@@ -109,18 +110,65 @@ export function combatButtonsShown(S, twoOn, fight) {
   return typeof fight === 'function' ? !!fight(S) : !!fight;
 }
 
+/* ═══ v2.3.6549: EACH BUTTON ITS OWN MOMENT (card CT part 16) ═══
+ * The owner, 2026-11-24: "I want a clean attack and jump button that's it.
+ * The special attacks buttons should only appear when a monster is within
+ * attack range."  So in the two buttons the one resolver above splits by
+ * button, each asking thumbSide.js's one phase (`S._thumbPhase`):
+ *   specialsShown  Special, Whirlwind, Shield Bash: a monster in REACH (where
+ *                  an attack would connect); `?reachspecials=0` the sighting,
+ *                  as before (combatButtonsShown);
+ *   blockShown     Block: a THREAT (sighted, locked, in reach, or a monster's
+ *                  hit in the last 3 s, seen or not); `?threatblock=0` the
+ *                  sighting, as before;
+ *   chargeShown    Charge: a melee weapon, a monster sighted or locked and
+ *                  none in reach; `?chargebtn=0` never.
+ * A fight between players still shows Block and the specials (`fight`, as
+ * above: not this card's to change); it never shows Charge (the dash at a
+ * player is the lock's, mode 4's).  Any other mode: true for Block and the
+ * specials, false for Charge (no such button there).  The switches are read
+ * when not handed (`on`), as the page's.  Node tests them
+ * (server/test/sight.test.mjs 8, thumb-side.test.mjs). */
+function fightAsk(fight, S) { return typeof fight === 'function' ? !!fight(S) : !!fight; }
+
+export function specialsShown(S, twoOn, fight, on) {
+  if (!twoOn) return true;
+  if ((on === undefined ? reachSpecialsOn() : on) === false) return combatButtonsShown(S, twoOn, fight);
+  if (!S || typeof S !== 'object') return false;
+  return specialsUp(S) || fightAsk(fight, S);
+}
+
+export function blockShown(S, twoOn, fight, on) {
+  if (!twoOn) return true;
+  if ((on === undefined ? threatBlockOn() : on) === false) return combatButtonsShown(S, twoOn, fight);
+  if (!S || typeof S !== 'object') return false;
+  return blockUp(S) || fightAsk(fight, S);
+}
+
+export function chargeShown(S, twoOn, melee, on) {
+  if (!twoOn || (on === undefined ? chargeBtnOn() : on) === false) return false;
+  return chargeUp(S, melee);
+}
+
 /* v2.3.6543: ...and their "a monster near".  Block's and Special's own rules
  * (shieldToggle.js shieldButtonLive, SpecialButton.jsx specialButtonLive) come
  * up for a monster within a perimeter, today's 220 px: in the two buttons a
- * monster in sight is up to the sight's range away (the sword's 440 held out
- * to 550, a bow's and a staff's longer), and a 220 px rule would keep them
- * down at a sighting (mp-twobuttons 3b's first run: Special absent at 435
- * px, sighted).  So in the two buttons the perimeter they are handed is the
- * sight's range (latch.js latchReach, never less than `base`); anywhere else
- * `base` untouched.  The resolver above still decides: a monster that near
- * but behind you (not sighted) shows nothing. */
+ * monster in sight is up to the sight's range away, and a 220 px rule would
+ * keep them down at a sighting (mp-twobuttons 3b's first run: Special absent
+ * at 435 px, sighted).
+ * v2.3.6549 (card CT part 16): in the two buttons the perimeter is NO LIMIT
+ * (Infinity): the resolvers above alone decide when, and the own rules keep
+ * only what they say of the button itself (a shield owned, a weapon, no
+ * swim, the shield's state).  THE FLIPPING (mp-twobuttons 3c/3d sideways,
+ * twice: Block and Special coming and going in the page while their probes
+ * said shown and the sight's phase held) was this perimeter: it was the
+ * sight's OUT line (550 for a sword) measured again by each button, every
+ * 200 ms render, centre to centre with no hold and no in line -- a monster
+ * wandering across 550 between two renders took the buttons away and gave
+ * them back while the sight (held 400 ms, its own in and out) held still.
+ * One rule now, held once: no second line for a button to cross.
+ * Anywhere else `base` untouched. */
 export function combatReach(twoOn, base) {
   if (!twoOn) return base;
-  const r = latchReach();
-  return typeof r === 'number' && r > base ? r : base;
+  return Infinity;
 }

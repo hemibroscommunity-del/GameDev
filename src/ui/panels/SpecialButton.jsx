@@ -5,8 +5,9 @@ import { mcSwipes, mcArmToggle, mcArmed } from '@/game/manualCombat.js'; /* v2.3
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
 import { fightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight, for every weapon; v2.3.3268: and one with a real player in No man's land */
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
-import { combatButtonsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, the specials come with the sight (card CT PR 4) */
+import { specialsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6549: in reach, not at the sighting (card CT part 16) */   /* v2.3.6543: in the two buttons, the specials come with the sight (card CT PR 4) */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
+import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
 import { Skin, AbilityFace, SpecialFace, specialArtKind, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3336: the owner's special for each weapon */
 
@@ -211,15 +212,16 @@ export function SpecialButton(props) {
         /* v2.3.2543: the held-special state, which replaced a popup.  A
            scenario can read a flag; it cannot read a ring. */
         queued: specialQueued(s2),
-        shown: combatButtonsShown(s2, twoButtonsLive(), fightOn) };   /* v2.3.6543 */
+        shown: specialsShown(s2, twoButtonsLive(), fightOn), phase: s2._thumbPhase || 'calm' };   /* v2.3.6543; v2.3.6549: the specials' own moment, and the right side's phase (thumbSide.js) */
     };
   }
-  if (!specialButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) || !combatButtonsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
+  if (!specialButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) || !specialsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
 
   /* v2.3.2574: the shared RIGHT cluster decides the size, the right edge and
      the slot height -- one rule for this button and Whirlwind beside it. */
   var col = rightCluster(isLandscape);
-  var size = col.size;
+  var arc = thumbAnchor('special', isLandscape);   /* v2.3.6549: on the thumb's arc in the two buttons */
+  var size = arc ? arc.size : col.size;
 
   var cdLeft = Math.max(0, SPECIAL_CD_MS - (Date.now() - (S._lastSwipe || 0)));
   var cdFrac = cdLeft / SPECIAL_CD_MS;
@@ -297,8 +299,8 @@ export function SpecialButton(props) {
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
-      right: col.rightPx(RCTL_SLOT.special),
-      bottom: ctlBottom(col.bottomPx(RCTL_SLOT.special)),
+      right: arc ? arc.right : col.rightPx(RCTL_SLOT.special),
+      bottom: ctlBottom(arc ? arc.bottomPx : col.bottomPx(RCTL_SLOT.special)),
       width: size, height: size, borderRadius: '50%',
       /* Above [data-joyzone="R"] (z6) and the attack disc's corner box (z30),
          the same rung ShieldButton and AbilityButtons sit on. */
