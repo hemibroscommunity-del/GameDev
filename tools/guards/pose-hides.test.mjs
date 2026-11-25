@@ -14,7 +14,7 @@
  * In tools/guards, not server/test: a new file there deploys the worker on
  * merge (TRAPS §277), and this is the page's rule.
  */
-import { readFileSync } from 'node:fs';
+import { findIn } from './lib/filesOf.mjs';
 import { exBodyPose, ownToolPose, poseHidesHeld, hideHeld, HELD_PIECES, TOOL_POSES } from '../../src/game/poseHides.js';
 
 let passed = 0, failed = 0;
@@ -83,14 +83,14 @@ function piece(vis) {
   check('4g no display', hideHeld(null) === 0 && hideHeld(undefined) === 0);
 }
 
-/* ── 5. both render paths ask the rule ── */
+/* ── 5. both render paths ask the rule (read by system: tools/guards/lib/filesOf.mjs) ── */
 {
-  const src = readFileSync(new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
-  check('5a the renderer imports the rule', /import \{[^}]*\bexBodyPose\b[^}]*\bhideHeld\b[^}]*\} from '..\/..\/game\/poseHides\.js'/.test(src));
-  check('5b my bro asks it', /const _fishingPose = poseHidesHeld\(ownToolPose\(/.test(src) && /if \(_fishingPose \|\| _swordSwing \|\| _bowShot\) hideHeld\(display\)/.test(src));
-  check('5c a peer asks it', /const _oHeldOff = poseHidesHeld\(exBodyPose\(other\._ex\)\)/.test(src) && /if \(_oHeldOff\) hideHeld\(display\)/.test(src));
-  check('5d the peer\'s body pose is the rule\'s mapping', /const _rexBodyPose = exBodyPose\(_rex\)/.test(src));
-  check('5e no second copy of the mapping', !/_rex === 'mine' \? 'mine'/.test(src));
+  const has = (rx) => findIn('render', rx).length > 0;
+  check('5a the renderer imports the rule', has(/import \{[^}]*\bexBodyPose\b[^}]*\bhideHeld\b[^}]*\} from '..\/..\/game\/poseHides\.js'/));
+  check('5b my bro asks it', has(/const _fishingPose = poseHidesHeld\(ownToolPose\(/) && has(/if \(_fishingPose \|\| _swordSwing \|\| _bowShot\) hideHeld\(display\)/));
+  check('5c a peer asks it', has(/const _oHeldOff = poseHidesHeld\(exBodyPose\(other\._ex\)\)/) && has(/if \(_oHeldOff\) hideHeld\(display\)/));
+  check('5d the peer\'s body pose is the rule\'s mapping', has(/const _rexBodyPose = exBodyPose\(_rex\)/));
+  check('5e no second copy of the mapping', !has(/_rex === 'mine' \? 'mine'/));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

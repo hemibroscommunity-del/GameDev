@@ -29,6 +29,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 export const lane = 'full';
 
+const PHONE = { width: 390, height: 844 };
 const STAND = { oreVein: [0, -70], fishSpot: [52, -43] };
 const SKILL = { oreVein: 'mining', fishSpot: 'fishing' };
 const EX = { oreVein: 'mine', fishSpot: 'fish' };
@@ -83,11 +84,11 @@ async function tapNode(P, nid) {
 /* On B's page: A's drawn weapon and harvest, one row a frame, until stopped */
 const startRecord = (B, aid) => B.page.evaluate((id) => {
   const w = window;
-  w.__fpRows = []; w.__fpOn = true;
+  window.__fpRows = []; window.__fpOn = true;
   const step = () => {
-    if (!w.__fpOn) return;
+    if (!window.__fpOn) return;
     const d = w.__btPeersDrawn && w.__btPeersDrawn(id);
-    if (d) w.__fpRows.push({ ex: d.ex === undefined ? 'no-probe' : d.ex, shown: d.weaponShown });
+    if (d) window.__fpRows.push({ ex: d.ex === undefined ? 'no-probe' : d.ex, shown: d.weaponShown });
     requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -98,7 +99,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const TAG = process.env.QA_SHOT_TAG || 'after';
-  const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Angler', nameB: 'Watcher', world: 'wheel' });
+  /* a phone each, upright, at the phone's 1.5 (this box draws ~1 frame a second at 3) */
+  const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Angler', nameB: 'Watcher', world: 'wheel', touch: true, viewport: PHONE, dpr: 1.5 });
   const errors = [];
   for (const P of [A, B]) P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const aid = await H.readState(A, (S) => S.myId);

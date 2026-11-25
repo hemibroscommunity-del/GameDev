@@ -306,7 +306,7 @@ export const SYSTEMS = Object.freeze({
   },
   render: {
     what: 'drawing the world: the Pixi renderer, the entity and effects renderers, light, fx',
-    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */],
+    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'poseHides') /* v2.3.6208: what a body's pose hides (card EN) */],
     rest: [re('^src/rendering/')],
     words: ['render', 'draw', 'fx', 'pixi', 'batch', 'light', 'camera'],
     traps: ['render'],

@@ -5,31 +5,16 @@ state: working
 
 ## Done
 
-- 6206 (`docs/plan/cards/EN-bars.md` PR 1): the mana and energy bars whole
-  again, and no shadow of theirs. The frame's cap, middle and cap were given
-  their pictures once, when the bar was made, and a bar made before the
-  sheet was cut kept the blank for good (Texture.EMPTY): five loose blocks.
-  Now the draw hands them their pictures as it does the blocks
-  (`entity-ui.js _drawResourceBar`). The bars sat on the display, not its
-  `_uiLayer`, so the sun's shadow walked them as body: marked
-  `_castsNoShadow` and skipped (`lightfx/casters.js walkDisplay`).
-  `mp-resbars` (new): red on main's code at res 1.5 and 3 (20 of 29: no
-  frame pictures, 235 to 760 gutter pixels the ground's, 12 or 18 shadow
-  pieces against 2), green on this branch at res 1, 1.5, 2 and 3 in both
-  sprite programs, rows of 5 and 8, on the test box. Precheck passes.
-  Earlier PRs of card EN (6200 to 6205, 6207): merged.
-
-- 6208 (`docs/plan/cards/EN-bars.md` PR 2, on `claude/plan-en-fishsword`,
-  stacked on #2358): another player's sword put away while they fish or
-  mine.  One rule, `src/game/poseHides.js`, says what a pose that holds its
-  own tool hides (the weapon, the held shield, the hand's cap, the arm's
-  clones); my own bro's draw and a peer's both ask it (entityRenderer).  A
-  peer's weapon was forced visible for every living peer; now it is hidden
-  the frame their fish or mine pose starts and shown the frame it ends,
-  written only on the change (TRAPS §218).  No weapon is carried on the
-  back; the slung shield was already right on both paths.  Suite
-  `tools/guards/pose-hides.test.mjs` (kills 25 of 25 mutants); phone test
-  `mp-fishpeer`.
+- 6206 (#2358, card PR 1): the mana and energy bars whole again, no
+  shadow of theirs (`entity-ui.js _drawResourceBar`, `casters.js`);
+  `mp-resbars` red on main, green on the branch at res 1 to 3, on the test
+  box. Earlier PRs of card EN (6200 to 6205, 6207): merged.
+- 6208 (card PR 2, `claude/plan-en-fishsword`, stacked on #2358): another
+  player's weapon put away while they fish or mine. One rule,
+  `src/game/poseHides.js`, asked by my bro's draw and a peer's; hidden the
+  frame the pose starts, shown the frame it ends, written only on the
+  change (TRAPS §218). Suite `pose-hides` (25 of 25 mutants); `mp-fishpeer`
+  red on PR 1's code, green on this; ghost-audit sample (fish, mine) green.
 
 ## Next
 
