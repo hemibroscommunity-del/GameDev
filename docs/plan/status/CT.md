@@ -1,6 +1,6 @@
 card: CT
 branch: claude/plan-ct-10-buttons (part 16: the right side's buttons, stacked on claude/plan-ct-9-hold)
-prs: part 16 (6549, draft on claude/plan-ct-9-hold), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
+prs: #2342 (6549, draft on main), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
 state: working
 
 ## Done
@@ -13,7 +13,9 @@ state: working
 - Part 15 (6548): tap and hold (latch idle/active/auto, `?holdauto=0`).
 
 ## Next
-- Part 16 (6549): the PR's checks; the owner plays the arc on the phone.
+- #2342 (6549): the helper's clean mp-twobuttons run; the owner plays the arc.
+- Sitting 63's (2): a tap's lock does not turn the body between swings
+  (targeting.js engagedStance, src 'auto'): left for a next part.
 - Part 17 (6550, beside: claude/plan-ct-11-context): node and townsfolk
   buttons; whichever reports second merges the other once.
 

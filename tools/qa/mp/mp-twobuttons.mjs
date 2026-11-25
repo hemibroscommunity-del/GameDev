@@ -192,6 +192,10 @@ const PICK = (S, o) => {
   for (const m of live) {
     const d = Math.hypot(m.x - P0.x, m.y - P0.y);
     if (d > o.maxD) continue;
+    /* v2.3.6549 (the gatekeeper's sitting 63): never one an earlier pass hit (upright's 2b, 2c and 7d leave it at
+       1 hp, so sideways it died at the first tap and ten steps went red), and only one at full health */
+    if (Array.isArray(o.skip) && o.skip.indexOf(String(m.id)) >= 0) continue;
+    if (typeof m.curHp === 'number' && typeof m.maxHp === 'number' && m.curHp < m.maxHp) continue;
     let nn = Infinity;
     for (const q of live) if (q !== m) nn = Math.min(nn, Math.hypot(q.x - m.x, q.y - m.y));
     for (const face of Object.keys(FACE)) {
@@ -335,6 +339,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const players = [];
   const errs = [];
   try {
+    const used = [];   /* v2.3.6549: the monsters a pass has picked (PICK's skip) */
     for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
       const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5&wheelwhole' });   /* v2.3.6542: wheelwhole: every Wheel monster in the arrival's list (server/src/wheelnear.js; mp-blockcost's), for part 2's real monster */
       players.push(P);
@@ -518,7 +523,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          out, 480 px from any other: the sight takes a NEW monster at 440, its
          550 holds only the one already in sight; the fourth run: 506 px the most
          room near BroTown, 650 asked too much) */
-      const mon0 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
+      const mon0 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000, skip: used }));
+      if (mon0) used.push(mon0.id);
       rec.ok(`2. ${label}: a real monster of the Wheel with no other near its path (${mon0 && mon0.room} px; guard)`, !!mon0 && mon0.room >= 480, mon0);
       if (!mon0 || mon0.room < 480) continue;
       await H.hopTo(P, Math.round(mon0.x - 170 * Math.cos(mon0.a)), Math.round(mon0.y - 170 * Math.sin(mon0.a)), { tries: 90 });
@@ -874,7 +880,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          nothing; the first run hid the object, which a tick replaces) until
          the free arrow leaves, then shows it again: the arrow,
          loosed at nothing, meets it, and the worker takes the claim */
-      const mon7 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
+      const mon7 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000, skip: used }));
+      if (mon7) used.push(mon7.id);
       let hit7 = null;
       if (mon7) {
         await H.hopTo(P, Math.round(mon7.x - 150 * Math.cos(mon7.a)), Math.round(mon7.y - 150 * Math.sin(mon7.a)), { p7Tries: 60 });
@@ -951,7 +958,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          480 px from any other live monster (a NEW sighting is at 440; the
          550 holds only the one in sight); then the body turned to face it from that side, so the
          keeper's line (the drawn facing's) is that side */
-      const mon3 = await H.readState(P, bind(PICK, { dMin: 400, dMax: 730, maxD: 4000 }));
+      const mon3 = await H.readState(P, bind(PICK, { dMin: 400, dMax: 730, maxD: 4000, skip: used }));
+      if (mon3) used.push(mon3.id);
       rec.ok(`3. ${label}: a live monster with no other near the path (${mon3 && mon3.room} px, from the ${mon3 && mon3.face}; guard)`, !!mon3 && mon3.room >= 480, mon3);
       if (!mon3 || mon3.room < 480) continue;
       await H.hopTo(P, Math.round(mon3.x - 700 * Math.cos(mon3.a)), Math.round(mon3.y - 700 * Math.sin(mon3.a)), { tries: 260 });
