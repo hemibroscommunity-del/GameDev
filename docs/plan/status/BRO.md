@@ -1,6 +1,6 @@
 card: BRO
 branch: claude/plan-bro-1-pages
-prs: part 1 (6600, ready)
+prs: #2349 part 1 (6600, ready)
 state: ready
 
 ## Done
@@ -8,7 +8,7 @@ state: ready
 - Phone test mp-bropages 55/55 (twice; after the merge of main too); achievements 33/33, lazyfail 7/7, apchip 4/4, bandshots 60/60, switchbro 12/12, panelguard 7/7; server 605 suites, precheck OK; mp-brocard, mp-achievements, mp-bandshots play the card behind `?bropages=0`; mp-deskkeys, mp-lazyfail, mp-apchip go to Progress for its doors.
 
 ## Next
-- waits for the gatekeeper.
+- part 2: merged main 0c648ebb, the word moved to say/broPages.js (the counters' aria "{earned} of {total}"); precheck OK, bro-pages suite green, mp-bropages 55/55. Waits for the gatekeeper.
 
 ## Found
 - Measured on the test box: the upright Bro page is 184 px tall at 390 wide, 180 at 375 (both Safari-bar heights the same: the band is fixed); 78 px on a phone on its side; a computer's band 480 px wide (one page at a time there).
