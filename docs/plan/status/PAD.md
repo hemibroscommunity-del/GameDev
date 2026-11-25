@@ -1,7 +1,7 @@
 card: PAD
 branch: claude/plan-pad-3-housing (stacked on claude/plan-pad-1-controller)
 prs: #2354 (draft, tag 6640, part 1: lands only with part 3); part 3 (draft, tag 6641)
-state: ready
+state: handed over (memory line): the reds below are the next session's
 
 ## Done
 - tag 6640 part 1: the touch controls as a controller (`?padskin=0` today's
@@ -33,5 +33,15 @@ state: ready
   (0.8 at the least), its boxes stay 44.
 - No left-handed setting exists (part 1): part 3 drops the mirror.
 
+- Phone runs (helper, head 1b03ed55): mp-padskin 40/43, mp-contextbuttons
+  27/27, mp-membudget 12/12 (no line raised), mp-twobuttons 105/118.
+
 ## Needs
-- The gatekeeper's sitting (docs/plan/status/Z.md).
+- mp-padskin 5: a tap on the bow's well reaches it (elementFromPoint w2)
+  but WeaponPill's act() never runs (qa.taps 0): find what eats the touch.
+  6d sideways once read the guard lowered by 'tap', not Attack.
+- mp-twobuttons 3f/3e: PAD_SOCKETS reads box centres against art centres
+  (a top-row box rises off the big ones); sideways at 844 the controls sit
+  ~46 px left of the shell's mapping (the play column vs the window: check
+  playVw and the shell's left there).  6c: the stick's ring sizes changed.
+  2b, 2c, 6a, 3h: main's (part 1's list).
