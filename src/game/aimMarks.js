@@ -65,10 +65,10 @@ export const AIM_TONES = Object.freeze({ pick: AIM.YELLOW, lock: AIM.RED });
  *  asks once a frame): read it before the next call. */
 const _GATE = { live: false, frame: false, caret: false };
 export function aimGate(search, live) {
-  const off = typeof search === 'string' ? readerFor(search).sw : sw;
+  const r = typeof search === 'string' ? readerFor(search) : null;
   _GATE.live = typeof live === 'boolean' ? live : twoButtonsLive();
-  _GATE.frame = !off('targetframe');
-  _GATE.caret = !off('aimcaret');
+  _GATE.frame = !(r ? r.sw('targetframe') : sw('targetframe'));
+  _GATE.caret = !(r ? r.sw('aimcaret') : sw('aimcaret'));
   return _GATE;
 }
 
