@@ -7,7 +7,7 @@ import { manualOn, tapLockOn } from '@/game/manualCombat.js'; /* v2.3.4396: the 
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
-import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6544: the two buttons' one gate (a touch screen's; card CT PR 5) */
+import { twoButtonsLive, holdAutoOn } from '@/game/latch.js';   /* v2.3.6544: the two buttons' one gate (a touch screen's; card CT PR 5) */
 import { rimSprintOn } from '@/game/stickZones.js';   /* v2.3.6545: the stick's rim sprints (card CT item 6) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
@@ -57,7 +57,7 @@ const STEPS = [
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
     get label() { return say(SAY, 'controlsTutorial.attackLabel'); }, get body() { return say(SAY, 'controlsTutorial.attackBody'); },
     /* v2.3.4396 (docs/specs/manual-combat.md): every attack is made by hand; v2.3.4802: the bow is DRAWN back (docs/specs/bow-feel.md); v2.3.4803: the staff gathers and blasts (game/staffFeel.js) */
-    get bodyTwo() { return say(SAY, 'controlsTutorial.attackBodyTwo'); },   /* v2.3.6544: Attack is a latch */
+    get bodyTwo() { return say(SAY, holdAutoOn() ? 'controlsTutorial.attackBodyHold' : 'controlsTutorial.attackBodyTwo'); },   /* v2.3.6544: Attack is a latch; v2.3.6548: a tap and a hold (card CT part 15) */
     bodyManual: 'Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, away from where you want to shoot, and let go; the longer you hold, the harder it shoots. Staff: hold to gather power (drag to aim), let go to blast the orb; a quick tap fires a spark.' },
   /* v2.3.2251: replaces the switch-target arrows, which are deleted.  This
      is the one rule a player cannot discover by pressing things: the game
@@ -69,7 +69,7 @@ const STEPS = [
     /* v2.3.4396: no lock a player chooses; a special is armed, then made */
     get labelManual() { return say(SAY, 'controlsTutorial.targetLabelManual'); },
     /* v2.3.6544: the two buttons: the sight line, and the lock that moves on */
-    get labelTwo() { return say(SAY, 'controlsTutorial.targetLabelTwo'); }, get bodyTwo() { return say(SAY, 'controlsTutorial.targetBodyTwo'); },
+    get labelTwo() { return say(SAY, 'controlsTutorial.targetLabelTwo'); }, get bodyTwo() { return say(SAY, holdAutoOn() ? 'controlsTutorial.targetBodyHold' : 'controlsTutorial.targetBodyTwo'); },   /* v2.3.6548: a kill lets go with the hold's rule */
     bodyManual: 'Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a staff where you drag. For a sword or bow special, tap the Special button first: your next attack is the special.' },
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */

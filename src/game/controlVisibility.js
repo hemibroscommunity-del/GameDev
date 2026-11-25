@@ -30,7 +30,7 @@
  */
 
 import { sightPhase } from './sight.js';   /* v2.3.6543: the two buttons' sight (card CT PR 4) */
-import { latchPhase, latchReach } from './latch.js';   /* v2.3.6543: ...and their latch, and its range */
+import { latchLocked, latchReach } from './latch.js';   /* v2.3.6543: ...and their latch, and its range */
 
 /* Object.create(null), not {}: the keys are 'L' / 'R' here, but this is the
    house rule for any map that is looked up by a caller-supplied string
@@ -105,7 +105,7 @@ export function discHoldProbe() {
 export function combatButtonsShown(S, twoOn, fight) {
   if (!twoOn) return true;
   if (!S || typeof S !== 'object') return false;
-  if (sightPhase(S) === 'sighted' || latchPhase(S) === 'active') return true;
+  if (sightPhase(S) === 'sighted' || latchLocked(S)) return true;   /* v2.3.6548: locked, by a tap or auto-attack */
   return typeof fight === 'function' ? !!fight(S) : !!fight;
 }
 

@@ -521,8 +521,8 @@ export const PHASES = [
   },
   {
     name: 'latch', side: 'page', status: 'door',
-    what: 'The Attack latch in the two buttons: idle, or active with a target locked.',
-    field: 'S._latchPhase', states: ['idle', 'active'],
+    what: 'The Attack latch in the two buttons: idle, active (a target locked: a tap strikes it), or auto (locked, the held attack on: a hold past the ring\'s fill).',
+    field: 'S._latchPhase', states: ['idle', 'active', 'auto'],
     fn: 'latchTo', file: 'src/game/latch.js',
     clears: [
       { edge: 'end', at: 'src/game/latch.js latchCheck' },
@@ -532,7 +532,7 @@ export const PHASES = [
     rejoin: 'none: the page\'s own; the worker keeps no lock (nothing on the worker changes in card CT)',
     held: { suite: 'server/test/latch.test.mjs' },
     notes: ['S._latchId', 'S._latchEnd'],
-    note: 'v2.3.6540: the five ends (LATCH_ENDS press, range, killed, death, zone) and the one move (the target dead, another in sight: the nearest, no new press). Its notes, the locked id and the last end, written by latchTo with it.',
+    note: 'v2.3.6540: the five ends (LATCH_ENDS press, range, killed, death, zone) and the one move (the target dead, another in sight: the nearest, no new press). Its notes, the locked id and the last end, written by latchTo with it. v2.3.6548 (card CT part 15): auto is a phase, not a boolean beside it (S.autoAttack derived from it, latchHolds); active to auto at the hold\'s fill (latchFill: the press\'s start time S._latchHoldAt, not a phase); with the hold\'s rule a kill lets go (no move); `?holdauto=0` the old press (a lock is auto at once, the move kept).',
   },
 ];
 

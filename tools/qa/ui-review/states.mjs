@@ -1526,6 +1526,32 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
   },
+  /* v2.3.6548 (card CT part 15, tap and hold): the ring filling round Attack
+     while a finger holds it on a locked monster (`?autohold=3000` for the
+     picture, so the fill is about a third round at the capture) */
+  {
+    id: 'two-buttons-hold', group: 'Fighting', title: 'The two buttons, Attack held: the ring filling',
+    about: 'The two-button trial with a monster locked by a tap and Attack held down: a gold ring fills round the button (600 ms by default; here slowed to 3 s for the picture). When it is full auto-attack is on and the button is pressed in and lit; a lift before that was just a tap (one attack, the lock kept).',
+    views: ['portrait', 'landscape'],
+    settle: 200,
+    run: async (ctx) => {
+      const sighted = STATES.find((x) => x.id === 'two-buttons-sighted');
+      const why = await sighted.run(ctx);
+      if (typeof why === 'string') return why;
+      const { P } = ctx;
+      await evalIn(P, () => { const u = new URL(location.href); u.searchParams.set('autohold', '3000'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); });
+      const c = await evalIn(P, () => { const el = document.querySelector('.bt-rjoy-base'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2) }; });
+      if (!c) return 'no Attack button';
+      const cdp = await P.ctx.newCDPSession(P.page);
+      const tap = async (ms) => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: c.x, y: c.y, id: 43 }] }); await wait(P, ms); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {}); };
+      await tap(100);   /* the tap: locked */
+      await wait(P, 500);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: c.x, y: c.y, id: 43 }] });
+      await wait(P, 900);
+      return { release: async () => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {}); } };
+    },
+    after: async ({ P }) => { await evalIn(P, () => { const u = new URL(location.href); u.searchParams.delete('autohold'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); window.__btManual.set(4); const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
+  },
   {
     /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
        then let go */

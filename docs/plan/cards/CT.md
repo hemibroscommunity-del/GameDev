@@ -84,13 +84,42 @@ the switch table.
   again, when the target is out of range (with the margin the sword's ring
   has today, 440 held out to 550, so the edge does not flicker), or when it
   dies with no other monster sighted. If another is sighted as it dies, the
-  lock moves to the nearest with no new press. A press with nothing sighted
-  is one attack the way the body faces, as a tap is today.
+  lock moves to the nearest with no new press. **Tap and hold** (part 15,
+  tag 6548; the owner, 2026-11-24: *"I'm also thinking if you hold down the
+  attack button near a monster something signifies that the auto-attack is
+  enabled. Maybe 2 seconds. Otherwise each tap is its own attack cycle"*,
+  and to the orchestrator's reading *"Yes do it the way you suggested"*)
+  changes that: every press is ONE attack at once; with a monster sighted
+  it locks it ('active': the body faces it, the line shows) and the lock
+  stays for the next taps until it dies, leaves the hold range or yours
+  ends (a tap never lets a lock go); a HOLD on a lock fills a ring round
+  Attack and at `autohold` ms (600; `?autohold=<ms>`, 200 to 3000) is
+  'auto' (the held attack on, the button lit, the finger may lift); a lift
+  before the fill empties the ring (a tap); a tap while auto ends it and
+  strikes nothing of its own; a kill lets EVERYTHING go, no move to the
+  next (*"doesn't jump to every monster"*). `?holdauto=0` keeps the press
+  above (a lock is auto at once, the move kept). A press with nothing sighted
+  is one attack the way the body faces, as a tap is today, and with a bow
+  that is an arrow on the body's facing, line or no line (item 8, the owner
+  2026-11-24: *"I want free form attacks when you press the attack button
+  prior to entering any combat situation. So I want arrows to be able to
+  shoot whenever the line of site is aimed at (instead of the current
+  behavior of only firing when something is in front to fire at like props
+  or monsters)"*; `?freefire=0` gives the old wait back). With a sword the
+  locked press swings WHERE THE BODY STANDS: nothing walks, steps or dashes
+  it to the monster, the left stick alone moves it, a swing that cannot
+  reach misses (item 8, the owner: *"I want to change the melee behavior so
+  that it doesn't jump to every monster. Instead you must press an attack
+  charge button to get that behavior."*; the Charge button is a later
+  item's; no switch: the press already moved nothing, and its road is
+  game/freeAttack.js twoButtonPress, held by its guard).
 - **Each job of the old right side has a home.** The specials and Block are
   their buttons (no flick in this mode). A staff's bolt and a bow's arrow
-  fly at the locked target (nothing is steered by the finger in this mode;
-  *"the bow only looses when the line is on something"* stays true: the
-  line is on the lock). Near a node the Attack button is the harvest button,
+  fly at the locked target (nothing is steered by the finger in this mode).
+  *"The bow only looses when the line is on something"* holds for the
+  lock's arrows (the line is on the lock); a press with nothing sighted
+  looses its arrow free (item 8, above): it hits what it meets and starts
+  the fight as any arrow does. Near a node the Attack button is the harvest button,
   as the disc is today. A tap on the world's right half still opens a door
   and talks to a townsperson.
 - **PvP is not this card.** In a duel, a spar or No man's land the scheme
@@ -102,7 +131,8 @@ the switch table.
   stop and ask.
 - **Three phases, each one field and one function** (CLAUDE.md section 5),
   each a row of `src/state/phases.js`: the stick (rest, turn, walk), the
-  sight (none, sighted), the latch (idle, active). Never a second boolean.
+  sight (none, sighted), the latch (idle, active, auto: part 15; S.autoAttack
+  derived from it, latchHolds). Never a second boolean.
 - **The rules are modules** (`finish.md` part 5, rule 5): `stickZones.js`,
   `sight.js`, `latch.js` under `src/game/`, with no imports where possible
   and node suites that test what they do. `BroTown.jsx` gains calls, not

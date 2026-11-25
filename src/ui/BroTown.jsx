@@ -462,7 +462,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchAttackPress, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js';   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -11699,7 +11699,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2258: the opening lunge REPLACES this press's swing when it
          fires -- both would bill the same thumb twice, and castAbility has
          already set the swing window and the animation. */
-      if (twoButtonsLive()) { var _lp = latchAttackPress(Sb); if (_lp === 'once') requestTapAttack(Sb, Date.now()); else Sb.autoAttack = _lp === 'lock'; return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3) */
+      if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack, rJoyRef.current); return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3); v2.3.6547: the press's road is game/freeAttack.js twoButtonPress (nothing on it moves the body: item 8) */
       /* v2.3.4395: manual combat -- the disc's press attacks nothing: a
          stroke across it swings a sword (bM), a flick off it shoots (bE) */
       if (mcSwipes(stateRef.current)) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }   /* a staff: the press attacks, as it did */
@@ -11707,7 +11707,7 @@ export var BroTown = function BroTown(_ref0) {
       doSwing();
     };
     var bM = function bM(e) {
-      if (bTouchId.current === null || twoButtonsLive()) return;   /* v2.3.6542: the two buttons' Attack is a button: a drag on it aims nothing, slides to nothing (card CT PR 3) */
+      if (bTouchId.current === null) return; if (twoButtonsLive()) { var _tb = findT(e.touches, bTouchId.current); if (_tb) twoButtonSlide(stateRef.current, rJoyRef.current, _tb.clientX - bSwipe.sx, _tb.clientY - bSwipe.sy); return; }   /* v2.3.6542: the two buttons' Attack is a button: a drag on it aims nothing, slides to nothing (card CT PR 3); v2.3.6548: a finger slid off ends its hold (game/freeAttack.js twoButtonSlide: no layout read) */
       var t = findT(e.touches, bTouchId.current);
       if (t) {
         e.preventDefault();
@@ -11825,10 +11825,10 @@ export var BroTown = function BroTown(_ref0) {
       }
     };
     var bE = function bE(e) {
-      if (bTouchId.current === null) return;
+      if (bTouchId.current === null) return; if (twoButtonsLive() && !findT(e.touches || [], bTouchId.current)) twoButtonRelease(stateRef.current, rJoyRef.current);   /* v2.3.6548: Attack's finger is off the screen: its hold ends HERE, before the changedTouches lookup below (the phone run: a 150 ms tap's lift missed it there and the ring filled to auto) */
       var t = findT(e.changedTouches, bTouchId.current);
       if (!t) return;
-      bTouchId.current = null;
+      bTouchId.current = null; if (twoButtonsLive()) twoButtonRelease(stateRef.current, rJoyRef.current);   /* v2.3.6548: a lift or a cancel ends Attack's hold, the ring empties (before the fill it was a tap: game/freeAttack.js) */
       /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
@@ -11898,7 +11898,7 @@ export var BroTown = function BroTown(_ref0) {
        really still down is not harmed: it was never going to be heard again
        on a page that went away, and its next touch starts fresh. */
     var _releaseButton = function () {
-      bTouchId.current = null;
+      bTouchId.current = null; twoButtonRelease(stateRef.current, rJoyRef.current);   /* v2.3.6548: the page going away ends Attack's hold too */
       bSwipe.harvest = false;
       bSwipe.toShield = false;
       rJoyActive.current = false;

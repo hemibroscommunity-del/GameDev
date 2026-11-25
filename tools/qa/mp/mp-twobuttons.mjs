@@ -27,6 +27,25 @@
  *   press, the line on the lock, gone at combat's end), 6c at the end (the
  *   left stick's zones in CSS px on the owner's iPhone, 430x775 at 3x).
  *
+ * PART 7 (item 8, tag 6547, the owner of 2026-11-24: "I want arrows to be
+ *   able to shoot whenever the line of site is aimed at" and "I want to change
+ *   the melee behavior so that it doesn't jump to every monster"), after 2e:
+ *   2c's first step (in part 2) the press with a sword moves nothing: the body
+ *   where it stood, no dash, the latch on (the stick alone walks it in, then);
+ *   7a. a bow, turned where no monster is, nothing sighted, ONE press: exactly
+ *       one arrow, on the body's facing (the tap's angle), a free one
+ *       (S._freeShots), the latch idle;
+ *   7b. two presses 100 ms apart: no arrow sooner than the bow's cadence
+ *       after the last (S.swingTimer: the worker's cycle is not outrun);
+ *   7c. `?freefire=0` (history.replaceState: read at each ask): no arrow, the
+ *       tap spent 'empty' (the bow waits for its line, as before);
+ *   7d. (v2.3.6548: nothing else in sight at the press, else a SKIP; an
+ *       arrow loosed, free or on its line) a free arrow that meets a monster hurts it (the monster hidden from
+ *       the page's sight until the free arrow leaves: one in front is
+ *       sighted, and the press would lock it).
+ *   (No switch for the stay: the orchestrator, 2026-11-24, nothing to give
+ *   back; the press's road is held by tools/guards/free-attack.test.mjs.)
+ *
  * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
  *   (the character first let past the Mayor's gate, tut_1: a new one is
  *   held in BroTown's safe circle, and the nearest monster is outside it)
@@ -36,6 +55,20 @@
  *       latch active, the monster locked (targeting.js: the latch's lock),
  *       the held attack on with no thumb down, the disc pressed in
  *       (data-latch on);
+ *       v2.3.6548 (tag 6548, card CT part 15, TAP AND HOLD; the owner,
+ *       2026-11-24: "if you hold down the attack button near a monster
+ *       something signifies that the auto-attack is enabled ... Otherwise
+ *       each tap is its own attack cycle"): now a TAP is one attack (the
+ *       tap's count up one) and a lock that STAYS (active, data-latch lock,
+ *       NO held attack, the ring shown while the finger is down and gone at
+ *       the lift); a hold of 900 ms with `?autohold=1500` is still a tap (the
+ *       ring's length 1500ms, no auto: the switch honoured, a release before
+ *       the fill); a hold past the fill (600 ms) is AUTO (data-latch auto,
+ *       lit, the held attack on, the ring gone, the press stamped at least
+ *       600 ms before the fill); a tap while auto lets go (idle, 'press',
+ *       no attack of its own); `?holdauto=0` is the old press (a tap locks
+ *       AND holds, no ring, no tap attack; again lets go); then a tap locks
+ *       again and the hold turns auto on for the fight;
  *   2c. the stick walks you in while locked (the body walks toward it: a
  *       Wheel monster wanders; the rest by the harness's hop, and in the
  *       fight a keeper inside the page holds you beside it: this box's few
@@ -50,6 +83,9 @@
  *   2d. the SECOND press (the lock moved on to the next) lets go, or the
  *       kill with none other in sight let go by itself: the latch idle, the
  *       held attack off, the disc raised (data-latch off);
+ *       v2.3.6548: the kill lets EVERYTHING go, others near or not (no hop:
+ *       the owner's "doesn't jump to every monster"): idle ('killed'), no
+ *       id, the held attack off, raised; the others near at the kill said;
  *   2e. a tap on the world's right half attacks nothing (Attack is the
  *       attack);
  *   2f. the mode off (`?manual=4`, today's default): the right half is the
@@ -167,6 +203,14 @@ const STICK = (P) => H.readState(P, (S) => ({
   ang: S._facingAngle, roll: !!S._dodgeRoll,
 }));
 
+/* v2.3.6547: every dash (S._bashDash) a frame sees, from now: { kind, at } (card CT item 8) */
+const DASHWATCH = (P) => P.page.evaluate(() => {
+  window.__ctDash = [];
+  cancelAnimationFrame(window.__ctDashR);
+  let last = null;
+  const f = () => { const S = window._gameState.current, d = S._bashDash; if (d && d !== last) window.__ctDash.push({ kind: d.kind || 'bash', at: Date.now() }); last = d || null; window.__ctDashR = requestAnimationFrame(f); };
+  window.__ctDashR = requestAnimationFrame(f);
+});
 const LINE = (P) => P.page.evaluate(() => (window.__btSightLine ? window.__btSightLine() : null));   /* v2.3.6546: the sight line's QA record (rendering/sightLineDraw.js) */
 /* v2.3.6546: what the Attack disc wears: the plain sword (bt-rjoy-strike, mode 5)
    and the crosshair (bt-rjoy-aim), each drawn or not, and the latch's look */
@@ -241,9 +285,9 @@ const coachIs = (w, m, a, sp) => !!w.coach && (w.coach.move || []).length === 1 
 const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBody'] && w.attack === TOUR['controlsTutorial.attackBody']
   && w.targetLabel === TOUR['controlsTutorial.targetLabel'] && w.target === TOUR['controlsTutorial.targetBodyNoLock'] && w.shield === TOUR['controlsTutorial.shieldBody']
   && coachIs(w, 'Drag to move.', 'Hold to attack the nearest enemy.', 'A quick swipe on the Attack button.');
-const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyTwo']
-  && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyTwo'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
-  && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackTwo'], COACH['questCoach.specialTwo']);
+const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyHold']   /* v2.3.6548: tap and hold's words (attackBodyTwo, targetBodyTwo, attackTwo with `?holdauto=0`) */
+  && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyHold'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
+  && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackHold'], COACH['questCoach.specialTwo']);
 /* the row: open the panel, read it, tap its button at its centre (a real touch), wait for the page to load again and the world */
 async function tapRow(P) {
   if (!(await openPanel(P))) return { panel: false };
@@ -487,22 +531,102 @@ export async function run({ browser, wsPort, webPort, rec }) {
           lock: lt && lt.ref ? String(lt.id) : null, latchLock: !!(lt && lt.latch), auto: !!S.autoAttack,
           look: el ? el.getAttribute('data-latch') : null, taps: S._tapAttacks || 0 };
       });
+      /* v2.3.6548 (tap and hold): the ring on the disc, the address's
+         switches flipped in place (switches.js reads the address at each
+         ask), and a press held for `ms` with a read while the finger is down */
+      const RING = (P) => P.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-base'); return el ? { hold: el.getAttribute('data-hold'), ms: el.style.getPropertyValue('--autohold') || null, latch: el.getAttribute('data-latch') } : null; });
+      const ADDR = (q) => P.page.evaluate((q) => { const u = new URL(location.href); for (const k of Object.keys(q)) { if (q[k] == null) u.searchParams.delete(k); else u.searchParams.set(k, q[k]); } history.replaceState(history.state, '', u.pathname + u.search + u.hash); return u.search; }, q);
+      const HOLD = async (ms, midAt) => {
+        await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(midAt);
+        const mid = { ring: await RING(P), l: await LATCH(P) };
+        if (ms > midAt) await P.page.waitForTimeout(ms - midAt);
+        const end = await LATCH(P);
+        await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(400);
+        return { mid, end, after: await LATCH(P), ring: await RING(P) };
+      };
+      /* a hold until auto (the fill is the frame's: this box draws few) */
+      const HOLD_AUTO = async () => {
+        await P.page.evaluate(() => { const w = window.__ctHold = { at: 0, auto: 0 }; const t = setInterval(() => { const S = window._gameState && window._gameState.current; if (!S) return; if (S._latchHoldAt > 0) w.at = S._latchHoldAt; if (S._latchPhase === 'auto' && !w.auto) { w.auto = Date.now(); clearInterval(t); } }, 15); setTimeout(() => clearInterval(t), 12000); });
+        await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(250);
+        const mid = { ring: await RING(P), l: await LATCH(P) };
+        const filled = await H.waitFor(P, (S) => S._latchPhase || 'idle', (v) => v === 'auto', { timeout: 10000, label: 'the hold\'s fill' }).catch(() => null);
+        const held = await LATCH(P);
+        await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(400);
+        return { mid, filled: !!filled, held, after: await LATCH(P), ring: await RING(P), icon: await FACE_ICON(P), t: await P.page.evaluate(() => window.__ctHold) };
+      };
       const i0 = await FACE_ICON(P);   /* v2.3.6546: raised, before the press */
       /* 6d (v2.3.6546, the owner: "It's only the line drawn that snaps"): sighted, the latch idle: NO line yet */
       await frames(P, 2);
       const ln0 = await LINE(P);
       rec.ok(`6d. ${label}: the monster in sight, Attack not pressed: no sight line (drawn ${ln0 && ln0.drawn})`, !!ln0 && !ln0.drawn, ln0);
-      await press();
+      await DASHWATCH(P);   /* v2.3.6547: every frame's dash, from before the press */
+      const atPress = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, f: S._frameCount || 0 }));
+      const tapsAt0 = (await LATCH(P)).taps;
+      const tp1 = await HOLD(150, 100);   /* v2.3.6548: a tap (150 ms: the ring read while the finger is down) */
       const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
       const l1 = await LATCH(P);
-      rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
-        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', { ...l1, target, b1: !!b1 });
+      rec.ok(`2b. ${label}: a TAP: one attack (taps ${tapsAt0} -> ${l1.taps}), the latch active on it, locked, NO held attack, the disc raised (${l1.phase}, ${l1.lock}, ${l1.look}, auto ${l1.auto})`,
+        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && !l1.auto && l1.look === 'lock' && l1.taps === tapsAt0 + 1, { ...l1, target, b1: !!b1, tapsAt0 });
+      rec.ok(`2b. ${label}: the tap's ring: shown while the finger was down (${tp1.mid.ring && tp1.mid.ring.hold}), gone at the lift (${tp1.ring && tp1.ring.hold})`,
+        !!tp1.mid.ring && !!tp1.mid.ring.hold && !!tp1.ring && tp1.ring.hold == null, tp1);
       /* 6a (v2.3.6546): the latch wears the plain sword, raised and pressed in, never the crosshair */
       const i1 = await FACE_ICON(P);
-      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and pressed in and lit (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
-        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'on' && i1.strike && !i1.aim && i1.src, { i0, i1 });
+      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and locked by a tap (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
+        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'lock' && i1.strike && !i1.aim && i1.src, { i0, i1 });   /* v2.3.6548: a tap's lock is 'lock' (raised); lit is the hold's ('auto', below) */
       const ln1 = await H.waitFor(P, () => (window.__btSightLine ? window.__btSightLine() : null), (v) => !!v && v.drawn && v.id === target, { timeout: 8000, label: 'the line on the lock' }).catch(() => null);
       rec.ok(`6e. ${label}: Attack pressed: the line drawn to the LOCKED monster (${ln1 && ln1.id}, ${ln1 && ln1.len} px)`, !!ln1, { ln1: ln1 || (await LINE(P)), target });
+      /* 2c (v2.3.6547, card CT item 8; the owner, 2026-11-24: "I want to change the
+         melee behavior so that it doesn't jump to every monster"): the press
+         locks and the sword swings WHERE THE BODY STANDS: no walk, no step, no
+         dash toward it (the monster 170 px off, past the blade's reach: the
+         swings miss); the stick alone moves the body (below) */
+      await frames(P, 4);
+      await P.page.waitForTimeout(1200);
+      const stay = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, f: S._frameCount || 0, phase: S._latchPhase || 'idle', end: S._latchEnd || null, dash: window.__ctDash ? window.__ctDash.slice() : null, cd: window.__btAbilityStatus ? window.__btAbilityStatus('sworddash').cdLeft : null }));
+      const stayMoved = Math.hypot(stay.x - atPress.x, stay.y - atPress.y);
+      rec.ok(`2c. ${label}: the press moved nothing: the body ${Math.round(stayMoved)} px from where it stood over ${stay.f - atPress.f} frames, no dash (${(stay.dash || []).length}, its cooldown ${stay.cd}), the latch ${stay.phase}`,
+        stayMoved <= 12 && !!stay.dash && stay.dash.length === 0 && !(stay.cd > 0) && stay.f - atPress.f >= 4 && (stay.phase === 'active' || stay.end === 'killed'), { atPress, stay });
+      rec.ok(`2b. ${label}: the tap is ONE attack cycle: 1.2 s on, no held attack and no more taps (taps ${(await LATCH(P)).taps}), the lock kept`,
+        (await LATCH(P)).taps === l1.taps && !(await LATCH(P)).auto && (await LATCH(P)).phase === 'active', await LATCH(P));
+
+      /* v2.3.6548 (tap and hold, card CT part 15) */
+      {
+        /* a release before the fill, with ?autohold=1500: held 900 ms (past
+           the 600 default), still a tap -- the switch honoured */
+        await ADDR({ autohold: '1500' });
+        const tA = (await LATCH(P)).taps;
+        const hA = await HOLD(900, 300);
+        rec.ok(`2b. ${label}: ?autohold=1500, held 900 ms and lifted: a release before the fill is a tap -- one attack (taps ${tA} -> ${hA.after.taps}), the ring ${hA.mid.ring && hA.mid.ring.ms} shown then gone, still locked (${hA.after.phase}), no auto`,
+          !!hA.mid.ring && hA.mid.ring.hold != null && hA.mid.ring.ms === '1500ms' && hA.end.phase === 'active' && !hA.end.auto && hA.after.phase === 'active' && !hA.after.auto && hA.after.look === 'lock' && hA.ring && hA.ring.hold == null && hA.after.taps === tA + 1 && hA.after.id === target, hA);
+        await ADDR({ autohold: null });
+        /* a hold past the fill: auto, lit */
+        const tB = (await LATCH(P)).taps;
+        const hB = await HOLD_AUTO();
+        const tookMs = hB.t && hB.t.at && hB.t.auto ? hB.t.auto - hB.t.at : null;
+        rec.ok(`2b. ${label}: a HOLD past the fill: auto-attack on after ${tookMs} ms (>= 600), the button lit (${hB.after.look}), the held attack on with the finger lifted, the ring gone (${hB.ring && hB.ring.hold}); the press one attack (taps ${tB} -> ${hB.after.taps})`,
+          hB.filled && !!hB.mid.ring && hB.mid.ring.hold != null && hB.mid.l.phase === 'active' && tookMs >= 600 && hB.after.phase === 'auto' && hB.after.auto && hB.after.look === 'auto' && hB.after.lock === target && hB.after.latchLock && hB.ring && hB.ring.hold == null && hB.after.id === target && hB.after.taps === tB + 1 && hB.icon.latch === 'auto' && hB.icon.strike && !hB.icon.aim, hB);
+        /* a tap while auto: off, and no attack of its own */
+        await press();
+        const lC = await LATCH(P);
+        rec.ok(`2b. ${label}: a tap while auto: off (${lC.phase}, ${lC.end}), the button raised (${lC.look}), the held attack off, NO attack of its own (taps ${hB.after.taps} -> ${lC.taps})`,
+          lC.phase === 'idle' && lC.end === 'press' && !lC.auto && lC.look === 'off' && lC.taps === hB.after.taps, lC);
+        /* ?holdauto=0: the press of parts 13-14 */
+        await ADDR({ holdauto: '0' });
+        const tD = (await LATCH(P)).taps;
+        const hD = await HOLD(150, 100);
+        const lD2 = (await press(), await LATCH(P));
+        rec.ok(`2b. ${label}: ?holdauto=0: a tap locks AND holds (${hD.after.phase}, auto ${hD.after.auto}, ${hD.after.look}), no ring (${hD.mid.ring && hD.mid.ring.hold}), no tap attack (taps ${tD} -> ${hD.after.taps}); again lets go (${lD2.phase}, ${lD2.end})`,
+          hD.after.phase === 'auto' && hD.after.auto && hD.after.look === 'auto' && !!hD.mid.ring && hD.mid.ring.hold == null && hD.after.taps === tD && lD2.phase === 'idle' && lD2.end === 'press' && !lD2.auto, { hD, lD2 });
+        await ADDR({ holdauto: null });
+        /* lock it again with a tap, for the walk and the fight */
+        await press();
+        const lE = await LATCH(P);
+        rec.ok(`2b. ${label}: a tap locks it again (${lE.phase} on ${lE.id})`, lE.phase === 'active' && lE.id === target, { lE, target });
+      }
 
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
@@ -541,7 +665,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          (a monster that starts within reach is killed by the latch before the
          check: the first run of part 3, upright, the gap 90 px: the end
          'killed', the latch's own) */
-      const lockHeld = (l) => l.phase === 'active' || l.end === 'killed';
+      const lockHeld = (l) => l.phase === 'active' || l.phase === 'auto' || l.end === 'killed';   /* v2.3.6548: a tap's lock or auto */
       rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && lockHeld(await LATCH(P)), { gPress, g, toward, walkTrace });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
@@ -549,6 +673,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const m1 = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { x: m.x, y: m.y } : null; }, target));
         if (m1) await H.hopTo(P, Math.round(m1.x - 50 * Math.cos(g0.a)), Math.round(m1.y - 50 * Math.sin(g0.a)), { tries: 30 });
       }
+      /* v2.3.6548: the fight's held attack is the hold's: hold Attack to the fill */
+      const hF = await HOLD_AUTO();
+      rec.ok(`2c. ${label}: held to the fill for the fight: auto (${hF.after.phase}, ${hF.after.look})`, hF.filled && hF.after.phase === 'auto' && hF.after.auto && hF.after.id === target, hF);
       const afterHop = { latch: await LATCH(P), gap: await GAP(P), stk: await STK(P) };
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
@@ -621,17 +748,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.skip(fightName, `this page drew a frame every ${fightTrace.frameMs} ms (its median over the fight): ${fightTrace.stop.sw} swings and not one frame inside the blade's contact window (${120}-${400} ms into a swing), so no swing reached its hit test; the lock held (${l2.id}), ${fightTrace.stop.gap} px off`);
       } else rec.ok(fightName, !!died, { died, l2, hurt, why, afterHop, fightTrace });
 
-      /* 2d: the second press lets go (when the lock moved on to the next);
-         a kill with none other in sight let go by itself ('killed') */
-      const lockMoved = l2.phase === 'active';
-      if (lockMoved) await press();
-      else await P.page.waitForTimeout(400);
+      /* 2d: v2.3.6548 (tap and hold): the kill lets everything go, others
+         near or not -- no hop to the next (the press of parts 13-14 moved the
+         lock; `?holdauto=0` keeps that).  The others near at the kill said */
+      const lockMoved = false;
+      const nearAtKill = await H.readState(P, bind((S, id) => (S.monsters || []).filter((m) => m && String(m.id) !== id && m.alive && !(m.curHp <= 0) && Math.hypot(m.x - S.player.x, m.y - S.player.y) <= 550).length, target));
+      await P.page.waitForTimeout(400);
       const l3 = await LATCH(P);
       await frames(P, 2);
       const ln3 = await LINE(P);
       rec.ok(`6f. ${label}: combat over (${l3.phase}, ${l3.end}): the line gone (drawn ${ln3 && ln3.drawn})`, l3.phase === 'idle' && !!ln3 && !ln3.drawn, { l3, ln3 });
-      rec.ok(`2d. ${label}: ${lockMoved ? 'the second press lets go' : 'the kill let go by itself'}: idle (${l3.end}), the held attack off, the disc raised (${l3.look})`,
-        l3.phase === 'idle' && l3.end === (lockMoved ? 'press' : 'killed') && !l3.auto && l3.look === 'off' && !l3.latchLock, l3);
+      rec.ok(`2d. ${label}: the kill let everything go (${l2.phase} at the kill, now ${l3.phase}, ${l3.end}): no hop (${nearAtKill} other${nearAtKill === 1 ? '' : 's'} within 550 px), the held attack off, the disc raised (${l3.look})`,
+        l2.phase === 'idle' && l3.phase === 'idle' && l3.end === 'killed' && l3.id == null && !l3.auto && l3.look === 'off' && !l3.latchLock, { l2, l3, nearAtKill });
 
       /* 2e: a tap on the world's right half attacks nothing */
       const tz = await P.page.evaluate(() => { const el = document.querySelector('[data-joyzone="R"]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width * 0.5, y: b.top + b.height * 0.35 }; });
@@ -639,6 +767,142 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (tz) { await touch('touchStart', [{ x: tz.x, y: tz.y, id: 3 }]); await P.page.waitForTimeout(60); await touch('touchEnd', [{ x: tz.x, y: tz.y, id: 3 }]); await P.page.waitForTimeout(800); }
       const l4 = await LATCH(P);
       rec.ok(`2e. ${label}: a tap on the world's right half attacks nothing`, !!tz && l4.taps === tapsBefore && !l4.auto && l4.phase === 'idle', { tz, tapsBefore, l4 });
+
+      /* ── PART 7 (v2.3.6547, card CT item 8): THE FREE ARROW, AND THE SWORD THAT STAYS ──
+         The owner, 2026-11-24: "I want arrows to be able to shoot whenever the
+         line of site is aimed at (instead of the current behavior of only
+         firing when something is in front to fire at like props or monsters)" */
+      const p7EqB = await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged').catch((e) => ({ ok: false, why: String(e) }));
+      rec.ok(`7. ${label}: a bow in hand (guard)`, !!(p7EqB && p7EqB.ok), p7EqB);
+      /* every new arrow of yours, each frame: its angle, its stamp, the tap's angle */
+      await P.page.evaluate(() => {
+        const S0 = window._gameState.current, seen = new WeakSet();
+        for (const a of (S0.arrows || [])) seen.add(a);
+        window.__ctShots = [];
+        cancelAnimationFrame(window.__ctShotR);
+        const f = () => {
+          const S = window._gameState.current;
+          for (const a of (S.arrows || [])) if (a && !seen.has(a)) { seen.add(a); window.__ctShots.push({ ang: a.ang, ts: a._shotTs || Date.now(), tap: S._tapAtk ? S._tapAtk.ang : null, how: S._tapAtk ? S._tapAtk.how : null, line: !!(S._bowSight && S._bowSight.d != null), f: S._frameCount || 0 }); }
+          window.__ctShotR = requestAnimationFrame(f);
+        };
+        window.__ctShotR = requestAnimationFrame(f);
+      });
+      const p7SHOTS = () => P.page.evaluate(() => ({ list: (window.__ctShots || []).slice(), free: window._gameState.current._freeShots || 0, phase: window._gameState.current._latchPhase || 'idle', sight: window._gameState.current._sightPhase || 'none', how: window._gameState.current._tapAtk ? window._gameState.current._tapAtk.how : null }));
+      const p7Quick = async () => { await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]); await P.page.waitForTimeout(60); await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]); };
+      const p7TurnTo = async (a) => {
+        await touch('touchStart', [c]); await P.page.waitForTimeout(80);
+        await touch('touchMove', [{ x: c.x + 0.2 * R * Math.cos(a), y: c.y + 0.2 * R * Math.sin(a), id: 1 }]);
+        await P.page.waitForTimeout(600);
+        await touch('touchEnd', [{ x: c.x + 0.2 * R * Math.cos(a), y: c.y + 0.2 * R * Math.sin(a), id: 1 }]);
+      };
+      /* the way with no live monster within 70 degrees of it (of those within 1500 px) */
+      const p7Away = await H.readState(P, (S) => {
+        const P0 = S.player, live = (S.monsters || []).filter((m) => m && m.alive && Math.hypot(m.x - P0.x, m.y - P0.y) < 1500);
+        let best = null;
+        for (let k = 0; k < 8; k++) {
+          const a = -Math.PI + k * Math.PI / 4;
+          let off = Math.PI;
+          for (const m of live) { let d = Math.abs(Math.atan2(m.y - P0.y, m.x - P0.x) - a) % (2 * Math.PI); if (d > Math.PI) d = 2 * Math.PI - d; off = Math.min(off, d); }
+          if (!best || off > best.off) best = { a, off };
+        }
+        return best;
+      });
+      await p7TurnTo(p7Away.a);
+      const p7None = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'none', { timeout: 8000, label: 'nothing sighted' }).catch(() => null);
+      rec.ok(`7. ${label}: turned where no monster is (${Math.round(p7Away.off * 180 / Math.PI)} degrees from the nearest), nothing sighted (guard)`, !!p7None && p7Away.off >= 70 * Math.PI / 180, { p7Away, p7None });
+      /* 7a: ONE press: one arrow, the way the body faces (a press this box's slow
+         frames let expire, 600 ms with no frame, is pressed again: up to 4) */
+      const p7S0 = await p7SHOTS();
+      let p7S1 = p7S0, p7Tries = 0;
+      for (; p7Tries < 4 && p7S1.list.length === p7S0.list.length; p7Tries++) {
+        await p7Quick();
+        await H.waitFor(P, () => (window.__ctShots || []).length, (n) => n > p7S0.list.length, { timeout: 3000, label: 'an arrow' }).catch(() => null);
+        p7S1 = await p7SHOTS();
+      }
+      await frames(P, 3);
+      await P.page.waitForTimeout(1200);
+      p7S1 = await p7SHOTS();
+      const p7A1 = p7S1.list.slice(p7S0.list.length);
+      const p7OffTap = p7A1[0] && typeof p7A1[0].tap === 'number' ? Math.abs(Math.atan2(Math.sin(p7A1[0].ang - p7A1[0].tap), Math.cos(p7A1[0].ang - p7A1[0].tap))) : null;
+      const p7OffTurn = p7A1[0] ? Math.abs(Math.atan2(Math.sin(p7A1[0].ang - p7Away.a), Math.cos(p7A1[0].ang - p7Away.a))) : null;
+      rec.ok(`7a. ${label}: a bow, nothing in front, Attack: exactly one arrow (${p7A1.length}, press ${p7Tries}), on the body's facing (${p7OffTap == null ? '?' : p7OffTap.toFixed(3)} rad from the tap's, ${p7OffTurn == null ? '?' : Math.round(p7OffTurn * 180 / Math.PI)} deg from the turn), free (${p7S1.free - p7S0.free}; or the bow's line on a prop: ${p7A1[0] ? p7A1[0].line : '?'}, today's rule), the latch idle`,
+        p7A1.length === 1 && p7OffTap != null && p7OffTap < 0.02 && p7OffTurn < 0.45 && (p7S1.free - p7S0.free === 1 || p7A1[0].line) && p7S1.phase === 'idle', { p7A1, p7S0: { n: p7S0.list.length, free: p7S0.free }, p7S1: { free: p7S1.free, phase: p7S1.phase, how: p7S1.how } });
+      /* 7b: two presses 100 ms apart: the bow's cadence (S.swingTimer) holds, no
+         arrow sooner than its cycle after the last (bow 600 x 0.825 = 495 ms) */
+      await P.page.waitForTimeout(900);
+      const p7S2a = await p7SHOTS();
+      await p7Quick(); await P.page.waitForTimeout(100); await p7Quick();
+      await frames(P, 4);
+      await P.page.waitForTimeout(1500);
+      const p7S2 = await p7SHOTS();
+      const p7All = p7S2.list;
+      const p7Gaps = []; for (let k = 1; k < p7All.length; k++) p7Gaps.push(p7All[k].ts - p7All[k - 1].ts);
+      const p7A2 = p7All.length - p7S2a.list.length;
+      rec.ok(`7b. ${label}: two presses 100 ms apart: ${p7A2} arrow(s), none inside the bow's cadence (the gaps ${p7Gaps.join(', ')} ms, each at least 445)`,
+        p7A2 >= 1 && p7A2 <= 2 && p7Gaps.every((g) => g >= 445), { p7Gaps, p7A2 });
+      /* 7c: `?freefire=0` (the page's own address, history.replaceState: the switch is read at each ask) */
+      await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.set('freefire', '0'); history.replaceState(history.state, '', u.toString()); });
+      await P.page.waitForTimeout(900);
+      const p7S3a = await p7SHOTS();
+      let p7S3 = p7S3a;
+      for (let k = 0; k < 2; k++) { await p7Quick(); await frames(P, 3); await P.page.waitForTimeout(900); }
+      p7S3 = await p7SHOTS();
+      rec.ok(`7c. ${label}: \`?freefire=0\`: two presses, no arrow (${p7S3.list.length - p7S3a.list.length}), none free (${p7S3.free - p7S3a.free}), the tap spent 'empty' (${p7S3.how})`,
+        p7S3.list.slice(p7S3a.list.length).every((x) => x.line) && p7S3.free === p7S3a.free, { p7S3a: { n: p7S3a.list.length }, p7S3: { n: p7S3.list.length, how: p7S3.how } });
+      await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.delete('freefire'); history.replaceState(history.state, '', u.toString()); });
+      /* 7d: a free arrow that meets a monster hurts it.  A monster in front is
+         SIGHTED (the press would lock it), so the test hides it from the page
+         (S.monsters read without it: sight, the bow's line and the press see
+         nothing; the first run hid the object, which a tick replaces) until
+         the free arrow leaves, then shows it again: the arrow,
+         loosed at nothing, meets it, and the worker takes the claim */
+      const mon7 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
+      let hit7 = null;
+      if (mon7) {
+        await H.hopTo(P, Math.round(mon7.x - 150 * Math.cos(mon7.a)), Math.round(mon7.y - 150 * Math.sin(mon7.a)), { p7Tries: 60 });
+        await P.page.waitForTimeout(1000);
+        const nr7 = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { a: Math.atan2(m.y - S.player.y, m.x - S.player.x), d: Math.hypot(m.x - S.player.x, m.y - S.player.y), hp: m.curHp } : null; }, mon7.id));
+        if (nr7) {
+          await p7TurnTo(nr7.a);
+          const sighted7 = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 6000, label: 'sighted' }).catch(() => null);
+          const p7Hid = await P.page.evaluate((id) => {
+            /* the page's list read without it (sight.js sightPick, the bow's line and
+               the press all read S.monsters, whose objects the ticks replace) */
+            const S = window._gameState.current;
+            if (!(S.monsters || []).some((x) => x && String(x.id) === id)) return false;
+            let arr = S.monsters;
+            const h = window.__ctHid = { on: true, free: S._freeShots || 0 };
+            Object.defineProperty(S, 'monsters', { configurable: true, enumerable: true, get: () => (h.on && Array.isArray(arr) ? arr.filter((x) => !x || String(x.id) !== id) : arr), set: (v) => { arr = v; } });
+            h.show = () => { if (!h.on) return; h.on = false; delete S.monsters; S.monsters = arr; };
+            const w = () => { if (!h.on) return; if ((S._freeShots || 0) > h.free) { h.show(); return; } requestAnimationFrame(w); };
+            requestAnimationFrame(w);
+            setTimeout(h.show, 12000);   /* never left hidden */
+            return true;
+          }, mon7.id);
+          await frames(P, 2);
+          /* v2.3.6548 (part 15, the helper's run on 9a289461: 7d red both ways,
+             the arrow flying and hurting the monster each time): the press must
+             find NOTHING in sight (upright another of the 12 near was locked,
+             the latch active), and the shot is counted as an arrow loosed (the
+             shots' list), free or on its line (sideways the bow's line was on
+             something: today's rule, 7a's, and it hurt the monster all the same) */
+          const clear7 = await H.waitFor(P, (S) => ({ p: S._sightPhase || 'none', id: S._sightId == null ? null : String(S._sightId) }), (v) => v.p === 'none', { timeout: 4000, label: 'nothing in sight' }).catch(() => null);
+          const f7a = await p7SHOTS();
+          const loosed7 = (f) => f.free > f7a.free || f.list.length > f7a.list.length;
+          for (let k = 0; k < 3 && !loosed7(await p7SHOTS()); k++) { await p7Quick(); await H.waitFor(P, (S) => (S._freeShots || 0) + ':' + (window.__ctShots || []).length, (v) => v !== (f7a.free + ':' + f7a.list.length), { timeout: 3000, label: 'the arrow' }).catch(() => null); }
+          const f7 = await p7SHOTS();
+          hit7 = await H.waitFor(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, mon7.id), (hp) => typeof hp === 'number' && typeof nr7.hp === 'number' && hp < nr7.hp, { timeout: 8000, label: 'the monster hurt' }).catch(() => null);
+          const p7Shown = await P.page.evaluate(() => !(window.__ctHid && window.__ctHid.on));
+          const name7 = `7d. ${label}: an arrow (${f7.free - f7a.free} free, ${f7.list.length - f7a.list.length} loosed) pressed with nothing in sight meets the monster ${Math.round(nr7.d)} px on (sighted first: ${!!sighted7}, hidden ${p7Hid}, shown again ${p7Shown}): the worker hurt it (${nr7.hp} -> ${hit7}), the latch ${f7.phase}`;
+          if (!clear7) rec.skip(name7, 'another monster stayed in sight with this one hidden (the press would lock it, not loose a free arrow): the placement, not the rule');
+          else rec.ok(name7, !!sighted7 && p7Hid && loosed7(f7) && f7.phase === 'idle' && hit7 != null, { nr7, f7: { free: f7.free, phase: f7.phase, n: f7.list.length }, hit7, p7Shown });
+          await P.page.evaluate(() => { const h = window.__ctHid; if (h && h.on) h.show(); });
+        } else rec.ok(`7d. ${label}: the monster (guard)`, false, mon7);
+      } else rec.ok(`7d. ${label}: a monster with room (guard)`, false, null);
+      await P.page.evaluate(() => cancelAnimationFrame(window.__ctShotR));
+      /* the sword back in hand for part 3 */
+      const p7EqS = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));
+      rec.ok(`7. ${label}: the sword back in hand (guard)`, !!(p7EqS && p7EqS.ok), p7EqS);
 
       /* ── PART 3: the sight line, and Block and the specials ── */
       /* the kit's shield lands in the stash: worn the bag's way (the UI

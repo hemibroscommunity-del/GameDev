@@ -2,5 +2,7 @@
 export const SAY = Object.freeze({
   'questCoach.moveTwo': 'Push a little to turn, further to walk.',
   'questCoach.attackTwo': 'Face a monster in reach, then tap once: you keep fighting until you tap again.',
+  /* v2.3.6548: tap and hold (card CT part 15; not with `?holdauto=0`, where attackTwo is the rule) */
+  'questCoach.attackHold': 'Face a monster in reach and tap Attack: one hit a tap. Hold it until the ring fills to keep fighting.',
   'questCoach.specialTwo': 'Your specials come up beside Attack while a monster is in sight. Tap one.',
 });

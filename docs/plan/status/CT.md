@@ -1,36 +1,39 @@
 card: CT
-branch: claude/plan-ct-7-mends (item 7, stacked on claude/plan-ct-6-sprint)
-prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, draft: its number in the PR's words)
+branch: claude/plan-ct-9-hold (part 15: tap and hold, stacked on claude/plan-ct-8-freefire)
+prs: part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
 state: ready
 
 ## Done
-- PR 1 (6540, #2282) merged at 57; PR 2 (6541, #2293) merged at 60.
-- PR 3 (6542, #2308): the latch, the lock; ONE gate, twoButtonsLive.
-- PR 4 (6543, #2327): the sight line, Block and the specials with it.
-- PR 5 (6544, #2330): the Test panel's row, the words, honest-trouble D;
-  on main 598cfd38: the line's record in rendering/sightLineDraw.js.
-- Item 6 (6545): sprint past the stick's rim (stickZones.js rimSprint,
-  1.25 on / 1.05 off, a hold, how 'rim'; no server change); no sprint
-  button in mode 5; the ring lit gold; `?rimsprint=0`. stick-zones 10,
-  mp-twobuttons part 5.
-- Item 7 (6546, the owner's mends of 11-24): the line only in combat
-  (latch.js latchLine, `?sightline=1`; sight.test 11); Attack wears the
-  plain sword (wpn-melee, mode 5 only); turn band measured, no new default.
+- PRs 1-5 (6540-6544) merged or in via #2330; items 6-8 (6545 rim sprint,
+  6546 the line in combat, 6547 the free arrow, `?freefire=0`) in #2340.
+- Part 15 (6548, working): tap and hold. A tap on Attack is one attack (a
+  lock that stays); a hold on a lock fills a ring (600 ms, `?autohold=<ms>`)
+  and turns auto-attack on (lit); a tap while auto ends it; a kill lets
+  everything go (no hop). The latch's phases idle/active/auto (one field,
+  latchTo; S.autoAttack from latchHolds). `?holdauto=0` the old press.
+  latch.js + freeAttack.js; latch.test 6, free-attack 4-5 (no server/src).
 
 ## Next
-- The owner's verdict on the trial (the card's "Stop there").
+- Part 15 handed over at 264k: mp-twobuttons on its head (a helper), after
+  the lift's mend (bE's release before its changedTouches lookup).
+- Two CT parts after it: Block, Charge (the dash's button), the thumb's
+  layout; node and townsfolk.
 
 ## Found
-- `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
-- This box: a CDP flick waits behind a slow frame (mp-twobuttons 1f).
-- 3c/3d sideways was the TEST: the sight holds 400 ms, stepped once a
-  frame; this box draws one every 767-1117 ms, so one missed frame drops
-  it. 3c: a SKIP with the frame time when frames are wider than the hold
-  (TRAPS 200); 3d counts each button (Block, then Special a render later).
-- 3c's 8 Block/Special changes (part 12): not seen again (item 7's runs: 0
-  up and sideways, each change now logged with what the rules read).
-- Turn band at 430x775: dead 4.5, TURN 11.25, rim 37.5 px (sideways 5.4,
-  13.5, 45): 7-8 px; `?turnzone=50/60` for the owner's thumb.
+- Part 15's run (before the lift's mend, stopped at 88 PASS): a 150 ms tap
+  went auto both ways: bE's release sat after its findT and missed.
+- #2340's helper run: 92/94, 7d both ways (the arrow flew and hurt; free 0):
+  7d now waits for nothing in sight and counts any arrow loosed.
+- Item 8's repro (430x775 @3x, a greatsword, one press, 5 s): the body
+  moved 0 px; nothing on mode 5's press reaches maybeSwordDash. Main from
+  #2293 to #2330 (11-24 06:56-10:24 -0800) ran it as mode 4's press: the lunge.
+- 3c/3d sideways: Block/Special flip in the DOM while their probes say
+  shown and the phase holds (part 12's; seen again in item 8's run).
+- mp-twobuttons (item 8, last run): 94, 89 pass; 2c's stay and 7b pass up
+  and sideways. 7a/7c red were the bow firing at a prop on its line (today's
+  rule): the steps now read the line (not rerun). 7d (a free arrow meets a
+  monster): the test's hiding of a sighted monster did not take in my runs
+  (the press locked it); the helper's run passed it upright (58 -> 49).
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
