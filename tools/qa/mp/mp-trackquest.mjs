@@ -65,6 +65,12 @@ async function starWhen(P, pred, ms = 8000) {
 async function trackByTaps(P, qid, want) {
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Quests');
+  /* v2.3.6620 (card QP): in the pages your quests are picked from the head's picker (the old page's list
+     was always on screen); the row, its tap and Track are as they were */
+  await P.page.waitForSelector('[data-quests-page]', { timeout: 8000 }).catch(() => {});
+  if (!(await P.page.locator(`[data-quest-row="${qid}"]`).first().isVisible().catch(() => false)) && await P.page.$('[data-quest-picker="open"]')) {
+    await P.page.locator('[data-quest-picker="open"]').first().click();
+  }
   const row = P.page.locator(`[data-quest-row="${qid}"]`).first();
   await row.waitFor({ state: 'visible', timeout: 8000 });
   await row.click();

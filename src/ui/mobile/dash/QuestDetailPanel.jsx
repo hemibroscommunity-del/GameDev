@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
@@ -7,6 +7,8 @@ import { questJournalPage, questById } from '../sheet/questJournalModel.js';   /
 import { QuestJournalPage, useJournalTap } from './QuestJournalPage.jsx';
 import { SAY } from '@/data/say/questDetail.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { QUEST_PAGES, openQuestOnPages } from './QuestPages.jsx';   /* v2.3.6620: the Quests tab in pages (card QP) */
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
 
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed into
    the sheet from any quest row (and, since F1, from the pinned quest card).
@@ -34,7 +36,7 @@ import { say } from '@/game/say.js';
      only while the quest is on offer (v2.3.1710 hid it once taken, so the
      page forgot the sword and shield the moment you had them). */
 
-export const QuestDetailPanel = () => {
+const OldQuestDetailPanel = () => {
   const [, force] = useState(0);
   const tap = useJournalTap();
   useEffect(() => {
@@ -86,3 +88,20 @@ export const QuestDetailPanel = () => {
     </div>
   );
 };
+
+/* ═══ v2.3.6620: A ROAD THAT NAMES A QUEST LANDS ON ITS PAGE 1 (card QP) ═══
+   The pinned quest card's "Open quest" (QuestCard.jsx openQuestPage) selects
+   the quest and pushes this page over the Quests tab.  With the tab in pages
+   (QuestPages.jsx), the quest's own page IS the tab's page 1, whole in the
+   band, where a drill's header would leave it no room: so this hands the quest
+   to the tab and opens the tab, before the browser paints.  `?questpages=0`:
+   the page above, as it was. */
+const QuestDetailToPages = () => {
+  useLayoutEffect(() => {
+    openQuestOnPages(questDetailBus.selected());
+    dashboardPanelBus.open('quests');
+  }, []);
+  return null;
+};
+
+export const QuestDetailPanel = QUEST_PAGES ? QuestDetailToPages : OldQuestDetailPanel;
