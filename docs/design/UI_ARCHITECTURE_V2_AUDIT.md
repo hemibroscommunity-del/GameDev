@@ -1,6 +1,6 @@
 # The dashboard's new architecture: the audit (v2.3.6401)
 
-**Three halves.** The first (v2.3.6401) sets the game against the owner's baseline, parts 2 to 8. The second, "The addendum" below (v2.3.6402), sets it against the owner's addendum of the same day (the document's part 14, questions 36 to 72), with a fifth list for each part: NOT IN THE GAME. The third, "The final addendum" at the end (v2.3.6403), sets it against the owner's final architecture addendum (part 15, questions 73 to 85), and corrects the band's sizes the first two wrote.
+**Three halves, and a fourth on the look.** The fourth, "The look" at the very end (v2.3.6404), sets the game's colours, fonts, rarity, buttons and pictures against the owner's visual design hand-off (the document's part 16, questions 86 to 108). The first (v2.3.6401) sets the game against the owner's baseline, parts 2 to 8. The second, "The addendum" below (v2.3.6402), sets it against the owner's addendum of the same day (the document's part 14, questions 36 to 72), with a fifth list for each part: NOT IN THE GAME. The third, "The final addendum" at the end (v2.3.6403), sets it against the owner's final architecture addendum (part 15, questions 73 to 85), and corrects the band's sizes the first two wrote.
 
 What the game has TODAY, set against the owner's document (`UI_ARCHITECTURE_V2.md`, parts 2 to 8). Read from the code on `main` at `739eb6a0` (2026-11-25) by seven reading lanes, one an area; the code is the truth (CLAUDE.md §2). A fact a lane could not confirm is marked NOT VERIFIED and listed at the end: the phase that needs it reads it first. Nothing here changes the game: the phases are `UI_ARCHITECTURE_V2_PLAN.md`.
 
@@ -284,3 +284,184 @@ Nothing to audit as a screen. Set against the game: the shared pieces the addend
 ## Not verified in this half (the phase that needs it reads it first)
 
 How the Codex's stage loads a monster's strips, and what a tenth costs; where an armour piece's level or Defense requirement is kept; whether a townsperson's place can be read from the Wheel's doors for a Codex entry; a fee on the Marketplace or the Auction House; how often the trade's fall-back path can run, and what a full bag does at the swap; whether the shop's and the bank's requests carry a stamp against a repeat; whether E or a controller's stick can open a townsperson's talk (two comments disagree, `BroTown.jsx`:957-971); whether the "menu side" setting does anything under the one band; how long floating words live; the refusal messages' types and codes; whether the locked Codex page's picture moves; the top bar's height over the play view and the top safe area's handling.
+
+# The visual design hand-off (the document's part 16, questions 86 to 108): the audit, "The look" (v2.3.6404)
+
+What the game LOOKS like today, set against the owner's visual hand-off. Read from the code at `02991f44` by five reading lanes (the colours, the fonts, rarity and the buttons, the surfaces and states, the pictures); every hex, name and picture size below was then read again by hand in the file named, and the contrast figures were worked out from the hexes (the WCAG formula), not measured on a screen. The hand-off says of itself *"The actual repository has not been audited"*: this is that audit, as far as the look goes. "16, rule 5" is the fifth bullet of the hand-off's "Material and component rules". Nothing here changes the game: no token, style, font or picture is added or altered, and no difference below is settled here: each is the owner's.
+
+Where the game's look is written down: the tokens that RUN are the custom properties at the top of the style sheet (`src/styles/game.css`:98-230) and their copy for inline styles (`src/ui/mobile/dash/common.js`:12-40, `COL`). `docs/LANTERN-SLATE-SPEC.md` is the system's description, and on colours it is OLDER than the code (finding 1).
+
+## The eight findings that matter most
+
+1. **The eight working colours are the game's own, all eight, to the digit.** Slate, panel, raised, recessed, deep, brass, highlight and light text are `--ui-band-top`, `--ui-sheet`, `--ui-raised`, `--ui-well`, `--ui-well-deep`, `--ui-brass`, `--ui-brass-highlight` and `--ui-text` (`game.css`:105, 107, 190, 192, 110, 160, 161, 154). So the hand-off's "working references" need no correcting, and "polished Lantern Slate" (question 86) starts from the real palette. One thing to know: `docs/LANTERN-SLATE-SPEC.md` still prints the palette from BEFORE the correction of v2.3.1235 (`game.css`:98-103): its band-top is `#253239`, its raised `#2B3940`, its well `#121B20`, its text `#F7F2E7`, its brass `#D8A85F`, its focus ring `#F0C878` (spec:58-97, 321-350). A mockup drawn from the spec's table would be a shade off; the code's values are the game's.
+2. **Rarity: the colours agree, two of the names do not.** The owner's own words of v2.3.3142, kept in the code: *"So rare is blue, elite is orange, godly is prismatic"* (`src/ui/mobile/dash/common.js`:72-79). A piece's GRADE is **Normal, Rare, Elite, Godly** (`QUALITY_LABEL`, :91-93). The hand-off's rule 6 says "common neutral, rare blue, epic orange ..., Godly prismatic": the same three colours, but **"common" is the game's "Normal" and "epic" is the game's "Elite"**. The game has nothing called Epic or Legendary on a piece (one style class is still NAMED `ls-slot--legendary`; it draws Elite's orange: `game.css`:5932). Rule 6 also says "Preserve existing actual rarity definitions, colors": by that the game's names stand; which word a player reads is the owner's to say. And "rarity" is FIVE separate scales in the game (the table below), of which the hand-off's border belongs to one.
+3. **There is no serif in the game, and the game's own two style documents each say what the font is, differently.** Everything a player reads is Source Sans 3 (a sans-serif; about 120 declarations), with Baloo 2 (a rounded sans) in a few headings and Press Start 2P (a pixel face) for the HEMI BROS wordmark only. The one serif is an italic Georgia line in the hero page (`src/ui/mobile/sheet/HeroExpanded.jsx`:3203), a system font. `docs/LANTERN-SLATE-SPEC.md`:186 names Source Sans 3 as THE type; `docs/UI-BIBLE.md`:203-205 says *"No fantasy display font in the UI layer; the fantasy lives in the art"*. Question 91 (a classic RPG serif) is later than both and the owner's, so it holds as a direction; it is named here so the change is made knowingly. What a new font costs is in "The fonts" below.
+4. **The gold button is already the hand-off's button; the other four colours do not exist as buttons, and red is drawn the opposite way on purpose.** `.button-primary` and the item card's main button are a light gold gradient (`#E2B765` to `#D2A14D`, edge `#EAC675`) with DARK lettering `#172126` (`game.css`:259-266; `src/ui/mobile/ItemTooltip.jsx`:218-220): 8.7 to 1 at the top of the face and 7.0 at the bottom, well over the 4.5 asked. An ordinary button is raised slate with LIGHT lettering; and a destructive one is an OUTLINE, red letters on nothing, by a standing rule of v2.3.1235: *"filled-red ... is banned — danger never fills"* (`ItemTooltip.jsx`:214-217). So "one dark text colour on every action colour" (question 108) is true of gold today and new for the rest; a filled red face (rule 4) turns that rule round; and there is no green, blue or silver button anywhere (green and blue exist as colours for words and marks: `--ui-positive`, `--ui-info`).
+5. **Every one of the Menu's eight doors has a real picture in use today, 256 px square.** So do Bro's doors, the ten life skills and the touch controls. What has NO picture is short and named below: the Codex's kinds as doors, Combat as one door and its Shared channel, and three small things. Two pictures are worth a look before they go on a large tile: Settings' cog is nearly colourless (the game brightens it with a filter), and the Pets paw is 90 px.
+6. **"Selected" today is a brass edge and a tint, not a press.** A chosen chip or tile gets a brass border and a faint brass wash (`game.css`:1479, 2146); the toolbar swaps its frame picture; `:active` swaps to a pressed frame for as long as the finger is down. Nothing in the game stays visibly pushed in. Question 94 (a deep, lasting depression with the footprint unchanged) is new work, and it changes what brass means on a control: the system's own rule keeps brass for "focus/selection/premium ONLY" (spec:50).
+7. **The bars: health and experience are already continuous; energy and mana are five blocks, by the owner's own design.** Health is a continuous three-stop fill, energy and mana are drawn as five blocks (v2.3.2300: `src/ui/mobile/sheet/VitalBar.jsx`:51-56 and :123, `src/rendering/fxStrips.js`:83-103), the experience bar is one continuous gold fill on a 14 px track (`game.css`:2455-2463). Rule 7 keeps "existing gameplay-specific health/mana conventions", so question 95's continuous metallic fill is for progress (experience, a craft, a skill), and the five blocks stay.
+8. **Motion: the game mostly honours "reduce motion", with four known holes.** About forty places in the style sheet and five scripts read the device's preference; the Godly ring stops under it (`game.css`:5966-5967). It is NOT read by the level-up burst (`src/ui/LevelUpBurst.jsx`, as part 3 found), nor by three small loops in the sheet (`.bt-build-flash`, the experience bar's landing, `.bt-arrive-pulse`: `game.css`:1168-1175, 2499-2502). Rule 6 ("Respect reduced-motion settings") and rule 13 ("No perpetual competing glows") are the game's own rules already (spec:311-316); one small green "online" dot pulses for ever against them (`game.css`:1130).
+
+## The colours (16, rule 1; questions 86, 96)
+
+**The eight, against the tokens that run** (`src/styles/game.css`):
+
+| The hand-off's word | Its value | The game's token | Where | Verdict |
+|---|---|---|---|---|
+| slate | `#26383E` | `--ui-band-top` (the top of the dashboard's own gradient) | :105 | the same |
+| panel | `#1E2E34` | `--ui-sheet` (a panel's face) | :107 | the same |
+| raised | `#293B41` | `--ui-raised` (a button, a card you can press) | :190 | the same |
+| recessed | `#111E23` | `--ui-well` (a tray, a track, a field) | :192 | the same |
+| deep | `#0B161B` | `--ui-well-deep` | :110 | the same |
+| brass | `#D8AA58` | `--ui-brass` (also `--gold`, `--pop`) | :160 | the same |
+| highlight | `#EAC675` | `--ui-brass-highlight` (the focus ring, the gold button's edge) | :161 | the same |
+| light text | `#F4F0E7` | `--ui-text` | :154 | the same |
+
+**What the game has that the hand-off's eight lack** (all in the same block of `game.css`):
+
+| Role | Token | Value | Where |
+|---|---|---|---|
+| second and third text | `--ui-text-secondary`, `--ui-text-muted`, `--ui-text-disabled` | `#B6C1BE`, `#8D9B98`, `#667875` | :155-157 |
+| hairlines | `--ui-line`, `--ui-line-strong` | white-green at 11% and 20% | :158-159 |
+| more surfaces | `--ui-band-mid`, `--ui-band-bottom`, `--ui-header`, `--ui-card`, `--ui-raised-high`, `--ui-well-soft`, `--ui-toolbar` | `#20333A`, `#1A292F`, `#27393F`, `#24363C`, `#32454C`, `#16262C`, `#0E191E` | :187, 106, 108, 109, 191, 193, 195 |
+| the dashboard's own set | `--ui-dashboard-tray`, `-panel`, `-ribbon`, `-button`, `-button-active`, `-text` | `#2E4754`, `#10222A`, `#10232A`, `#1A2D36`, `#162A33`, `#F2F3EF` | :199-205 |
+| the light card (something another player wrote) | `--ui-invert`, text on it | `#C8D2CF`, `#111E23` | :134-136 |
+| good, bad, guidance | `--ui-positive`, `--ui-danger`, `--ui-info` | `#55B98A`, `#D8635D`, `#599FE5` | :228, 163, 229 |
+| the bars | `--ui-hp`, `--ui-mana`, `--ui-stamina`, `--ui-xp`, `--ui-magic` | `#E35D5B`, `#4F8FDE`, `#DFAE4E`, `#58B97B`, `#9A78D0` | :224-227, 230 |
+| gold, pressed; lettering on gold | `--ui-accent-pressed`, `--ui-text-on-accent` | `#C2924A`, `#172126` | :221, 215 |
+
+- **KEEP**: all of it; question 86 keeps the identity. Question 96 (ordinary numbers ivory or white with muted labels, colour only where it means something) is how the tokens are already meant: `--ui-text` for a value, `--ui-text-muted` for its label (12.4 to 1 and 4.9 to 1 on a panel).
+- **CONFLICTS (facts for the owner, none settled)**: (a) the spec file's printed palette is stale against the code (finding 1): it is the code's that the mockups should use, and the spec's tables want bringing up to date when the look is built (not this card's file); (b) the style sheet has grown colours outside the tokens (the three header strips' own grounds, `#63322D`, `#394934`, `#213E5A`, each over a baked texture picture: `game.css`:322-333), against the spec's "do NOT mint per-screen grays" and "All chrome is CSS".
+
+## The fonts (16, rule 8; question 91)
+
+| Family | Kind | Where it is used | Licence (`CREDITS.md`:19-28) |
+|---|---|---|---|
+| Source Sans 3 (400, 600, 700, and italics) | sans-serif | nearly every word, the dashboard and the world's labels alike (`game.css`:265; `src/rendering/nodeLabels.js`:148) | SIL Open Font License 1.1 |
+| Baloo 2 (600, 700) | rounded sans | a few headings and name plates (`src/ui/mobile/LoginSpinWindow.jsx`:328; `src/rendering/systems/entityRenderer.js`:15880) | SIL OFL 1.1 |
+| Press Start 2P | pixel | the HEMI BROS wordmark on the loading screen (`src/index.html`:92) | SIL OFL 1.1 |
+| Raleway (600 to 800) | sans-serif | asked for by the page (`src/index.html`:66); no use of it was found | NO row in `CREDITS.md` |
+| Georgia, italic | serif, the device's own | one line (`HeroExpanded.jsx`:3203) | a system font, none needed |
+
+- **How they arrive.** There is no font file in the repository: all four come from Google Fonts at run time, by one link in `src/index.html`:64-67, loaded so that it never holds the page (`display=swap`). Nothing waits for a font: a first visit on a slow line shows the device's own font for a moment, then swaps. `CREDITS.md` says so ("Loaded from Google Fonts at runtime ... not redistributed").
+- **The smallest sizes.** The system's scale goes down to 10 px for a caption or a badge (spec:186-193); `docs/UI-BIBLE.md`:207 says 11. About seventy places in the code go under 11 px (8 to 10.5; `game.css`:1823 is 8 px), most of them counts and captions.
+- **What a new serif costs** (a fact, for when the owner picks one): one more family on that link, or a font file in the repository (then it IS redistributed, and its licence must allow that; the SIL Open Font License does); a row in `CREDITS.md` either way; each weight is a separate download (commonly 20 to 60 kB each); and to keep it from popping in late it would be awaited behind the loading screen, which no font is today. Numbers that change (gold, a timer, damage) need the font's TABULAR numerals, or they jitter: many display serifs have old-style or proportional figures only, and the hand-off's own "numeral alignment" test is this. A serif in the dashboard alone touches only the page's words; the labels drawn in the WORLD (names, damage numbers) are a second job with its own cost (a canvas text is baked from the font), and the hand-off does not ask for it.
+- **CONFLICTS (a fact, not a fault)**: question 91 against `docs/UI-BIBLE.md`:203-205 and `docs/LANTERN-SLATE-SPEC.md`:186, as finding 3 says. The later decision is the owner's and holds as a direction; "exact font not yet approved".
+
+## Rarity (16, rule 6; question 93)
+
+The word covers five different scales in the game. Only the first is the hand-off's item border.
+
+| Scale | What it is on | Its names, as a player reads them | Its colours | Where |
+|---|---|---|---|---|
+| **A piece's GRADE** | every weapon and armour piece, rolled when it drops or is made | **Normal, Rare, Elite, Godly** | none; blue `#5B99DE`; orange `#E8893A`; a rainbow (`#FF6B6B`, `#FFD166`, `#6BFF95`, `#5CB8FF`, `#C77DFF`), with gold `#F0C45F` where one colour is needed | `src/ui/mobile/dash/common.js`:67-93 |
+| A weapon's element TIER | a weapon, by how many elements it carries | Common, Elemental, Fusion, Shift | `#8B9695`, `#3b82f6`, `#a855f7`, `#f5c542` | `src/data/gameSystems.js`:4341-4368 |
+| How often a drop comes | a line of loot on the ground and in the Codex | Normal, Uncommon, Rare, Very rare | `#FFFFFF`, `#7EE0A8`, `#7FB2FF`, `#FFB25A` | `src/game/dropLines.js`:79-84 |
+| An achievement's tier | an achievement and its medal | Common, Rare, Arena, Super-rare | `#A9B4BA`, `#5D93D2`, `#E8893A`, prismatic | `src/data/achievements.js`:26-31 |
+| A pet's rarity (shown only; the game does not roll one yet) | a pet's name on a profile | Normal, Rare, Elite, Godly | ivory, `#5CB8FF`, `#F59A3C`, prismatic | `src/ui/panels/playerProfile.js`:51-58 |
+
+- **How a grade is drawn today.** A bag square of a Rare or Elite piece has a coloured edge and a faint still glow of the same colour; a Godly one has a rotating rainbow ring, the one animation the system allows to run for ever, stopped under "reduce motion" (`game.css`:5926-5967). The piece's name is written in its colour, Godly's in the rainbow (`common.js`:86-89). Worn armour glints by its grade in the world (`src/rendering/lightfx/glint.js`:461-464). The interior stays the dark slot. **The cue beyond colour exists**: stars, one for Normal up to four for Godly, with the grade's word as the spoken name (`src/ui/mobile/dash/GearTab.jsx`:287-295).
+- **KEEP**: all of that is question 93 already (an edge, not a fill; graduated; dark inside; a second cue; reduced motion). Rule 6's "more pronounced metallic finish" for orange and "restrained glints" for Godly are a matter of finish on what exists.
+- **CONFLICTS (facts for the owner)**: (a) the names: the hand-off's "common" and "epic" are the game's "Normal" and "Elite" (finding 2); (b) `docs/LANTERN-SLATE-SPEC.md`:157-163 still describes a third tier called "Legendary" in PURPLE: the code changed it to Elite's orange at v2.3.3142 and the spec was not brought along; (c) blue means two things at once, a Rare grade's `#5B99DE` and guidance's `#599FE5` (the hand-off's blue buttons, rule 4), and orange two, an Elite grade and an Arena achievement: on a screen that shows both, the outline and the button will sit side by side.
+- **NOT IN THE GAME**: any tier called Epic, Legendary or Uncommon on a piece; a rarity a pet really has.
+
+## What exists of each rule
+
+| The rule (question) | Today | KEEP, BUILD or a difference |
+|---|---|---|
+| Recessed information, raised navigation, distinct actions (87) | Three classes carry it: `.ui-panel`, `.ui-raised` (a soft top-lit gradient, a hairline, one light inner edge), `.ui-well` (a dark gradient with an inner shadow) (`game.css`:244-258); most screens write the same by hand. The depth is slight | KEEP the roles; the stronger difference is BUILD |
+| Rounded metal, no chamfers (88) | Rounded nearly everywhere (radii 8 to 14 px: spec:170-171). Six `clip-path` shapes in the sheet; the one a player meets most is the Bro card's gold title ribbon with notched ends (`game.css`:2031-2037) | KEEP; the notched ribbon is a fact for the owner |
+| Restrained gold (89) | Already the system's law: brass "never a default border color" (spec:50); gold edges are on the chosen thing, not on every tile (`game.css`:1479, 2146). Standing exceptions, each the owner's own: the touch controls' gold rings, the player card's brackets (spec, "Do-not-drift list") | KEEP |
+| Fine brushed slate (90) | None. The spec allows an optional noise tile on the band (spec:182-184); none was found in the sheet. Three header strips carry baked texture pictures of another kind (leather, scratches, a circuit: `game.css`:322-333; whether they are still drawn was not verified) | BUILD |
+| Art on raised tiles, recessed sockets (92) | The bag's and the worn slots' squares are recessed wells with the item's picture inside; a Menu tile today is a picture and a word on a quiet button | KEEP the sockets; the raised art tile is BUILD |
+| Selected looks pushed in (94) | A brass border and a tint; a frame swap while pressed (finding 6) | BUILD, and a change to what brass means on a control |
+| Continuous metallic fills in recessed tracks (95) | Health and experience are continuous in a dark track; energy and mana are the owner's five blocks (finding 7) | KEEP both; the metallic finish is BUILD |
+| Neutral numbers, colour that means something (96) | The tokens are built for it (above); some screens colour a stat by its kind (the three vital bars' numbers take their bar's tint, by the owner's word: `VitalBar.jsx`:48-51) | KEEP |
+| The integrated header (99) | The system's header is 44 px with a 44 px Back and Close (spec:239); today's dashboard has no header yet (the first half's part 2) | BUILD (phase 1) |
+| The action bar and its colours (100, 101, 108) | "The action buttons" below | mostly BUILD |
+| Metallic gradients, broad light (102) | The gold button is a two-stop gradient with one light inner edge; slate buttons are near-flat | BUILD |
+| A shallow frame (103) | The band's own frame is a top edge and a soft shadow (spec:173-174) | KEEP |
+| Large primary tiles, compact secondary (104) | Bro's doors are equal tiles today (`src/game/broPages.js`:141-150) | BUILD |
+| Art leads, always a label (105) | Every tile has a picture and a word; the pictures are full colour but for two (below) | KEEP |
+| Locked art desaturated, still inspectable (106) | Done, five different ways: grey and darker (`src/ui/mobile/dash/ItemDetailPopup.jsx`:1316), grey at 40% or 50% (`game.css`:8385), faded only (`T2Panel.jsx`:410) | KEEP the idea; ONE recipe is BUILD |
+| Count badges, dots, a rare warm light (107) | Counts exist (an item's quantity, the points to spend: `game.css`:355-368, 1216-1232); dots exist (worn, "new skills", online); no badge for unread things, because there is no notifications list (the second half's 14 §2); no warm illumination | BUILD the two missing; KEEP the rest |
+
+## The action buttons (16, rules 3 and 4; questions 100, 101, 108)
+
+| What exists today | Its face | Its lettering | Contrast | Used for | Where |
+|---|---|---|---|---|---|
+| The gold button | a gradient `#E2B765` to `#D2A14D`, edge `#EAC675` | dark `#172126` | 8.7 to 7.0 | Equip, Claim, Eat, the main thing an item does | `game.css`:259-266; `ItemTooltip.jsx`:218-220 |
+| The ordinary button | raised slate `#293B41` | light `#F4F0E7` | 10.3 | Inspect, Sell, Pin, Drop | `game.css`:267-273 |
+| The destructive button | none (an outline `#D8635D`) | red `#D8635D` | 3.3 on raised slate, 3.9 on a panel | Unequip (Drop is an ordinary button, behind "⋯") | `ItemTooltip.jsx`:214-220 |
+| A quiet button | none (a hairline) | grey-green `#B9C1BF` | about 7 on a panel | Cancel on small cards | `src/ui/PinCards.jsx`:71 |
+
+- **Against the working palette of five.** Gold for the routine: there, and already light-faced with dark letters. Green for accept and claim: no green button exists (Claim is gold today). Blue for guidance: none. Red for the destructive: the game's is an outline, by its own rule (finding 4); one older card fills red with light letters (`src/ui/mobile/NmlAskCard.jsx`:91: `#7C3431` with `#FFF1EE` letters). Silver for cancel: none; the nearest thing is the ordinary slate button.
+- **Would the game's own colours carry one dark text?** Worked out from the tokens, with the game's dark lettering `#172126` on a flat face of each: gold 7.0 to 8.7, the green `#55B98A` 6.8, the blue `#599FE5` 5.9, the light card's silver `#C8D2CF` 10.6, and the red `#D8635D` **4.6**: it passes 4.5 by a hair when flat, so a red face must be LIGHTER than the game's danger red for its darker and pressed parts to pass (the hand-off: "verify actual implementation states, including pressed states"). Today's red outline button, at 3.3 to 3.9, is under 4.5 as it stands.
+- **CONFLICTS (facts for the owner)**: (a) a filled red face against "danger never fills" (v2.3.1235); (b) five action colours against the system's "No new accent colors" (spec, "Do-not-drift list") and its "~5% brass accent": the later decision is the owner's, and the spec's line wants changing with it when the look is built; (c) "Unequip" is drawn destructive today and "Drop" is not, while rule 4 keeps red for "genuinely destructive consequences": which of the game's actions are destructive is a list to settle at the screens' review.
+- **NOT IN THE GAME**: buttons labelled Purchase, Track, Locate, Travel, Abandon or Decline were not found as such (the shop says Buy; a quest has no Track: the first and third halves); the palette's examples are examples.
+
+## The pictures that exist (16, rule 9; questions 92, 104, 105)
+
+Every path is under `public/`. A picture marked "full colour" has many coloured pixels; "nearly grey" few. All are still pictures with a clear ground unless said.
+
+**The Menu's eight** (the pictures today's buttons and More tiles already use: `src/ui/mobile/BottomDashboard.jsx`:568-590, `src/ui/mobile/dash/MorePanel.jsx`:45-110):
+
+| Door | The picture | Size | Colour |
+|---|---|---|---|
+| Bro | `icons/ui/panel-self.webp` | 256 x 256 | full colour |
+| Quests | `icons/ui/panel-quests.webp` | 256 x 256 | full colour |
+| Social | `icons/ui/nav-friends.webp` | 256 x 256 | full colour |
+| Ranks | `icons/ui/panel-leaderboard.webp` | 256 x 256 | full colour |
+| Codex | `icons/ui/panel-encyclopedia.webp` (also `nav-codex.webp`) | 256 x 256 | full colour |
+| Homestead | `icons/ui/bldg-farm.webp` (the farm building's own); a wide view `icons/ui/homestead-preview.webp`, 480 x 300 | 256 x 256 | full colour |
+| Map | `icons/ui/nav-map.webp` | 256 x 256 | full colour |
+| Settings | `icons/ui/panel-settings.webp` | 256 x 256 | **nearly grey** (a cog; the game brightens it with a filter) |
+
+Also real and in use: Gear `icons/ui/nav-dashboard.png`, the bag `icons/ui/nav-inventory.webp`, chat `icons/ui/panel-chat.webp`, the journey `icons/ui/journey.webp`, clan `icons/ui/panel-clan.webp`, guild `icons/ui/panel-guild.webp`, account `icons/ui/panel-account.webp`, feedback `icons/ui/panel-feedback.webp`. Two tiles are drawn as line drawings in code, with no picture: **Notifications** (a bell) and **About**.
+
+**Bro's six:**
+
+| Door | The picture | Size | Colour |
+|---|---|---|---|
+| Character | `icons/ui/panel-self.webp`, or `icons/ui/hero/tab-overview.webp` | 256 x 256 | the first full colour, the second muted |
+| Combat | NO single picture. The three weapons: `icons/ui/combat-melee.webp` (muted), `combat-bow.webp`, `combat-magic.webp`; a general one, `icons/ui/panel-weapons.webp` (muted) | 256 x 256 | mixed |
+| Equipment | `icons/ui/panel-loadout.webp` | 256 x 256 | full colour |
+| Life Skills | `icons/ui/nav-lifeskills.webp` (the owner's own crest, v2.3.1331) | 256 x 256 | full colour |
+| Accomplishments | `icons/achievements/achievements.webp` (and 23 medals beside it) | 150 x 150 | full colour |
+| Pets | `icons/ui/pets-paw.webp` (the owner's paw); `icons/ui/pet-house.webp`, 119 x 99; the pets themselves on one sheet, `sprites/pets/pet-sheet.png`, 768 x 512 | **90 x 90** | full colour |
+
+Combat's four channels: Sword, Bow and Staff are the three weapon pictures above; **Shared has none**. The stats have a set of their own, 26 pictures in `icons/ui/hero/` (dps, damage, crit, defense, dodge, hp, mana, stamina, move-speed, xp, and the records').
+
+**The Codex's kinds** (as doors; the document's part 7 lists six candidates):
+
+| Kind | A picture for the DOOR | Real art for its ENTRIES |
+|---|---|---|
+| Monsters | none of its own (today's Codex tab uses the Codex's picture) | each monster's own animated strips, `sprites/monsters/<kind>/` (what the Codex plays today); four "remains" pictures in `icons/monsters/` |
+| Items | none | 126 files in `icons/items/`, 128 x 128, one a thing; 25 bag pictures in `icons/bag/` |
+| Resources | none | `icons/wood/`, `icons/ore/`, `icons/fish/`, `icons/shards/` |
+| NPCs (townsfolk) | none | 22 heads, `sprites/npc/<name>-head.webp`, 192 x 192, and their walking sheets beside them |
+| Locations | none | eight land banners, `ui/banners/land-<element>.webp`, about 190 x 96; five dungeon boards in `icons/board/` |
+| Mechanics | none | none (nine status pictures, `icons/ui/status-*.webp`, and nine buff pictures are the nearest) |
+
+**The ten life skills**: each has `icons/ui/skill-<name>.webp`, 256 x 256 (woodcutting, fishing, mining, farming, cooking, blacksmithing, woodworking, gemcutting, enchanting, trapping). Mining, cooking and blacksmithing are muted in colour; the other seven are full colour.
+
+**The action pictures** (the touch controls; `ui/controls/`, 35 files, mapped in `src/ui/panels/controlSkin.jsx`): `abil-bash`, `abil-block`, `abil-burst`, `abil-jump`, `abil-whirl`, `abil-special` and its sword, bow and staff forms, each 160 x 160 with a `-grey` twin (the game's own "cannot use now" art); `wpn-melee`, `wpn-ranged`, `wpn-staff`, 96 x 96, with grey twins; `ctl-jump`, `ctl-sprint`, 112 x 112; `talk`, `door`, `sleep`, and the farm's five. Gold: `icons/ui/cur-gold.webp`, 256 x 256, and fourteen coin piles in `icons/coins/`.
+
+- **Your bro.** There is no single picture of the player's character: it is drawn from layered sheets (`sprites/player/`, `sprites/gear/`) as it plays, so a mockup's bro comes from a screenshot of the game, as the hand-off already supposes; and outside the world the game can draw a player only as a still face (the first half's part 3).
+- **GENUINELY MISSING (no picture exists; the only places new art may later be made, by the art law, through `public/tools/style/process.js`):** a door picture for each Codex kind (six, if all six stay: Monsters, Items, Resources, NPCs, Locations, Mechanics); a Combat door; the Shared channel; Notifications and About (line drawings today). **Worth the owner's eye, not missing:** Settings (nearly grey against question 105's "full-color art, not monochrome"); Pets (a 90 px paw: sharp on a compact tile, soft on a large one, since a phone draws three device pixels to each px); Accomplishments (150 px); the muted pictures (Character's second, the sword, the general weapons one, three skills).
+- **NOT VERIFIED**: whether each picture named was drawn for the game or bought (their rows are in `CREDITS.md`, not read here); every file's own colour count against the 256-colour rule (not this audit's; the files exist and ship today).
+
+## The laws a look must keep
+
+Constraints, not conflicts: the hand-off asks for nothing they forbid.
+
+- **Memory** (CLAUDE.md §7; the black screens on an iPhone are memory). A gradient, a bevel, a shadow or a texture made by CSS costs no picture memory; a texture or frame shipped as a PICTURE does, is 256 colours at most, loads behind the loading screen, and `mp-membudget` reads it on every PR. So question 90's brushed slate and question 102's metal are best as CSS; the system's own rule already says "All chrome is CSS. No baked panel art" (spec:46).
+- **Preloading is law.** Any new picture (a missing door's art) and, by the same reasoning, a new font, loads behind the loading screen, never on first use.
+- **The page's one thread.** No measuring of the page inside a frame or a tap (`docs/specs/layout-reads.md`); the dashboard's page is repainted while the world plays above it, so large blurred shadows and many stacked gradients on a slow phone are a cost to be measured (`mp-heldsweep`), and the system forbids `backdrop-filter` blur outright on iPhone Safari (spec:48).
+- **No animation that runs for ever**, the Godly ring excepted (spec:311-316, "Do-not-drift list"); and every new motion reads `prefers-reduced-motion` (finding 8 lists today's holes). Question 107's "rare warm illumination" and rule 13's "no perpetual competing glows" sit inside this.
+- **44 px to tap, 11 px to read** (`docs/UI-BIBLE.md`:196, :207). Neither is held by a test today: the screenshots' review only remarks on a small box (`tools/qa/ui-review/audit.mjs`:308-309), and about seventy places are under 11 px. A serif at 11 px on a phone is the hand-off's own test ("mobile legibility").
+- **The band's height does not change**, and a new screen keeps the same-change rows (the first half's "The laws that bind every phase").
+
+## Not verified in this half (the phase that needs it reads it first)
+
+Whether the three textured header strips are still drawn anywhere; how many of the under-11 px sizes a player really meets; the older red card's contrast; whether `Raleway` is used through a class the search missed; each picture's licence row and colour count; the contrast of every button in its pressed and disabled states (worked out here only for flat faces, from the tokens).

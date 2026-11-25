@@ -1,10 +1,20 @@
-# The dashboard's new architecture: the phases (v2.3.6401; the addendum's pieces, v2.3.6402; the final addendum's, v2.3.6403)
+# The dashboard's new architecture: the phases (v2.3.6401; the addendum's pieces, v2.3.6402; the final addendum's, v2.3.6403; the look's order and the kit, v2.3.6404)
 
 The plan for the owner's document (`UI_ARCHITECTURE_V2.md`: the baseline, parts 1 to 12; the addendum of the same day, part 14, questions 36 to 72; and the final architecture addendum, part 15, questions 73 to 85), made from the audit beside it (`UI_ARCHITECTURE_V2_AUDIT.md`, its three halves). "14 §3.1" is the addendum's own section 3.1, "15 §3" the final addendum's section 3. It is a PROPOSAL until the owner says yes: nothing here is built yet, and a line of it becomes a decision only when the owner's words go into the document's part 13.
 
 **No phase starts yet** (v2.3.6402). The owner, 2026-11-25, with the addendum: *"Do not begin implementation or final visual redesign yet. We are still completing the architectural design process."* So this stays a plan; phase 1 does not start on the answers to three questions.
 
 **The architecture is complete; the order of what follows is the owner's** (v2.3.6403). The final addendum (15 §7), sent with *"Here's more to the plan (this completed architecture)"*: questions 1 to 85 close the foundational architecture; NEXT is the visual language (materials, palette, type, borders and bevels, the states of a control, icons, motion, feedback); THEN pixel-true mockups of representative screens inside the real dashboard's size; and only THEN building, in phases, after the owner's approval. That turns one rule of this plan round ("Structure before looks", below). What the owner needs from this work NOW is two sections: "What to take back to the design conversation" (the facts of the game that the three documents get wrong or could not know) and "The room your mockups must fit" (the dashboard's real sizes). Each phase is a card to be; phase 1's is drafted (`docs/plan/cards/UI2-nav.md`).
+
+**The look's direction is approved; here is the order with the look in it** (v2.3.6404). The owner's fourth document of 2026-11-25, the visual design hand-off (part 16, questions 86 to 108; *"Hers more"*), approves the foundational VISUAL direction: a polished Lantern Slate with the game's own art kept. It builds nothing (*"No implementation until the owner approves production visual direction and screen mockups"*). So the order is now:
+
+1. **Done: the architecture** (questions 1 to 85; parts 1 to 15).
+2. **Done: the visual direction** (questions 86 to 108; part 16). Still open inside it, the owner's: the exact font, the exact hues of the five action colours, and the points the audit's "The look" names where the hand-off and the game differ.
+3. **Now, the owner's: real-screen mockups.** The Bro (character) landing screen first, then the Universal Menu, then representative deeper screens and workspaces (16, the next phase), at the sizes of "The room your mockups must fit", drawn with the game's REAL colours, fonts, rarity names and pictures: "The kit for your mockups" below.
+4. **Then the owner's approval**, in their own words, of the production look and of the mockups. It becomes a line of the document's part 13; nothing below starts before it.
+5. **Then the building, in the phases below**, each screen built TO its mockup, behind the one switch `ui2`. One proposal for that time (not decided): the look's own shared pieces (the surface classes, the five action faces with their one dark lettering, the rarity outline, the pressed-in selected state, the locked recipe, the font and its loading) are built ONCE, before or with phase 1, as "One of each piece" asks, so that no screen grows its own copy. They are tokens and classes in the style sheet, CSS only wherever the look allows (the audit's "The laws a look must keep"); new art is made only for the pictures the kit lists as genuinely missing, through `public/tools/style/process.js`.
+
+What the owner needs from this work NOW is three sections: "What to take back to the design conversation", "The room your mockups must fit", and "The kit for your mockups".
 
 ## The rules every phase keeps
 
@@ -203,7 +213,15 @@ Ten facts about the game as it is today, across all three documents, most import
 9. **What I have earned.** Ten life skills (woodcutting, fishing, mining, farming, cooking, blacksmithing, woodworking, gem cutting, enchanting, trapping), with no top level, and real unlocks by level for some, not all; a weapon's level unlocks nothing with a name, only its 3 points. Achievements already have four tiers (Common 10 AP, Rare 100, Arena 500, Super-rare 1,000) and are earned or not, with no "7 of 10". A title is the name of an achievement I have earned; only one family follows on (Blooded, Veteran, Centurion). Lifetime records are counted by each player's own phone (kills, deaths, gold earned and spent, time played, ores, fish), not the server, which keeps only kills, kills by kind and the biggest fish. No radar, no specialisation label, no board for the combined life-skill level, no discoveries.
 10. **The farm, pets, the map, and what the game does when something happens.** The farm is a private place I walk to: six beds, sixteen crops, a fixed house, a Pet House; no buying land, building, furniture or visiting, and it cannot be managed from the dashboard. Pets exist: caught by trapping, nine kinds in two stages, one out at a time, each with a level, a name and a ward; I hold 30, or 40 with the Pet House. The map is a full-screen window with pan, zoom and my pins: a town in the middle, eight lands round it, each joined to its two neighbours by two passes; no fast travel. A level-up is a full-screen burst, even in a fight; a rare, elite or godly drop has its own reveal; routine actions are floating words over my bro. Some buttons already say why they are off, equipping tells me only after I tap; only the Auction House has a "not sure it went through" state; and there is no list of notifications, only the chat's last lines.
 
-Where each comes from in the code: the audit, its three halves.
+**Five more, about the look** (v2.3.6404; the visual hand-off, part 16; the ten above are kept as they were). Each is written to be pasted as it stands.
+
+11. **My working colours are right.** The eight palette values in my visual hand-off (slate #26383E, panel #1E2E34, raised #293B41, recessed #111E23, deep #0B161B, brass #D8AA58, highlight #EAC675, light text #F4F0E7) are exactly the game's own colours, all eight. The game also has colours my list lacks: muted text #8D9B98 and second text #B6C1BE, a green #55B98A, a red #D8635D, a blue #599FE5, and the bars' own (health #E35D5B, mana #4F8FDE, energy #DFAE4E, experience #58B97B).
+12. **Rarity names.** The game's item grades are Normal, Rare, Elite and Godly: Normal has no colour, Rare is blue (#5B99DE), Elite is orange (#E8893A), Godly is a rainbow. I chose those colours myself earlier. My hand-off says "common" and "epic": the game says "Normal" and "Elite", and has no Epic or Legendary item. Each grade also shows stars (one to four), so colour is not the only cue. The Godly ring is the one animation that runs all the time, and it stops when the phone asks for less motion.
+13. **Fonts.** The game has no serif font. Almost everything is Source Sans 3 (a plain sans-serif), a few headings are Baloo 2, and the logo is a pixel font. They come from Google Fonts when the game loads, not from the game's own files, and nothing waits for them. A new serif would be one more font to load and credit, and it must have numerals that line up (for gold, timers and damage). The smallest text the game aims for is 11 px.
+14. **Buttons.** The game's gold button is already what I chose: a light gold gradient with dark lettering (#172126), easily readable. Ordinary buttons are dark slate with light lettering. A destructive button is drawn as a red OUTLINE with red letters and no fill, on purpose, by an earlier rule of mine ("danger never fills"). There are no green, blue or silver buttons yet. With the game's own dark lettering, the game's green, blue and silver are all readable as button faces; its red only just is, so a red button face needs a lighter red.
+15. **Pictures.** Every one of the Menu's eight doors already has a real colour picture, 256 px square, and so do Bro's doors, the ten life skills and the touch controls. Settings' picture is a nearly grey cog, and the Pets picture is a small paw (90 px). No picture exists for: Combat as one door, Combat's Shared channel, the Codex's kinds as doors (Monsters, Items, Resources, NPCs, Locations, Mechanics), Notifications, and About. Selected things today get a gold edge and a tint; nothing looks pressed in yet. Health and experience bars are already continuous; energy and mana are my five blocks.
+
+Where each comes from in the code: the audit, its three halves and its fourth, "The look".
 
 ## The room your mockups must fit (v2.3.6403)
 
@@ -229,6 +247,85 @@ What the table does not show:
 - **The smallest text: 11 px**, the size the dashboard uses most for small words; 12 and 13 px for ordinary words; 10 px only for a caption or a count badge (`docs/LANTERN-SLATE-SPEC.md`:191). A handful of places in today's panels go under that (8 to 9.5 px, five places): not a size to design to.
 - **What two panels side by side come to** (Gear, a shop, the bank, crafting, a trade): at 390 x 844 each panel is about 189 px wide (179 inside its pads) and 172 px tall inside: under a 26 px label row, two bag-sized 63 px squares across and two down, or three across and three down at the 44 px floor.
 - **Not read:** the top bar over the world and the top safe area. They are outside the dashboard and no screen of the three documents is drawn there.
+
+## The kit for your mockups (v2.3.6404)
+
+The game's REAL colours, fonts, rarity names and pictures, so that no mockup is drawn with a placeholder where the real thing exists. Read from the code (the audit's fourth half, "The look", has where each comes from). Nothing here is new: it is what ships today. Paths are inside the repository's `public/` folder; on GitHub's site each can be opened and saved from a phone.
+
+**1. Colours** (`src/styles/game.css`). The first eight are the hand-off's own eight: they are exact.
+
+| Use it for | Colour | The game's name |
+|---|---|---|
+| The dashboard's slate (the top of its gradient) | `#26383E` | band-top |
+| The middle and bottom of that gradient | `#20333A`, `#1A292F` | band-mid, band-bottom |
+| A panel's face | `#1E2E34` | sheet |
+| A raised button or card | `#293B41` (brighter: `#32454C`) | raised, raised-high |
+| A recessed tray, track or socket | `#111E23` (softer: `#16262C`) | well, well-soft |
+| The deepest recess | `#0B161B` | well-deep |
+| An item's occupied socket | `#24363C` | card / slot |
+| The darkest shelf | `#0E191E` | toolbar |
+| Brass (gold) | `#D8AA58`; pressed `#C2924A` | brass |
+| Brass highlight, the gold button's edge, the focus ring | `#EAC675` | brass-highlight |
+| Text | `#F4F0E7` | text |
+| Second text, muted labels, disabled | `#B6C1BE`, `#8D9B98`, `#667875` | text-secondary, -muted, -disabled |
+| Hairlines | white-green at 11% and 20% | line, line-strong |
+| The one dark lettering on gold | `#172126` | text-on-accent |
+| Good, bad, guidance | `#55B98A`, `#D8635D`, `#599FE5` | positive, danger, info |
+| Health, mana, energy, experience, magic | `#E35D5B`, `#4F8FDE`, `#DFAE4E`, `#58B97B`, `#9A78D0` | hp, mana, stamina, xp, magic |
+| The light card (something another player wrote) | `#C8D2CF` with `#111E23` text | invert |
+
+The gold button as it is today: a gradient from `#E2B765` (top) to `#D2A14D` (bottom), a 1 px edge `#EAC675`, corners 10 px, lettering `#172126` at 13 px bold. Corner sizes in use: 14 px for a panel, 10 for a card, 8 for a slot, 10 or 11 for a button.
+
+**2. Fonts.** Source Sans 3 (regular, semi-bold, bold) for nearly everything; Baloo 2 for a few headings; Press Start 2P for the HEMI BROS wordmark only. All free (SIL Open Font License) and on Google Fonts, so a mockup tool has them. No serif is in the game yet: the one you choose is the open decision of question 91. Sizes the game uses: 13 to 13.5 px for ordinary words, 12 for compact, 11 for small labels (the floor to design to), 10 only for a caption or a count badge, 14 bold for a value, 18 bold for a large one, a panel's title 13 bold in capitals. Numbers that change are set in figures of equal width.
+
+**3. Rarity** (a piece's grade, the hand-off's item border):
+
+| The game's name | Colour | Stars | How it is drawn today |
+|---|---|---|---|
+| Normal | none (the plain slot) | 1 | no edge colour |
+| Rare | blue `#5B99DE` | 2 | a blue edge and a faint blue glow |
+| Elite | orange `#E8893A` | 3 | an orange edge and a faint orange glow |
+| Godly | a rainbow: `#FF6B6B`, `#FFD166`, `#6BFF95`, `#5CB8FF`, `#C77DFF` (gold `#F0C45F` where one colour is needed) | 4 | a slowly turning rainbow ring; its name in rainbow letters |
+
+Other things the game also colours by rarity, each with its own names: an achievement (Common, Rare, Arena, Super-rare), a weapon's element tier (Common, Elemental, Fusion, Shift), and how often a drop comes (Normal, Uncommon, Rare, Very rare). The audit's table has their colours.
+
+**4. Pictures, by door** (all under `public/`; 256 x 256 px and full colour unless said):
+
+| Door | The picture |
+|---|---|
+| **The Menu:** Bro | `icons/ui/panel-self.webp` |
+| Quests | `icons/ui/panel-quests.webp` |
+| Social | `icons/ui/nav-friends.webp` |
+| Ranks | `icons/ui/panel-leaderboard.webp` |
+| Codex | `icons/ui/panel-encyclopedia.webp` |
+| Homestead | `icons/ui/bldg-farm.webp` (a wide view: `icons/ui/homestead-preview.webp`, 480 x 300) |
+| Map | `icons/ui/nav-map.webp` |
+| Settings | `icons/ui/panel-settings.webp` (a nearly grey cog) |
+| Gear (the other workspace) | `icons/ui/nav-dashboard.png`; the bag: `icons/ui/nav-inventory.webp` |
+| **Bro:** Character | `icons/ui/panel-self.webp` (or `icons/ui/hero/tab-overview.webp`, muted) |
+| Combat | none of its own; Sword `icons/ui/combat-melee.webp`, Bow `icons/ui/combat-bow.webp`, Staff `icons/ui/combat-magic.webp`; Shared: none |
+| Equipment | `icons/ui/panel-loadout.webp` |
+| Life Skills | `icons/ui/nav-lifeskills.webp` |
+| Accomplishments | `icons/achievements/achievements.webp` (150 x 150; 23 medals beside it) |
+| Pets | `icons/ui/pets-paw.webp` (90 x 90); the pets themselves: `sprites/pets/pet-sheet.png` |
+| **Life skills:** each of the ten | `icons/ui/skill-<name>.webp`: woodcutting, fishing, mining, farming, cooking, blacksmithing, woodworking, gemcutting, enchanting, trapping |
+| **Stats** | `icons/ui/hero/`: dps, damage, crit, defense, dodge, hp, mana, stamina, move-speed, xp, and more (26) |
+| **Items** | `icons/items/` (126 pictures, 128 x 128, one a thing); gold: `icons/ui/cur-gold.webp` |
+| **Townsfolk** | `sprites/npc/<name>-head.webp` (22 heads, 192 x 192) |
+| **Lands** | `ui/banners/land-<element>.webp` (eight, about 190 x 96) |
+| **Monsters** | `sprites/monsters/<kind>/` (each kind's animation strips) |
+| **The touch controls** | `ui/controls/` (35 pictures, 96 to 160 px: the abilities, the three weapons, jump, sprint, talk, each with a grey twin) |
+| Clan, guild, chat, the journey, account, feedback | `icons/ui/panel-clan.webp`, `panel-guild.webp`, `panel-chat.webp`, `journey.webp`, `panel-account.webp`, `panel-feedback.webp` |
+
+Your bro has no single picture (it is drawn from layers as it plays): take it from a screenshot.
+
+**5. What is missing** (no picture exists; the only places new art would later be made, after your approval, by the art law):
+
+- a door picture for each of the Codex's kinds: Monsters, Items, Resources, NPCs, Locations, Mechanics (six, if all six stay);
+- Combat as one door, and Combat's Shared channel;
+- Notifications and About (small line drawings today).
+
+Not missing, but look before they go on a large tile: Settings (nearly grey, and you asked for full colour), Pets (90 px), Accomplishments (150 px), and the muted ones (the sword, three of the skills: mining, cooking, blacksmithing).
 
 ## The owner's questions
 
@@ -279,6 +376,17 @@ Asked when their card comes, each with its pick:
 - **Hardening** (phase 7b): it can fail and has no confirmation, and its odds are the server's alone. *Pick: leave both as they are;* showing the odds would make them public, as the drop chances are.
 - **Bulk deposit** (phase 7b): an example in your addendum, not in the game. *Pick: not now.*
 - **The Codex's showcase for every monster** (phase 6): a moving monster in the Codex costs memory a kind. *Pick: a kind's art loads when its page opens and is freed on leaving, so the Codex costs what one monster costs.*
+
+### The look's questions (v2.3.6404)
+
+The visual hand-off answers one open item of the ten above in principle (an action's colour depends on what it does: question 101) and none of the numbered questions. It raises these, each a place where the look the owner chose meets the game as it is. They are the owner's to settle, by a word or simply by how the mockups are drawn; nothing is built on a pick, and nothing was renamed or recoloured here.
+
+1. **The grade's names.** Your hand-off writes "common" and "epic"; the game says "Normal" and "Elite" (and Rare, Godly), with the colours you chose earlier: blue, orange, rainbow. Your own rule says to preserve the game's rarity definitions. *Pick: the mockups say Normal, Rare, Elite, Godly;* tell us if you want the words changed in the game instead.
+2. **A red button's face.** Today a destructive button is a red outline with no fill, by your earlier rule ("danger never fills"); your hand-off gives red a light metallic face with dark letters like the other four. The game's own red is only just readable under dark letters. *Pick: draw the red face in the mockup, a lighter red, and judge it there;* the old rule goes only if you like what you see.
+3. **The font.** A classic RPG serif is approved, the font is not. It needs a free licence, numerals of equal width, and to stay readable at 11 px on your phone. *Pick: choose two or three candidates in the mockups; we then check each one's licence, numerals and size before one is locked.* Whether the world's own labels (names, damage numbers) change too is a separate, larger job: *pick: the dashboard only.*
+4. **Which things are destructive.** Today Unequip is drawn as the red one and Drop is not. Your rule keeps red for what truly destroys. *Pick: settle the list at the screens' review, action by action.*
+5. **Settings' and Pets' pictures.** The cog is nearly grey and the paw is small. *Pick: keep both for the mockups; they join the list of new art only if they look wrong on your screens.*
+6. **The Bro card's title ribbon.** It has notched ends; you chose no chamfered corners. *Pick: your Bro landing mockup decides it, since that screen is drawn first.*
 
 ### Asked when their phase comes, each with its pick
 
