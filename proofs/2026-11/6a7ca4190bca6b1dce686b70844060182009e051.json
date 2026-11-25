@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6a7ca4190bca6b1dce686b70844060182009e051",
+  "tree": "28dccc39fc4f12a4753b6b36bf8aaac4b555012d",
+  "committedAt": "2026-11-24T18:47:32-08:00",
+  "subject": "Merge pull request #2345 from hemibroscommunity-del/claude/plan-ct-12-join",
+  "files": 8570,
+  "bytes": 965923336,
+  "listingSha256": "88096867197e8ccfc52b530a6e64ead7a09f7a6833ab0731a68a10567efc94d7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
