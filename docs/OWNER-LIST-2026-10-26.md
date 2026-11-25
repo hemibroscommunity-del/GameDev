@@ -514,10 +514,10 @@ What was decided for it: the bonus is +12% damage and a little mana, on monsters
 ### Your questions from these fixes (each a yes or no; my recommendation after the dash)
 
 **The shield**
-1. When holding the shield runs your stamina out, the server drops your guard for 3 s, but your screen still shows it up. Should the screen show it drop, with a 3 s countdown? — The pull request recommends nothing yet; this one decides 3 and 4 below.
+1. ~~When holding the shield runs your stamina out, the server drops your guard for 3 s, but your screen still shows it up. Should the screen show it drop, with a 3 s countdown?~~ Decided by your report of 2026-11-25 ("it stays like it's showing up even when the energy has been exhausted"): it drops at once, the button on its 3 s cooldown (built, v2.3.6554).
 2. Should the guard come back up by itself after those 3 s (rather than wait for your next tap)? — Your choice; it goes with 1.
 3. Should being dazed or frozen also stop raising the shield on the server? — Wait for your answer to 1 (alone it would draw a shield that blocks nothing).
-4. Fix the shield's cooldown number (2 s on the phone, 3 s on the server)? — Only together with 1; today nothing reads it.
+4. ~~Fix the shield's cooldown number (2 s on the phone, 3 s on the server)?~~ Built with 1: the phone waits the server's 3 s (v2.3.6554).
 5. ~~Should a quick shield down-and-up need a short time down before the parry is ready again?~~ Decided: yes, 400 ms (above; built, v2.3.4605).
 6. Tapping Block mid-lunge still lets the lunge hit. Keep it? — The reviews disagree; it stays as it is until you say.
 7. After someone joins (or after an update), they see your shield down until you next press it. Fix it at the cost of a tiny bit more data per player? — The pull request calls the cost small.

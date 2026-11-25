@@ -77,3 +77,29 @@ in three places; now only `guardTo` does, by a way of `GUARD_PAGE_WAYS`:
   cooldown, no shield, the water, each with its word to the worker read off
   the action door's transport. `playerActions.js` pulls in a `.jsx` node
   cannot load, so its unused raise is held by its text.
+
+## The worker's break, on the page (v2.3.6554, card CT part 20)
+
+The owner, 2026-11-25: "shield isn't working correctly during combat it stays
+like it's showing up even when the energy has been exhausted and you take
+damage." The worker breaks the guard at 0 stamina (`_guardTo(ps, 'break')`,
+3 s, `GUARD_BREAK_MS`) and says so only by the stamina, 0, on its
+`player_state`; the page's own drop at zero sits behind BroTown's
+`BLOCK_COSTS_STAMINA`, false on purpose (v2.3.1731). So the shield stayed
+drawn and the button lit through the break, every blow landing in full.
+
+Now `src/game/guardBreak.js` `poolsLand` (then `followWorkerGuard`), where the worker's
+pools land (wsClient.js `player_state`): the worker's stamina at 0 with the
+page's shield up drops it through `dropShield` (why `stamina`), and holds the
+button for the worker's 3 s (`_shieldCdUntil`, the button's cooldown face,
+its arc now 3 s: ShieldButton.jsx `SHIELD_CD_MS`). It never comes back by
+itself: a tap after the 3 s raises it. This answers the owner's list
+(2026-10-26) section 10, shield questions 1 and 4 (the screen shows the drop;
+the phone's cooldown is the worker's 3 s); question 2 (back by itself) and 3
+(a daze stopping a raise on the worker) are untouched. Held by
+`server/test/guard-break-page.test.mjs`; played by `mp-shielddrop` (red on
+main in both control modes). A rare case left: a monster's blocked blow that
+breaks the guard on the very tick the stamina regen runs is refilled before
+the flush (tick.js: regen, then flush), so the page reads 7, not 0, and keeps
+that one break's shield drawn (about one break in 30).
+
