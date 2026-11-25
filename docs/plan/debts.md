@@ -92,6 +92,13 @@ stays with that PR until it lands, and is marked (held).
 
 ## CT
 
+- `tools/qa/mp/mp-twobuttons.mjs:836` step 7 (sitting 65, #2350 at
+  0446337b): red at 68 degrees, its own bar 70 (`p7Away.off`): where the
+  monsters stood, not the sight; the step asks the angle and the sight in
+  one line, so a bad turn reads as a sight fault. Pick the turn by the
+  angle, or say which half failed (65). 2b, 2c, 6a and 3h red on `main`
+  096d7000 (104/13/2) and on the head (99/18/2) alike: the tap read as
+  auto, as at 64 (65).
 - `src/ui/BroTown.jsx` ~5365 (#2293): a later write to `dx`/`dy` (`var _h =
   heldDirection(S)`, a `K['w']` line, `S._stickVec`), `_playerDead =
   false;` before the stick, the clock through a field

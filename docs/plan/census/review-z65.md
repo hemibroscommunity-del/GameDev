@@ -28,3 +28,7 @@ The detail behind `docs/plan/status/Z.md` (sitting 65).
   bropages 55/55.
 - BRO's two reds are main's own (a helper, main and head alike):
   brocard 55/59, deskkeys 8f (`debts.md` BRO, 65).
+- #2350 (0446337b) by a helper: shielddrop red on `main` (3c, 6: the
+  phone's shield stays up) and 26/26 on the head and on the merged tree;
+  blockcost 5/5; shieldtoggle 11/13 for the helper, 13/13 here on `main`
+  and on the head (the helper's box); twobuttons as in `debts.md` CT (65).
