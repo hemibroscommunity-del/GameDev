@@ -234,7 +234,7 @@ function Progress({ d, n, open, dense }) {
     <>
       {d.apOn ? (
         <button type="button" className="bt-bro3-well bt-bro3-ctrs" data-bro-counters=""
-          aria-label={say(SAY, 'broPages.counterAria', { achv: sum ? `${sum.earned} of ${sum.total}` : '–', kills: fmt(d.kills), ap: fmt(d.ap) })}
+          aria-label={say(SAY, 'broPages.counterAria', { achv: sum ? say(SAY, 'broPages.achvOf', { earned: sum.earned, total: sum.total }) : '–', kills: fmt(d.kills), ap: fmt(d.ap) })}
           onClick={stop(() => open(BRO_TAPS.counters))}>
           <span className="bt-bro3-ctrrow">{counters}</span>
           <span className="bt-bro3-bar" aria-hidden="true"><span style={{ width: `${Math.round(fill * 1000) / 10}%` }} /></span>

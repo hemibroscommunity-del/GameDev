@@ -1,35 +1,30 @@
 card: Z
-branch: claude/plan-z-sitting-64
-prs: 1 line listed (the CT stack: #2345 lands #2342 and #2344); nothing held; this PR (tag 6276), the last line
+branch: claude/plan-z-sitting-65
+prs: 3 lines listed (#2350 CT part 20, #2348 QP, #2351 LB part 2); 2 need a merge of main (#2346 CT parts 19+21, #2349 BRO); this PR (tag 6277), the last line
 state: ready
 
 ## Done
-- `census/review-z64.md`: the orchestrator's one line, the three heads as
-  given (#2345 724cc6d8, #2342 ab2eea76, #2344 2429e7ee, all drafts, base
-  `main`, both lower heads inside the join). The purpose lane (top model,
-  high) before the owner's "use lighter review" (01:53 UTC): no behaviour
-  bug, modes 0-4 unchanged by reading, 6551 does face a tap's lock in mode 5
-  only; its green plants are CT's next job (`debts.md` CT, 64).
-- Rehearsed on `main` 53a5257d: the merged tree 28dccc39
-  (28dccc39fc4f12a4753b6b36bf8aaac4b555012d, the join's own tree): precheck,
-  every switch thrown, claims-gain --whole, build, questline: green;
-  heldsweep's sample red, AND red on `main` alone on this box, a new item
-  each run, none in a moved file (main's own: `debts.md` PH, 64).
-- `test`, playable, memory-budget, lint-build green on 724cc6d8. The said
-  raise: memory-budget's buffers line 24.8 -> 25.0 MB (#2342's body).
-- Phone runs: contextbuttons 25/25 on both heads; tiertrees 69/69, tierore
-  74/74 (2429e7ee); wheelnodes 30/4 on 724cc6d8 (main's run was sent to
-  the orchestrator); twobuttons 99/18/2 here on 724cc6d8: the tap read as
-  auto is on `main`'s base too, and the page's own clock saw the "150 ms"
-  tap's lift 774-1081 ms after its press (the test's on this box); 3h is
-  the test's read (the body moved; the monster it measures moves).
+- Five drafts on `main` 096d7000, `test` green on each, no `server/src`;
+  four DEPLOY by `server/test` files. Conflicts, the mends and the runs:
+  `docs/plan/census/review-z65.md`.
+- Rehearsed: the merged tree 94b52d3c36ea9fd0ebdda5a0d3978c12b266c427
+  green (precheck, switches thrown, claims-gain, build, questline);
+  heldsweep's sample red on `main` alone too (`debts.md` PH, 65).
 ## The list: merge in this order, "Create a merge commit"
-1 #2345 (CT join, draft: mark ready; lands #2342 and #2344). DEPLOYS (tests only).
-2 Z (6276, a draft: mark it ready first).
-## Held / To 65
+1 #2350 (CT part 20, 6554; draft: mark ready). DEPLOYS (tests only).
+2 #2348 (QP, 6620; draft: mark ready). DEPLOYS (tests only).
+3 #2351 (LB part 2, 5503; draft: mark ready). DEPLOYS (tests only).
+4 Z (6277, a draft: mark it ready first).
+## Needs a merge of main (after 1-3 land)
+- #2346: `docs/plan/status/CT.md` (keep both parts' lines); its 2 new
+  words in place into `src/data/say/contextButton.js`.
+- #2349: `tools/dev/tag-blocks.json` (both rows, BRO then QP, nextBlock
+  6640); `tools/guards/lib/systems.mjs` ui `windowDoor|guardBreak|broPages`;
+  `docs/SYSTEMS.md` by `node tools/guards/systems.test.mjs --write`; its
+  1 new word in place into `src/data/say/broPages.js`. Never raise
+  `PAGE_LINE`.
+## Held / To 66
 - Nothing held.
 ## Found
-- `docs/plan/debts.md` (64): CT's ctx/charge/lock-face holes, the tap's
-  clock, 3h's read; PH's heldsweep sample red on `main` on this box.
-## Needs
-- Nothing from the owner for this list.
+- `docs/plan/debts.md` (65): PH's heldsweep sample, BRO's two main reds,
+  `state-census --check` red on `main`.

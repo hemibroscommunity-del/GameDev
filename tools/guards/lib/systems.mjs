@@ -180,7 +180,7 @@ export const SYSTEMS = Object.freeze({
       f('server/src', 'skillpoints'),   /* v2.3.5283 (card R): the skill points' door */
       f('server/src', 'xp'),   /* v2.3.5289 (card R): experience and levels' door */
       f('server/src', 'queststate'),   /* v2.3.5284 (card R): quest state's door */
-      f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
+      f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPages|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
     ],
     words: ['quest', 'achievement', 'codex', 'pet', 'points', 'tour', 'xp', 'level'],
     traps: ['quests'],
@@ -197,7 +197,7 @@ export const SYSTEMS = Object.freeze({
          v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD);
          v2.3.5807 (card RV): + lookform / lookForm, a player's avatar and colour in the game's own forms (the boards, the friends list) */
       f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards|lookform'),
-      f('src/game', 'lookForm|alliance|allyDrafts|duelDoor|partyDoor|arenaDoor|skullDoor|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
+      f('src/game', 'lookForm|alliance|allyDrafts|duelDoor|partyDoor|arenaDoor|skullDoor|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation|ranksPage'),   /* v2.3.5503 (card LB part 2): + ranksPage, the Ranks page's rules */
     ],
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],
     traps: ['social'],
@@ -314,7 +314,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|broPages') /* v2.3.6600: the Bro tab's pages (card BRO) */],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages') /* v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

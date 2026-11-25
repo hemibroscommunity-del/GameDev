@@ -145,8 +145,30 @@ export function blockShown(S, twoOn, fight, on) {
   return blockUp(S) || fightAsk(fight, S);
 }
 
+/* ═══ v2.3.6554: CHARGE IS FOR MONSTERS -- NONE WHILE A PLAYER HOLDS THE LOCK (card CT part 20, job 2) ═══
+ * Sitting 64's review: chargeShown never asked the fight.  In a duel (or an
+ * arena match) a monster in sight brought Charge up; its press latched that
+ * monster (thumbSide.js chargeLock), and then targeting.js updateTargeting
+ * (keepDuelLock: an arena match's lock comes back each frame) put the lock on
+ * the PLAYER, and maybeSwordDash dashed at them -- the dash at a player that
+ * part 16 left to the lock (mode 4's).  So no Charge while a fight between
+ * players holds you: a duel or a match on this phone (`S._inDuel`, the duel
+ * door's one field, an arena match included; `S._arenaMatch`, the arena
+ * door's), or a player locked (the `{type: 'player'}` lock a duel, a match or
+ * a tap writes).  The press's road (ChargeButton.jsx chargePress) asks
+ * chargeShown first, so it refuses with it.  Block and the specials keep
+ * their own rule (`fight`, above). */
+export function playerFightHoldsLock(S) {
+  if (!S || typeof S !== 'object') return false;
+  if (S._inDuel && typeof S._inDuel === 'object') return true;
+  if (S._arenaMatch) return true;
+  const lt = S.lockedTarget;
+  return !!(lt && lt.type === 'player');
+}
+
 export function chargeShown(S, twoOn, melee, on) {
   if (!twoOn || (on === undefined ? chargeBtnOn() : on) === false) return false;
+  if (playerFightHoldsLock(S)) return false;   /* v2.3.6554: Charge is for monsters */
   return chargeUp(S, melee);
 }
 

@@ -78,4 +78,5 @@ export const SAY = Object.freeze({
   'broPages.shortMove': 'Move',
   /* the Progress page */
   'broPages.counterAria': 'Achievements {achv}, lifetime kills {kills}, achievement points {ap}. Open Achievements',
+  'broPages.achvOf': '{earned} of {total}',   /* v2.3.6600: the counters' aria, out of the page (guards/player-words; part 2) */
 });

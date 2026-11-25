@@ -194,7 +194,7 @@ Quests, achievements, the codex, pets' book, points.
 - **Files**: `server/src/`: skillpoints
 - **Files**: `server/src/`: xp
 - **Files**: `server/src/`: queststate
-- **Files**: `src/game/`: quests, questCard, questComplete, questFly, questHandIn, questJournal, questKept, questPins, questRoute, questTrailStyle, questWays, trackedQuest, achievements, petBook, petFetch, pointsBubbles, pointsReset, pointsTips, tour, levelCelebration, xpBar, xpPop, welcomeBanner
+- **Files**: `src/game/`: quests, questCard, questComplete, questFly, questHandIn, questJournal, questKept, questPages, questPins, questRoute, questTrailStyle, questWays, trackedQuest, achievements, petBook, petFetch, pointsBubbles, pointsReset, pointsTips, tour, levelCelebration, xpBar, xpPop, welcomeBanner
 - **Doors**: `pointsGive` in `server/src/skillpoints.js` (POINT_ROADS: every change to a player's build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R)); `xpGive` in `server/src/xp.js` (XP_ROADS: every change to a character's experience and levels (xpGive, xpLevelUp, xpSet, xpMake; v2.3.5289, card R)); `questStateSet` in `server/src/queststate.js` (QUEST_ROADS: every change to a quest's state, progress, flags and kept lists (seven verbs; v2.3.5284, card R))
 - **Switches**: [its rows in the switch table](SWITCHES.md#quests)
 - **Words**: `quest`, `achievement`, `codex`, `pet`, `points`, `tour`, `xp`, `level`
@@ -206,7 +206,7 @@ Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
 - **Files**: `src/rendering/tables/`: social
 - **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards, lookform
-- **Files**: `src/game/`: lookForm, alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, skullDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
+- **Files**: `src/game/`: lookForm, alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, skullDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation, ranksPage
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)
 - **Words**: `party`, `clan`, `guild`, `alliance`, `friend`, `chat`, `emote`, `duel`, `arena`, `gladiator`, `spar`, `race`, `board`, `leaderboard`, `social`
@@ -373,7 +373,7 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
-- **Files**: `src/game/`: windowDoor, broPages
+- **Files**: `src/game/`: windowDoor, guardBreak, broPages
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

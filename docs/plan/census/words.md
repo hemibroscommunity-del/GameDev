@@ -8,16 +8,16 @@ yet: this is the count a later card moves into one table (`docs/specs/player-wor
 
 | | strings |
 |---|---|
-| player-facing, all | 7544 |
-| ...in a table (`src/data/*`, `deskWords()`) | 2164 |
-| ...written in place on the page | 4995 |
+| player-facing, all | 6986 |
+| ...in a table (`src/data/*`, `deskWords()`) | 3891 |
+| ...written in place on the page | 2710 |
 | ...written in place on the worker (`server/src`) | 385 |
-| ...sure (`yes`) / unclear, counted (`?`) | 4529 / 3015 |
-| developer-only (Test panel, `src/debug`, mock data): not player-facing, total only | 3132 |
+| ...sure (`yes`) / unclear, counted (`?`) | 2899 / 4087 |
+| developer-only (Test panel, `src/debug`, mock data; NOT_SHOWN, v2.3.6355): not player-facing, total only | 3253 |
 | flag: "Wheel" a player reads | 1 |
 | flag: "remnant(s)" a player reads | 0 |
-| flag: "tap" outside `deskWords()` | 97 |
-| files read | 1186 |
+| flag: "tap" outside `deskWords()` | 128 |
+| files read | 1308 |
 
 ## How it reads
 
@@ -50,127 +50,113 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | data: gameSystems | 1 | 0 | 862 | 0 | 299 | 0 | 0 | 19 |
 | data: gameDisplay | 1 | 0 | 180 | 0 | 123 | 0 | 0 | 1 |
 | data: townBoard | 1 | 0 | 170 | 0 | 109 | 0 | 0 | 0 |
+| data: monsterCodex | 2 | 0 | 159 | 0 | 70 | 0 | 0 | 1 |
 | BroTown (the game page) | 1 | 134 | 1 | 0 | 107 | 1 | 0 | 1 |
-| ItemDetailPopup | 1 | 129 | 0 | 0 | 29 | 0 | 0 | 1 |
-| data: monsterCodex | 1 | 0 | 118 | 0 | 29 | 0 | 0 | 0 |
 | data: lifeSkills | 1 | 0 | 106 | 0 | 41 | 0 | 0 | 0 |
 | networking: gameEvents | 1 | 106 | 0 | 0 | 98 | 0 | 0 | 1 |
 | data: items | 1 | 0 | 103 | 0 | 61 | 0 | 0 | 0 |
-| PlayerPaint | 1 | 102 | 0 | 0 | 20 | 0 | 0 | 7 |
-| TradeWindowPanel | 1 | 87 | 0 | 0 | 11 | 0 | 0 | 3 |
-| data: achievements | 1 | 0 | 80 | 0 | 52 | 0 | 0 | 0 |
+| data: achievements | 2 | 0 | 92 | 0 | 64 | 0 | 0 | 1 |
 | data: prog3 | 1 | 0 | 79 | 0 | 48 | 0 | 0 | 0 |
-| SkillsPanel | 2 | 78 | 0 | 0 | 47 | 0 | 0 | 0 |
-| HeroExpanded | 1 | 76 | 1 | 0 | 22 | 0 | 0 | 1 |
-| MonsterCodex | 1 | 70 | 1 | 0 | 15 | 0 | 0 | 0 |
-| LeaderboardPanel | 2 | 68 | 0 | 0 | 23 | 0 | 0 | 0 |
+| data: paint | 1 | 0 | 77 | 0 | 77 | 0 | 0 | 8 |
+| data: itemDetail | 1 | 0 | 70 | 0 | 70 | 0 | 0 | 1 |
 | data: codexDrops | 1 | 0 | 68 | 0 | 16 | 0 | 0 | 0 |
 | game: drawLanes | 1 | 68 | 0 | 0 | 44 | 0 | 0 | 0 |
+| data: skills | 1 | 0 | 66 | 0 | 66 | 0 | 0 | 0 |
 | infoGlossary | 1 | 66 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: heroExpanded | 1 | 0 | 65 | 0 | 65 | 0 | 0 | 2 |
 | game: questJournal | 1 | 65 | 0 | 0 | 34 | 0 | 0 | 1 |
 | networking: wsClient | 1 | 64 | 0 | 0 | 48 | 0 | 0 | 0 |
-| SmithyPanel | 1 | 63 | 0 | 0 | 8 | 0 | 0 | 0 |
-| ClanPanel | 2 | 56 | 1 | 0 | 37 | 0 | 0 | 3 |
-| PetsPanel | 1 | 56 | 1 | 0 | 0 | 0 | 0 | 0 |
-| DailySpin | 1 | 51 | 0 | 0 | 3 | 0 | 0 | 0 |
-| GameApp | 1 | 51 | 0 | 0 | 48 | 0 | 0 | 4 |
+| data: tradeWindow | 1 | 0 | 55 | 0 | 55 | 0 | 0 | 3 |
+| data: clan | 1 | 0 | 54 | 0 | 54 | 0 | 0 | 3 |
 | game: speedTest | 1 | 51 | 0 | 0 | 41 | 0 | 0 | 0 |
-| DailyRewardsWindow | 1 | 50 | 0 | 0 | 11 | 0 | 0 | 1 |
+| data: leaderboard | 1 | 0 | 50 | 0 | 50 | 0 | 0 | 1 |
 | server: store | 1 | 0 | 0 | 50 | 0 | 0 | 0 | 0 |
-| InventoryPanel | 2 | 48 | 1 | 0 | 30 | 0 | 0 | 1 |
-| QuestCoach | 1 | 48 | 0 | 0 | 8 | 0 | 0 | 8 |
-| CharacterPicker | 1 | 47 | 0 | 0 | 14 | 0 | 0 | 0 |
 | data: trapping | 1 | 0 | 46 | 0 | 27 | 0 | 0 | 1 |
-| PartyPanel | 1 | 45 | 0 | 0 | 44 | 0 | 0 | 0 |
-| BroCard | 1 | 44 | 0 | 0 | 9 | 0 | 0 | 0 |
-| SocialPanel | 2 | 42 | 2 | 0 | 11 | 0 | 0 | 1 |
+| QuestCoach | 1 | 45 | 0 | 0 | 11 | 0 | 0 | 8 |
+| data: partyPanel | 1 | 0 | 45 | 0 | 45 | 0 | 0 | 0 |
 | rendering: designCatalog | 1 | 44 | 0 | 0 | 0 | 0 | 0 | 0 |
-| BottomDashboard | 1 | 43 | 0 | 0 | 5 | 0 | 0 | 0 |
-| NameModal | 1 | 42 | 1 | 0 | 12 | 0 | 0 | 1 |
 | GearTab | 1 | 42 | 0 | 0 | 17 | 0 | 0 | 0 |
 | data: npcLooks | 1 | 0 | 42 | 0 | 0 | 0 | 0 | 0 |
-| MorePanel | 1 | 40 | 0 | 0 | 25 | 0 | 0 | 0 |
-| PlayerProfilePanel | 1 | 39 | 0 | 0 | 2 | 0 | 0 | 0 |
 | rendering: headwearCatalog | 1 | 39 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: dailyRewards | 1 | 0 | 38 | 0 | 38 | 0 | 0 | 1 |
+| data: dailySpin | 1 | 0 | 38 | 0 | 38 | 0 | 0 | 0 |
 | game: trapping | 1 | 38 | 0 | 0 | 4 | 0 | 0 | 0 |
-| WheelHallPanel | 1 | 35 | 2 | 0 | 18 | 0 | 0 | 0 |
-| AlliancePart | 1 | 36 | 0 | 0 | 1 | 0 | 0 | 0 |
-| WorldMapOverlay | 1 | 35 | 1 | 0 | 4 | 0 | 0 | 0 |
+| data: inventoryPanel | 1 | 0 | 37 | 0 | 37 | 0 | 0 | 2 |
+| data: morePanel | 1 | 0 | 37 | 0 | 37 | 0 | 0 | 0 |
+| data: storePanel | 1 | 0 | 37 | 0 | 37 | 0 | 0 | 2 |
+| data: characterPicker | 1 | 0 | 36 | 0 | 36 | 0 | 0 | 0 |
+| data: pets | 1 | 0 | 36 | 0 | 36 | 0 | 0 | 1 |
+| data: smithy | 1 | 0 | 35 | 0 | 35 | 0 | 0 | 0 |
 | game: alliance | 1 | 35 | 0 | 0 | 35 | 0 | 0 | 0 |
-| FeedSeedPanel | 1 | 34 | 0 | 0 | 3 | 0 | 0 | 0 |
 | FeedbackPanel | 2 | 34 | 0 | 0 | 9 | 0 | 0 | 0 |
 | game: dailyRewards | 1 | 34 | 0 | 0 | 34 | 0 | 0 | 0 |
 | server: restore | 1 | 0 | 0 | 34 | 0 | 0 | 0 | 0 |
-| EnchantPanel | 1 | 33 | 0 | 0 | 25 | 0 | 0 | 0 |
-| NmlBadge | 1 | 29 | 4 | 0 | 2 | 0 | 0 | 1 |
-| StorePanel | 1 | 31 | 2 | 0 | 12 | 0 | 0 | 0 |
-| SettingsPanel | 1 | 31 | 1 | 0 | 1 | 0 | 0 | 1 |
-| ShardCrackPanel | 1 | 32 | 0 | 0 | 4 | 0 | 0 | 0 |
+| data: broCard | 1 | 0 | 32 | 0 | 32 | 0 | 0 | 0 |
+| data: broPages | 1 | 0 | 32 | 0 | 32 | 0 | 0 | 1 |
 | EconCard | 1 | 31 | 0 | 0 | 2 | 0 | 0 | 0 |
-| StoreChatPanel | 1 | 31 | 0 | 0 | 5 | 0 | 0 | 0 |
-| AboutPanel | 1 | 30 | 0 | 0 | 0 | 0 | 0 | 0 |
 | DungeonCreatorPanel | 1 | 30 | 0 | 0 | 29 | 0 | 0 | 0 |
-| ExchangePanel | 1 | 30 | 0 | 0 | 29 | 0 | 0 | 0 |
-| InspectCard | 1 | 30 | 0 | 0 | 4 | 0 | 0 | 1 |
-| ItemTooltip | 1 | 30 | 0 | 0 | 17 | 0 | 0 | 0 |
+| data: exchange | 1 | 0 | 30 | 0 | 30 | 0 | 0 | 0 |
 | data: wheelBuildingDoors | 1 | 0 | 30 | 0 | 0 | 0 | 0 | 0 |
 | itemCategory | 1 | 30 | 0 | 0 | 10 | 0 | 0 | 0 |
 | skillsModel | 1 | 30 | 0 | 0 | 20 | 0 | 0 | 1 |
-| QuestJournalPage | 1 | 28 | 0 | 0 | 2 | 0 | 0 | 0 |
+| data: aceFlip | 1 | 0 | 29 | 0 | 29 | 0 | 0 | 0 |
+| data: aboutPanel | 1 | 0 | 28 | 0 | 28 | 0 | 0 | 0 |
+| data: nameModal | 1 | 0 | 28 | 0 | 28 | 0 | 0 | 2 |
+| data: hallPanel | 1 | 0 | 27 | 0 | 27 | 0 | 0 | 2 |
+| data: shardCrack | 1 | 0 | 27 | 0 | 27 | 0 | 0 | 0 |
 | heroStatPills | 1 | 27 | 0 | 0 | 20 | 0 | 0 | 0 |
 | CodexStage | 1 | 26 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: alliancePart | 1 | 0 | 26 | 0 | 26 | 0 | 0 | 0 |
 | game: econCard | 1 | 26 | 0 | 0 | 20 | 0 | 0 | 0 |
 | server: shop | 1 | 0 | 0 | 26 | 0 | 0 | 0 | 0 |
 | statSim | 1 | 26 | 0 | 0 | 9 | 0 | 0 | 0 |
-| LoginSpinWindow | 1 | 24 | 1 | 0 | 0 | 0 | 0 | 0 |
+| data: enchant | 1 | 0 | 25 | 0 | 25 | 0 | 0 | 0 |
+| data: feedSeed | 1 | 0 | 25 | 0 | 25 | 0 | 0 | 0 |
+| data: playerProfile | 1 | 0 | 25 | 0 | 25 | 0 | 0 | 0 |
 | game: farmFeedback | 1 | 25 | 0 | 0 | 17 | 0 | 0 | 0 |
 | game: usageMeter | 1 | 25 | 0 | 0 | 19 | 0 | 0 | 0 |
 | data: buildings | 1 | 0 | 24 | 0 | 0 | 0 | 0 | 0 |
+| data: socialDash | 1 | 0 | 24 | 0 | 24 | 0 | 0 | 0 |
+| data: storeChat | 1 | 0 | 24 | 0 | 24 | 0 | 0 | 0 |
 | server: gladiator | 1 | 0 | 0 | 24 | 0 | 0 | 0 | 0 |
 | server: market | 1 | 0 | 0 | 24 | 0 | 0 | 0 | 0 |
-| AccountLoginForm | 1 | 23 | 0 | 0 | 9 | 0 | 0 | 0 |
-| AceFlipPanel | 1 | 23 | 0 | 0 | 20 | 0 | 0 | 0 |
-| ControlsTutorial | 1 | 23 | 0 | 0 | 4 | 0 | 0 | 7 |
-| BankPanel | 1 | 21 | 1 | 0 | 15 | 0 | 0 | 0 |
+| data: worldMap | 1 | 0 | 22 | 0 | 22 | 0 | 0 | 0 |
 | game: townsfolkReact | 1 | 22 | 0 | 0 | 18 | 0 | 0 | 0 |
 | rendering: playerSkins | 1 | 22 | 0 | 0 | 0 | 0 | 0 | 0 |
-| ShopkeeperPanel | 1 | 19 | 2 | 0 | 0 | 0 | 0 | 0 |
-| WoodworkPanel | 1 | 21 | 0 | 0 | 1 | 0 | 0 | 0 |
+| data: bank | 1 | 0 | 21 | 0 | 21 | 0 | 0 | 1 |
+| data: controlsTutorial | 1 | 0 | 21 | 0 | 21 | 0 | 0 | 9 |
+| data: gamble | 1 | 0 | 21 | 0 | 21 | 0 | 0 | 0 |
+| data: itemTooltip | 1 | 0 | 21 | 0 | 21 | 0 | 0 | 0 |
+| data: nmlBadge | 1 | 0 | 21 | 0 | 21 | 0 | 0 | 5 |
 | equipModel | 1 | 21 | 0 | 0 | 4 | 0 | 0 | 0 |
 | server: storeoffer | 1 | 0 | 0 | 21 | 0 | 0 | 0 | 0 |
 | GuildPanel | 2 | 20 | 0 | 0 | 15 | 0 | 0 | 0 |
 | controlSkin | 1 | 20 | 0 | 0 | 20 | 0 | 0 | 0 |
 | game: deathCard | 1 | 20 | 0 | 0 | 15 | 0 | 0 | 0 |
 | guideArrow | 1 | 16 | 4 | 0 | 16 | 0 | 0 | 8 |
-| InspectPlayerPanel | 1 | 19 | 0 | 0 | 16 | 0 | 0 | 1 |
-| InventorySurface | 1 | 19 | 0 | 0 | 8 | 0 | 0 | 0 |
+| data: inspectPlayer | 1 | 0 | 19 | 0 | 19 | 0 | 0 | 1 |
+| data: settingsPanel | 1 | 0 | 19 | 0 | 19 | 0 | 0 | 1 |
+| data: shopkeeper | 1 | 0 | 19 | 0 | 19 | 0 | 0 | 2 |
 | game: mastery | 1 | 19 | 0 | 0 | 7 | 0 | 0 | 0 |
 | questArt | 1 | 19 | 0 | 0 | 19 | 0 | 0 | 0 |
-| KeyboardHintsPanel | 1 | 18 | 0 | 0 | 11 | 0 | 0 | 0 |
-| VendorPanel | 1 | 18 | 0 | 0 | 6 | 0 | 0 | 0 |
 | game: salvage | 1 | 18 | 0 | 0 | 13 | 0 | 0 | 0 |
 | game: shardCrack | 1 | 18 | 0 | 0 | 10 | 0 | 0 | 0 |
 | game: worldTrial | 1 | 18 | 0 | 0 | 17 | 0 | 0 | 0 |
 | heroModel | 1 | 18 | 0 | 0 | 12 | 0 | 0 | 0 |
 | mapGlyphs | 1 | 18 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: paletteTex | 1 | 18 | 0 | 0 | 17 | 0 | 0 | 0 |
-| AchievementsPanel | 1 | 16 | 1 | 0 | 0 | 0 | 0 | 0 |
-| NmlAskCard | 1 | 17 | 0 | 0 | 3 | 0 | 0 | 2 |
 | UsageMeter | 1 | 17 | 0 | 0 | 4 | 0 | 0 | 0 |
-| GamblePanel | 1 | 16 | 0 | 0 | 16 | 0 | 0 | 0 |
-| InfoPanel | 1 | 16 | 0 | 0 | 5 | 0 | 0 | 0 |
-| ZoneHeader | 1 | 16 | 0 | 0 | 3 | 0 | 0 | 0 |
+| data: accountLogin | 1 | 0 | 16 | 0 | 16 | 0 | 0 | 0 |
 | data: farmCrops | 1 | 0 | 16 | 0 | 0 | 0 | 0 | 0 |
+| data: infoPanel | 1 | 0 | 16 | 0 | 16 | 0 | 0 | 0 |
+| game: frameSteps | 1 | 16 | 0 | 0 | 0 | 0 | 0 | 1 |
 | rendering: effectsRenderer | 1 | 16 | 0 | 0 | 13 | 0 | 0 | 0 |
 | server: feedback | 1 | 0 | 0 | 16 | 0 | 0 | 0 | 0 |
-| StatsPanel | 1 | 15 | 0 | 0 | 0 | 0 | 0 | 0 |
-| T2Panel | 1 | 15 | 0 | 0 | 2 | 0 | 0 | 0 |
+| data: inspectCard | 1 | 0 | 15 | 0 | 15 | 0 | 0 | 1 |
+| data: loginSpin | 1 | 0 | 15 | 0 | 15 | 0 | 0 | 1 |
 | game: bank | 1 | 15 | 0 | 0 | 11 | 0 | 0 | 0 |
 | game: clientOff | 1 | 15 | 0 | 0 | 0 | 0 | 0 | 0 |
-| game: frameSteps | 1 | 15 | 0 | 0 | 0 | 0 | 0 | 1 |
 | networking: broWallet | 1 | 15 | 0 | 0 | 7 | 0 | 0 | 0 |
-| QuestOfferPanel | 1 | 14 | 0 | 0 | 4 | 0 | 0 | 0 |
-| RaceHud | 1 | 14 | 0 | 0 | 0 | 0 | 0 | 0 |
 | RoomFullScreen | 1 | 14 | 0 | 0 | 14 | 0 | 0 | 0 |
 | data: monsterDeathZones | 1 | 0 | 14 | 0 | 14 | 0 | 0 | 0 |
 | data: zones | 1 | 0 | 14 | 0 | 0 | 0 | 0 | 0 |
@@ -182,10 +168,8 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | rendering: entityRenderer | 1 | 14 | 0 | 0 | 0 | 0 | 0 | 0 |
 | server: playerroads | 1 | 0 | 0 | 14 | 0 | 0 | 0 | 0 |
 | BodyInk | 1 | 13 | 0 | 0 | 0 | 0 | 0 | 1 |
-| ChestReveal | 1 | 13 | 0 | 0 | 6 | 0 | 0 | 0 |
 | EncyclopediaPanel | 2 | 13 | 0 | 0 | 8 | 0 | 0 | 0 |
 | FarmPanel | 1 | 13 | 0 | 0 | 13 | 0 | 0 | 0 |
-| LoginScreen | 1 | 13 | 0 | 0 | 0 | 0 | 0 | 1 |
 | broStats | 1 | 13 | 0 | 0 | 10 | 0 | 0 | 0 |
 | data: fishVariants | 1 | 0 | 13 | 0 | 5 | 0 | 0 | 0 |
 | data: weaponGems | 1 | 0 | 13 | 0 | 13 | 0 | 0 | 0 |
@@ -202,26 +186,30 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | CookPanel | 1 | 11 | 1 | 0 | 11 | 0 | 0 | 0 |
 | DeviceScreen | 1 | 12 | 0 | 0 | 6 | 0 | 0 | 2 |
 | ElemStatusChips | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
-| EquippedTab | 1 | 11 | 1 | 0 | 0 | 0 | 0 | 0 |
 | SilenceButtons | 1 | 12 | 0 | 0 | 1 | 0 | 0 | 1 |
 | TownBoardPage | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
-| TrapCatchCard | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
+| VendorPanel | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: questOffer | 1 | 0 | 12 | 0 | 12 | 0 | 0 | 0 |
+| data: questPages | 1 | 0 | 12 | 0 | 12 | 0 | 0 | 2 |
+| data: zoneHeader | 1 | 0 | 12 | 0 | 12 | 0 | 0 | 0 |
 | game: renameOwner | 1 | 12 | 0 | 0 | 9 | 0 | 0 | 1 |
-| JourneyPanel | 1 | 10 | 1 | 0 | 5 | 0 | 0 | 0 |
+| InventoryPanel | 1 | 11 | 0 | 0 | 11 | 0 | 0 | 0 |
+| ItemTooltip | 1 | 11 | 0 | 0 | 11 | 0 | 0 | 0 |
 | PinCards | 1 | 10 | 1 | 0 | 2 | 0 | 0 | 0 |
-| QuestsPanel | 1 | 10 | 1 | 0 | 0 | 0 | 0 | 0 |
-| RenameRow | 1 | 11 | 0 | 0 | 1 | 0 | 0 | 0 |
 | data: codexStage | 1 | 0 | 11 | 0 | 0 | 0 | 0 | 0 |
+| data: gemcut | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 0 |
 | data: hardenedWood | 1 | 0 | 11 | 0 | 6 | 0 | 0 | 0 |
+| data: journey | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 1 |
+| data: loginScreen | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 1 |
+| data: nmlAsk | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 2 |
+| data: questJournal | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 0 |
+| data: raceHud | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 0 |
+| data: woodwork | 1 | 0 | 11 | 0 | 11 | 0 | 0 | 0 |
 | game: itemDrop | 1 | 11 | 0 | 0 | 11 | 0 | 0 | 0 |
 | game: monsterCombat | 1 | 11 | 0 | 0 | 9 | 0 | 0 | 0 |
 | game: pointsTips | 1 | 11 | 0 | 0 | 11 | 0 | 0 | 4 |
-| AccountKeyCard | 1 | 10 | 0 | 0 | 0 | 0 | 0 | 0 |
-| AccountPanel | 1 | 10 | 0 | 0 | 2 | 0 | 0 | 0 |
-| FishWeighCard | 1 | 10 | 0 | 0 | 0 | 0 | 0 | 0 |
-| InfoPopup | 1 | 10 | 0 | 0 | 1 | 0 | 0 | 0 |
-| PartyHUD | 1 | 7 | 3 | 0 | 5 | 0 | 0 | 0 |
-| QuestCard | 1 | 10 | 0 | 0 | 0 | 0 | 0 | 0 |
+| MonsterCodex | 1 | 10 | 0 | 0 | 9 | 0 | 0 | 0 |
+| data: chestReveal | 1 | 0 | 10 | 0 | 10 | 0 | 0 | 0 |
 | data: dishes | 1 | 0 | 10 | 0 | 0 | 0 | 0 | 0 |
 | data: elements | 1 | 0 | 10 | 0 | 0 | 0 | 0 | 0 |
 | game: achievements | 1 | 10 | 0 | 0 | 8 | 0 | 0 | 0 |
@@ -237,7 +225,13 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | DesignGallery | 1 | 9 | 0 | 0 | 0 | 0 | 0 | 2 |
 | LingerScreen | 1 | 9 | 0 | 0 | 9 | 0 | 0 | 0 |
 | data: abilities | 1 | 0 | 9 | 0 | 4 | 0 | 0 | 0 |
+| data: accountPanel | 1 | 0 | 9 | 0 | 9 | 0 | 0 | 0 |
+| data: dailyCard | 1 | 0 | 9 | 0 | 9 | 0 | 0 | 0 |
+| data: keyboardHints | 1 | 0 | 9 | 0 | 9 | 0 | 0 | 0 |
+| data: partyHud | 1 | 0 | 9 | 0 | 9 | 0 | 0 | 1 |
 | data: shards | 1 | 0 | 9 | 0 | 0 | 0 | 0 | 0 |
+| data: socialPanel | 1 | 0 | 9 | 0 | 9 | 0 | 0 | 1 |
+| data: t2Panel | 1 | 0 | 9 | 0 | 9 | 0 | 0 | 0 |
 | deskTeach | 1 | 9 | 0 | 0 | 7 | 0 | 0 | 0 |
 | game: charName | 1 | 9 | 0 | 0 | 2 | 0 | 0 | 0 |
 | game: friendErrors | 1 | 9 | 0 | 0 | 9 | 0 | 0 | 0 |
@@ -245,12 +239,10 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | rendering: lookPalette | 1 | 9 | 0 | 0 | 5 | 0 | 0 | 0 |
 | rendering: patternCatalog | 1 | 9 | 0 | 0 | 0 | 0 | 0 | 0 |
 | server: marketplace | 1 | 0 | 0 | 9 | 0 | 0 | 0 | 0 |
-| BandGrip | 1 | 8 | 0 | 0 | 4 | 0 | 0 | 0 |
-| DailyRewardsCard | 1 | 8 | 0 | 0 | 7 | 0 | 0 | 0 |
-| FishBoard | 1 | 6 | 2 | 0 | 0 | 0 | 0 | 0 |
-| GemWorksPanel | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 0 |
 | TrapsTab | 1 | 8 | 0 | 0 | 3 | 0 | 0 | 0 |
 | data: elemWindup | 1 | 0 | 8 | 0 | 0 | 0 | 0 | 0 |
+| data: infoPopup | 1 | 0 | 8 | 0 | 8 | 0 | 0 | 0 |
+| data: trapCatch | 1 | 0 | 8 | 0 | 8 | 0 | 0 | 0 |
 | game: characterRecord | 1 | 8 | 0 | 0 | 8 | 0 | 0 | 0 |
 | game: rest | 1 | 8 | 0 | 0 | 4 | 0 | 0 | 0 |
 | rendering: eyewearCatalog | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -260,13 +252,16 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | storeChatBus | 1 | 8 | 0 | 0 | 4 | 0 | 0 | 0 |
 | BoardRow | 1 | 7 | 0 | 0 | 2 | 0 | 0 | 0 |
 | ChatBubble | 1 | 7 | 0 | 0 | 4 | 0 | 0 | 0 |
-| GemcutPanel | 1 | 7 | 0 | 0 | 7 | 0 | 0 | 0 |
 | InstallHint | 1 | 7 | 0 | 0 | 0 | 0 | 0 | 1 |
-| QuestPanel | 1 | 7 | 0 | 0 | 5 | 0 | 0 | 0 |
-| SelfPanel | 1 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| QuestJournalPage | 1 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
 | StatScreenPanel | 1 | 7 | 0 | 0 | 2 | 0 | 0 | 0 |
 | ThreatIncomingPanel | 1 | 7 | 0 | 0 | 7 | 0 | 0 | 0 |
 | WeaponPill | 1 | 7 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: accountKey | 1 | 0 | 7 | 0 | 7 | 0 | 0 | 0 |
+| data: bottomDashboard | 1 | 0 | 7 | 0 | 7 | 0 | 0 | 0 |
+| data: duelRequest | 1 | 0 | 7 | 0 | 7 | 0 | 0 | 0 |
+| data: questCard | 1 | 0 | 7 | 0 | 7 | 0 | 0 | 0 |
+| data: questsPanel | 1 | 0 | 7 | 0 | 7 | 0 | 0 | 0 |
 | game: feedbackOwner | 1 | 7 | 0 | 0 | 7 | 0 | 0 | 0 |
 | game: shieldGem | 1 | 7 | 0 | 0 | 7 | 0 | 0 | 0 |
 | networking: serverReady | 1 | 7 | 0 | 0 | 5 | 0 | 0 | 0 |
@@ -275,12 +270,17 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | rendering: sharpPixels | 1 | 7 | 0 | 0 | 4 | 0 | 0 | 0 |
 | server: playerrestore | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 |
 | server: silence | 1 | 0 | 0 | 7 | 0 | 0 | 0 | 0 |
-| DuelRequestPanel | 1 | 6 | 0 | 0 | 6 | 0 | 0 | 0 |
+| BottomDashboard | 1 | 6 | 0 | 0 | 3 | 0 | 0 | 0 |
 | NotificationsPanel | 1 | 5 | 1 | 0 | 0 | 0 | 0 | 0 |
 | SpendPointConfirm | 1 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
 | data: effects | 1 | 0 | 6 | 0 | 0 | 0 | 0 | 0 |
+| data: fishWeigh | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
+| data: gemWorks | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
 | data: hardenCosts | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
+| data: inventorySurface | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
+| data: questPanel | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
 | data: salvage | 1 | 0 | 6 | 0 | 3 | 0 | 0 | 0 |
+| data: vendor | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
 | game: dropLines | 1 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
 | game: killRoll | 1 | 6 | 0 | 0 | 6 | 0 | 0 | 0 |
 | game: mayorTalk | 1 | 6 | 0 | 0 | 6 | 0 | 0 | 0 |
@@ -297,12 +297,14 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | server: liveops | 1 | 0 | 0 | 6 | 0 | 0 | 0 | 0 |
 | server: power | 1 | 0 | 0 | 6 | 0 | 0 | 0 | 0 |
 | ChatChannelChips | 1 | 5 | 0 | 0 | 4 | 0 | 0 | 0 |
-| ClanInviteCard | 1 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
 | DungeonClearHud | 1 | 5 | 0 | 0 | 1 | 0 | 0 | 0 |
 | MayorGreeting | 1 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NewMonsterCard | 1 | 4 | 1 | 0 | 2 | 0 | 0 | 0 |
 | OriginScreen | 1 | 5 | 0 | 0 | 5 | 0 | 0 | 0 |
+| data: clanInvite | 1 | 0 | 5 | 0 | 5 | 0 | 0 | 0 |
+| data: equippedTab | 1 | 0 | 5 | 0 | 5 | 0 | 0 | 1 |
 | data: oreArt | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
+| data: selfPanel | 1 | 0 | 5 | 0 | 5 | 0 | 0 | 0 |
 | data: treeArt | 1 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
 | game: blockedAsks | 1 | 5 | 0 | 0 | 3 | 0 | 0 | 0 |
 | game: desktopControls | 1 | 2 | 3 | 0 | 2 | 0 | 0 | 0 |
@@ -317,17 +319,19 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | server: hardenedwood | 1 | 0 | 0 | 5 | 0 | 0 | 0 | 0 |
 | server: hidden | 1 | 0 | 0 | 5 | 0 | 0 | 0 | 0 |
 | server: trade2 | 1 | 0 | 0 | 5 | 0 | 0 | 0 | 0 |
+| EnchantPanel | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
 | FurniturePanel | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | HardenedWoodTab | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| IncomingTradePanel | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | LandOfficePanel | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | PetHousePanel | 1 | 2 | 2 | 0 | 2 | 0 | 0 | 0 |
-| QuestDetailPanel | 1 | 3 | 1 | 0 | 0 | 0 | 0 | 0 |
+| SettingsPanel | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 1 |
 | SkillTiles | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
 | TradePanel | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | WarBanner | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | bagFilterBus | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: incomingTrade | 1 | 0 | 4 | 0 | 4 | 0 | 0 | 0 |
 | data: joinGate | 1 | 0 | 4 | 0 | 4 | 0 | 0 | 0 |
+| data: questCoach | 1 | 0 | 4 | 0 | 4 | 0 | 0 | 3 |
 | data: remains | 1 | 0 | 4 | 0 | 4 | 0 | 0 | 0 |
 | data: wheelDungeons | 1 | 0 | 4 | 0 | 4 | 0 | 0 | 0 |
 | data: words | 1 | 0 | 4 | 0 | 4 | 0 | 0 | 0 |
@@ -357,10 +361,17 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | server: wheelspawns1 | 1 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
 | EmotePanel | 1 | 3 | 0 | 0 | 3 | 0 | 0 | 0 |
 | FarmBedPrompt | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| InspectCard | 1 | 3 | 0 | 0 | 3 | 0 | 0 | 0 |
+| PlayerPaint | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| SocialPanel | 1 | 1 | 2 | 0 | 1 | 0 | 0 | 0 |
 | SprintButton | 1 | 3 | 0 | 0 | 2 | 0 | 0 | 0 |
 | WeaponBar | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | WorldChatFeed | 1 | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
+| WorldMapOverlay | 1 | 2 | 1 | 0 | 0 | 0 | 0 | 0 |
 | data: farmLayout | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 |
+| data: fishBoard | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 1 |
+| data: inventoryDash | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 |
+| data: questDetail | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 |
 | data: stormSparks | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 |
 | data: worldProps | 1 | 0 | 3 | 0 | 0 | 0 | 0 | 0 |
 | equipActions | 1 | 3 | 0 | 0 | 3 | 0 | 0 | 0 |
@@ -391,15 +402,20 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | storeApi | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | AchievementBanner | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | BuildBadge | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| ControlsTutorial | 1 | 2 | 0 | 0 | 2 | 0 | 0 | 2 |
+| GameApp | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | LevelUpBurst | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | MapPanel | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | NpcDialogue | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| PartyPanel | 1 | 2 | 0 | 0 | 1 | 0 | 0 | 0 |
 | PlayerListPanel | 1 | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
+| QuestPages | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | RevealOverlay | 1 | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
 | RideButton | 1 | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
 | TownBoard | 1 | 1 | 1 | 0 | 1 | 0 | 0 | 0 |
 | UpdateBanner | 1 | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
 | XpFlyOverlay | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: bandGrip | 1 | 0 | 2 | 0 | 2 | 0 | 0 | 0 |
 | data: waterAttack | 1 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
 | game: bossChest | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | game: groundLoot | 1 | 2 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -430,15 +446,31 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | server: risechest | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: skillpoints | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: testmode | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
-| CharacterView | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| AccountLoginForm | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | ChatPanel | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| ClanPanel | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | ElementBurstButton | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| FeedSeedPanel | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| InfoPopup | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | IntroVideo | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| ItemDetailPopup | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | JumpButton | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| LeaderboardPanel | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| MorePanel | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| PartyHUD | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| QuestCard | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| QuestDetailPanel | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| QuestOfferPanel | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | QuickEatButton | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | ShieldButton | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| SmithyPanel | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | SpecialButton | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| TradeWindowPanel | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | XpTrack | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| ZoneHeader | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| data: characterView | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
+| data: contextButton | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
+| data: statsPanel | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
 | data: wheelSignposts | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
 | farmBus | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | game: deskKeys | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -458,6 +490,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | gearFlash | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | networking: rosterCookie | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | questJournalModel | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| questParts | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | rendering: bodyheads | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: campfireFx | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: capeCatalog | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -501,7 +534,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 
 CLAUDE.md §1: on screen it is "BroTown", the "World map", "the world". Not fixed here (card WD moves no words).
 
-- `src/ui/BroTown.jsx:9048` (BroTown (the game page), ?) `the Wheel's ground gone,`
+- `src/ui/BroTown.jsx:8994` (BroTown (the game page), ?) `the Wheel's ground gone,`
 
 ## Flag: "remnant(s)" a player reads
 
@@ -514,58 +547,42 @@ None.
 CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskWords()`. A row on a phone-only screen is not a fault, and a table's row (`src/data/*`, the townsfolk's and quests' words) may be swapped by `deskWords()` where its screen draws it: a human reads the list.
 
 - `src/ui/panels/BodyInk.jsx:997` (BodyInk, yes) `Dragging moves the view — tap to go back to drawing`
-- `src/ui/BroTown.jsx:324` (BroTown (the game page), ?) `All done? Tap me!`
-- `src/ui/panels/ClanPanel.jsx:303` (ClanPanel, ?) `To join a clan, have a clan member invite you by tapping your character.`
-- `src/ui/panels/ClanPanel.jsx:998` (ClanPanel, ?) `Tap again to DISBAND [`
-- `src/ui/panels/ClanPanel.jsx:999` (ClanPanel, ?) `Tap again to leave the clan`
-- `src/ui/mobile/ControlsTutorial.jsx:49` (ControlsTutorial, yes) `The button lights up when something is in reach. Tap it to swing, hold it to keep fight...`
-- `src/ui/mobile/ControlsTutorial.jsx:51` (ControlsTutorial, ?) `Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, ...`
-- `src/ui/mobile/ControlsTutorial.jsx:56` (ControlsTutorial, yes) `You always aim at the closest enemy. Tap a different one to lock onto it instead, and t...`
-- `src/ui/mobile/ControlsTutorial.jsx:61` (ControlsTutorial, ?) `Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a sta...`
-- `src/ui/mobile/ControlsTutorial.jsx:65` (ControlsTutorial, yes) `Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.`
-- `src/ui/mobile/ControlsTutorial.jsx:94` (ControlsTutorial, yes) `Your items and gear live here. Tap one to equip it.`
-- `src/ui/mobile/ControlsTutorial.jsx:101` (ControlsTutorial, yes) `Menus live down here. Tap your character to chat.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:240` (DailyRewardsWindow, yes) `Not your thing? Tap ↻ to swap one quest for another (once a day).`
+- `src/ui/BroTown.jsx:289` (BroTown (the game page), ?) `All done? Tap me!`
+- `src/ui/mobile/ControlsTutorial.jsx:61` (ControlsTutorial, ?) `Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, ...`
+- `src/ui/mobile/ControlsTutorial.jsx:73` (ControlsTutorial, ?) `Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a sta...`
 - `src/ui/panels/DesignGallery.jsx:149` (DesignGallery, yes) `Tap one to put it on your`
 - `src/ui/panels/DesignGallery.jsx:149` (DesignGallery, yes) `. It replaces what is there — one tap of Undo brings it back.`
 - `src/ui/DeviceScreen.js:76` (DeviceScreen, ?) `Then tap Use a Login Key and type it.`
 - `src/ui/DeviceScreen.js:81` (DeviceScreen, ?) `Then tap Use a Login Key and type the new one.`
-- `src/ui/GameApp.jsx:659` (GameApp, ?) `tap logging ON — tap a monster, watch console`
-- `src/ui/GameApp.jsx:660` (GameApp, ?) `tap logging OFF`
-- `src/ui/GameApp.jsx:661` (GameApp, ?) `tap <on\|off>`
-- `src/ui/GameApp.jsx:662` (GameApp, ?) `tap — toggle tap-to-lock diagnostic logging`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2602` (HeroExpanded, yes) `Tap a weapon to see its points`
-- `src/ui/mobile/InspectCard.jsx:485` (InspectCard, yes) `long-press any name or number to learn more · tap to dismiss`
-- `src/ui/panels/InspectPlayerPanel.jsx:483` (InspectPlayerPanel, yes) `Friends — tap to remove`
 - `src/ui/mobile/InstallHint.jsx:147` (InstallHint, yes) `Tap`
-- `src/ui/panels/InventoryPanel.jsx:1105` (InventoryPanel, ?) `No pets. Weaken a monster to <20% HP then tap 🪤 to capture!`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:190` (ItemDetailPopup, ?) `Tap Block in a fight to raise it`
-- `src/ui/panels/LoginScreen.jsx:381` (LoginScreen, yes) `bros this device can hold. Play one, or free a slot: tap a bro's ••• and choose Remove ...`
-- `src/ui/panels/NameModal.jsx:1352` (NameModal, yes) `Tap to name`
-- `src/ui/mobile/NmlAskCard.jsx:281` (NmlAskCard, ?) `Hitting back the player who attacked you gives you no red skull. Tap for what No man's ...`
-- `src/ui/mobile/NmlAskCard.jsx:282` (NmlAskCard, ?) `Attacking a player gives you a red skull. Tap for what No man's land means.`
-- `src/ui/mobile/NmlBadge.jsx:210` (NmlBadge, yes) `Out past the safe ground is No man's land, where other players can attack you. The mini...`
-- `src/ui/panels/PlayerPaint.jsx:314` (PlayerPaint, ?) `Pick a letter, then tap to place it`
-- `src/ui/panels/PlayerPaint.jsx:318` (PlayerPaint, ?) `Tap something you already drew to pick it up — recolour, resize or re-layer it`
-- `src/ui/panels/PlayerPaint.jsx:2403` (PlayerPaint, yes) `Tap a zone to edit`
-- `src/ui/panels/PlayerPaint.jsx:2619` (PlayerPaint, yes) `Keeping the proportions you drew — tap to size width and height freely`
-- `src/ui/panels/PlayerPaint.jsx:2620` (PlayerPaint, yes) `Width and height are free — tap to keep the proportions you drew`
-- `src/ui/panels/PlayerPaint.jsx:2747` (PlayerPaint, ?) `Tap something you drew to pick it up — then recolour, resize or re-layer it`
-- `src/ui/panels/PlayerPaint.jsx:2748` (PlayerPaint, ?) `Pick Select, then tap something you drew to change it`
-- `src/ui/mobile/QuestCoach.jsx:517` (QuestCoach, yes) `Your bag, your gear and your stats live down here. Tap the handle.`
-- `src/ui/mobile/QuestCoach.jsx:527` (QuestCoach, yes) `Your bag, your gear and your stats live in here. Tap the arrow.`
-- `src/ui/mobile/QuestCoach.jsx:619` (QuestCoach, yes) `Tap each glowing item, then Equip.`
-- `src/ui/mobile/QuestCoach.jsx:724` (QuestCoach, yes) `Mayor Bro paid you in gear. Tap the handle to find it.`
-- `src/ui/mobile/QuestCoach.jsx:728` (QuestCoach, yes) `Mayor Bro paid you in gear. Tap Dashboard to find it.`
-- `src/ui/mobile/QuestCoach.jsx:782` (QuestCoach, yes) `Double-tap to cycle. Use whichever you like best.`
-- `src/ui/mobile/QuestCoach.jsx:879` (QuestCoach, yes) `With the bow or staff out, tap the Block button to raise your shield.`
-- `src/ui/mobile/QuestCoach.jsx:1023` (QuestCoach, yes) `Everyone here is a real player. Tap yourself to say something.`
+- `src/ui/mobile/QuestCoach.jsx:597` (QuestCoach, yes) `Your bag, your gear and your stats live down here. Tap the handle.`
+- `src/ui/mobile/QuestCoach.jsx:607` (QuestCoach, yes) `Your bag, your gear and your stats live in here. Tap the arrow.`
+- `src/ui/mobile/QuestCoach.jsx:699` (QuestCoach, yes) `Tap each glowing item, then Equip.`
+- `src/ui/mobile/QuestCoach.jsx:804` (QuestCoach, yes) `Mayor Bro paid you in gear. Tap the handle to find it.`
+- `src/ui/mobile/QuestCoach.jsx:808` (QuestCoach, yes) `Mayor Bro paid you in gear. Tap Dashboard to find it.`
+- `src/ui/mobile/QuestCoach.jsx:862` (QuestCoach, yes) `Double-tap to cycle. Use whichever you like best.`
+- `src/ui/mobile/QuestCoach.jsx:959` (QuestCoach, yes) `With the bow or staff out, tap the Block button to raise your shield.`
+- `src/ui/mobile/QuestCoach.jsx:1103` (QuestCoach, yes) `Everyone here is a real player. Tap yourself to say something.`
 - `src/ui/mobile/dash/SettingsPanel.jsx:398` (SettingsPanel, yes) `Tap the floating`
 - `src/ui/panels/SilenceButtons.jsx:42` (SilenceButtons, yes) `'s silence? Tap Lift again to do it.`
-- `src/ui/panels/SocialPanel.jsx:136` (SocialPanel, ?) `No friends yet. Tap a player and add them!`
-- `src/ui/panels/TradeWindowPanel.jsx:1436` (TradeWindowPanel, yes) `That is a large amount of gold. Check the numbers, then tap Accept twice.`
-- `src/ui/panels/TradeWindowPanel.jsx:1700` (TradeWindowPanel, ?) `Presets subtract gold. Tap to make them add again.`
-- `src/ui/panels/TradeWindowPanel.jsx:1701` (TradeWindowPanel, ?) `Presets add gold. Tap to make them subtract.`
+- `src/data/say/achievements.js:14` (data: achievements, ?) `No title yet: tap one you have`
+- `src/data/say/bank.js:33` (data: bank, ?) `Safe from death: what is in the vault stays here when you die. Materials, food and gold...`
+- `src/data/say/broPages.js:30` (data: broPages, ?) `Tap to inspect`
+- `src/data/say/clan.js:30` (data: clan, ?) `To join a clan, have a clan member invite you by tapping your character.`
+- `src/data/say/clan.js:69` (data: clan, ?) `Tap again to DISBAND [{tag}] — the clan and its name are gone`
+- `src/data/say/clan.js:70` (data: clan, ?) `Tap again to leave the clan`
+- `src/data/say/controlsTutorial.js:7` (data: controlsTutorial, ?) `The button lights up when something is in reach. Tap it to swing, hold it to keep fight...`
+- `src/data/say/controlsTutorial.js:9` (data: controlsTutorial, ?) `You always aim at the closest enemy. Tap a different one to lock onto it instead, and t...`
+- `src/data/say/controlsTutorial.js:13` (data: controlsTutorial, ?) `Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.`
+- `src/data/say/controlsTutorial.js:15` (data: controlsTutorial, ?) `Your items and gear live here. Tap one to equip it.`
+- `src/data/say/controlsTutorial.js:17` (data: controlsTutorial, ?) `Menus live down here. Tap your character to chat.`
+- `src/data/say/controlsTutorial.js:24` (data: controlsTutorial, ?) `Face a monster in reach and a line points to it. Tap Attack once: you lock on and keep ...`
+- `src/data/say/controlsTutorial.js:26` (data: controlsTutorial, ?) `Face a monster in reach and tap Attack: you lock on, and each tap is one attack. Hold A...`
+- `src/data/say/controlsTutorial.js:27` (data: controlsTutorial, ?) `The line finds the monster you face once it is in reach (a bow or a staff reaches furth...`
+- `src/data/say/controlsTutorial.js:30` (data: controlsTutorial, ?) `It comes up beside Attack while a monster is in sight. Tap to raise your shield. It sta...`
+- `src/data/say/dailyRewards.js:30` (data: dailyRewards, ?) `Not your thing? Tap ↻ to swap one quest for another (once a day).`
+- `src/data/say/equippedTab.js:18` (data: equippedTab, ?) `Tap a slot to set`
+- `src/data/say/fishBoard.js:12` (data: fishBoard, ?) `Nobody has weighed a {name} yet. Tap a fish in your bag, then Inspect.`
 - `src/data/gameDisplay.js:2127` (data: gameDisplay, ?) `first tap after`
 - `src/data/gameSystems.js:7006` (data: gameSystems, yes) `Open your Bag and tap the log to light a campfire`
 - `src/data/gameSystems.js:7008` (data: gameSystems, yes) `Stand by the fire and tap it to cook your fish`
@@ -586,8 +603,55 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/gameSystems.js:8307` (data: gameSystems, ?) `I won! Want a rematch? Tap Race! and touch all 4 corner flags, then get back here befor...`
 - `src/data/gameSystems.js:8308` (data: gameSystems, ?) `I won again! Tap Race! to try again. Farmer Bro's Zoom Juice makes you run faster, so d...`
 - `src/data/gameSystems.js:8309` (data: gameSystems, ?) `wins for me! Don't give up. Drink Zoom Juice from your Bag and sprint the whole way. Ta...`
+- `src/data/say/hallPanel.js:27` (data: hallPanel, ?) `Pick a player, then tap Duel on their card`
+- `src/data/say/hallPanel.js:32` (data: hallPanel, ?) `Pick a player, then tap Invite to Party on their card`
+- `src/data/say/heroExpanded.js:88` (data: heroExpanded, ?) `Tap a weapon to see its points`
+- `src/data/say/heroExpanded.js:105` (data: heroExpanded, ?) `Tap again: every point comes back`
+- `src/data/say/inspectCard.js:55` (data: inspectCard, ?) `long-press any name or number to learn more · tap to dismiss`
+- `src/data/say/inspectPlayer.js:27` (data: inspectPlayer, ?) `Friends — tap to remove`
+- `src/data/say/inventoryPanel.js:68` (data: inventoryPanel, ?) `No pets. Weaken a monster to <20% HP then tap 🪤 to capture!`
+- `src/data/say/inventoryPanel.js:70` (data: inventoryPanel, ?) `Tap a pet to set active. Active pet follows you and auto-collects loot within {radius}px.`
+- `src/data/say/itemDetail.js:25` (data: itemDetail, ?) `Tap Block in a fight to raise it`
+- `src/data/say/journey.js:18` (data: journey, ?) `Tap to view the transaction`
+- `src/data/say/leaderboard.js:87` (data: leaderboard, ?) `{board}: tap to choose a board`
+- `src/data/say/loginScreen.js:9` (data: loginScreen, ?) `You have all {max} bros this device can hold. Play one, or free a slot: tap a bro's •••...`
+- `src/data/say/loginSpin.js:25` (data: loginSpin, ?) `Tap SPIN: one free spin a day`
+- `src/data/say/monsterCodex.js:39` (data: monsterCodex, ?) `Tap an item to see what it is and the grades it can roll.`
+- `src/data/say/nameModal.js:33` (data: nameModal, ?) `Live preview — tap to zoom`
+- `src/data/say/nameModal.js:36` (data: nameModal, ?) `Tap to name`
+- `src/data/say/nmlAsk.js:11` (data: nmlAsk, ?) `Hitting back the player who attacked you gives you no red skull. Tap for what No man's ...`
+- `src/data/say/nmlAsk.js:12` (data: nmlAsk, ?) `Attacking a player gives you a red skull. Tap for what No man's land means.`
+- `src/data/say/nmlBadge.js:13` (data: nmlBadge, ?) `{label} tap a player, or swing or shoot at them, and choose {attack}. Until you do, you...`
+- `src/data/say/nmlBadge.js:20` (data: nmlBadge, ?) `{label} a {skull}. To hit back, swing, shoot or tap them and choose {attack} once: hitt...`
+- `src/data/say/nmlBadge.js:30` (data: nmlBadge, ?) `Out past the safe ground is No man's land, where other players can attack you. The mini...`
+- `src/data/say/nmlBadge.js:32` (data: nmlBadge, ?) `Outlaw: you attacked a player first, {min} minutes left. Tap for what it means.`
+- `src/data/say/nmlBadge.js:33` (data: nmlBadge, ?) `No man's land {ring}: players can attack you here. Tap for what it means.`
+- `src/data/say/paint.js:40` (data: paint, ?) `Tap an area to flood it — with the eraser chosen, to clear it`
+- `src/data/say/paint.js:41` (data: paint, ?) `Pick a letter, then tap to place it`
+- `src/data/say/paint.js:42` (data: paint, ?) `Tap something you already drew to pick it up — recolour, resize or re-layer it`
+- `src/data/say/paint.js:74` (data: paint, ?) `Tap a zone to edit`
+- `src/data/say/paint.js:93` (data: paint, ?) `Keeping the proportions you drew — tap to size width and height freely`
+- `src/data/say/paint.js:94` (data: paint, ?) `Width and height are free — tap to keep the proportions you drew`
+- `src/data/say/paint.js:115` (data: paint, ?) `Tap something you drew to pick it up — then recolour, resize or re-layer it`
+- `src/data/say/paint.js:116` (data: paint, ?) `Pick Select, then tap something you drew to change it`
+- `src/data/say/partyHud.js:10` (data: partyHud, ?) `Party, {count} of {max}: tap to see who`
+- `src/data/say/pets.js:20` (data: pets, ?) `No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap {...`
+- `src/data/say/questCoach.js:4` (data: questCoach, ?) `Face a monster in reach, then tap once: you keep fighting until you tap again.`
+- `src/data/say/questCoach.js:6` (data: questCoach, ?) `Face a monster in reach and tap Attack: one hit a tap. Hold it until the ring fills to ...`
+- `src/data/say/questCoach.js:7` (data: questCoach, ?) `Your specials come up beside Attack while a monster is in sight. Tap one.`
+- `src/data/say/questPages.js:16` (data: questPages, ?) `What to do now: {now}. Tap to see the quest journey`
+- `src/data/say/questPages.js:17` (data: questPages, ?) `Rewards. Tap to see them and what comes next`
+- `src/data/say/settingsPanel.js:24` (data: settingsPanel, ?) `Notifications — SILENCED, tap to turn them back on`
+- `src/data/say/shopkeeper.js:15` (data: shopkeeper, ?) `Tap his shelf to buy · tap your bag to sell`
+- `src/data/say/shopkeeper.js:16` (data: shopkeeper, ?) `Tap his shelf to buy · tap your bag below to sell`
+- `src/data/say/socialPanel.js:7` (data: socialPanel, ?) `No friends yet. Tap a player and add them!`
+- `src/data/say/storePanel.js:58` (data: storePanel, ?) `Be the first — open your bag, tap something and choose Sell.`
+- `src/data/say/storePanel.js:61` (data: storePanel, ?) `Open your bag, tap something and choose Sell.`
+- `src/data/say/tradeWindow.js:52` (data: tradeWindow, ?) `That is a large amount of gold. Check the numbers, then tap Accept twice.`
+- `src/data/say/tradeWindow.js:79` (data: tradeWindow, ?) `Presets subtract gold. Tap to make them add again.`
+- `src/data/say/tradeWindow.js:80` (data: tradeWindow, ?) `Presets add gold. Tap to make them subtract.`
 - `src/data/trapping.js:377` (data: trapping, yes) `Tap again to confirm`
-- `src/game/frameSteps.js:74` (game: frameSteps, yes) `tap`
+- `src/game/frameSteps.js:76` (game: frameSteps, yes) `tap`
 - `src/game/nmlAsk.js:391` (game: nmlAsk, yes) `tap`
 - `src/game/nmlAsk.js:400` (game: nmlAsk, yes) `tap`
 - `src/game/nmlAsk.js:496` (game: nmlAsk, yes) `tap`
@@ -600,14 +664,14 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/game/silenceOwner.js:43` (game: silenceOwner, ?) `? Their chat reaches nobody; they still play. Tap again to do it.`
 - `src/game/spar.js:72` (game: spar, ?) `here. Attack away -- a tap picks one to aim at.`
 - `src/game/storeAnswer.js:31` (game: storeAnswer, ?) `Not sure it went up. Look in the Auction House under Yours, My Listings, before you tap...`
-- `src/ui/guideArrow.js:205` (guideArrow, ?) `Tap a weapon to switch`
-- `src/ui/guideArrow.js:210` (guideArrow, ?) `Tap here`
-- `src/ui/guideArrow.js:211` (guideArrow, ?) `Tap Forge`
-- `src/ui/guideArrow.js:212` (guideArrow, ?) `Tap to open`
-- `src/ui/guideArrow.js:213` (guideArrow, ?) `Tap Gear`
-- `src/ui/guideArrow.js:214` (guideArrow, ?) `Tap to equip`
-- `src/ui/guideArrow.js:215` (guideArrow, ?) `Tap Bro: points to spend`
-- `src/ui/guideArrow.js:216` (guideArrow, ?) `Tap Points`
+- `src/ui/guideArrow.js:207` (guideArrow, ?) `Tap a weapon to switch`
+- `src/ui/guideArrow.js:212` (guideArrow, ?) `Tap here`
+- `src/ui/guideArrow.js:213` (guideArrow, ?) `Tap Forge`
+- `src/ui/guideArrow.js:214` (guideArrow, ?) `Tap to open`
+- `src/ui/guideArrow.js:215` (guideArrow, ?) `Tap Gear`
+- `src/ui/guideArrow.js:216` (guideArrow, ?) `Tap to equip`
+- `src/ui/guideArrow.js:217` (guideArrow, ?) `Tap Bro: points to spend`
+- `src/ui/guideArrow.js:218` (guideArrow, ?) `Tap Points`
 - `src/networking/gameEvents.js:5251` (networking: gameEvents, ?) `Target a monster and tap TRAP`
 - `src/ui/mobile/sheet/skillsModel.js:70` (skillsModel, ?) `Make box traps at the Woodworker, tap TRAP on a monster, then kill it. Every try pays X...`
 
@@ -615,226 +679,24 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 `P` in place, `T` in a table, `S` the worker; `?` unclear (counted).
 
-### AboutPanel (30)
+### AccountLoginForm (1)
 
-- `src/ui/mobile/dash/AboutPanel.jsx:48` P `Smoothness reports`
-- `src/ui/mobile/dash/AboutPanel.jsx:48` P `— every few minutes while you play: how smoothly the game ran (frame times, what made i...`
-- `src/ui/mobile/dash/AboutPanel.jsx:59` P `On: turn off`
-- `src/ui/mobile/dash/AboutPanel.jsx:59` P `Off: turn on`
-- `src/ui/mobile/dash/AboutPanel.jsx:68` P `An early demo of an online action RPG. Everything you do is saved on our server, so the...`
-- `src/ui/mobile/dash/AboutPanel.jsx:74` P `What we keep, and why`
-- `src/ui/mobile/dash/AboutPanel.jsx:76` P `Your character`
-- `src/ui/mobile/dash/AboutPanel.jsx:76` P `— its name, look, level, items and gold, so you can come back to it.`
-- `src/ui/mobile/dash/AboutPanel.jsx:78` P `A scrambled copy of your Login Key`
-- `src/ui/mobile/dash/AboutPanel.jsx:78` P `— so only you can open your character. We never store the key itself.`
-- `src/ui/mobile/dash/AboutPanel.jsx:80` P `A device id`
-- `src/ui/mobile/dash/AboutPanel.jsx:80` P `— a random id and a rough summary of your browser and screen, to spot cheating and bot ...`
-- `src/ui/mobile/dash/AboutPanel.jsx:83` P `Crash reports`
-- `src/ui/mobile/dash/AboutPanel.jsx:83` P `— the error message and your browser type when the game breaks, so we can fix it.`
-- `src/ui/mobile/dash/AboutPanel.jsx:85` P `Feedback you send`
-- `src/ui/mobile/dash/AboutPanel.jsx:85` P `— it appears on the public Feedback board with your character's name.`
-- `src/ui/mobile/dash/AboutPanel.jsx:87` P `Reported chat`
-- `src/ui/mobile/dash/AboutPanel.jsx:87` P `— if someone reports a chat message, we keep that message so it can be reviewed.`
-- `src/ui/mobile/dash/AboutPanel.jsx:89` P `A wallet address`
-- `src/ui/mobile/dash/AboutPanel.jsx:89` P `— only if you choose to link one to verify a Hemi Bro.`
-- `src/ui/mobile/dash/AboutPanel.jsx:94` P `No ads, no selling your data, no email or real name required. Chat is seen by other pla...`
-- `src/ui/mobile/dash/AboutPanel.jsx:99` P `Rules`
-- `src/ui/mobile/dash/AboutPanel.jsx:101` P `Be decent in chat. Harassment, hate and spam get muted or removed.`
-- `src/ui/mobile/dash/AboutPanel.jsx:102` P `No cheating, bots, or exploiting bugs. Report bugs instead.`
-- `src/ui/mobile/dash/AboutPanel.jsx:103` P `Keep your Login Key private — anyone with it can play your character.`
-- `src/ui/mobile/dash/AboutPanel.jsx:104` P `BroTown is meant for players aged 13 and over.`
-- `src/ui/mobile/dash/AboutPanel.jsx:105` P `The demo is provided as-is, and characters or items may be changed or reset while it is...`
-- `src/ui/mobile/dash/AboutPanel.jsx:110` P `Credits`
-- `src/ui/mobile/dash/AboutPanel.jsx:111` P `A Hemi Bros game. Most art and all music were made for this game with AI tools (OpenAI ...`
-- `src/ui/mobile/dash/AboutPanel.jsx:131` P `Questions or problems? Send feedback`
-
-### AccountKeyCard (10)
-
-- `src/ui/account/AccountKeyCard.jsx:22` P `Guest session — this tab has no Login Key.`
-- `src/ui/account/AccountKeyCard.jsx:25` P `Play in a normal tab to get a character that can be continued on other devices.`
-- `src/ui/account/AccountKeyCard.jsx:74` P `Your Login Key`
-- `src/ui/account/AccountKeyCard.jsx:157` P `Copied!`
-- `src/ui/account/AccountKeyCard.jsx:157` P `Copy Login Key`
-- `src/ui/account/AccountKeyCard.jsx:157` P `Copy`
-- `src/ui/account/AccountKeyCard.jsx:161` P `This Login Key is the`
-- `src/ui/account/AccountKeyCard.jsx:161` P `way to get your character back on a new phone or after clearing your browser. Save it s...`
-- `src/ui/account/AccountKeyCard.jsx:170` P `This key works on any phone or computer: type its eight words at the start screen's Log...`
-- `src/ui/account/AccountKeyCard.jsx:175` P `On a new phone or computer, the game's owner also has to let it in: the screen there gi...`
-
-### AccountLoginForm (23)
-
-- `src/ui/account/AccountLoginForm.jsx:15` P? `No character found with that key — check for typos.`
-- `src/ui/account/AccountLoginForm.jsx:16` P? `That key doesn't match. Check for typos.`
-- `src/ui/account/AccountLoginForm.jsx:17` P? `Too many attempts — wait a minute and try again.`
-- `src/ui/account/AccountLoginForm.jsx:18` P? `Too many attempts — wait a minute and try again.`
-- `src/ui/account/AccountLoginForm.jsx:19` P? `Login isn't available right now — try again later.`
-- `src/ui/account/AccountLoginForm.jsx:20` P? `That doesn’t look like a Login Key.`
-- `src/ui/account/AccountLoginForm.jsx:21` P? `You're already playing as this character.`
-- `src/ui/account/AccountLoginForm.jsx:26` P? `This character can only be played on a device it was played on before, or with its new ...`
-- `src/ui/account/AccountLoginForm.jsx:29` P? `This character has a new Login Key now. Use the new one: it’s on the Account card of a ...`
-- `src/ui/account/AccountLoginForm.jsx:146` P `Found it!`
-- `src/ui/account/AccountLoginForm.jsx:149` P `Continue as your`
-- `src/ui/account/AccountLoginForm.jsx:149` P `Lv`
-- `src/ui/account/AccountLoginForm.jsx:149` P `character`
-- `src/ui/account/AccountLoginForm.jsx:153` P `The character currently on this device will be signed out. Its Login Key is`
-- `src/ui/account/AccountLoginForm.jsx:154` P `— save it first if you ever want to come back to it.`
-- `src/ui/account/AccountLoginForm.jsx:168` P `Switching…`
-- `src/ui/account/AccountLoginForm.jsx:168` P `Continue`
-- `src/ui/account/AccountLoginForm.jsx:178` P `Cancel`
-- `src/ui/account/AccountLoginForm.jsx:197` P `Continue a character from another device`
-- `src/ui/account/AccountLoginForm.jsx:204` P `type your Login Key…`
-- `src/ui/account/AccountLoginForm.jsx:232` P `Joining…`
-- `src/ui/account/AccountLoginForm.jsx:232` P `Checking…`
-- `src/ui/account/AccountLoginForm.jsx:232` P `Log in`
-
-### AccountPanel (10)
-
-- `src/ui/mobile/dash/AccountPanel.jsx:74` P `Switch bro?`
-- `src/ui/mobile/dash/AccountPanel.jsx:74` P `Leave the world?`
-- `src/ui/mobile/dash/AccountPanel.jsx:77` P `You’ll go to your list of bros. This one is saved.`
-- `src/ui/mobile/dash/AccountPanel.jsx:89` P `Cancel`
-- `src/ui/mobile/dash/AccountPanel.jsx:100` P `Switch Bro`
-- `src/ui/mobile/dash/AccountPanel.jsx:100` P `Log Out`
-- `src/ui/mobile/dash/AccountPanel.jsx:117` P? `Switch bro, or log out`
-- `src/ui/mobile/dash/AccountPanel.jsx:117` P? `Log out to the character screen`
-- `src/ui/mobile/dash/AccountPanel.jsx:126` P `Switch character`
-- `src/ui/mobile/dash/AccountPanel.jsx:126` P `Log out`
-
-### AceFlipPanel (23)
-
-- `src/ui/panels/AceFlipPanel.jsx:111` P? `YOU WON!`
-- `src/ui/panels/AceFlipPanel.jsx:111` P? `YOU LOST!`
-- `src/ui/panels/AceFlipPanel.jsx:239` P `Ace shakes his head. "You don't have enough gold for that bet, friend. Try a smaller st...`
-- `src/ui/panels/AceFlipPanel.jsx:287` P `Ace puts his coin away. "No coin flips right now, friend. Come back later."`
-- `src/ui/panels/AceFlipPanel.jsx:321` P `Ace shakes his head. "Gold only today, friend. Keep your items in your Bag."`
-- `src/ui/panels/AceFlipPanel.jsx:401` P? `Nothing in the book yet. Be the first name in it. I'm not saying which column.`
-- `src/ui/panels/AceFlipPanel.jsx:477` P? `My record book: the biggest win and the biggest loss on my coin, one line for each player.`
-- `src/ui/panels/AceFlipPanel.jsx:478` P? `Biggest wins`
-- `src/ui/panels/AceFlipPanel.jsx:479` P? `Biggest losses`
-- `src/ui/panels/AceFlipPanel.jsx:487` P? `Bet items from your Bag. If you win, you get double. If you lose, I keep them. I win`
-- `src/ui/panels/AceFlipPanel.jsx:487` P? `% of flips, and you win`
-- `src/ui/panels/AceFlipPanel.jsx:494` P? `Your Bag is empty. Go find some loot first, then come back.`
-- `src/ui/panels/AceFlipPanel.jsx:507` P? `Double or nothing ·`
-- `src/ui/panels/AceFlipPanel.jsx:507` P? `Stake something`
-- `src/ui/panels/AceFlipPanel.jsx:513` P? `I'm Ace, and I flip coins for gold. Pick your stake. If you win, I pay you`
-- `src/ui/panels/AceFlipPanel.jsx:513` P? `times your stake. If you lose, you pay me`
-- `src/ui/panels/AceFlipPanel.jsx:513` P? `times your stake. I win`
-- `src/ui/panels/AceFlipPanel.jsx:513` P? `% of flips, and you win`
-- `src/ui/panels/AceFlipPanel.jsx:544` P? `Your stake`
-- `src/ui/panels/AceFlipPanel.jsx:577` P? `You need`
-- `src/ui/panels/AceFlipPanel.jsx:577` P? `in the bag to cover his smallest bet.`
-- `src/ui/panels/AceFlipPanel.jsx:585` P? `Pick a stake`
-- `src/ui/panels/AceFlipPanel.jsx:585` P? `Flip for`
+- `src/ui/account/AccountLoginForm.jsx:31` P? `This character can only be played on a device it was played on before, or with its new ...`
 
 ### AchievementBanner (2)
 
 - `src/ui/panels/AchievementBanner.jsx:117` P `achievement`
 - `src/ui/panels/AchievementBanner.jsx:122` P `AP`
 
-### AchievementsPanel (17)
-
-- `src/ui/mobile/dash/AchievementsPanel.jsx:90` P `AP`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:108` P `Not earned yet`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:146` P `Your title`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:150` P `Removing…`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:150` P `Remove title`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:156` P `Saving…`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:156` P `Use as title`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:192` P `Your title`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:204` P `times`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:277` P `AP`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:288` P `Title:`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:289` T `No title yet: tap one you have`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:330` P `Achievements aren't on yet.`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:330` P `This server doesn't keep them yet.`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:338` P `Achievements can't be read right now.`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:339` P `Nothing you have earned is lost: they come back when the server can read them.`
-- `src/ui/mobile/dash/AchievementsPanel.jsx:353` P `Show`
-
-### AlliancePart (36)
-
-- `src/ui/panels/buildings/AlliancePart.jsx:59` P `Alliance name`
-- `src/ui/panels/buildings/AlliancePart.jsx:59` P `Name (3-16)`
-- `src/ui/panels/buildings/AlliancePart.jsx:61` P `Alliance tag`
-- `src/ui/panels/buildings/AlliancePart.jsx:61` P `TAG`
-- `src/ui/panels/buildings/AlliancePart.jsx:67` P `Rename`
-- `src/ui/panels/buildings/AlliancePart.jsx:67` P `Name your alliance`
-- `src/ui/panels/buildings/AlliancePart.jsx:70` P `You can rename it again in`
-- `src/ui/panels/buildings/AlliancePart.jsx:70` P `The name and tag are yours alone, and every member wears the tag. You can change them o...`
-- `src/ui/panels/buildings/AlliancePart.jsx:86` P `War with`
-- `src/ui/panels/buildings/AlliancePart.jsx:89` P `min left. Kills count in No man's land, under its usual rules. Everyone who fights is p...`
-- `src/ui/panels/buildings/AlliancePart.jsx:95` P `beat`
-- `src/ui/panels/buildings/AlliancePart.jsx:105` P `No war right now. Your leader can declare one on another alliance.`
-- `src/ui/panels/buildings/AlliancePart.jsx:108` P `Name your alliance to fight wars.`
-- `src/ui/panels/buildings/AlliancePart.jsx:114` P `Their tag`
-- `src/ui/panels/buildings/AlliancePart.jsx:114` P `Their tag`
-- `src/ui/panels/buildings/AlliancePart.jsx:119` P `Declare war`
-- `src/ui/panels/buildings/AlliancePart.jsx:123` P `Your alliance rests`
-- `src/ui/panels/buildings/AlliancePart.jsx:123` P `before its next war.`
-- `src/ui/panels/buildings/AlliancePart.jsx:124` P `A war lasts 30 minutes. Kills count in No man's land under its usual rules. Everyone wh...`
-- `src/ui/panels/buildings/AlliancePart.jsx:132` P `Asking…`
-- `src/ui/panels/buildings/AlliancePart.jsx:134` P `No alliances yet. A party becomes one when 20 of its members are level 5 or more and pl...`
-- `src/ui/panels/buildings/AlliancePart.jsx:143` P `Unnamed alliance`
-- `src/ui/panels/buildings/AlliancePart.jsx:145` P `active · Lv`
-- `src/ui/panels/buildings/AlliancePart.jsx:150` P `Yours: #`
-- `src/ui/panels/buildings/AlliancePart.jsx:168` P `Alliance`
-- `src/ui/panels/buildings/AlliancePart.jsx:175` P `Unnamed alliance`
-- `src/ui/panels/buildings/AlliancePart.jsx:179` P `Members who played in the last 7 days and are level 5 or more count. It stays an allian...`
-- `src/ui/panels/buildings/AlliancePart.jsx:179` P `of them do.`
-- `src/ui/panels/buildings/AlliancePart.jsx:188` P? `is resting`
-- `src/ui/panels/buildings/AlliancePart.jsx:188` P `Not an alliance yet`
-- `src/ui/panels/buildings/AlliancePart.jsx:194` P `Your clan is this party now, and its members keep the tag.`
-- `src/ui/panels/buildings/AlliancePart.jsx:196` P `When`
-- `src/ui/panels/buildings/AlliancePart.jsx:196` P `members have played in the last 7 days and are level 5 or more, your party becomes an a...`
-- `src/ui/panels/buildings/AlliancePart.jsx:207` P `A party becomes an alliance when`
-- `src/ui/panels/buildings/AlliancePart.jsx:207` P `of its members are level 5 or more and played in the last 7 days: a name, a tag, wars a...`
-- `src/ui/panels/buildings/AlliancePart.jsx:212` P `Alliance board`
-
-### BandGrip (8)
-
-- `src/ui/mobile/dash/BandGrip.jsx:51` P? `Expand dashboard`
-- `src/ui/mobile/dash/BandGrip.jsx:51` P? `Minimize dashboard`
-- `src/ui/mobile/dash/BandGrip.jsx:53` P `Expand dashboard`
-- `src/ui/mobile/dash/BandGrip.jsx:53` P `Minimize dashboard`
-- `src/ui/mobile/dash/BandGrip.jsx:127` P? `Expand dashboard`
-- `src/ui/mobile/dash/BandGrip.jsx:127` P? `Minimize dashboard`
-- `src/ui/mobile/dash/BandGrip.jsx:159` P `OPEN`
-- `src/ui/mobile/dash/BandGrip.jsx:159` P `CLOSE`
-
-### BankPanel (22)
-
-- `src/ui/panels/buildings/BankPanel.jsx:82` P? `Vault & equipment`
-- `src/ui/panels/buildings/BankPanel.jsx:95` P? `Your gold and what you wear. Nothing can be stored here yet.`
-- `src/ui/panels/buildings/BankPanel.jsx:96` P? `Gold on hand`
-- `src/ui/panels/buildings/BankPanel.jsx:114` P? `Kept when you die, unless a player kills you in No man's land or you die with a red skull.`
-- `src/ui/panels/buildings/BankPanel.jsx:160` P `x`
-- `src/ui/panels/buildings/BankPanel.jsx:198` P `Amount`
-- `src/ui/panels/buildings/BankPanel.jsx:243` P? `Your vault`
-- `src/ui/panels/buildings/BankPanel.jsx:246` P? `The vault could not be opened just now. Trying again… What is in it stays safe.`
-- `src/ui/panels/buildings/BankPanel.jsx:247` P? `The vault is closed for now. What is in it stays safe.`
-- `src/ui/panels/buildings/BankPanel.jsx:250` T `Safe from death: what is in the vault stays here when you die. Materials, food and gold...`
-- `src/ui/panels/buildings/BankPanel.jsx:255` P? `On you`
-- `src/ui/panels/buildings/BankPanel.jsx:256` P? `In the vault`
-- `src/ui/panels/buildings/BankPanel.jsx:257` P `Put in`
-- `src/ui/panels/buildings/BankPanel.jsx:258` P `Take out`
-- `src/ui/panels/buildings/BankPanel.jsx:265` P `Put in`
-- `src/ui/panels/buildings/BankPanel.jsx:265` P `Take out`
-- `src/ui/panels/buildings/BankPanel.jsx:268` P? `The vault`
-- `src/ui/panels/buildings/BankPanel.jsx:273` P? `Nothing in the vault yet.`
-- `src/ui/panels/buildings/BankPanel.jsx:273` P? `Opening the vault…`
-- `src/ui/panels/buildings/BankPanel.jsx:275` P? `Your bag`
-- `src/ui/panels/buildings/BankPanel.jsx:280` P? `Your bag is empty.`
-- `src/ui/panels/buildings/BankPanel.jsx:281` P? `Tools stay in your bag.`
-
 ### BoardRow (7)
 
-- `src/ui/mobile/dash/BoardRow.jsx:237` P `DELETED`
-- `src/ui/mobile/dash/BoardRow.jsx:247` P `Level`
-- `src/ui/mobile/dash/BoardRow.jsx:252` P `Lv`
-- `src/ui/mobile/dash/BoardRow.jsx:264` P `Bro`
-- `src/ui/mobile/dash/BoardRow.jsx:269` P? `, a deleted character`
-- `src/ui/mobile/dash/BoardRow.jsx:320` P `Bro`
-- `src/ui/mobile/dash/BoardRow.jsx:324` P? `, a deleted character`
+- `src/ui/mobile/dash/BoardRow.jsx:240` P `DELETED`
+- `src/ui/mobile/dash/BoardRow.jsx:250` P `Level`
+- `src/ui/mobile/dash/BoardRow.jsx:255` P `Lv`
+- `src/ui/mobile/dash/BoardRow.jsx:267` P `Bro`
+- `src/ui/mobile/dash/BoardRow.jsx:272` P? `, a deleted character`
+- `src/ui/mobile/dash/BoardRow.jsx:323` P `Bro`
+- `src/ui/mobile/dash/BoardRow.jsx:327` P? `, a deleted character`
 
 ### BodyInk (13)
 
@@ -852,295 +714,157 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/BodyInk.jsx:1028` P `The whole area, at the zoom this opened on`
 - `src/ui/panels/BodyInk.jsx:1029` P `Back to the whole area, at the zoom this opened on`
 
-### BottomDashboard (43)
+### BottomDashboard (6)
 
-- `src/ui/mobile/BottomDashboard.jsx:277` P? `{…}px solid transparent`
-- `src/ui/mobile/BottomDashboard.jsx:278` P? `{…}px solid transparent`
-- `src/ui/mobile/BottomDashboard.jsx:279` P? `{…}px solid {…}`
-- `src/ui/mobile/BottomDashboard.jsx:439` P `Inventory`
-- `src/ui/mobile/BottomDashboard.jsx:440` P `Self`
-- `src/ui/mobile/BottomDashboard.jsx:446` P `Journey`
-- `src/ui/mobile/BottomDashboard.jsx:452` P `Achievements`
-- `src/ui/mobile/BottomDashboard.jsx:456` P `Quests`
-- `src/ui/mobile/BottomDashboard.jsx:457` P `Quest`
-- `src/ui/mobile/BottomDashboard.jsx:458` P `Map`
-- `src/ui/mobile/BottomDashboard.jsx:463` P `Social`
-- `src/ui/mobile/BottomDashboard.jsx:464` P `More`
-- `src/ui/mobile/BottomDashboard.jsx:467` P `Pets`
-- `src/ui/mobile/BottomDashboard.jsx:468` P `Stats`
-- `src/ui/mobile/BottomDashboard.jsx:473` P `Life Skills`
-- `src/ui/mobile/BottomDashboard.jsx:474` P `Codex`
-- `src/ui/mobile/BottomDashboard.jsx:475` P `Guild`
-- `src/ui/mobile/BottomDashboard.jsx:484` P `Leaderboards`
-- `src/ui/mobile/BottomDashboard.jsx:489` P `Feedback`
-- `src/ui/mobile/BottomDashboard.jsx:490` P `About & privacy`
-- `src/ui/mobile/BottomDashboard.jsx:491` P `Settings`
-- `src/ui/mobile/BottomDashboard.jsx:497` P `Account`
-- `src/ui/mobile/BottomDashboard.jsx:500` P `Notifications`
-- `src/ui/mobile/BottomDashboard.jsx:505` P `Build`
-- `src/ui/mobile/BottomDashboard.jsx:511` P `Bag`
-- `src/ui/mobile/BottomDashboard.jsx:512` P `Bro`
-- `src/ui/mobile/BottomDashboard.jsx:522` P `Dashboard`
-- `src/ui/mobile/BottomDashboard.jsx:567` P `Bag`
-- `src/ui/mobile/BottomDashboard.jsx:570` P `Bro`
-- `src/ui/mobile/BottomDashboard.jsx:573` P `Skills`
-- `src/ui/mobile/BottomDashboard.jsx:574` P `Friends`
-- `src/ui/mobile/BottomDashboard.jsx:575` P `Quests`
-- `src/ui/mobile/BottomDashboard.jsx:579` P `Codex`
-- `src/ui/mobile/BottomDashboard.jsx:586` P `Ranks`
-- `src/ui/mobile/BottomDashboard.jsx:586` P `Leaderboards`
-- `src/ui/mobile/BottomDashboard.jsx:587` P `More`
-- `src/ui/mobile/BottomDashboard.jsx:677` P `Gear`
-- `src/ui/mobile/BottomDashboard.jsx:1347` P `Open dashboard`
-- `src/ui/mobile/BottomDashboard.jsx:1348` P `Open dashboard (I)`
-- `src/ui/mobile/BottomDashboard.jsx:1470` P? `Minimize dashboard`
-- `src/ui/mobile/BottomDashboard.jsx:1470` P? `Expand dashboard`
-- `src/ui/mobile/BottomDashboard.jsx:1500` P `CLOSE`
-- `src/ui/mobile/BottomDashboard.jsx:1500` P `OPEN`
-
-### BroCard (44)
-
-- `src/ui/mobile/sheet/BroCard.jsx:202` P `You`
-- `src/ui/mobile/sheet/BroCard.jsx:229` P `Homestead`
-- `src/ui/mobile/sheet/BroCard.jsx:230` P `s`
-- `src/ui/mobile/sheet/BroCard.jsx:230` P `{…} plot{…} ready to harvest.`
-- `src/ui/mobile/sheet/BroCard.jsx:230` P `Nothing ready to harvest yet.`
-- `src/ui/mobile/sheet/BroCard.jsx:231` P `Your farm is reached from the Feed & Seed in BroTown: walk in its door to plant, water ...`
-- `src/ui/mobile/sheet/BroCard.jsx:238` P? `No party`
-- `src/ui/mobile/sheet/BroCard.jsx:238` P? `No clan`
-- `src/ui/mobile/sheet/BroCard.jsx:248` P `Lv`
-- `src/ui/mobile/sheet/BroCard.jsx:254` P? `Title: {…}. Change`
-- `src/ui/mobile/sheet/BroCard.jsx:262` P `No title. Choose one`
-- `src/ui/mobile/sheet/BroCard.jsx:262` P `No title`
-- `src/ui/mobile/sheet/BroCard.jsx:272` P? `{…} Achievement Points. Open Achievements`
-- `src/ui/mobile/sheet/BroCard.jsx:274` P `AP`
-- `src/ui/mobile/sheet/BroCard.jsx:279` P? `Achievements: {…} of {…}. Open`
-- `src/ui/mobile/sheet/BroCard.jsx:279` P? `Achievements. Open`
-- `src/ui/mobile/sheet/BroCard.jsx:282` P `Achievements`
-- `src/ui/mobile/sheet/BroCard.jsx:287` P `Lifetime Kills`
-- `src/ui/mobile/sheet/BroCard.jsx:299` P `Combat skills`
-- `src/ui/mobile/sheet/BroCard.jsx:316` P? `, {…} of {…} XP`
-- `src/ui/mobile/sheet/BroCard.jsx:316` P? `, fully levelled`
-- `src/ui/mobile/sheet/BroCard.jsx:317` P? `: show {…} stats`
-- `src/ui/mobile/sheet/BroCard.jsx:324` P `Combat Stats`
-- `src/ui/mobile/sheet/BroCard.jsx:326` P `No`
-- `src/ui/mobile/sheet/BroCard.jsx:326` P `equipped`
-- `src/ui/mobile/sheet/BroCard.jsx:345` P `Achievements`
-- `src/ui/mobile/sheet/BroCard.jsx:346` P `{…} of {…}`
-- `src/ui/mobile/sheet/BroCard.jsx:348` P `Life Skills`
-- `src/ui/mobile/sheet/BroCard.jsx:349` P `Total level {…}`
-- `src/ui/mobile/sheet/BroCard.jsx:354` P `Points`
-- `src/ui/mobile/sheet/BroCard.jsx:355` P `{…} to spend`
-- `src/ui/mobile/sheet/BroCard.jsx:355` P `All spent`
-- `src/ui/mobile/sheet/BroCard.jsx:358` P `Equipment`
-- `src/ui/mobile/sheet/BroCard.jsx:359` P `{…} of {…} worn`
-- `src/ui/mobile/sheet/BroCard.jsx:361` P `Homestead`
-- `src/ui/mobile/sheet/BroCard.jsx:362` P `s`
-- `src/ui/mobile/sheet/BroCard.jsx:362` P `{…} plot{…} ready`
-- `src/ui/mobile/sheet/BroCard.jsx:362` P `Nothing ready`
-- `src/ui/mobile/sheet/BroCard.jsx:363` P `Pet`
-- `src/ui/mobile/sheet/BroCard.jsx:363` P `No pet`
-- `src/ui/mobile/sheet/BroCard.jsx:365` P `Titles`
-- `src/ui/mobile/sheet/BroCard.jsx:366` P `{…} unlocked`
-- `src/ui/mobile/sheet/BroCard.jsx:368` P `Party`
-- `src/ui/mobile/sheet/BroCard.jsx:368` P `Clan`
+- `src/ui/mobile/BottomDashboard.jsx:279` P? `{…}px solid transparent`
+- `src/ui/mobile/BottomDashboard.jsx:280` P? `{…}px solid transparent`
+- `src/ui/mobile/BottomDashboard.jsx:281` P? `{…}px solid {…}`
+- `src/ui/mobile/BottomDashboard.jsx:454` P `Achievements`
+- `src/ui/mobile/BottomDashboard.jsx:486` P `Leaderboards`
+- `src/ui/mobile/BottomDashboard.jsx:572` P `Bro`
 
 ### BroTown (the game page) (135)
 
-- `src/ui/BroTown.jsx:324` P? `All done? Tap me!`
-- `src/ui/BroTown.jsx:990` P? `Mayor Bro`
-- `src/ui/BroTown.jsx:990` P? `Blacksmith Bro`
-- `src/ui/BroTown.jsx:990` P? `Lil Bro`
-- `src/ui/BroTown.jsx:2797` P `Original`
-- `src/ui/BroTown.jsx:2802` P `Original color`
-- `src/ui/BroTown.jsx:3188` P? `Enter a valid NFT ID (1-6666)`
-- `src/ui/BroTown.jsx:3232` P? `Bro Type`
-- `src/ui/BroTown.jsx:3273` P? `Could not load catalog. Check connection.`
-- `src/ui/BroTown.jsx:4177` P? `WebGL refused, attempt`
-- `src/ui/BroTown.jsx:4204` P? `the canvas context has no stencil buffer: masks draw unclipped`
-- `src/ui/BroTown.jsx:4205` P? `-- a fresh canvas`
-- `src/ui/BroTown.jsx:4205` P? `-- again, played as it is`
-- `src/ui/BroTown.jsx:4215` P? `renderer re-initialized (webgl)`
-- `src/ui/BroTown.jsx:4297` P? `already owed`
-- `src/ui/BroTown.jsx:4347` P? `pictures read back empty (`
-- `src/ui/BroTown.jsx:4349` P? `pictures emptied at a black screen --`
-- `src/ui/BroTown.jsx:5089` P? `YOU DIED`
-- `src/ui/BroTown.jsx:5138` P `Fists`
-- `src/ui/BroTown.jsx:5763` P? `Resting... (3s)`
-- `src/ui/BroTown.jsx:5774` P? `Fully Rested!`
-- `src/ui/BroTown.jsx:5775` P? `+10% XP for 30 min`
-- `src/ui/BroTown.jsx:6848` P `Campfire`
-- `src/ui/BroTown.jsx:7402` P? `BAG FULL -> sold`
-- `src/ui/BroTown.jsx:7414` P? `PET -> sold`
-- `src/ui/BroTown.jsx:7419` P `G`
-- `src/ui/BroTown.jsx:7563` T `I have a task for you! Tap me.`
-- `src/ui/BroTown.jsx:7836` P `ended`
-- `src/ui/BroTown.jsx:7857` P? `War ended in a TIE!`
-- `src/ui/BroTown.jsx:7857` P? `WAR WON!`
-- `src/ui/BroTown.jsx:7857` P? `War lost...`
-- `src/ui/BroTown.jsx:9048` P? `the Wheel's ground gone,`
-- `src/ui/BroTown.jsx:9051` P? `% lit, strike`
-- `src/ui/BroTown.jsx:9072` P? `black on first join, still dark after rebuild -- reloading into game`
-- `src/ui/BroTown.jsx:9076` P? `world dark 20s despite rebuild -- reloading into game`
-- `src/ui/BroTown.jsx:9234` P? `ARENA MATCH! vs`
-- `src/ui/BroTown.jsx:9453` P? `Pull back and let go`
-- `src/ui/BroTown.jsx:9453` P? `Flick to shoot`
-- `src/ui/BroTown.jsx:9453` P? `Swipe to swing`
-- `src/ui/BroTown.jsx:9571` P? `Zzz... Stats restored!`
-- `src/ui/BroTown.jsx:9572` P? `Well Rested +10% XP (30min)`
-- `src/ui/BroTown.jsx:9645` P? `Need raw fish`
-- `src/ui/BroTown.jsx:9896` P? `Lighting fire…`
-- `src/ui/BroTown.jsx:9950` P? `HP full`
-- `src/ui/BroTown.jsx:9999` P? `cooked fish`
-- `src/ui/BroTown.jsx:10622` P? `button, a[href], input, select, textarea, label, summary,`
-- `src/ui/BroTown.jsx:10623` P? `[role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="option"],`
-- `src/ui/BroTown.jsx:10624` P? `[role="checkbox"], [role="switch"], [role="slider"], [data-bag-key], [data-gear]`
-- `src/ui/BroTown.jsx:10730` P? `Too far away!`
-- `src/ui/BroTown.jsx:10741` P? `Too far away!`
-- `src/ui/BroTown.jsx:10785` P? `has nothing for you right now`
-- `src/ui/BroTown.jsx:11190` P `You`
-- `src/ui/BroTown.jsx:11975` P? `held by a finger the page never saw lift, let go (`
-- `src/ui/BroTown.jsx:12374` P `Please pinch-out to reset zoom (back to 100%) before starting.`
-- `src/ui/BroTown.jsx:12377` P `Anon`
-- `src/ui/BroTown.jsx:12643` P? `recovery reload`
-- `src/ui/BroTown.jsx:12643` P? `fresh snapshot`
-- `src/ui/BroTown.jsx:12966` P? `Dismiss tour prompt`
-- `src/ui/BroTown.jsx:12998` P? `New here? Want a quick tour?`
-- `src/ui/BroTown.jsx:13024` P? `Start tour`
-- `src/ui/BroTown.jsx:13046` P? `No thanks`
-- `src/ui/BroTown.jsx:13765` P? `Achievement Unlocked`
-- `src/ui/BroTown.jsx:13928` P? `🏡 Your Farm`
-- `src/ui/BroTown.jsx:13932` P? `· 🌟 Well Rested`
-- `src/ui/BroTown.jsx:13986` P? `🏡 Your Farm — Safe Zone`
-- `src/ui/BroTown.jsx:14097` P? `Welcome! Use the LEFT STICK to move around.`
-- `src/ui/BroTown.jsx:14097` P? `Nice! Now SWIPE the screen to dodge roll!`
-- `src/ui/BroTown.jsx:14097` P? `Great dodge! Hold the RIGHT STICK to attack enemies.`
-- `src/ui/BroTown.jsx:14097` P? `First kill! Head to the edge of town to explore the wild.`
-- `src/ui/BroTown.jsx:14097` P? `Explore! Walk to the edge of town to enter a combat zone.`
-- `src/ui/BroTown.jsx:14097` P? `Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.`
-- `src/ui/BroTown.jsx:14097` P? `Tutorial complete! The world is yours — explore every zone!`
-- `src/ui/BroTown.jsx:14234` P? `SKILL UP!`
-- `src/ui/BroTown.jsx:14234` P? `LEVEL UP!`
-- `src/ui/BroTown.jsx:14272` P? `Keep at it — better yields and faster gathers`
-- `src/ui/BroTown.jsx:14275` P? `Training — keep using this style`
-- `src/ui/BroTown.jsx:14276` P? `You got stronger! HP · Stamina · Mana refilled`
-- `src/ui/BroTown.jsx:14373` P? `QUEST COMPLETED!`
-- `src/ui/BroTown.jsx:14374` P? `QUEST REWARD`
-- `src/ui/BroTown.jsx:14382` P? `QUEST ACCEPTED!`
-- `src/ui/BroTown.jsx:14437` P? `Skip tutorial`
-- `src/ui/BroTown.jsx:14461` P `Cursed`
-- `src/ui/BroTown.jsx:14464` P `-30% dmg`
-- `src/ui/BroTown.jsx:14471` P `Bleed`
-- `src/ui/BroTown.jsx:14490` P `x`
-- `src/ui/BroTown.jsx:14500` P `Mana`
-- `src/ui/BroTown.jsx:14503` P `Surge`
-- `src/ui/BroTown.jsx:14510` P `Regen`
-- `src/ui/BroTown.jsx:14513` P `x2 rest`
-- `src/ui/BroTown.jsx:14520` P `Resist`
-- `src/ui/BroTown.jsx:14538` P `% XP`
-- `src/ui/BroTown.jsx:14549` P `Rested`
-- `src/ui/BroTown.jsx:14552` P `+10% combat XP`
-- `src/ui/BroTown.jsx:14565` P `Speed`
-- `src/ui/BroTown.jsx:14568` P `x`
-- `src/ui/BroTown.jsx:14646` P? `items scattered in`
-- `src/ui/BroTown.jsx:14646` P? `s to recover!`
-- `src/ui/BroTown.jsx:14704` P? `Max 3 snowmen!`
-- `src/ui/BroTown.jsx:14713` P? `Snowman placed!`
-- `src/ui/BroTown.jsx:14830` P? `Raft built! Sail across water.`
-- `src/ui/BroTown.jsx:14834` P? `🚣 Build Raft (`
-- `src/ui/BroTown.jsx:14841` P? `🚣 Raft ready`
-- `src/ui/BroTown.jsx:14900` P? `Torch lit! (2 min)`
-- `src/ui/BroTown.jsx:14904` P? `🔥 Light Torch (`
-- `src/ui/BroTown.jsx:14918` P? `🔊 Echo! 2× aggro`
-- `src/ui/BroTown.jsx:14948` P `Throw Snowball`
-- `src/ui/BroTown.jsx:14978` P `Build Snowman (disabled)`
-- `src/ui/BroTown.jsx:14990` P? `snow (have`
-- `src/ui/BroTown.jsx:15002` P? `Snowman built!`
-- `src/ui/BroTown.jsx:15020` P `Ride Sled`
-- `src/ui/BroTown.jsx:15020` P `Craft Sled (`
-- `src/ui/BroTown.jsx:15039` P? `wood (have`
-- `src/ui/BroTown.jsx:15053` P? `Sled crafted!`
-- `src/ui/BroTown.jsx:15109` P? `Already have a raft!`
-- `src/ui/BroTown.jsx:15138` P? `Raft built!`
-- `src/ui/BroTown.jsx:15142` P? `🚣 Raft Ready`
-- `src/ui/BroTown.jsx:15142` P? `🪵 Build Raft (`
-- `src/ui/BroTown.jsx:15186` P? `Torch already lit!`
-- `src/ui/BroTown.jsx:15218` P? `Torch lit!`
-- `src/ui/BroTown.jsx:15222` P? `🪵 Light Torch (`
-- `src/ui/BroTown.jsx:15230` P? `⚠️ Dark! Monsters hear you.`
-- `src/ui/BroTown.jsx:15376` P? `Shut for now`
-- `src/ui/BroTown.jsx:15402` P? `😴 Sleep (Restore All + Well Rested Buff)`
-- `src/ui/BroTown.jsx:15428` P? `🏗️ Dungeon Workshop`
-- `src/ui/BroTown.jsx:15462` P? `the dungeon`
-- `src/ui/BroTown.jsx:15501` P? `🐾 Pet House`
-- `src/ui/BroTown.jsx:15515` P? `🪑 Furniture Workshop`
-- `src/ui/BroTown.jsx:15708` P? `Snowman placed!`
-- `src/ui/BroTown.jsx:15819` P? `Raft built! You can cross water.`
-- `src/ui/BroTown.jsx:15823` P? `🚣 Build Raft (`
-- `src/ui/BroTown.jsx:15836` P? `🚣 Raft Ready`
-- `src/ui/BroTown.jsx:15883` P? `Torch lit! (2min)`
-- `src/ui/BroTown.jsx:15887` P? `🔥 Light Torch (`
-- `src/ui/BroTown.jsx:15914` P? `📢 ECHO: 2× aggro`
-- `src/ui/BroTown.jsx:15914` P? `📢 Echo: quiet`
+- `src/ui/BroTown.jsx:289` P? `All done? Tap me!`
+- `src/ui/BroTown.jsx:956` P? `Mayor Bro`
+- `src/ui/BroTown.jsx:956` P? `Blacksmith Bro`
+- `src/ui/BroTown.jsx:956` P? `Lil Bro`
+- `src/ui/BroTown.jsx:2763` P `Original`
+- `src/ui/BroTown.jsx:2768` P `Original color`
+- `src/ui/BroTown.jsx:3154` P? `Enter a valid NFT ID (1-6666)`
+- `src/ui/BroTown.jsx:3198` P? `Bro Type`
+- `src/ui/BroTown.jsx:3239` P? `Could not load catalog. Check connection.`
+- `src/ui/BroTown.jsx:4157` P? `WebGL refused, attempt`
+- `src/ui/BroTown.jsx:4184` P? `the canvas context has no stencil buffer: masks draw unclipped`
+- `src/ui/BroTown.jsx:4185` P? `-- a fresh canvas`
+- `src/ui/BroTown.jsx:4185` P? `-- again, played as it is`
+- `src/ui/BroTown.jsx:4195` P? `renderer re-initialized (webgl)`
+- `src/ui/BroTown.jsx:4277` P? `already owed`
+- `src/ui/BroTown.jsx:4327` P? `pictures read back empty (`
+- `src/ui/BroTown.jsx:4329` P? `pictures emptied at a black screen --`
+- `src/ui/BroTown.jsx:5069` P? `YOU DIED`
+- `src/ui/BroTown.jsx:5118` P `Fists`
+- `src/ui/BroTown.jsx:5708` P? `Resting... (3s)`
+- `src/ui/BroTown.jsx:5719` P? `Fully Rested!`
+- `src/ui/BroTown.jsx:5720` P? `+10% XP for 30 min`
+- `src/ui/BroTown.jsx:6794` P `Campfire`
+- `src/ui/BroTown.jsx:7348` P? `BAG FULL -> sold`
+- `src/ui/BroTown.jsx:7360` P? `PET -> sold`
+- `src/ui/BroTown.jsx:7365` P `G`
+- `src/ui/BroTown.jsx:7509` T `I have a task for you! Tap me.`
+- `src/ui/BroTown.jsx:7782` P `ended`
+- `src/ui/BroTown.jsx:7803` P? `War ended in a TIE!`
+- `src/ui/BroTown.jsx:7803` P? `WAR WON!`
+- `src/ui/BroTown.jsx:7803` P? `War lost...`
+- `src/ui/BroTown.jsx:8994` P? `the Wheel's ground gone,`
+- `src/ui/BroTown.jsx:8997` P? `% lit, strike`
+- `src/ui/BroTown.jsx:9018` P? `black on first join, still dark after rebuild -- reloading into game`
+- `src/ui/BroTown.jsx:9022` P? `world dark 20s despite rebuild -- reloading into game`
+- `src/ui/BroTown.jsx:9180` P? `ARENA MATCH! vs`
+- `src/ui/BroTown.jsx:9399` P? `Pull back and let go`
+- `src/ui/BroTown.jsx:9399` P? `Flick to shoot`
+- `src/ui/BroTown.jsx:9399` P? `Swipe to swing`
+- `src/ui/BroTown.jsx:9517` P? `Zzz... Stats restored!`
+- `src/ui/BroTown.jsx:9518` P? `Well Rested +10% XP (30min)`
+- `src/ui/BroTown.jsx:9591` P? `Need raw fish`
+- `src/ui/BroTown.jsx:9842` P? `Lighting fire…`
+- `src/ui/BroTown.jsx:9896` P? `HP full`
+- `src/ui/BroTown.jsx:9945` P? `cooked fish`
+- `src/ui/BroTown.jsx:10561` P? `button, a[href], input, select, textarea, label, summary,`
+- `src/ui/BroTown.jsx:10562` P? `[role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="option"],`
+- `src/ui/BroTown.jsx:10563` P? `[role="checkbox"], [role="switch"], [role="slider"], [data-bag-key], [data-gear]`
+- `src/ui/BroTown.jsx:10671` P? `Too far away!`
+- `src/ui/BroTown.jsx:10682` P? `Too far away!`
+- `src/ui/BroTown.jsx:10726` P? `has nothing for you right now`
+- `src/ui/BroTown.jsx:11131` P `You`
+- `src/ui/BroTown.jsx:11911` P? `held by a finger the page never saw lift, let go (`
+- `src/ui/BroTown.jsx:12310` P `Please pinch-out to reset zoom (back to 100%) before starting.`
+- `src/ui/BroTown.jsx:12313` P `Anon`
+- `src/ui/BroTown.jsx:12579` P? `recovery reload`
+- `src/ui/BroTown.jsx:12579` P? `fresh snapshot`
+- `src/ui/BroTown.jsx:12902` P? `Dismiss tour prompt`
+- `src/ui/BroTown.jsx:12934` P? `New here? Want a quick tour?`
+- `src/ui/BroTown.jsx:12960` P? `Start tour`
+- `src/ui/BroTown.jsx:12982` P? `No thanks`
+- `src/ui/BroTown.jsx:13701` P? `Achievement Unlocked`
+- `src/ui/BroTown.jsx:13864` P? `🏡 Your Farm`
+- `src/ui/BroTown.jsx:13868` P? `· 🌟 Well Rested`
+- `src/ui/BroTown.jsx:13922` P? `🏡 Your Farm — Safe Zone`
+- `src/ui/BroTown.jsx:14033` P? `Welcome! Use the LEFT STICK to move around.`
+- `src/ui/BroTown.jsx:14033` P? `Nice! Now SWIPE the screen to dodge roll!`
+- `src/ui/BroTown.jsx:14033` P? `Great dodge! Hold the RIGHT STICK to attack enemies.`
+- `src/ui/BroTown.jsx:14033` P? `First kill! Head to the edge of town to explore the wild.`
+- `src/ui/BroTown.jsx:14033` P? `Explore! Walk to the edge of town to enter a combat zone.`
+- `src/ui/BroTown.jsx:14033` P? `Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.`
+- `src/ui/BroTown.jsx:14033` P? `Tutorial complete! The world is yours — explore every zone!`
+- `src/ui/BroTown.jsx:14170` P? `SKILL UP!`
+- `src/ui/BroTown.jsx:14170` P? `LEVEL UP!`
+- `src/ui/BroTown.jsx:14208` P? `Keep at it — better yields and faster gathers`
+- `src/ui/BroTown.jsx:14211` P? `Training — keep using this style`
+- `src/ui/BroTown.jsx:14212` P? `You got stronger! HP · Stamina · Mana refilled`
+- `src/ui/BroTown.jsx:14309` P? `QUEST COMPLETED!`
+- `src/ui/BroTown.jsx:14310` P? `QUEST REWARD`
+- `src/ui/BroTown.jsx:14318` P? `QUEST ACCEPTED!`
+- `src/ui/BroTown.jsx:14373` P? `Skip tutorial`
+- `src/ui/BroTown.jsx:14397` P `Cursed`
+- `src/ui/BroTown.jsx:14400` P `-30% dmg`
+- `src/ui/BroTown.jsx:14407` P `Bleed`
+- `src/ui/BroTown.jsx:14426` P `x`
+- `src/ui/BroTown.jsx:14436` P `Mana`
+- `src/ui/BroTown.jsx:14439` P `Surge`
+- `src/ui/BroTown.jsx:14446` P `Regen`
+- `src/ui/BroTown.jsx:14449` P `x2 rest`
+- `src/ui/BroTown.jsx:14456` P `Resist`
+- `src/ui/BroTown.jsx:14474` P `% XP`
+- `src/ui/BroTown.jsx:14485` P `Rested`
+- `src/ui/BroTown.jsx:14488` P `+10% combat XP`
+- `src/ui/BroTown.jsx:14501` P `Speed`
+- `src/ui/BroTown.jsx:14504` P `x`
+- `src/ui/BroTown.jsx:14582` P? `items scattered in`
+- `src/ui/BroTown.jsx:14582` P? `s to recover!`
+- `src/ui/BroTown.jsx:14640` P? `Max 3 snowmen!`
+- `src/ui/BroTown.jsx:14649` P? `Snowman placed!`
+- `src/ui/BroTown.jsx:14766` P? `Raft built! Sail across water.`
+- `src/ui/BroTown.jsx:14770` P? `🚣 Build Raft (`
+- `src/ui/BroTown.jsx:14777` P? `🚣 Raft ready`
+- `src/ui/BroTown.jsx:14836` P? `Torch lit! (2 min)`
+- `src/ui/BroTown.jsx:14840` P? `🔥 Light Torch (`
+- `src/ui/BroTown.jsx:14854` P? `🔊 Echo! 2× aggro`
+- `src/ui/BroTown.jsx:14884` P `Throw Snowball`
+- `src/ui/BroTown.jsx:14914` P `Build Snowman (disabled)`
+- `src/ui/BroTown.jsx:14926` P? `snow (have`
+- `src/ui/BroTown.jsx:14938` P? `Snowman built!`
+- `src/ui/BroTown.jsx:14956` P `Ride Sled`
+- `src/ui/BroTown.jsx:14956` P `Craft Sled (`
+- `src/ui/BroTown.jsx:14975` P? `wood (have`
+- `src/ui/BroTown.jsx:14989` P? `Sled crafted!`
+- `src/ui/BroTown.jsx:15045` P? `Already have a raft!`
+- `src/ui/BroTown.jsx:15074` P? `Raft built!`
+- `src/ui/BroTown.jsx:15078` P? `🚣 Raft Ready`
+- `src/ui/BroTown.jsx:15078` P? `🪵 Build Raft (`
+- `src/ui/BroTown.jsx:15122` P? `Torch already lit!`
+- `src/ui/BroTown.jsx:15154` P? `Torch lit!`
+- `src/ui/BroTown.jsx:15158` P? `🪵 Light Torch (`
+- `src/ui/BroTown.jsx:15166` P? `⚠️ Dark! Monsters hear you.`
+- `src/ui/BroTown.jsx:15312` P? `Shut for now`
+- `src/ui/BroTown.jsx:15338` P? `😴 Sleep (Restore All + Well Rested Buff)`
+- `src/ui/BroTown.jsx:15364` P? `🏗️ Dungeon Workshop`
+- `src/ui/BroTown.jsx:15398` P? `the dungeon`
+- `src/ui/BroTown.jsx:15437` P? `🐾 Pet House`
+- `src/ui/BroTown.jsx:15451` P? `🪑 Furniture Workshop`
+- `src/ui/BroTown.jsx:15644` P? `Snowman placed!`
+- `src/ui/BroTown.jsx:15755` P? `Raft built! You can cross water.`
+- `src/ui/BroTown.jsx:15759` P? `🚣 Build Raft (`
+- `src/ui/BroTown.jsx:15772` P? `🚣 Raft Ready`
+- `src/ui/BroTown.jsx:15819` P? `Torch lit! (2min)`
+- `src/ui/BroTown.jsx:15823` P? `🔥 Light Torch (`
+- `src/ui/BroTown.jsx:15850` P? `📢 ECHO: 2× aggro`
+- `src/ui/BroTown.jsx:15850` P? `📢 Echo: quiet`
 
 ### BuildBadge (2)
 
 - `src/ui/BuildBadge.jsx:23` P `Built {…}`
 - `src/ui/BuildBadge.jsx:41` P `v`
-
-### CharacterPicker (47)
-
-- `src/ui/panels/CharacterPicker.jsx:77` P? `New here`
-- `src/ui/panels/CharacterPicker.jsx:79` P? `Played just now`
-- `src/ui/panels/CharacterPicker.jsx:80` P? `m ago`
-- `src/ui/panels/CharacterPicker.jsx:81` P? `h ago`
-- `src/ui/panels/CharacterPicker.jsx:82` P? `d ago`
-- `src/ui/panels/CharacterPicker.jsx:83` P? `Played a while ago`
-- `src/ui/panels/CharacterPicker.jsx:311` P? `Could not reach the server. Nothing was changed.`
-- `src/ui/panels/CharacterPicker.jsx:313` P? `Too many attempts — wait a minute and try again. Nothing was changed.`
-- `src/ui/panels/CharacterPicker.jsx:316` P? `This character can only be restarted on a device it was played on. Nothing was changed.`
-- `src/ui/panels/CharacterPicker.jsx:319` P? `This character is in a fight with a player right now. Nothing was changed: try again on...`
-- `src/ui/panels/CharacterPicker.jsx:322` P? `This character has something on the market. Nothing was changed: cancel its listings, o...`
-- `src/ui/panels/CharacterPicker.jsx:323` P? `That did not work. Nothing was changed.`
-- `src/ui/panels/CharacterPicker.jsx:375` P `CHOOSE YOUR BRO`
-- `src/ui/panels/CharacterPicker.jsx:391` P `No bros on this device yet. Use Create Character on the screen behind this one, or brin...`
-- `src/ui/panels/CharacterPicker.jsx:420` P `Unnamed bro`
-- `src/ui/panels/CharacterPicker.jsx:431` P `LEVEL`
-- `src/ui/panels/CharacterPicker.jsx:447` P? `Options for`
-- `src/ui/panels/CharacterPicker.jsx:447` P? `this character`
-- `src/ui/panels/CharacterPicker.jsx:448` P `Options for`
-- `src/ui/panels/CharacterPicker.jsx:448` P `this character`
-- `src/ui/panels/CharacterPicker.jsx:492` P `Playing on another device?`
-- `src/ui/panels/CharacterPicker.jsx:494` P `USE LOGIN KEY`
-- `src/ui/panels/CharacterPicker.jsx:511` P `Back`
-- `src/ui/panels/CharacterPicker.jsx:532` P `This character`
-- `src/ui/panels/CharacterPicker.jsx:535` P `Level`
-- `src/ui/panels/CharacterPicker.jsx:535` P `Level unknown`
-- `src/ui/panels/CharacterPicker.jsx:544` P `Restart at level 1`
-- `src/ui/panels/CharacterPicker.jsx:546` P `Keeps the name and the face. Everything earned is gone.`
-- `src/ui/panels/CharacterPicker.jsx:555` P `Remove from this device`
-- `src/ui/panels/CharacterPicker.jsx:557` P `Frees a slot. Their Login Key still brings them back.`
-- `src/ui/panels/CharacterPicker.jsx:570` P `Cancel`
-- `src/ui/panels/CharacterPicker.jsx:597` P `Are you sure?`
-- `src/ui/panels/CharacterPicker.jsx:601` P `This character`
-- `src/ui/panels/CharacterPicker.jsx:601` P `goes back to`
-- `src/ui/panels/CharacterPicker.jsx:602` P `level 1`
-- `src/ui/panels/CharacterPicker.jsx:602` P `. Their levels, gear, coins and quests are gone and cannot be brought back. They keep t...`
-- `src/ui/panels/CharacterPicker.jsx:608` P `This character`
-- `src/ui/panels/CharacterPicker.jsx:608` P `is removed from this device and their slot is freed. You can bring them back with their...`
-- `src/ui/panels/CharacterPicker.jsx:615` P `Type`
-- `src/ui/panels/CharacterPicker.jsx:615` P `yes`
-- `src/ui/panels/CharacterPicker.jsx:615` P `to confirm.`
-- `src/ui/panels/CharacterPicker.jsx:622` P `yes`
-- `src/ui/panels/CharacterPicker.jsx:626` P `Type yes to confirm`
-- `src/ui/panels/CharacterPicker.jsx:647` P `Working…`
-- `src/ui/panels/CharacterPicker.jsx:648` P `Restart at level 1`
-- `src/ui/panels/CharacterPicker.jsx:648` P `Remove from this device`
-- `src/ui/panels/CharacterPicker.jsx:660` P `Keep them as they are`
-
-### CharacterView (1)
-
-- `src/ui/mobile/sheet/CharacterView.jsx:197` P `Your character`
 
 ### ChatBubble (7)
 
@@ -1164,89 +888,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 - `src/ui/panels/ChatPanel.jsx:107` T `Tap to type…`
 
-### ChestReveal (13)
+### ClanPanel (1)
 
-- `src/ui/mobile/ChestReveal.jsx:67` P? `Cooked Fish`
-- `src/ui/mobile/ChestReveal.jsx:67` P? `Fish to cook`
-- `src/ui/mobile/ChestReveal.jsx:68` P? `A Rare Gem`
-- `src/ui/mobile/ChestReveal.jsx:73` P? `A prize`
-- `src/ui/mobile/ChestReveal.jsx:245` P `Daily chest`
-- `src/ui/mobile/ChestReveal.jsx:263` P? `You have {…} chests waiting.`
-- `src/ui/mobile/ChestReveal.jsx:263` P? `Your daily chest is here.`
-- `src/ui/mobile/ChestReveal.jsx:264` P `The chest would not open — try again.`
-- `src/ui/mobile/ChestReveal.jsx:265` P `Opening…`
-- `src/ui/mobile/ChestReveal.jsx:271` P `Later`
-- `src/ui/mobile/ChestReveal.jsx:273` P `Claim`
-- `src/ui/mobile/ChestReveal.jsx:278` P `Done`
-- `src/ui/mobile/ChestReveal.jsx:281` P `Claim next (`
-
-### ClanInviteCard (5)
-
-- `src/ui/panels/ClanInviteCard.jsx:46` P `Clan invite`
-- `src/ui/panels/ClanInviteCard.jsx:49` P `invites you to join`
-- `src/ui/panels/ClanInviteCard.jsx:52` P `It lasts two minutes. Your clan is in the Guild Hall in BroTown.`
-- `src/ui/panels/ClanInviteCard.jsx:56` P `Accept`
-- `src/ui/panels/ClanInviteCard.jsx:58` P `Not now`
-
-### ClanPanel (57)
-
-- `src/ui/mobile/dash/ClanPanel.jsx:49` P `Alliance`
-- `src/ui/mobile/dash/ClanPanel.jsx:49` P `Your clan, now a party`
-- `src/ui/mobile/dash/ClanPanel.jsx:49` P `member`
-- `src/ui/mobile/dash/ClanPanel.jsx:49` P `s`
-- `src/ui/mobile/dash/ClanPanel.jsx:58` P `No party yet`
-- `src/ui/mobile/dash/ClanPanel.jsx:62` P `Your party stays together when you log out.`
-- `src/ui/mobile/dash/ClanPanel.jsx:62` T `Make a party: pick a player and tap Invite to Party on their card.`
-- `src/ui/mobile/dash/ClanPanel.jsx:63` P `A party of`
-- `src/ui/mobile/dash/ClanPanel.jsx:63` P `members who played in the last 7 days and are level 5 or more becomes an alliance, with...`
-- `src/ui/mobile/dash/ClanPanel.jsx:70` P `Invite a player`
-- `src/ui/mobile/dash/ClanPanel.jsx:95` P `You aren't in a clan.`
-- `src/ui/mobile/dash/ClanPanel.jsx:98` P `Make one, or join one when a clan leader invites you. Clans meet at the Guild Hall in B...`
-- `src/ui/mobile/dash/ClanPanel.jsx:103` P `Make a clan`
-- `src/ui/mobile/dash/ClanPanel.jsx:123` P `member`
-- `src/ui/mobile/dash/ClanPanel.jsx:123` P `s`
-- `src/ui/mobile/dash/ClanPanel.jsx:127` P `Members`
-- `src/ui/mobile/dash/ClanPanel.jsx:142` P `Lv`
-- `src/ui/mobile/dash/ClanPanel.jsx:147` P `Open the clan window`
-- `src/ui/panels/ClanPanel.jsx:197` P? `A party stays together when you log out, and when 20 of its members have played in the ...`
-- `src/ui/panels/ClanPanel.jsx:205` P? `Invite a player`
-- `src/ui/panels/ClanPanel.jsx:267` P? `Clans are groups of up to`
-- `src/ui/panels/ClanPanel.jsx:267` P? `players. Create one with a custom name, tag, and pixel logo that shows above your head.`
-- `src/ui/panels/ClanPanel.jsx:275` P? `Create Clan (`
-- `src/ui/panels/ClanPanel.jsx:296` P? `Accept invite: [`
-- `src/ui/panels/ClanPanel.jsx:303` P? `To join a clan, have a clan member invite you by tapping your character.`
-- `src/ui/panels/ClanPanel.jsx:306` P? `Create Clan`
-- `src/ui/panels/ClanPanel.jsx:314` P? `Clan Name`
-- `src/ui/panels/ClanPanel.jsx:317` P `My Awesome Clan`
-- `src/ui/panels/ClanPanel.jsx:327` P? `Clan Tag (max`
-- `src/ui/panels/ClanPanel.jsx:330` P `CLAN`
-- `src/ui/panels/ClanPanel.jsx:361` P? `Name too short (min 3)`
-- `src/ui/panels/ClanPanel.jsx:365` P? `Need a clan tag`
-- `src/ui/panels/ClanPanel.jsx:394` P? `Clans are closed`
-- `src/ui/panels/ClanPanel.jsx:458` P? `members · Lv`
-- `src/ui/panels/ClanPanel.jsx:466` P? `Logo Editor`
-- `src/ui/panels/ClanPanel.jsx:630` P? `Clear Logo`
-- `src/ui/panels/ClanPanel.jsx:648` P? `Logo saved!`
-- `src/ui/panels/ClanPanel.jsx:651` P? `Save Logo`
-- `src/ui/panels/ClanPanel.jsx:671` P? `You (Founder)`
-- `src/ui/panels/ClanPanel.jsx:682` P? `Clan Wars`
-- `src/ui/panels/ClanPanel.jsx:745` P? `m remaining ·`
-- `src/ui/panels/ClanPanel.jsx:752` P? `Travel to`
-- `src/ui/panels/ClanPanel.jsx:752` P? `to fight! PvP kills score points.`
-- `src/ui/panels/ClanPanel.jsx:770` P? `Challenge another clan to a 30-minute PvP battle in a zone. Most kills wins!`
-- `src/ui/panels/ClanPanel.jsx:775` P? `Battle Zone`
-- `src/ui/panels/ClanPanel.jsx:819` P? `Target Clan`
-- `src/ui/panels/ClanPanel.jsx:858` P? `No other clans online`
-- `src/ui/panels/ClanPanel.jsx:882` P? `Select a target clan!`
-- `src/ui/panels/ClanPanel.jsx:908` P? `WAR DECLARED vs [`
-- `src/ui/panels/ClanPanel.jsx:909` P? `Battle zone:`
-- `src/ui/panels/ClanPanel.jsx:932` P? `Declare War`
-- `src/ui/panels/ClanPanel.jsx:974` P? `Leaving clan...`
-- `src/ui/panels/ClanPanel.jsx:990` P? `Left clan`
-- `src/ui/panels/ClanPanel.jsx:998` P? `Tap again to DISBAND [`
-- `src/ui/panels/ClanPanel.jsx:998` P? `] — the clan and its name are gone`
-- `src/ui/panels/ClanPanel.jsx:999` P? `Tap again to leave the clan`
-- `src/ui/panels/ClanPanel.jsx:1000` P? `Leave Clan`
+- `src/ui/mobile/dash/ClanPanel.jsx:66` T `Make a party: pick a player and tap Invite to Party on their card.`
 
 ### CodexStage (26)
 
@@ -1277,31 +921,10 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/mobile/dash/CodexStage.jsx:242` P `idle`
 - `src/ui/mobile/dash/CodexStage.jsx:340` P `idle`
 
-### ControlsTutorial (23)
+### ControlsTutorial (2)
 
-- `src/ui/mobile/ControlsTutorial.jsx:32` P `Move`
-- `src/ui/mobile/ControlsTutorial.jsx:32` P `Drag the left joystick to move.`
-- `src/ui/mobile/ControlsTutorial.jsx:49` P `Attack`
-- `src/ui/mobile/ControlsTutorial.jsx:49` P `The button lights up when something is in reach. Tap it to swing, hold it to keep fight...`
-- `src/ui/mobile/ControlsTutorial.jsx:51` P? `Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, ...`
-- `src/ui/mobile/ControlsTutorial.jsx:56` P `Your target`
-- `src/ui/mobile/ControlsTutorial.jsx:56` P `You always aim at the closest enemy. Tap a different one to lock onto it instead, and t...`
-- `src/ui/mobile/ControlsTutorial.jsx:58` P? `You always aim at the closest enemy: hold the right stick toward it and keep fighting.`
-- `src/ui/mobile/ControlsTutorial.jsx:60` P? `Aiming and specials`
-- `src/ui/mobile/ControlsTutorial.jsx:61` P? `Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a sta...`
-- `src/ui/mobile/ControlsTutorial.jsx:65` P `Shield`
-- `src/ui/mobile/ControlsTutorial.jsx:65` P `Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.`
-- `src/ui/mobile/ControlsTutorial.jsx:94` P `Bag`
-- `src/ui/mobile/ControlsTutorial.jsx:94` P `Your items and gear live here. Tap one to equip it.`
-- `src/ui/mobile/ControlsTutorial.jsx:101` P `Toolbar`
-- `src/ui/mobile/ControlsTutorial.jsx:101` P `Menus live down here. Tap your character to chat.`
-- `src/ui/mobile/ControlsTutorial.jsx:103` P `Swipe / Dodge`
-- `src/ui/mobile/ControlsTutorial.jsx:103` P `Swipe anywhere in the world to dodge-roll.`
-- `src/ui/mobile/ControlsTutorial.jsx:391` P `Close tutorial`
-- `src/ui/mobile/ControlsTutorial.jsx:425` P `Step {…} of {…}`
-- `src/ui/mobile/ControlsTutorial.jsx:439` P `Back`
-- `src/ui/mobile/ControlsTutorial.jsx:453` P `Done`
-- `src/ui/mobile/ControlsTutorial.jsx:453` P `Next`
+- `src/ui/mobile/ControlsTutorial.jsx:61` P? `Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, ...`
+- `src/ui/mobile/ControlsTutorial.jsx:73` P? `Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a sta...`
 
 ### CookPanel (12)
 
@@ -1317,124 +940,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/buildings/CookPanel.jsx:400` P? `· you carry`
 - `src/ui/panels/buildings/CookPanel.jsx:435` P? `Unlocks at Cooking Lv`
 - `src/ui/panels/buildings/CookPanel.jsx:521` P? `Cooking Lv`
-
-### DailyRewardsCard (8)
-
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:31` P? `Daily quests: soon`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:31` P? `daily quests`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:33` P? `to claim`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:36` P? `free spin ready`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:36` P? `spin going`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:36` P? `bonus spin`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:40` P? `-day streak`
-- `src/ui/mobile/dash/DailyRewardsCard.jsx:53` P `Daily rewards`
-
-### DailyRewardsWindow (50)
-
-- `src/ui/mobile/DailyRewardsWindow.jsx:126` P `✓ Done`
-- `src/ui/mobile/DailyRewardsWindow.jsx:132` P `coins ·`
-- `src/ui/mobile/DailyRewardsWindow.jsx:136` P? `" for another quest`
-- `src/ui/mobile/DailyRewardsWindow.jsx:160` P `-day streak`
-- `src/ui/mobile/DailyRewardsWindow.jsx:162` P `A freeze saved your streak!`
-- `src/ui/mobile/DailyRewardsWindow.jsx:163` P `Play each day to keep it. It raises the free spin's prizes.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:166` P `Streak freezes`
-- `src/ui/mobile/DailyRewardsWindow.jsx:177` P `A freeze is used automatically if you miss a day. You earn one every`
-- `src/ui/mobile/DailyRewardsWindow.jsx:177` P `days of streak.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P `The free daily spin`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P? `Your pot of`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P? `coins is waiting`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P? `Your free spin is ready`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P? `bonus spin`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P? `to use`
-- `src/ui/mobile/DailyRewardsWindow.jsx:199` P? `Today's spin is done`
-- `src/ui/mobile/DailyRewardsWindow.jsx:203` P `Opens when you hand in Mayor Bro's first quest.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:205` P `At the Gambling Den in BroTown: take it, or double or nothing.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:207` P? `At the Gambling Den in BroTown. Spin for a lump sum`
-- `src/ui/mobile/DailyRewardsWindow.jsx:207` P? `, up to the`
-- `src/ui/mobile/DailyRewardsWindow.jsx:208` P? `Next free spin in`
-- `src/ui/mobile/DailyRewardsWindow.jsx:218` P? `resets in`
-- `src/ui/mobile/DailyRewardsWindow.jsx:218` P `Daily quests`
-- `src/ui/mobile/DailyRewardsWindow.jsx:221` P `Hand in Mayor Bro's first quest to open the daily quests.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:233` P `All three done! You got +`
-- `src/ui/mobile/DailyRewardsWindow.jsx:233` P `★ and a bonus spin.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:234` P `Finish all three: +`
-- `src/ui/mobile/DailyRewardsWindow.jsx:234` P `★ and a bonus spin`
-- `src/ui/mobile/DailyRewardsWindow.jsx:240` P `Not your thing? Tap ↻ to swap one quest for another (once a day).`
-- `src/ui/mobile/DailyRewardsWindow.jsx:241` P `You've used today's swap.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:242` P `Each quest also puts a ★ on the season.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:282` P `Claim`
-- `src/ui/mobile/DailyRewardsWindow.jsx:301` P `Season`
-- `src/ui/mobile/DailyRewardsWindow.jsx:302` P `ends in`
-- `src/ui/mobile/DailyRewardsWindow.jsx:313` P `Tier`
-- `src/ui/mobile/DailyRewardsWindow.jsx:313` P `at`
-- `src/ui/mobile/DailyRewardsWindow.jsx:313` P `Every tier reached! A bonus spin every`
-- `src/ui/mobile/DailyRewardsWindow.jsx:313` P `★ more.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:320` P `Earn ★ from each daily quest, from finishing all three, and from your free spin.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:321` P `Earn`
-- `src/ui/mobile/DailyRewardsWindow.jsx:321` P `★ a day with your free spin at the Gambling Den.`
-- `src/ui/mobile/DailyRewardsWindow.jsx:322` P `Missed days never cost ★, and anything you reach but don't claim is sent to you when th...`
-- `src/ui/mobile/DailyRewardsWindow.jsx:328` P `Claim all (`
-- `src/ui/mobile/DailyRewardsWindow.jsx:331` P `Rewards`
-- `src/ui/mobile/DailyRewardsWindow.jsx:336` P `Past tier`
-- `src/ui/mobile/DailyRewardsWindow.jsx:336` P `: a bonus spin every`
-- `src/ui/mobile/DailyRewardsWindow.jsx:407` P `Daily rewards`
-- `src/ui/mobile/DailyRewardsWindow.jsx:408` P `Close`
-- `src/ui/mobile/DailyRewardsWindow.jsx:421` P `Loading…`
-- `src/ui/mobile/DailyRewardsWindow.jsx:421` P `Daily rewards are not open right now.`
-
-### DailySpin (51)
-
-- `src/ui/panels/buildings/DailySpin.jsx:353` P? `Rare: 1 in`
-- `src/ui/panels/buildings/DailySpin.jsx:362` P `The wheel didn't hear back. Nothing was spent — try again.`
-- `src/ui/panels/buildings/DailySpin.jsx:363` P `No spins left today.`
-- `src/ui/panels/buildings/DailySpin.jsx:364` P `Take your pot or double it first.`
-- `src/ui/panels/buildings/DailySpin.jsx:365` P `That's the house limit — take it!`
-- `src/ui/panels/buildings/DailySpin.jsx:366` P `Hand in Mayor Bro's first quest to unlock the free spin.`
-- `src/ui/panels/buildings/DailySpin.jsx:367` P `Nothing to take.`
-- `src/ui/panels/buildings/DailySpin.jsx:368` P `Taking`
-- `src/ui/panels/buildings/DailySpin.jsx:369` P `Double or nothing…`
-- `src/ui/panels/buildings/DailySpin.jsx:370` P `Spinning…`
-- `src/ui/panels/buildings/DailySpin.jsx:371` P `JACKPOT!`
-- `src/ui/panels/buildings/DailySpin.jsx:371` P `You won`
-- `src/ui/panels/buildings/DailySpin.jsx:371` P `coins!`
-- `src/ui/panels/buildings/DailySpin.jsx:372` P `Doubled!`
-- `src/ui/panels/buildings/DailySpin.jsx:372` P `— the house limit, paid!`
-- `src/ui/panels/buildings/DailySpin.jsx:373` P `Doubled!`
-- `src/ui/panels/buildings/DailySpin.jsx:373` P `coins.`
-- `src/ui/panels/buildings/DailySpin.jsx:374` P `Lost it all —`
-- `src/ui/panels/buildings/DailySpin.jsx:374` P `coins.`
-- `src/ui/panels/buildings/DailySpin.jsx:375` P `coins!`
-- `src/ui/panels/buildings/DailySpin.jsx:376` P `Your pot:`
-- `src/ui/panels/buildings/DailySpin.jsx:376` P `coins.`
-- `src/ui/panels/buildings/DailySpin.jsx:377` P `Hand in Mayor Bro's first quest to unlock the free spin.`
-- `src/ui/panels/buildings/DailySpin.jsx:378` P `Free today! Spin for a lump sum of coins.`
-- `src/ui/panels/buildings/DailySpin.jsx:379` P `You have`
-- `src/ui/panels/buildings/DailySpin.jsx:379` P `bonus spin`
-- `src/ui/panels/buildings/DailySpin.jsx:379` P `s`
-- `src/ui/panels/buildings/DailySpin.jsx:380` P `Today's spin is done.`
-- `src/ui/panels/buildings/DailySpin.jsx:384` P `Take it, or double or nothing: 50% to make it`
-- `src/ui/panels/buildings/DailySpin.jsx:384` P `, 50% to lose it.`
-- `src/ui/panels/buildings/DailySpin.jsx:385` P `The house limit is`
-- `src/ui/panels/buildings/DailySpin.jsx:385` P `. Take it!`
-- `src/ui/panels/buildings/DailySpin.jsx:387` P `Next free spin in`
-- `src/ui/panels/buildings/DailySpin.jsx:391` P `Spinning…`
-- `src/ui/panels/buildings/DailySpin.jsx:392` P `Unlocks with the first quest`
-- `src/ui/panels/buildings/DailySpin.jsx:393` P `Spin · free`
-- `src/ui/panels/buildings/DailySpin.jsx:394` P `Use a bonus spin (`
-- `src/ui/panels/buildings/DailySpin.jsx:395` P `Next free spin in`
-- `src/ui/panels/buildings/DailySpin.jsx:408` P `Free daily spin`
-- `src/ui/panels/buildings/DailySpin.jsx:412` P `-day streak`
-- `src/ui/panels/buildings/DailySpin.jsx:421` P `Pot`
-- `src/ui/panels/buildings/DailySpin.jsx:441` P `Take`
-- `src/ui/panels/buildings/DailySpin.jsx:454` P `Double or nothing`
-- `src/ui/panels/buildings/DailySpin.jsx:455` P `50% for`
-- `src/ui/panels/buildings/DailySpin.jsx:457` P `House limit`
-- `src/ui/panels/buildings/DailySpin.jsx:474` P `bonus spin`
-- `src/ui/panels/buildings/DailySpin.jsx:474` P `s`
-- `src/ui/panels/buildings/DailySpin.jsx:474` P `saved for later`
-- `src/ui/panels/buildings/DailySpin.jsx:491` P? `Daily quests & season`
-- `src/ui/panels/buildings/DailySpin.jsx:491` P? `Daily quests`
-- `src/ui/panels/buildings/DailySpin.jsx:491` P `Season rewards`
 
 ### DesignGallery (9)
 
@@ -1462,15 +967,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/DeviceScreen.js:110` P? `Copy the code`
 - `src/ui/DeviceScreen.js:118` P? `Try again`
 - `src/ui/DeviceScreen.js:130` P? `Use a Login Key`
-
-### DuelRequestPanel (6)
-
-- `src/ui/panels/DuelRequestPanel.jsx:70` P? `Duel challenge expired`
-- `src/ui/panels/DuelRequestPanel.jsx:134` P? `Duel Challenge`
-- `src/ui/panels/DuelRequestPanel.jsx:144` P? `challenges you!`
-- `src/ui/panels/DuelRequestPanel.jsx:168` P? `g (winner takes all)`
-- `src/ui/panels/DuelRequestPanel.jsx:183` P? `Duels are consensual. No reputation penalty. The loser pays the wager. No item loss.`
-- `src/ui/panels/DuelRequestPanel.jsx:183` P? `Duels are consensual. No wager, no item loss, no reputation penalty.`
 
 ### DungeonClearHud (5)
 
@@ -1572,41 +1068,12 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/EmotePanel.jsx:138` P? `Emoji & lines`
 - `src/ui/panels/EmotePanel.jsx:145` P? `Sit, sleep, flop and the dances last until you move.`
 
-### EnchantPanel (33)
+### EnchantPanel (4)
 
-- `src/ui/panels/buildings/EnchantPanel.jsx:135` P? `Enchanting Lv`
-- `src/ui/panels/buildings/EnchantPanel.jsx:146` P? `Slot polished gems into gear with open gem slots.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:152` P? `Gems you made pay 400 Enchanting XP when set:`
-- `src/ui/panels/buildings/EnchantPanel.jsx:152` P? `still to come.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:153` P? `Gems you make pay 400 Enchanting XP when set. Bought, traded or taken-out gems pay none.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:155` P `Melee`
-- `src/ui/panels/buildings/EnchantPanel.jsx:162` P `Bow`
-- `src/ui/panels/buildings/EnchantPanel.jsx:166` P `Staff`
-- `src/ui/panels/buildings/EnchantPanel.jsx:255` P? `Gem slots:`
-- `src/ui/panels/buildings/EnchantPanel.jsx:255` P? `· Craft slotted gear at the Blacksmith or Woodworker first`
-- `src/ui/panels/buildings/EnchantPanel.jsx:255` P? `· Req Enchanting Lv20 for 2nd slot`
-- `src/ui/panels/buildings/EnchantPanel.jsx:277` P? `Choose a polished gem for Slot 1:`
-- `src/ui/panels/buildings/EnchantPanel.jsx:283` P? `Choose a polished gem for Slot 2 (Fusion):`
-- `src/ui/panels/buildings/EnchantPanel.jsx:316` P `Volatile combo requires Fusion-Compatible gear base`
-- `src/ui/panels/buildings/EnchantPanel.jsx:321` P? `Needs Fusion-Compatible gear!`
-- `src/ui/panels/buildings/EnchantPanel.jsx:362` P? `Enchanting Lv`
-- `src/ui/panels/buildings/EnchantPanel.jsx:379` P? `No polished gems`
-- `src/ui/panels/buildings/EnchantPanel.jsx:382` P? `No open gem slot`
-- `src/ui/panels/buildings/EnchantPanel.jsx:403` P? `Taking out…`
-- `src/ui/panels/buildings/EnchantPanel.jsx:403` P? `Take out`
-- `src/ui/panels/buildings/EnchantPanel.jsx:405` P? `gold · the gem comes back`
-- `src/ui/panels/buildings/EnchantPanel.jsx:439` P? `. Slot a new gem to replace (old gem lost).`
-- `src/ui/panels/buildings/EnchantPanel.jsx:445` P? `Slot a polished gem to activate the amulet.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:507` P `Simple`
-- `src/ui/panels/buildings/EnchantPanel.jsx:507` P `Amulet`
-- `src/ui/panels/buildings/EnchantPanel.jsx:527` P? `No polished gems`
-- `src/ui/panels/buildings/EnchantPanel.jsx:533` P? `📿 Craft an amulet at the Blacksmith to slot gems here.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:560` P? `. Slot new gem to replace.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:566` P? `Slot a polished gem for defensive power.`
-- `src/ui/panels/buildings/EnchantPanel.jsx:617` P `Basic`
-- `src/ui/panels/buildings/EnchantPanel.jsx:617` P `Shield`
-- `src/ui/panels/buildings/EnchantPanel.jsx:644` P? `No polished gems`
-- `src/ui/panels/buildings/EnchantPanel.jsx:653` P? `No shield equipped. Wear one to slot defensive gems here.`
+- `src/ui/panels/buildings/EnchantPanel.jsx:510` P `Simple`
+- `src/ui/panels/buildings/EnchantPanel.jsx:510` P `Amulet`
+- `src/ui/panels/buildings/EnchantPanel.jsx:621` P `Basic`
+- `src/ui/panels/buildings/EnchantPanel.jsx:621` P `Shield`
 
 ### EncyclopediaPanel (13)
 
@@ -1623,54 +1090,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/EncyclopediaPanel.jsx:583` P? `Cooking Recipes`
 - `src/ui/panels/EncyclopediaPanel.jsx:735` P? `enemy types`
 - `src/ui/panels/EncyclopediaPanel.jsx:741` P? `Travel here to discover`
-
-### EquippedTab (12)
-
-- `src/ui/mobile/EquippedTab.jsx:29` P `EQUIP`
-- `src/ui/mobile/EquippedTab.jsx:32` P `Nothing in inventory fits this slot.`
-- `src/ui/mobile/EquippedTab.jsx:152` P `SHORTCUT SLOT`
-- `src/ui/mobile/EquippedTab.jsx:186` P `Remove shortcut`
-- `src/ui/mobile/EquippedTab.jsx:190` P `Cancel`
-- `src/ui/mobile/EquippedTab.jsx:211` P `WEAPON`
-- `src/ui/mobile/EquippedTab.jsx:212` P `CHEST`
-- `src/ui/mobile/EquippedTab.jsx:213` P `LEGS`
-- `src/ui/mobile/EquippedTab.jsx:214` P `PET`
-- `src/ui/mobile/EquippedTab.jsx:215` P `TOOL`
-- `src/ui/mobile/EquippedTab.jsx:260` P `SHORTCUTS`
-- `src/ui/mobile/EquippedTab.jsx:263` T `Tap a slot to set`
-
-### ExchangePanel (30)
-
-- `src/ui/panels/buildings/ExchangePanel.jsx:79` P? `Any element`
-- `src/ui/panels/buildings/ExchangePanel.jsx:169` P? `Auction House`
-- `src/ui/panels/buildings/ExchangePanel.jsx:172` P? `Buy now or bid ›`
-- `src/ui/panels/buildings/ExchangePanel.jsx:209` P? `Trade by gear type · Orders last 24h · Refunds by mail`
-- `src/ui/panels/buildings/ExchangePanel.jsx:220` P? `My Orders`
-- `src/ui/panels/buildings/ExchangePanel.jsx:398` P? `Material Tier`
-- `src/ui/panels/buildings/ExchangePanel.jsx:437` P? `Element (optional)`
-- `src/ui/panels/buildings/ExchangePanel.jsx:530` P? `Max you'll pay`
-- `src/ui/panels/buildings/ExchangePanel.jsx:530` P? `Ask Price`
-- `src/ui/panels/buildings/ExchangePanel.jsx:559` P `gold`
-- `src/ui/panels/buildings/ExchangePanel.jsx:576` P? `Est. value: ~`
-- `src/ui/panels/buildings/ExchangePanel.jsx:585` P? `Select Item from Stash`
-- `src/ui/panels/buildings/ExchangePanel.jsx:628` P? `No items in stash to sell`
-- `src/ui/panels/buildings/ExchangePanel.jsx:667` P? `Not enough gold!`
-- `src/ui/panels/buildings/ExchangePanel.jsx:681` P? `Select an item first!`
-- `src/ui/panels/buildings/ExchangePanel.jsx:751` P? `Bought for`
-- `src/ui/panels/buildings/ExchangePanel.jsx:751` P? `Sold for`
-- `src/ui/panels/buildings/ExchangePanel.jsx:756` P? `Buy order placed!`
-- `src/ui/panels/buildings/ExchangePanel.jsx:756` P? `Listed for sale!`
-- `src/ui/panels/buildings/ExchangePanel.jsx:781` P? `Server error!`
-- `src/ui/panels/buildings/ExchangePanel.jsx:804` P? `Place Buy Order (`
-- `src/ui/panels/buildings/ExchangePanel.jsx:804` P? `List for Sale (`
-- `src/ui/panels/buildings/ExchangePanel.jsx:854` P? `Order Book —`
-- `src/ui/panels/buildings/ExchangePanel.jsx:888` P? `SELL ORDERS (lowest first)`
-- `src/ui/panels/buildings/ExchangePanel.jsx:954` P? `BUY ORDERS (highest first)`
-- `src/ui/panels/buildings/ExchangePanel.jsx:1019` P? `No orders yet. Be the first!`
-- `src/ui/panels/buildings/ExchangePanel.jsx:1035` P? `Your Active Orders (`
-- `src/ui/panels/buildings/ExchangePanel.jsx:1067` P? `No active orders`
-- `src/ui/panels/buildings/ExchangePanel.jsx:1153` P? `Order cancelled`
-- `src/ui/panels/buildings/ExchangePanel.jsx:1168` P? `Cancel failed`
 
 ### FarmBedPrompt (3)
 
@@ -1694,42 +1113,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/buildings/FarmPanel.jsx:377` P? `No empty plots!`
 - `src/ui/panels/buildings/FarmPanel.jsx:412` P? `Plots unlock at Farming Lv1 (×2), Lv10 (×4), Lv25 (×6). Higher tier resources grow long...`
 
-### FeedSeedPanel (34)
+### FeedSeedPanel (1)
 
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:102` P? `ready to harvest`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:104` P? `to plant`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:182` P? `Your Farm`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:190` P `Could not`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:194` P `XP`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:196` P `Delivered · +`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:196` P `gold · +`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:196` P `XP`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:206` P `Feed & Seed`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:208` P `Farming`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:223` P `Visit Your Farm`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:227` P `Your plots`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:236` P `Buy`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:237` P `Deliver`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:251` P `What you can deliver for gold`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:251` P `What you can buy`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:257` P `Your beds keep growing.`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:271` P `⏱ grow ·`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:271` P `watered ·`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:271` P `harvest ·`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:271` P `with compost`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:294` P `Compost`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:296` P `+50% harvest`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:303` P `🔒 Farming`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:334` P `Could not`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:335` P `Try again`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:337` P `Opening the orders…`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:342` P `Today's orders`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:364` P `You have`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:370` P `Delivered ✓`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:374` P `Deliver`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:381` P `New orders are on their way…`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:381` P `New orders in`
-- `src/ui/panels/buildings/FeedSeedPanel.jsx:384` P `Try again`
+- `src/ui/panels/buildings/FeedSeedPanel.jsx:296` P `Compost`
 
 ### FeedbackPanel (34)
 
@@ -1768,30 +1154,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/FeedbackPanel.jsx:600` P? `Server error`
 - `src/ui/panels/FeedbackPanel.jsx:619` P? `Submit Feedback`
 
-### FishBoard (8)
-
-- `src/ui/mobile/dash/FishBoard.jsx:27` P `Albino`
-- `src/ui/mobile/dash/FishBoard.jsx:27` P `Large`
-- `src/ui/mobile/dash/FishBoard.jsx:43` P `fish`
-- `src/ui/mobile/dash/FishBoard.jsx:59` P `Loading…`
-- `src/ui/mobile/dash/FishBoard.jsx:59` P `The scales are closed for now.`
-- `src/ui/mobile/dash/FishBoard.jsx:59` P `The records can't be read right now.`
-- `src/ui/mobile/dash/FishBoard.jsx:60` T `Nobody has weighed a`
-- `src/ui/mobile/dash/FishBoard.jsx:60` T `yet. Tap a fish in your bag, then Inspect.`
-
-### FishWeighCard (10)
-
-- `src/ui/panels/FishWeighCard.jsx:38` P `Fish`
-- `src/ui/panels/FishWeighCard.jsx:53` P `L`
-- `src/ui/panels/FishWeighCard.jsx:58` P `Weighing your`
-- `src/ui/panels/FishWeighCard.jsx:62` P `Your heaviest`
-- `src/ui/panels/FishWeighCard.jsx:62` P `yet!`
-- `src/ui/panels/FishWeighCard.jsx:62` P `Your best:`
-- `src/ui/panels/FishWeighCard.jsx:63` P `on the board`
-- `src/ui/panels/FishWeighCard.jsx:64` P `more to weigh`
-- `src/ui/panels/FishWeighCard.jsx:70` P `Close`
-- `src/ui/panels/FishWeighCard.jsx:76` P `Records`
-
 ### FurniturePanel (4)
 
 - `src/ui/panels/FurniturePanel.jsx:60` P? `🪑 Furniture Workshop`
@@ -1799,144 +1161,55 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/FurniturePanel.jsx:67` P? `· Craft furniture for stat buffs`
 - `src/ui/panels/FurniturePanel.jsx:156` P? `WC Lv`
 
-### GamblePanel (16)
-
-- `src/ui/panels/buildings/GamblePanel.jsx:102` P? `Gambling Den`
-- `src/ui/panels/buildings/GamblePanel.jsx:102` P? `Free daily spin, a gold wager & the weekly jackpot`
-- `src/ui/panels/buildings/GamblePanel.jsx:116` P? `Your gold:`
-- `src/ui/panels/buildings/GamblePanel.jsx:125` P? `Wager · Double or Nothing`
-- `src/ui/panels/buildings/GamblePanel.jsx:128` P? `A separate bet with your own gold: 40% chance to double it, 60% chance to lose it.`
-- `src/ui/panels/buildings/GamblePanel.jsx:229` P? `The table is closed`
-- `src/ui/panels/buildings/GamblePanel.jsx:231` P? `Select a wager`
-- `src/ui/panels/buildings/GamblePanel.jsx:233` P? `Weekly Jackpot`
-- `src/ui/panels/buildings/GamblePanel.jsx:243` P? `Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house ...`
-- `src/ui/panels/buildings/GamblePanel.jsx:263` P? `Your tickets this week:`
-- `src/ui/panels/buildings/GamblePanel.jsx:263` P? `· Min deposit:`
-- `src/ui/panels/buildings/GamblePanel.jsx:307` P? `The jackpot is closed`
-- `src/ui/panels/buildings/GamblePanel.jsx:320` P? `Gambling Stats`
-- `src/ui/panels/buildings/GamblePanel.jsx:332` P? `Total wagered:`
-- `src/ui/panels/buildings/GamblePanel.jsx:338` P? `Total won:`
-- `src/ui/panels/buildings/GamblePanel.jsx:344` P? `Total lost:`
-
-### GameApp (51)
+### GameApp (2)
 
 - `src/ui/GameApp.jsx:68` P `You`
 - `src/ui/GameApp.jsx:459` P `You`
-- `src/ui/GameApp.jsx:482` P? `wheel open`
-- `src/ui/GameApp.jsx:483` P? `wheel closed`
-- `src/ui/GameApp.jsx:486` P? `usage: wheel badge <tool> <count\|dot\|off>`
-- `src/ui/GameApp.jsx:493` P? `wheel <open\|close\|badge <tool> <n\|dot\|off>\|combat <on\|off>>`
-- `src/ui/GameApp.jsx:494` P? `wheel — toggle wheel, set badges, simulate combat`
-- `src/ui/GameApp.jsx:503` P? `unknown slot '{…}' (use {…})`
-- `src/ui/GameApp.jsx:510` P? `gear — equip/unequip an armor slot, e.g. 'gear chest none' / 'gear legs steelgreaves'`
-- `src/ui/GameApp.jsx:515` P? `inventory open`
-- `src/ui/GameApp.jsx:516` P? `inventory closed`
-- `src/ui/GameApp.jsx:522` P? `seeded {…} mock items`
-- `src/ui/GameApp.jsx:524` P? `cleared inventory`
-- `src/ui/GameApp.jsx:529` P? `usage: inv layer <1\|2\|3>`
-- `src/ui/GameApp.jsx:532` P? `inv <open\|close\|mock [n]\|clear\|tab <inventory\|equipped>\|damage [amt]\|hp [frac]\|layer <1...`
-- `src/ui/GameApp.jsx:533` P? `inv — control inventory surface`
-- `src/ui/GameApp.jsx:540` P `You`
-- `src/ui/GameApp.jsx:542` P? `opened self card`
-- `src/ui/GameApp.jsx:544` P? `opened mock card`
-- `src/ui/GameApp.jsx:548` P? `usage: card expand <combat\|carrying\|skills\|history\|journey>`
-- `src/ui/GameApp.jsx:552` P? `card <self\|mock\|close\|expand <section>>`
-- `src/ui/GameApp.jsx:553` P? `card — control inspect card`
-- `src/ui/GameApp.jsx:565` P? `parry flash`
-- `src/ui/GameApp.jsx:566` P? `block <hostile [off]\|relaxed [off]\|count <n>\|parry>`
-- `src/ui/GameApp.jsx:567` P? `block — control block ring (hostile proximity, relaxed parry, simulate parry)`
-- `src/ui/GameApp.jsx:580` P? `usage: hpx <sword\|bow\|staff> X Y (source-pixel coords 0..64) \| hpx show \| hpx reset`
-- `src/ui/GameApp.jsx:585` P? `hpx — override weapon handle source pixel; iterate until dot is on handle`
-- `src/ui/GameApp.jsx:592` P? `pivot dot ON`
-- `src/ui/GameApp.jsx:593` P? `pivot dot OFF`
-- `src/ui/GameApp.jsx:594` P? `pivot <on\|off>`
-- `src/ui/GameApp.jsx:595` P? `pivot — show / hide rotation-pivot dot during sword swings`
-- `src/ui/GameApp.jsx:638` P? `usage: nudge X Y \| nudge <weapon> <dir\|default> X Y \| nudge show \| nudge reset`
-- `src/ui/GameApp.jsx:640` P? `X / Y must be numbers`
-- `src/ui/GameApp.jsx:646` P? `nudge — per-direction weapon offset; 'nudge X Y' uses current weapon+facing`
-- `src/ui/GameApp.jsx:651` P? `sprite mode ON`
-- `src/ui/GameApp.jsx:652` P? `sprite mode OFF (procedural body)`
-- `src/ui/GameApp.jsx:653` P? `sprite <on\|off>`
-- `src/ui/GameApp.jsx:654` P? `sprite — toggle sprite-sheet vs procedural player rendering`
-- `src/ui/GameApp.jsx:659` P? `tap logging ON — tap a monster, watch console`
-- `src/ui/GameApp.jsx:660` P? `tap logging OFF`
-- `src/ui/GameApp.jsx:661` P? `tap <on\|off>`
-- `src/ui/GameApp.jsx:662` P? `tap — toggle tap-to-lock diagnostic logging`
-- `src/ui/GameApp.jsx:669` P? `usage: mastery tier <0\|0.5\|1\|1.5\|2\|2.5\|3\|4>`
-- `src/ui/GameApp.jsx:670` P? `advanced to {…}`
-- `src/ui/GameApp.jsx:673` P? `usage: mastery cert <cert-id>`
-- `src/ui/GameApp.jsx:674` P? `already earned (or unknown): {…}`
-- `src/ui/GameApp.jsx:682` P? `mastery state cleared (reload to rehydrate)`
-- `src/ui/GameApp.jsx:684` P? `notifications disabled`
-- `src/ui/GameApp.jsx:685` P? `notifications enabled`
-- `src/ui/GameApp.jsx:686` P? `mastery <tier <n>\|cert <id>\|reset\|on\|off>`
-- `src/ui/GameApp.jsx:687` P? `mastery — fire tier/cert notifications, reset state`
 
 ### GearTab (42)
 
-- `src/ui/mobile/dash/GearTab.jsx:141` P? `A melee weapon: swing it up close.`
-- `src/ui/mobile/dash/GearTab.jsx:142` P? `Shoots arrows from a distance.`
-- `src/ui/mobile/dash/GearTab.jsx:143` P? `Casts magic orbs that fly at your target.`
-- `src/ui/mobile/dash/GearTab.jsx:144` P? `Raise it to block a hit.`
-- `src/ui/mobile/dash/GearTab.jsx:145` P? `Cuts the damage of every hit you take.`
-- `src/ui/mobile/dash/GearTab.jsx:146` P? `Cuts the damage of every hit you take.`
-- `src/ui/mobile/dash/GearTab.jsx:147` P? `A contest prize, worn on your back.`
-- `src/ui/mobile/dash/GearTab.jsx:148` P? `Adds its gem’s power to your fighting.`
-- `src/ui/mobile/dash/GearTab.jsx:191` P `Shield`
-- `src/ui/mobile/dash/GearTab.jsx:207` P `Chest`
-- `src/ui/mobile/dash/GearTab.jsx:207` P `Legs`
-- `src/ui/mobile/dash/GearTab.jsx:212` P `Cape`
-- `src/ui/mobile/dash/GearTab.jsx:225` P `Amulet`
-- `src/ui/mobile/dash/GearTab.jsx:232` P `Gem`
-- `src/ui/mobile/dash/GearTab.jsx:603` P? `All Items`
-- `src/ui/mobile/dash/GearTab.jsx:628` P `Clear the filter`
-- `src/ui/mobile/dash/GearTab.jsx:643` P `coins`
-- `src/ui/mobile/dash/GearTab.jsx:660` P `No`
-- `src/ui/mobile/dash/GearTab.jsx:660` P `items`
-- `src/ui/mobile/dash/GearTab.jsx:660` P `in your bag`
-- `src/ui/mobile/dash/GearTab.jsx:663` P `Show all`
-- `src/ui/mobile/dash/GearTab.jsx:703` P `Show`
-- `src/ui/mobile/dash/GearTab.jsx:706` P `weapons`
-- `src/ui/mobile/dash/GearTab.jsx:708` P `Close the filter menu`
-- `src/ui/mobile/dash/GearTab.jsx:713` P `All items`
-- `src/ui/mobile/dash/GearTab.jsx:721` P `All items`
-- `src/ui/mobile/dash/GearTab.jsx:752` P `Equipped`
-- `src/ui/mobile/dash/GearTab.jsx:790` P `More actions`
-- `src/ui/mobile/dash/GearTab.jsx:811` P `Qty`
-- `src/ui/mobile/dash/GearTab.jsx:823` P? `Hardness {…} of {…}`
-- `src/ui/mobile/dash/GearTab.jsx:825` P `Hardness`
-- `src/ui/mobile/dash/GearTab.jsx:863` P? `No gem yet`
-- `src/ui/mobile/dash/GearTab.jsx:865` P? `Set in your`
-- `src/ui/mobile/dash/GearTab.jsx:865` P? `. Gems are set at the Gem Works.`
-- `src/ui/mobile/dash/GearTab.jsx:865` P? `has no gem in it. Gems are set at the Gem Works.`
-- `src/ui/mobile/dash/GearTab.jsx:866` P? `Nothing in your hand.`
-- `src/ui/mobile/dash/GearTab.jsx:877` P? `No {…} yet. Pick one from your bag.`
-- `src/ui/mobile/dash/GearTab.jsx:890` P? `Gold buys gear and food at the shops.`
-- `src/ui/mobile/dash/GearTab.jsx:1022` P `Lv`
-- `src/ui/mobile/dash/GearTab.jsx:1092` P `Close the details`
-- `src/ui/mobile/dash/GearTab.jsx:1117` P `MORE`
-- `src/ui/mobile/dash/GearTab.jsx:1118` P `Close`
-
-### GemWorksPanel (8)
-
-- `src/ui/panels/buildings/GemWorksPanel.jsx:46` P `Cut gems`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:46` P `Raw to polished`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:47` P `Set gems`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:47` P `Polished into gear`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:53` P `Cut gems`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:53` P `Shards to gems`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:54` P `Set gems`
-- `src/ui/panels/buildings/GemWorksPanel.jsx:54` P `Gems into gear`
-
-### GemcutPanel (7)
-
-- `src/ui/panels/buildings/GemcutPanel.jsx:62` P? `Gem Cutter`
-- `src/ui/panels/buildings/GemcutPanel.jsx:62` P? `Gem Cutting Lv`
-- `src/ui/panels/buildings/GemcutPanel.jsx:70` P? `Cut raw gems into polished gems for your gear. Higher Gem Cutting raises your success c...`
-- `src/ui/panels/buildings/GemcutPanel.jsx:71` P? `Your gems`
-- `src/ui/panels/buildings/GemcutPanel.jsx:187` P? `Gem shattered!`
-- `src/ui/panels/buildings/GemcutPanel.jsx:201` P? `Gem Cutting Lv`
-- `src/ui/panels/buildings/GemcutPanel.jsx:228` P? `No raw gems yet. Defeat monsters out in the lands to find them.`
+- `src/ui/mobile/dash/GearTab.jsx:143` P? `A melee weapon: swing it up close.`
+- `src/ui/mobile/dash/GearTab.jsx:144` P? `Shoots arrows from a distance.`
+- `src/ui/mobile/dash/GearTab.jsx:145` P? `Casts magic orbs that fly at your target.`
+- `src/ui/mobile/dash/GearTab.jsx:146` P? `Raise it to block a hit.`
+- `src/ui/mobile/dash/GearTab.jsx:147` P? `Cuts the damage of every hit you take.`
+- `src/ui/mobile/dash/GearTab.jsx:148` P? `Cuts the damage of every hit you take.`
+- `src/ui/mobile/dash/GearTab.jsx:149` P? `A contest prize, worn on your back.`
+- `src/ui/mobile/dash/GearTab.jsx:150` P? `Adds its gem’s power to your fighting.`
+- `src/ui/mobile/dash/GearTab.jsx:197` P `Shield`
+- `src/ui/mobile/dash/GearTab.jsx:213` P `Chest`
+- `src/ui/mobile/dash/GearTab.jsx:213` P `Legs`
+- `src/ui/mobile/dash/GearTab.jsx:218` P `Cape`
+- `src/ui/mobile/dash/GearTab.jsx:231` P `Amulet`
+- `src/ui/mobile/dash/GearTab.jsx:238` P `Gem`
+- `src/ui/mobile/dash/GearTab.jsx:643` P? `All Items`
+- `src/ui/mobile/dash/GearTab.jsx:668` P `Clear the filter`
+- `src/ui/mobile/dash/GearTab.jsx:683` P `coins`
+- `src/ui/mobile/dash/GearTab.jsx:700` P `No`
+- `src/ui/mobile/dash/GearTab.jsx:700` P `items`
+- `src/ui/mobile/dash/GearTab.jsx:700` P `in your bag`
+- `src/ui/mobile/dash/GearTab.jsx:703` P `Show all`
+- `src/ui/mobile/dash/GearTab.jsx:743` P `Show`
+- `src/ui/mobile/dash/GearTab.jsx:746` P `weapons`
+- `src/ui/mobile/dash/GearTab.jsx:748` P `Close the filter menu`
+- `src/ui/mobile/dash/GearTab.jsx:753` P `All items`
+- `src/ui/mobile/dash/GearTab.jsx:761` P `All items`
+- `src/ui/mobile/dash/GearTab.jsx:792` P `Equipped`
+- `src/ui/mobile/dash/GearTab.jsx:830` P `More actions`
+- `src/ui/mobile/dash/GearTab.jsx:851` P `Qty`
+- `src/ui/mobile/dash/GearTab.jsx:863` P? `Hardness {…} of {…}`
+- `src/ui/mobile/dash/GearTab.jsx:865` P `Hardness`
+- `src/ui/mobile/dash/GearTab.jsx:903` P? `No gem yet`
+- `src/ui/mobile/dash/GearTab.jsx:905` P? `Set in your`
+- `src/ui/mobile/dash/GearTab.jsx:905` P? `. Gems are set at the Gem Works.`
+- `src/ui/mobile/dash/GearTab.jsx:905` P? `has no gem in it. Gems are set at the Gem Works.`
+- `src/ui/mobile/dash/GearTab.jsx:906` P? `Nothing in your hand.`
+- `src/ui/mobile/dash/GearTab.jsx:917` P? `No {…} yet. Pick one from your bag.`
+- `src/ui/mobile/dash/GearTab.jsx:930` P? `Gold buys gear and food at the shops.`
+- `src/ui/mobile/dash/GearTab.jsx:1062` P `Lv`
+- `src/ui/mobile/dash/GearTab.jsx:1132` P `Close the details`
+- `src/ui/mobile/dash/GearTab.jsx:1157` P `MORE`
+- `src/ui/mobile/dash/GearTab.jsx:1158` P `Close`
 
 ### GuildPanel (20)
 
@@ -1968,179 +1241,15 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/buildings/HardenedWoodTab.jsx:98` P `Locked`
 - `src/ui/panels/buildings/HardenedWoodTab.jsx:98` P `Make`
 
-### HeroExpanded (77)
+### InfoPopup (1)
 
-- `src/ui/mobile/sheet/HeroExpanded.jsx:31` P? `{…} of {…} points`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:161` P `Shared`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:506` P? `{…} {…} — what is this?`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:624` P? `{…} {…} of {…}: what it is made of`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:931` P `to spend`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:936` P `Close`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1225` P `CHANGE`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1260` P `REMOVE`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1312` P `Nothing equipped here.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1312` P `No stat bonuses.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1542` P? `This character is playing in another window.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1542` P? `Reconnecting to the server. Try again in a moment.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1544` P? `No {…} points to spend.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1545` P? `{…} is already at its cap.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1587` P `per point.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1605` P `Crit chance`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1610` P `Crit damage`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1638` P `DPS`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1639` P `DPS`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1639` P? `does not change damage`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1641` P `DPS`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1641` P? `equip a weapon to see`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1664` P `· Shared`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1669` P? `Each point:`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1681` P `Weaker vs. higher levels`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1682` P `Details`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1743` P `Spend point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1761` P? `✓ {…} point{…} spent`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1795` P `Unspent Points`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1895` P `Shared — Level {…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1897` P `Every level-up in any combat skill also earns shared points. They buy the stats that be...`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1898` P `The stats that belong to your character rather than to one weapon: HP, Defense, Mana, S...`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1899` P `s`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1899` P `You have {…} shared point{…} to spend.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1899` P `Level up any combat skill to earn more.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1907` P `{…} — Level {…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1908` P `Its points buy only this weapon's six stats: Range, Power, Speed, Luck, Special and Ele...`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1909` P `s`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1909` P `You have {…} {…} point{…} to spend.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:1909` P `Fight with a {…} weapon to earn more.`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2165` P `s`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2165` P `{…} — level {…} — {…} point{…} to spend — {…} already applied`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2191` P? `{…} points to spend on {…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2196` P `PT`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2196` P `S`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2211` P? `{…} points applied to {…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2221` P `SPENT`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2361` P? `per point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2363` P `per point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2363` P `{…} — {…} — now {…} — {…}{…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2600` P? `{…} {…} to spend`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2601` P? `Shared, level {…}. {…} to spend`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2602` P `Tap a weapon to see its points`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2602` P `Shared stats`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2640` P? `Show {…}'s points`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2718` P? `Attack Speed`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2731` P? `per point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2733` P `per point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2733` P `{…} — {…} — now {…} — {…}{…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2749` P `Now`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2781` P? `Show {…}'s points`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:2809` P `Character · every weapon`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3055` P? `per point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3064` P `per point`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3064` P `{…} — {…} — now {…} — {…}{…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3157` P `Back to categories`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3166` P `Back`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3185` P? `{…} points to spend on {…}`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3191` P `PT`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3191` P `S`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3191` P `AVAILABLE`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3205` P `i`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3390` T `Tap again: every point comes back`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3390` P `↺ Reset points (free)`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3416` P `BUILD POINTS`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3417` P `AVAILABLE`
-- `src/ui/mobile/sheet/HeroExpanded.jsx:3520` P `Lv`
+- `src/ui/mobile/InfoPopup.jsx:551` P `Add points with +`
 
-### IncomingTradePanel (4)
+### InspectCard (3)
 
-- `src/ui/panels/IncomingTradePanel.jsx:93` P? `Incoming Trade`
-- `src/ui/panels/IncomingTradePanel.jsx:103` P? `wants to trade. They offer:`
-- `src/ui/panels/IncomingTradePanel.jsx:209` P? `Trade accepted!`
-- `src/ui/panels/IncomingTradePanel.jsx:213` P? `Open trade`
-
-### InfoPanel (16)
-
-- `src/ui/panels/InfoPanel.jsx:46` P `Check your wallet…`
-- `src/ui/panels/InfoPanel.jsx:47` P `Hemi Bro`
-- `src/ui/panels/InfoPanel.jsx:47` P `s`
-- `src/ui/panels/InfoPanel.jsx:47` P `· check again`
-- `src/ui/panels/InfoPanel.jsx:48` P `Verify my Hemi Bros`
-- `src/ui/panels/InfoPanel.jsx:51` P `Hemi Bro holder? Open BroTown in your wallet app to verify`
-- `src/ui/panels/InfoPanel.jsx:52` P `✓ Hemi Bro #`
-- `src/ui/panels/InfoPanel.jsx:52` P `verified`
-- `src/ui/panels/InfoPanel.jsx:53` P `Check your wallet…`
-- `src/ui/panels/InfoPanel.jsx:54` P `Verify Hemi Bro #`
-- `src/ui/panels/InfoPanel.jsx:55` P `No wallet in this browser`
-- `src/ui/panels/InfoPanel.jsx:80` P? `This wallet holds no Hemi Bros.`
-- `src/ui/panels/InfoPanel.jsx:145` P? `not connected to the server`
-- `src/ui/panels/InfoPanel.jsx:146` P? `server has not sent combat rules yet`
-- `src/ui/panels/InfoPanel.jsx:147` P? `character has no trained-skill record`
-- `src/ui/panels/InfoPanel.jsx:153` P? `⚠ Combat numbers may read low —`
-
-### InfoPopup (10)
-
-- `src/ui/mobile/InfoPopup.jsx:189` P `At its cap — no more points can go here.`
-- `src/ui/mobile/InfoPopup.jsx:223` P? `{…}, {…} point{…} to spend`
-- `src/ui/mobile/InfoPopup.jsx:311` P `Close`
-- `src/ui/mobile/InfoPopup.jsx:396` P `MAX`
-- `src/ui/mobile/InfoPopup.jsx:525` P `One fewer point`
-- `src/ui/mobile/InfoPopup.jsx:532` P `One more point`
-- `src/ui/mobile/InfoPopup.jsx:549` P `Spending…`
-- `src/ui/mobile/InfoPopup.jsx:549` P `Add points with +`
-- `src/ui/mobile/InfoPopup.jsx:549` P `Spend {…} point{…}`
-- `src/ui/mobile/InfoPopup.jsx:587` P `Got it`
-
-### InspectCard (30)
-
-- `src/ui/mobile/InspectCard.jsx:42` P? `"Source Sans 3", sans-serif`
-- `src/ui/mobile/InspectCard.jsx:43` P? `"Source Sans 3", sans-serif`
 - `src/ui/mobile/InspectCard.jsx:44` P? `"Source Sans 3", sans-serif`
-- `src/ui/mobile/InspectCard.jsx:107` P `Lv`
-- `src/ui/mobile/InspectCard.jsx:107` P `Wanderer`
-- `src/ui/mobile/InspectCard.jsx:107` P `unaligned`
-- `src/ui/mobile/InspectCard.jsx:214` P `Combat`
-- `src/ui/mobile/InspectCard.jsx:218` P `BALANCED`
-- `src/ui/mobile/InspectCard.jsx:230` P `VOWS`
-- `src/ui/mobile/InspectCard.jsx:233` P `(no vows yet)`
-- `src/ui/mobile/InspectCard.jsx:244` P `vowed`
-- `src/ui/mobile/InspectCard.jsx:244` P `days`
-- `src/ui/mobile/InspectCard.jsx:244` P `· with {…}`
-- `src/ui/mobile/InspectCard.jsx:275` P `Carrying`
-- `src/ui/mobile/InspectCard.jsx:280` P `Weapon`
-- `src/ui/mobile/InspectCard.jsx:281` P `Armor`
-- `src/ui/mobile/InspectCard.jsx:282` P `Pet`
-- `src/ui/mobile/InspectCard.jsx:294` P? `Gem Cutting`
-- `src/ui/mobile/InspectCard.jsx:321` P `Skills`
-- `src/ui/mobile/InspectCard.jsx:337` P `· Guild`
-- `src/ui/mobile/InspectCard.jsx:354` P `History`
-- `src/ui/mobile/InspectCard.jsx:358` P `(no titles yet)`
-- `src/ui/mobile/InspectCard.jsx:376` P `zones ·`
-- `src/ui/mobile/InspectCard.jsx:376` P `apex kills`
-- `src/ui/mobile/InspectCard.jsx:381` P `All titles:`
-- `src/ui/mobile/InspectCard.jsx:398` P `Journey`
-- `src/ui/mobile/InspectCard.jsx:402` P `entries`
-- `src/ui/mobile/InspectCard.jsx:417` P `Day`
-- `src/ui/mobile/InspectCard.jsx:476` P `close`
-- `src/ui/mobile/InspectCard.jsx:485` P `long-press any name or number to learn more · tap to dismiss`
-
-### InspectPlayerPanel (19)
-
-- `src/ui/panels/InspectPlayerPanel.jsx:256` P? `Party invite sent`
-- `src/ui/panels/InspectPlayerPanel.jsx:288` P? `Duel sent`
-- `src/ui/panels/InspectPlayerPanel.jsx:396` P `Inspect`
-- `src/ui/panels/InspectPlayerPanel.jsx:418` P? `In party`
-- `src/ui/panels/InspectPlayerPanel.jsx:450` P? `In party`
-- `src/ui/panels/InspectPlayerPanel.jsx:458` P? `Invite to Party`
-- `src/ui/panels/InspectPlayerPanel.jsx:483` P `Friends — tap to remove`
-- `src/ui/panels/InspectPlayerPanel.jsx:483` P `Add friend`
-- `src/ui/panels/InspectPlayerPanel.jsx:493` P? `Removed friend`
-- `src/ui/panels/InspectPlayerPanel.jsx:515` P? `Friend request sent!`
-- `src/ui/panels/InspectPlayerPanel.jsx:521` P? `Add Friend`
-- `src/ui/panels/InspectPlayerPanel.jsx:546` P? `Threat on cooldown`
-- `src/ui/panels/InspectPlayerPanel.jsx:564` P? `Threat issued!`
-- `src/ui/panels/InspectPlayerPanel.jsx:593` P? `Clan invite sent`
-- `src/ui/panels/InspectPlayerPanel.jsx:603` P? `Invite to [`
-- `src/ui/panels/InspectPlayerPanel.jsx:633` P? `Muted — their chat stops here`
-- `src/ui/panels/InspectPlayerPanel.jsx:652` P? `Can't block in lawless zone!`
-- `src/ui/panels/InspectPlayerPanel.jsx:657` P? `Blocked: no chat, emotes or requests from them`
-- `src/ui/panels/InspectPlayerPanel.jsx:689` P? `Why are you reporting`
+- `src/ui/mobile/InspectCard.jsx:45` P? `"Source Sans 3", sans-serif`
+- `src/ui/mobile/InspectCard.jsx:46` P? `"Source Sans 3", sans-serif`
 
 ### InstallHint (7)
 
@@ -2156,283 +1265,41 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 - `src/ui/IntroVideo.jsx:200` P `Loading`
 
-### InventoryPanel (49)
+### InventoryPanel (11)
 
-- `src/ui/mobile/dash/InventoryPanel.jsx:305` P? `Fury Tonic`
-- `src/ui/mobile/dash/InventoryPanel.jsx:306` P? `Swift Draught`
-- `src/ui/mobile/dash/InventoryPanel.jsx:312` P? `Mana Draught`
-- `src/ui/mobile/dash/InventoryPanel.jsx:313` P? `Stamina Tonic`
-- `src/ui/mobile/dash/InventoryPanel.jsx:314` P? `Zoom Juice`
-- `src/ui/mobile/dash/InventoryPanel.jsx:315` P? `Daily Chest`
-- `src/ui/mobile/dash/InventoryPanel.jsx:316` P? `Copper Bar`
-- `src/ui/mobile/dash/InventoryPanel.jsx:323` P? `Iron Bar`
-- `src/ui/mobile/dash/InventoryPanel.jsx:324` P? `Black Steel Bar`
-- `src/ui/mobile/dash/InventoryPanel.jsx:325` P? `Box Trap`
-- `src/ui/mobile/dash/InventoryPanel.jsx:504` P `g`
-- `src/ui/mobile/dash/InventoryPanel.jsx:587` P `Large`
-- `src/ui/mobile/dash/InventoryPanel.jsx:587` P `L`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1072` P `Unequip`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1094` P? `{…}px {…}px {…}px`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1212` P `Your bag is empty.`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1212` P `No {…} items yet.`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1222` P `Defeat monsters and gather materials to fill it up.`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1491` P `Shield`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1491` P `Armor`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1491` P `Greaves`
-- `src/ui/mobile/dash/InventoryPanel.jsx:1491` P `Weapon`
-- `src/ui/panels/InventoryPanel.jsx:146` P `Melee Weapon`
-- `src/ui/panels/InventoryPanel.jsx:150` P `Ranged Weapon`
-- `src/ui/panels/InventoryPanel.jsx:287` P? `No elements`
-- `src/ui/panels/InventoryPanel.jsx:300` P? `WORN ARMOR`
-- `src/ui/panels/InventoryPanel.jsx:303` P `Steel Plate`
-- `src/ui/panels/InventoryPanel.jsx:303` P `Chest`
-- `src/ui/panels/InventoryPanel.jsx:304` P `Steel Greaves`
-- `src/ui/panels/InventoryPanel.jsx:304` P `Legs`
-- `src/ui/panels/InventoryPanel.jsx:307` P `Chest · under armor`
-- `src/ui/panels/InventoryPanel.jsx:399` P? `No Armor`
-- `src/ui/panels/InventoryPanel.jsx:404` P? `No attunement`
-- `src/ui/panels/InventoryPanel.jsx:469` P? `No gem — visit the Enchanter to slot one`
-- `src/ui/panels/InventoryPanel.jsx:475` P? `No Amulet`
-- `src/ui/panels/InventoryPanel.jsx:480` P? `Craft at Blacksmith from gold bars (nuggets:`
-- `src/ui/panels/InventoryPanel.jsx:529` P? `No bonuses yet`
-- `src/ui/panels/InventoryPanel.jsx:535` P? `No Shield`
-- `src/ui/panels/InventoryPanel.jsx:540` P? `Craft at the Blacksmith from ore`
-- `src/ui/panels/InventoryPanel.jsx:571` P? `Golden Ticket`
-- `src/ui/panels/InventoryPanel.jsx:587` P? `Open Golden Ticket`
-- `src/ui/panels/InventoryPanel.jsx:706` P? `Weapon Stash (`
-- `src/ui/panels/InventoryPanel.jsx:713` P? `Empty. Weapon drops are auto-stashed here for comparison.`
-- `src/ui/panels/InventoryPanel.jsx:896` P? `No elements`
-- `src/ui/panels/InventoryPanel.jsx:1010` P? `Not sold: no connection`
-- `src/ui/panels/InventoryPanel.jsx:1052` P? `collisions discovered`
-- `src/ui/panels/InventoryPanel.jsx:1096` P? `· Trapping Lv`
-- `src/ui/panels/InventoryPanel.jsx:1105` P? `No pets. Weaken a monster to <20% HP then tap 🪤 to capture!`
-- `src/ui/panels/InventoryPanel.jsx:1185` T `Tap a pet to set active. Active pet follows you and auto-collects loot within`
+- `src/ui/mobile/dash/InventoryPanel.jsx:308` P? `Fury Tonic`
+- `src/ui/mobile/dash/InventoryPanel.jsx:309` P? `Swift Draught`
+- `src/ui/mobile/dash/InventoryPanel.jsx:315` P? `Mana Draught`
+- `src/ui/mobile/dash/InventoryPanel.jsx:316` P? `Stamina Tonic`
+- `src/ui/mobile/dash/InventoryPanel.jsx:317` P? `Zoom Juice`
+- `src/ui/mobile/dash/InventoryPanel.jsx:318` P? `Daily Chest`
+- `src/ui/mobile/dash/InventoryPanel.jsx:319` P? `Copper Bar`
+- `src/ui/mobile/dash/InventoryPanel.jsx:326` P? `Iron Bar`
+- `src/ui/mobile/dash/InventoryPanel.jsx:327` P? `Black Steel Bar`
+- `src/ui/mobile/dash/InventoryPanel.jsx:328` P? `Box Trap`
+- `src/ui/mobile/dash/InventoryPanel.jsx:1100` P? `{…}px {…}px {…}px`
 
-### InventorySurface (19)
+### ItemDetailPopup (1)
 
-- `src/ui/mobile/InventorySurface.jsx:15` P? `Newest first`
-- `src/ui/mobile/InventorySurface.jsx:16` P? `Oldest first`
-- `src/ui/mobile/InventorySurface.jsx:17` P? `Tier (high to low)`
-- `src/ui/mobile/InventorySurface.jsx:18` P? `Tier (low to high)`
-- `src/ui/mobile/InventorySurface.jsx:57` P `Weapons`
-- `src/ui/mobile/InventorySurface.jsx:58` P `Armor`
-- `src/ui/mobile/InventorySurface.jsx:59` P `Gems`
-- `src/ui/mobile/InventorySurface.jsx:60` P `Potions`
-- `src/ui/mobile/InventorySurface.jsx:61` P `Other`
-- `src/ui/mobile/InventorySurface.jsx:69` P? `Newest first`
-- `src/ui/mobile/InventorySurface.jsx:69` P? `Oldest first`
-- `src/ui/mobile/InventorySurface.jsx:70` P? `Tier (high to low)`
-- `src/ui/mobile/InventorySurface.jsx:70` P? `Tier (low to high)`
-- `src/ui/mobile/InventorySurface.jsx:110` P `Sort ▾`
-- `src/ui/mobile/InventorySurface.jsx:123` P `No matches`
-- `src/ui/mobile/InventorySurface.jsx:123` P `Nothing here yet`
-- `src/ui/mobile/InventorySurface.jsx:147` P `Search`
-- `src/ui/mobile/InventorySurface.jsx:235` P `Inventory`
-- `src/ui/mobile/InventorySurface.jsx:235` P `Equipped`
+- `src/ui/mobile/dash/ItemDetailPopup.jsx:1252` P? `y mandatory`
 
-### ItemDetailPopup (129)
+### ItemTooltip (11)
 
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:72` P? `make a`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:72` P? `Gem at the Gem Works`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:73` P? `Cut into a`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:73` P? `Gem at the Gem Works`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:82` P? `Set into your gear at the Gem Works`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:82` P? `· on a weapon:`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:88` P? `Crack at the Gem Works:`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:88` P? `% hold a Raw`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:90` P? `Cut into any elemental gem at the Gem Works`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:109` P? `· Needs level`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:109` P? `(you are`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:110` P? `(you have`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:124` P `Same`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:124` P `as equipped`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:127` P `vs equipped`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:190` P? `Press Q to block`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:190` P? `Tap Block in a fight to raise it`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:231` P? `HP when eaten`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:260` P `Open it to claim your cape`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:261` P `Open it for a prize — usually coins, sometimes fish, a rare gem or armour`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:268` P `Worn — a contest prize`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:268` P `A contest prize, in your bag`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:275` P `· replaces your meal`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:275` P `· replaces your brew`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:277` P `Cook over a campfire`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:278` P `Inedible`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:284` P `Light a campfire, or harden`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:284` P `into`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:284` P `at the Woodworker`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:286` P `Light a campfire to cook at`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:290` P `Hardens a`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:290` P `bow or staff at the Woodworker`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:291` P `Made from`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:297` P `Smelt`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:297` P `into a`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:297` P `at the Blacksmith`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:300` P `Forge into armor at the Blacksmith`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:301` P `Smelted from`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:308` P `Quantity:`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:389` P `Weapon`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:390` P `Damage`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:390` P `· DPS`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:402` P `Shield`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:404` P `Wooden`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:404` P `· Shield`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:427` P `Weapon`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:428` P `Damage`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:428` P `· DPS`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:452` P `Shield`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:455` P `Wooden`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:455` P `· Shield`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:490` P `Armor`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:491` P `% damage reduced`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:492` P `Leather`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:492` P `· Chest`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:508` P? `% Damage Reduced`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:519` P `Armor`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:520` P `% damage reduced`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:522` P `Leather`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:522` P `· Chest`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:549` P? `% Damage Reduced`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:555` P `Greaves`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:556` P `% damage reduced`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:560` P `Armor · Legs`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:582` P `Worn armor`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:583` P `Steel ·`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:583` P `Chest`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:583` P `Legs`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:595` P `In bag`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:596` P `Steel ·`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:596` P `Chest`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:596` P `Legs`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:658` P? `Golden Ticket`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:895` P `WEAPON`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:916` P `weapon`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:917` P `DMG`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:917` P `· DPS`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:997` P `SHIELD`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1001` P `Wood`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1001` P `Shield`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1002` P `Wood`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1002` P `shield · raise to block`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1024` P `CHEST`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1024` P `LEGS`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1026` P `Plate armor · chest · raises defense`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1026` P `Plate greaves · legs · raises defense`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1142` P `Cloth shirt · worn under armor`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1189` P `Unequip`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1189` P `Equip`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1231` P `Close`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1247` P `Nothing to equip here.`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1248` P? `y mandatory`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1252` P `⌄ swipe ·`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1252` P `items`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1328` P `Unequip`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1328` P `Equip`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1350` P `Chest — Layers`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1356` P? `No chest armor`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1357` P? `Armor · top layer`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1359` P? `Clothing · under armor`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1416` P `Legs`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1426` P `Greaves`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1430` P? `No greaves`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1431` P `Armor · legs`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1443` P `Unequip`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1443` P `Equip`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1515` P? `Put a price on it first`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1538` P? `That piece moved — open it again`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1563` P? `That weapon moved — open it again`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1619` P? `The store could not take it`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1697` P `Anchored`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1703` P? `Unpin from the top of the bag`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1703` P? `Pin to the top of the bag`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1704` P `Unpin from the top of the bag`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1704` P `Pin to the top of the bag`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1817` P `X`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1842` P `Drop on the ground`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1846` P `How many`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1858` P `Only you can see it for a minute, then anyone can pick it up. At two minutes it starts ...`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1863` P `Drop`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1863` P `Drop it`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1865` P `Back`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1883` P `Sell in the Auction House`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1887` P `How many`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1899` P `Price in gold`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1910` P `It leaves your bag now and comes back in a week if nobody buys it.`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1915` P `Listing…`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1915` P `Put it up`
-- `src/ui/mobile/dash/ItemDetailPopup.jsx:1917` P `Back`
-
-### ItemTooltip (30)
-
-- `src/ui/mobile/ItemTooltip.jsx:15` P? `Hits harder`
-- `src/ui/mobile/ItemTooltip.jsx:15` P? `A bit slower`
-- `src/ui/mobile/ItemTooltip.jsx:15` P? `Lucky strike`
-- `src/ui/mobile/ItemTooltip.jsx:16` P? `Crit chance`
-- `src/ui/mobile/ItemTooltip.jsx:61` P `item`
-- `src/ui/mobile/ItemTooltip.jsx:61` P `Salvaged {…} · Undo`
-- `src/ui/mobile/ItemTooltip.jsx:62` P `Salvaged {…} items · Undo All`
-- `src/ui/mobile/ItemTooltip.jsx:130` P `VS YOUR {…}`
-- `src/ui/mobile/ItemTooltip.jsx:130` P `COMPARED TO WHAT YOU'RE WEARING`
-- `src/ui/mobile/ItemTooltip.jsx:162` P `GEMS`
-- `src/ui/mobile/ItemTooltip.jsx:174` P `of`
-- `src/ui/mobile/ItemTooltip.jsx:174` P `slots`
-- `src/ui/mobile/ItemTooltip.jsx:189` P? `{…}-{…}g recently`
-- `src/ui/mobile/ItemTooltip.jsx:200` P `MARKET`
-- `src/ui/mobile/ItemTooltip.jsx:203` P `List ↗`
-- `src/ui/mobile/ItemTooltip.jsx:229` P? `Take off`
-- `src/ui/mobile/ItemTooltip.jsx:229` P? `Add shortcut`
-- `src/ui/mobile/ItemTooltip.jsx:232` P? `Keep safe`
-- `src/ui/mobile/ItemTooltip.jsx:232` P? `Add shortcut`
-- `src/ui/mobile/ItemTooltip.jsx:234` P? `Keep safe`
-- `src/ui/mobile/ItemTooltip.jsx:234` P? `Add shortcut`
-- `src/ui/mobile/ItemTooltip.jsx:236` P? `Keep safe`
-- `src/ui/mobile/ItemTooltip.jsx:236` P? `Add shortcut`
-- `src/ui/mobile/ItemTooltip.jsx:238` P? `Keep safe`
-- `src/ui/mobile/ItemTooltip.jsx:239` P? `Keep safe`
-- `src/ui/mobile/ItemTooltip.jsx:239` P? `Add shortcut`
-- `src/ui/mobile/ItemTooltip.jsx:258` P `Pick a shortcut slot to assign:`
-- `src/ui/mobile/ItemTooltip.jsx:269` P `SLOT`
-- `src/ui/mobile/ItemTooltip.jsx:391` P `forged by`
-- `src/ui/mobile/ItemTooltip.jsx:424` P? `{…} days ago`
-
-### JourneyPanel (11)
-
-- `src/ui/mobile/dash/JourneyPanel.jsx:88` P? `Lifetime Gold`
-- `src/ui/mobile/dash/JourneyPanel.jsx:91` P? `Lifetime XP`
-- `src/ui/mobile/dash/JourneyPanel.jsx:92` P? `Duels Won`
-- `src/ui/mobile/dash/JourneyPanel.jsx:93` P? `Deepest Zone`
-- `src/ui/mobile/dash/JourneyPanel.jsx:159` P `Accuracy`
-- `src/ui/mobile/dash/JourneyPanel.jsx:163` P? `no shots yet`
-- `src/ui/mobile/dash/JourneyPanel.jsx:177` P `Basic attacks that hit an enemy. Specials are not counted.`
-- `src/ui/mobile/dash/JourneyPanel.jsx:177` P `Your last 200:`
-- `src/ui/mobile/dash/JourneyPanel.jsx:206` P `Level`
-- `src/ui/mobile/dash/JourneyPanel.jsx:206` P `recorded on Hemi`
-- `src/ui/mobile/dash/JourneyPanel.jsx:213` T `Tap to view the transaction`
+- `src/ui/mobile/ItemTooltip.jsx:243` P? `Take off`
+- `src/ui/mobile/ItemTooltip.jsx:243` P? `Add shortcut`
+- `src/ui/mobile/ItemTooltip.jsx:246` P? `Keep safe`
+- `src/ui/mobile/ItemTooltip.jsx:246` P? `Add shortcut`
+- `src/ui/mobile/ItemTooltip.jsx:248` P? `Keep safe`
+- `src/ui/mobile/ItemTooltip.jsx:248` P? `Add shortcut`
+- `src/ui/mobile/ItemTooltip.jsx:250` P? `Keep safe`
+- `src/ui/mobile/ItemTooltip.jsx:250` P? `Add shortcut`
+- `src/ui/mobile/ItemTooltip.jsx:252` P? `Keep safe`
+- `src/ui/mobile/ItemTooltip.jsx:253` P? `Keep safe`
+- `src/ui/mobile/ItemTooltip.jsx:253` P? `Add shortcut`
 
 ### JumpButton (1)
 
-- `src/ui/panels/JumpButton.jsx:224` P `jump`
-
-### KeyboardHintsPanel (18)
-
-- `src/ui/panels/KeyboardHintsPanel.jsx:169` P? `Show the keyboard controls`
-- `src/ui/panels/KeyboardHintsPanel.jsx:169` P? `Hide the keyboard controls`
-- `src/ui/panels/KeyboardHintsPanel.jsx:170` P `Show the keyboard controls (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:170` P `Hide the keyboard controls (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:184` P? `Fewer keys`
-- `src/ui/panels/KeyboardHintsPanel.jsx:184` P? `More keys`
-- `src/ui/panels/KeyboardHintsPanel.jsx:282` P `Show the keyboard controls (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:282` P `Hide the keyboard controls (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:294` P? `Fewer keys`
-- `src/ui/panels/KeyboardHintsPanel.jsx:294` P? `More keys`
-- `src/ui/panels/KeyboardHintsPanel.jsx:343` P `Show the keyboard controls (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:343` P `Hide the keyboard controls (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:346` P? `Show keyboard controls`
-- `src/ui/panels/KeyboardHintsPanel.jsx:346` P? `Hide keyboard controls`
-- `src/ui/panels/KeyboardHintsPanel.jsx:355` P `Hide these (H)`
-- `src/ui/panels/KeyboardHintsPanel.jsx:357` P? `Hide keyboard controls`
-- `src/ui/panels/KeyboardHintsPanel.jsx:364` P? `Fewer keys`
-- `src/ui/panels/KeyboardHintsPanel.jsx:364` P? `More keys`
+- `src/ui/panels/JumpButton.jsx:226` P `jump`
 
 ### LandOfficePanel (4)
 
@@ -2441,76 +1308,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/buildings/LandOfficePanel.jsx:46` P? `Visit your personal farm to grow crops, rest in bed, and tend your homestead.`
 - `src/ui/panels/buildings/LandOfficePanel.jsx:50` P? `🚶 Travel to Farm`
 
-### LeaderboardPanel (68)
+### LeaderboardPanel (1)
 
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:122` P `Overall`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:122` P? `Overall power`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:123` P `Melee`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:124` P `Bow`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:125` P `Magic`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:128` P `Level`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:140` P `Damage`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:142` P `Kills`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:143` P `AP`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:143` P? `Achievement points`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:145` P `Woodcutting`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:146` P `Fishing`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:147` P `Mining`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:148` P `Farming`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:149` P `Cooking`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:150` P `Smithing`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:151` P `Woodworking`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:152` P `Gem Cutting`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:153` P `Enchanting`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:154` P `Trapping`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:157` P `Daily spin`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:158` P `Coin flip`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:159` P `Biggest fish`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:207` P `Ranks`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:354` P `AP`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:354` P `kill`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:354` P `kills`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:355` P `pt`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:355` P `pts`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:393` P `Bro`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:398` P? `, a deleted character`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:428` P? `400 points ahead = 10× likelier to win`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:434` P `Melee`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:434` P `Bow`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:434` P `Magic`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:452` P `Melee, Bow and Magic levels added up`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:478` P `Player`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:480` P `What Power means`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:492` P? `Show the total`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:492` P? `Show Melee, Bow and Magic`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:508` P `Power:`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:557` P `Loading…`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:557` P `Nobody has achievement points yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:557` P `Nobody has a kill yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:558` P `Nobody has put points in this yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:558` P `Nobody has trained this yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:601` P? `Biggest wins`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:601` P? `Biggest losses`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:630` P? `The spin's records are closed for now.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:630` P? `The records can't be read right now.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:634` P? `Nobody has taken a pot from the daily spin yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:635` P? `Nobody has lost a pot to double or nothing yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:655` P? `Won from Ace on one flip`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:655` P? `Lost to Ace on one flip`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:656` P? `Nobody has won a flip against Ace yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:657` P? `Nobody has lost a flip to Ace yet.`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:683` P `Ranks`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:687` P `RANKS`
-- `src/ui/mobile/dash/LeaderboardPanel.jsx:763` P `Leaderboards`
-- `src/ui/panels/LeaderboardPanel.jsx:110` P? `players online`
-- `src/ui/panels/LeaderboardPanel.jsx:201` P `You`
-- `src/ui/panels/LeaderboardPanel.jsx:224` P `You`
-- `src/ui/panels/LeaderboardPanel.jsx:281` P? `Skill Total`
-- `src/ui/panels/LeaderboardPanel.jsx:282` P? `Achievement Pts`
-- `src/ui/panels/LeaderboardPanel.jsx:283` P? `Monsters Killed`
-- `src/ui/panels/LeaderboardPanel.jsx:284` P? `Dungeons Cleared`
-- `src/ui/panels/LeaderboardPanel.jsx:285` P? `Gold Earned`
-- `src/ui/panels/LeaderboardPanel.jsx:405` P? `Connect with more players to see rankings!`
+- `src/ui/mobile/dash/LeaderboardPanel.jsx:211` P `Ranks`
 
 ### LevelUpBurst (2)
 
@@ -2529,50 +1329,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/LingerScreen.js:77` P? `way out of a fight.</p>`
 - `src/ui/LingerScreen.js:78` P? `<div class="bt-lg-next"></div>`
 
-### LoginScreen (13)
-
-- `src/ui/panels/LoginScreen.jsx:280` P `Hemi Bros — BroTown, multiplayer RPG`
-- `src/ui/panels/LoginScreen.jsx:320` P `Continue`
-- `src/ui/panels/LoginScreen.jsx:334` P `Create Character`
-- `src/ui/panels/LoginScreen.jsx:364` P `This device is full`
-- `src/ui/panels/LoginScreen.jsx:381` P `You have all`
-- `src/ui/panels/LoginScreen.jsx:381` P `bros this device can hold. Play one, or free a slot: tap a bro's ••• and choose Remove ...`
-- `src/ui/panels/LoginScreen.jsx:398` P `Choose a bro`
-- `src/ui/panels/LoginScreen.jsx:406` P `Never mind`
-- `src/ui/panels/LoginScreen.jsx:419` P `Checking for your character…`
-- `src/ui/panels/LoginScreen.jsx:424` P `Your Login Key lets you access your character on any device.`
-- `src/ui/panels/LoginScreen.jsx:448` P `Any device • Any browser • No download • Free`
-- `src/ui/panels/LoginScreen.jsx:449` P `Built {…}`
-- `src/ui/panels/LoginScreen.jsx:450` P `v`
-
-### LoginSpinWindow (25)
-
-- `src/ui/mobile/LoginSpinWindow.jsx:322` P `Close`
-- `src/ui/mobile/LoginSpinWindow.jsx:332` P `Double or nothing?`
-- `src/ui/mobile/LoginSpinWindow.jsx:344` P `Nothing. Better luck tomorrow.`
-- `src/ui/mobile/LoginSpinWindow.jsx:345` P `Doubled:`
-- `src/ui/mobile/LoginSpinWindow.jsx:345` P `gold!`
-- `src/ui/mobile/LoginSpinWindow.jsx:346` P `Round and round...`
-- `src/ui/mobile/LoginSpinWindow.jsx:348` P `gold`
-- `src/ui/mobile/LoginSpinWindow.jsx:349` P `Win it for`
-- `src/ui/mobile/LoginSpinWindow.jsx:349` P `, or lose it all. 50 / 50.`
-- `src/ui/mobile/LoginSpinWindow.jsx:352` P `(NO still collects)`
-- `src/ui/mobile/LoginSpinWindow.jsx:353` P `Exactly 50/50 every spin`
-- `src/ui/mobile/LoginSpinWindow.jsx:355` P `OK`
-- `src/ui/mobile/LoginSpinWindow.jsx:359` P `Yes, double or nothing`
-- `src/ui/mobile/LoginSpinWindow.jsx:360` P `YES`
-- `src/ui/mobile/LoginSpinWindow.jsx:363` P `No, collect the gold`
-- `src/ui/mobile/LoginSpinWindow.jsx:364` P `NO`
-- `src/ui/mobile/LoginSpinWindow.jsx:371` P `Free daily spin`
-- `src/ui/mobile/LoginSpinWindow.jsx:385` P `gold!`
-- `src/ui/mobile/LoginSpinWindow.jsx:388` P `gold`
-- `src/ui/mobile/LoginSpinWindow.jsx:388` P `Nothing`
-- `src/ui/mobile/LoginSpinWindow.jsx:389` P `COLLECT`
-- `src/ui/mobile/LoginSpinWindow.jsx:393` P `The wheel did not answer. What you hold is kept.`
-- `src/ui/mobile/LoginSpinWindow.jsx:394` P `OK`
-- `src/ui/mobile/LoginSpinWindow.jsx:398` T `Tap SPIN: one free spin a day`
-- `src/ui/mobile/LoginSpinWindow.jsx:401` P `SPIN`
-
 ### MapPanel (2)
 
 - `src/ui/mobile/dash/MapPanel.jsx:136` P `Discovered`
@@ -2586,168 +1342,22 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/MayorGreeting.jsx:114` P `Skip Mayor intro`
 - `src/ui/MayorGreeting.jsx:116` P `Skip`
 
-### MonsterCodex (71)
+### MonsterCodex (10)
 
-- `src/ui/mobile/dash/MonsterCodex.jsx:77` P? `Leave BroTown by its`
-- `src/ui/mobile/dash/MonsterCodex.jsx:77` P? `straight on.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:78` P? `Leave BroTown by its`
-- `src/ui/mobile/dash/MonsterCodex.jsx:78` P? `gate on`
-- `src/ui/mobile/dash/MonsterCodex.jsx:78` P? `, then take`
-- `src/ui/mobile/dash/MonsterCodex.jsx:78` P? `where it forks off.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:118` P? `M3 3l10 10M13 3L3 13M2.5 10.5l3 3M10.5 13.5l3-3`
-- `src/ui/mobile/dash/MonsterCodex.jsx:119` P? `M8 1.8l5.2 2.1v4c0 3.2-2.2 5.3-5.2 6.3-3-1-5.2-3.1-5.2-6.3v-4z`
-- `src/ui/mobile/dash/MonsterCodex.jsx:120` P? `M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 5.2a2.8 2.8 0 1 0 0 5.6a2.8 2.8 0 1 0 0...`
-- `src/ui/mobile/dash/MonsterCodex.jsx:121` P? `M4.2 3h7.6l2.7 3.4L8 14 1.5 6.4zM1.5 6.4h13M6.3 3L5 6.4 8 14l3-7.6L9.7 3`
-- `src/ui/mobile/dash/MonsterCodex.jsx:122` P? `M2.5 5L8 2l5.5 3v6L8 14l-5.5-3zM2.5 5L8 8l5.5-3M8 8v6`
-- `src/ui/mobile/dash/MonsterCodex.jsx:123` P? `M9.2 1.8l5 5-2.1 2.1-5-5zM7.6 5.4L2 13.6`
-- `src/ui/mobile/dash/MonsterCodex.jsx:124` P? `M8 1.5v13M8 3h4.6l1.6 1.6-1.6 1.6H8M8 8.2H3.4L1.8 9.8l1.6 1.6H8`
-- `src/ui/mobile/dash/MonsterCodex.jsx:194` P `NEW`
-- `src/ui/mobile/dash/MonsterCodex.jsx:200` P `defeated`
-- `src/ui/mobile/dash/MonsterCodex.jsx:200` P `Not met yet`
-- `src/ui/mobile/dash/MonsterCodex.jsx:213` P `NEW`
-- `src/ui/mobile/dash/MonsterCodex.jsx:219` P `defeated`
-- `src/ui/mobile/dash/MonsterCodex.jsx:219` P `Not met yet`
-- `src/ui/mobile/dash/MonsterCodex.jsx:244` P `defeated`
-- `src/ui/mobile/dash/MonsterCodex.jsx:244` P `past Lv 20`
-- `src/ui/mobile/dash/MonsterCodex.jsx:277` P `Info`
-- `src/ui/mobile/dash/MonsterCodex.jsx:279` P? `M5.6 2.4h4.8L9.2 4.7c2.5 1.2 4 3.6 4 6.1 0 1.9-1.6 2.7-5.2 2.7s-5.2-.8-5.2-2.7c0-2.5 1....`
-- `src/ui/mobile/dash/MonsterCodex.jsx:280` P `M8 1.8a6.2 6.2 0 1 0 0 12.4a6.2 6.2 0 1 0 0-12.4zM8 7.2v4.4M8 4.7v.2`
-- `src/ui/mobile/dash/MonsterCodex.jsx:281` P? `M8 14.4s-4.7-4.5-4.7-8a4.7 4.7 0 0 1 9.4 0c0 3.5-4.7 8-4.7 8zM8 4.6a1.8 1.8 0 1 0 0 3.6...`
-- `src/ui/mobile/dash/MonsterCodex.jsx:300` P `All monsters`
-- `src/ui/mobile/dash/MonsterCodex.jsx:300` P `All monsters`
-- `src/ui/mobile/dash/MonsterCodex.jsx:411` P `Item`
-- `src/ui/mobile/dash/MonsterCodex.jsx:412` P `Type`
-- `src/ui/mobile/dash/MonsterCodex.jsx:413` P `Roll`
-- `src/ui/mobile/dash/MonsterCodex.jsx:447` P `Always`
-- `src/ui/mobile/dash/MonsterCodex.jsx:459` P `Each kill rolls once, 1–`
-- `src/ui/mobile/dash/MonsterCodex.jsx:459` P `. The item whose numbers it lands on drops`
-- `src/ui/mobile/dash/MonsterCodex.jsx:459` P `drops nothing more`
-- `src/ui/mobile/dash/MonsterCodex.jsx:460` P `Each kill rolls 1–`
-- `src/ui/mobile/dash/MonsterCodex.jsx:460` P `for every item. A roll in its range drops it.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:462` T `Tap an item to see what it is and the grades it can roll.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:491` P `Close`
-- `src/ui/mobile/dash/MonsterCodex.jsx:512` P `Found from`
-- `src/ui/mobile/dash/MonsterCodex.jsx:527` P `Base drop chance`
-- `src/ui/mobile/dash/MonsterCodex.jsx:532` P `(chance for this item to drop)`
-- `src/ui/mobile/dash/MonsterCodex.jsx:535` P `drops on a roll of`
-- `src/ui/mobile/dash/MonsterCodex.jsx:535` P `out of`
-- `src/ui/mobile/dash/MonsterCodex.jsx:542` P `Possible rarity`
-- `src/ui/mobile/dash/MonsterCodex.jsx:542` P `(rolls after drop)`
-- `src/ui/mobile/dash/MonsterCodex.jsx:626` P `What it does`
-- `src/ui/mobile/dash/MonsterCodex.jsx:629` P `Element ·`
-- `src/ui/mobile/dash/MonsterCodex.jsx:634` P `A pet from`
-- `src/ui/mobile/dash/MonsterCodex.jsx:634` P `, out with you, softens it.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:638` P `Special attack ·`
-- `src/ui/mobile/dash/MonsterCodex.jsx:640` P `Tip:`
-- `src/ui/mobile/dash/MonsterCodex.jsx:642` P `Its story`
-- `src/ui/mobile/dash/MonsterCodex.jsx:646` P `Elder form ·`
-- `src/ui/mobile/dash/MonsterCodex.jsx:672` P `Its land`
-- `src/ui/mobile/dash/MonsterCodex.jsx:674` P `: the weakest at the land's near end by BroTown, stronger the further out you go.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:676` P `Before the first pass`
-- `src/ui/mobile/dash/MonsterCodex.jsx:680` P `Past the first pass`
-- `src/ui/mobile/dash/MonsterCodex.jsx:681` P `, its elder form,`
-- `src/ui/mobile/dash/MonsterCodex.jsx:685` P `The way there`
-- `src/ui/mobile/dash/MonsterCodex.jsx:690` P `Dungeon`
-- `src/ui/mobile/dash/MonsterCodex.jsx:691` P `, in`
-- `src/ui/mobile/dash/MonsterCodex.jsx:691` P `, in waves, its land's monsters with a boss at the end.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:735` P `‹ All monsters`
-- `src/ui/mobile/dash/MonsterCodex.jsx:741` P `Defeat one to open its page.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:742` P `It lives in`
-- `src/ui/mobile/dash/MonsterCodex.jsx:794` P `Monsters of the world`
-- `src/ui/mobile/dash/MonsterCodex.jsx:795` P `of`
-- `src/ui/mobile/dash/MonsterCodex.jsx:795` P `met`
-- `src/ui/mobile/dash/MonsterCodex.jsx:798` P `The codex starts counting your kills after the next game update.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:801` P `Your codex can't be read right now. It will be back.`
-- `src/ui/mobile/dash/MonsterCodex.jsx:809` P `Defeat one of a kind to open its whole page: everything it drops, what it does, its sto...`
+- `src/ui/mobile/dash/MonsterCodex.jsx:119` P? `M3 3l10 10M13 3L3 13M2.5 10.5l3 3M10.5 13.5l3-3`
+- `src/ui/mobile/dash/MonsterCodex.jsx:120` P? `M8 1.8l5.2 2.1v4c0 3.2-2.2 5.3-5.2 6.3-3-1-5.2-3.1-5.2-6.3v-4z`
+- `src/ui/mobile/dash/MonsterCodex.jsx:121` P? `M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM8 5.2a2.8 2.8 0 1 0 0 5.6a2.8 2.8 0 1 0 0...`
+- `src/ui/mobile/dash/MonsterCodex.jsx:122` P? `M4.2 3h7.6l2.7 3.4L8 14 1.5 6.4zM1.5 6.4h13M6.3 3L5 6.4 8 14l3-7.6L9.7 3`
+- `src/ui/mobile/dash/MonsterCodex.jsx:123` P? `M2.5 5L8 2l5.5 3v6L8 14l-5.5-3zM2.5 5L8 8l5.5-3M8 8v6`
+- `src/ui/mobile/dash/MonsterCodex.jsx:124` P? `M9.2 1.8l5 5-2.1 2.1-5-5zM7.6 5.4L2 13.6`
+- `src/ui/mobile/dash/MonsterCodex.jsx:125` P? `M8 1.5v13M8 3h4.6l1.6 1.6-1.6 1.6H8M8 8.2H3.4L1.8 9.8l1.6 1.6H8`
+- `src/ui/mobile/dash/MonsterCodex.jsx:280` P? `M5.6 2.4h4.8L9.2 4.7c2.5 1.2 4 3.6 4 6.1 0 1.9-1.6 2.7-5.2 2.7s-5.2-.8-5.2-2.7c0-2.5 1....`
+- `src/ui/mobile/dash/MonsterCodex.jsx:281` P `M8 1.8a6.2 6.2 0 1 0 0 12.4a6.2 6.2 0 1 0 0-12.4zM8 7.2v4.4M8 4.7v.2`
+- `src/ui/mobile/dash/MonsterCodex.jsx:282` P? `M8 14.4s-4.7-4.5-4.7-8a4.7 4.7 0 0 1 9.4 0c0 3.5-4.7 8-4.7 8zM8 4.6a1.8 1.8 0 1 0 0 3.6...`
 
-### MorePanel (40)
+### MorePanel (1)
 
-- `src/ui/mobile/dash/MorePanel.jsx:43` P `Quests`
-- `src/ui/mobile/dash/MorePanel.jsx:44` P `Life Skills`
-- `src/ui/mobile/dash/MorePanel.jsx:45` P `Journey`
-- `src/ui/mobile/dash/MorePanel.jsx:61` P `Achievements`
-- `src/ui/mobile/dash/MorePanel.jsx:62` P `Codex`
-- `src/ui/mobile/dash/MorePanel.jsx:69` P `Social`
-- `src/ui/mobile/dash/MorePanel.jsx:70` P `Clan`
-- `src/ui/mobile/dash/MorePanel.jsx:71` P `Guild`
-- `src/ui/mobile/dash/MorePanel.jsx:72` P `Settings`
-- `src/ui/mobile/dash/MorePanel.jsx:72` P? `brightness(1.18) contrast(1.05)`
-- `src/ui/mobile/dash/MorePanel.jsx:91` P `Account`
-- `src/ui/mobile/dash/MorePanel.jsx:99` P `Map`
-- `src/ui/mobile/dash/MorePanel.jsx:100` P `Notifications`
-- `src/ui/mobile/dash/MorePanel.jsx:101` P `Feedback`
-- `src/ui/mobile/dash/MorePanel.jsx:102` P `About`
-- `src/ui/mobile/dash/MorePanel.jsx:108` P `Pets`
-- `src/ui/mobile/dash/MorePanel.jsx:127` P? `{…} kill{…} · {…} duel{…} won`
-- `src/ui/mobile/dash/MorePanel.jsx:133` P? `{…} of {…} earned`
-- `src/ui/mobile/dash/MorePanel.jsx:141` P? `{…} new in the codex`
-- `src/ui/mobile/dash/MorePanel.jsx:142` P? `{…} of {…} monsters met`
-- `src/ui/mobile/dash/MorePanel.jsx:142` P? `Learn about the monsters you defeat`
-- `src/ui/mobile/dash/MorePanel.jsx:147` P? `{…} ready to turn in`
-- `src/ui/mobile/dash/MorePanel.jsx:147` P? `Track your quests`
-- `src/ui/mobile/dash/MorePanel.jsx:150` P? `New level-ups to view`
-- `src/ui/mobile/dash/MorePanel.jsx:150` P? `Cooking · Fishing · Mining`
-- `src/ui/mobile/dash/MorePanel.jsx:158` P? `Add friends · direct messages`
-- `src/ui/mobile/dash/MorePanel.jsx:159` P? `Add friends · direct messages`
-- `src/ui/mobile/dash/MorePanel.jsx:170` P? `Your party · {…} member{…}`
-- `src/ui/mobile/dash/MorePanel.jsx:170` P? `Make a party in the Saloon`
-- `src/ui/mobile/dash/MorePanel.jsx:173` P? `Not joined · player clans`
-- `src/ui/mobile/dash/MorePanel.jsx:180` P? `Novice in every skill guild`
-- `src/ui/mobile/dash/MorePanel.jsx:185` P? `Trap a monster to tame it`
-- `src/ui/mobile/dash/MorePanel.jsx:187` P? `Sound · Controls · Login Key · Feedback · Privacy`
-- `src/ui/mobile/dash/MorePanel.jsx:191` P? `The world map: the lands, the town, your quest`
-- `src/ui/mobile/dash/MorePanel.jsx:194` P? `World chat and the game’s news`
-- `src/ui/mobile/dash/MorePanel.jsx:196` P? `Tell the developer what you think`
-- `src/ui/mobile/dash/MorePanel.jsx:197` P? `About the game, privacy, rules and credits`
-- `src/ui/mobile/dash/MorePanel.jsx:199` P? `Log out · switch bro · save your Login Key`
-- `src/ui/mobile/dash/MorePanel.jsx:199` P? `Log out · guest tab, no key`
-- `src/ui/mobile/dash/MorePanel.jsx:200` P? `Log out · switch bro · save your Login Key`
-
-### NameModal (43)
-
-- `src/ui/panels/NameModal.jsx:234` P `Hair`
-- `src/ui/panels/NameModal.jsx:242` P `Hats`
-- `src/ui/panels/NameModal.jsx:261` P `Eyewear`
-- `src/ui/panels/NameModal.jsx:306` P `Eyes`
-- `src/ui/panels/NameModal.jsx:320` P `Skin Tone`
-- `src/ui/panels/NameModal.jsx:354` P `Bro type`
-- `src/ui/panels/NameModal.jsx:369` P `Beard`
-- `src/ui/panels/NameModal.jsx:372` P `Shirts`
-- `src/ui/panels/NameModal.jsx:375` P `Pants`
-- `src/ui/panels/NameModal.jsx:377` P `Shoes`
-- `src/ui/panels/NameModal.jsx:476` P `Pattern or draw on this shirt`
-- `src/ui/panels/NameModal.jsx:477` P `Pattern or draw on these pants`
-- `src/ui/panels/NameModal.jsx:486` P `Tattoo your body or face`
-- `src/ui/panels/NameModal.jsx:490` P `Pattern these shoes`
-- `src/ui/panels/NameModal.jsx:517` P `Bro type`
-- `src/ui/panels/NameModal.jsx:518` P `Hair`
-- `src/ui/panels/NameModal.jsx:519` P `Hats`
-- `src/ui/panels/NameModal.jsx:520` P `Skin`
-- `src/ui/panels/NameModal.jsx:523` P `Eyes`
-- `src/ui/panels/NameModal.jsx:530` P `Eyewear`
-- `src/ui/panels/NameModal.jsx:531` P `Beard`
-- `src/ui/panels/NameModal.jsx:532` P `Shirt`
-- `src/ui/panels/NameModal.jsx:533` P `Pants`
-- `src/ui/panels/NameModal.jsx:534` P `Shoes`
-- `src/ui/panels/NameModal.jsx:542` P `Build`
-- `src/ui/panels/NameModal.jsx:1148` T `Live preview — tap to zoom`
-- `src/ui/panels/NameModal.jsx:1332` P? `BRO NAME`
-- `src/ui/panels/NameModal.jsx:1352` P `Type a name`
-- `src/ui/panels/NameModal.jsx:1352` P `Tap to name`
-- `src/ui/panels/NameModal.jsx:1394` P `Random name`
-- `src/ui/panels/NameModal.jsx:1394` P? `Generate a random name`
-- `src/ui/panels/NameModal.jsx:1557` P? `✓ Ready to go`
-- `src/ui/panels/NameModal.jsx:1557` P? `At least 2 characters`
-- `src/ui/panels/NameModal.jsx:1613` P? `Randomize Bro`
-- `src/ui/panels/NameModal.jsx:1625` P `Back to the look you started with`
-- `src/ui/panels/NameModal.jsx:1652` P? `Enter BroTown`
-- `src/ui/panels/NameModal.jsx:1677` P? `Enter BroTown`
-- `src/ui/panels/NameModal.jsx:1696` P? `Back to the main menu`
-- `src/ui/panels/NameModal.jsx:1735` P `Hemi Bros`
-- `src/ui/panels/NameModal.jsx:1760` P? `Trait Picker`
-- `src/ui/panels/NameModal.jsx:1761` P? `Appearance category`
-- `src/ui/panels/NameModal.jsx:2106` P? `, and open the editor`
-- `src/ui/panels/NameModal.jsx:2116` P? `wide, and open the editor`
+- `src/ui/mobile/dash/MorePanel.jsx:74` P? `brightness(1.18) contrast(1.05)`
 
 ### NewMonsterCard (5)
 
@@ -2756,62 +1366,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/NewMonsterCard.jsx:78` P? `. Open it in the Codex`
 - `src/ui/panels/NewMonsterCard.jsx:98` P `New monster`
 - `src/ui/panels/NewMonsterCard.jsx:100` T `Tap to see it in the Codex ›`
-
-### NmlAskCard (17)
-
-- `src/ui/mobile/NmlAskCard.jsx:246` P? `{…} beat you`
-- `src/ui/mobile/NmlAskCard.jsx:255` P `beat you.`
-- `src/ui/mobile/NmlAskCard.jsx:258` P `You can't attack them for`
-- `src/ui/mobile/NmlAskCard.jsx:258` P `more minute.`
-- `src/ui/mobile/NmlAskCard.jsx:258` P `more minutes.`
-- `src/ui/mobile/NmlAskCard.jsx:261` P `Ask for a rematch`
-- `src/ui/mobile/NmlAskCard.jsx:267` P `Hit back {…}?`
-- `src/ui/mobile/NmlAskCard.jsx:267` P `Attack {…}?`
-- `src/ui/mobile/NmlAskCard.jsx:281` P? `Hitting back the player who attacked you gives you no red skull. Tap for what No man's ...`
-- `src/ui/mobile/NmlAskCard.jsx:282` P? `Attacking a player gives you a red skull. Tap for what No man's land means.`
-- `src/ui/mobile/NmlAskCard.jsx:294` P `Lv`
-- `src/ui/mobile/NmlAskCard.jsx:297` P `Attack`
-- `src/ui/mobile/NmlAskCard.jsx:298` P `Party`
-- `src/ui/mobile/NmlAskCard.jsx:300` P `Trade`
-- `src/ui/mobile/NmlAskCard.jsx:301` P `Ignore`
-- `src/ui/mobile/NmlAskCard.jsx:306` P `Let`
-- `src/ui/mobile/NmlAskCard.jsx:306` P `attack you again`
-
-### NmlBadge (33)
-
-- `src/ui/mobile/NmlBadge.jsx:167` P `No man's land {…} · Lv {…} monsters`
-- `src/ui/mobile/NmlBadge.jsx:167` P `No man's land {…} · {…}`
-- `src/ui/mobile/NmlBadge.jsx:174` P `The rules`
-- `src/ui/mobile/NmlBadge.jsx:176` P `Who:`
-- `src/ui/mobile/NmlBadge.jsx:176` P `players within`
-- `src/ui/mobile/NmlBadge.jsx:176` P `of yours, while they stand in No man's land too. The lower of your two numbers counts, ...`
-- `src/ui/mobile/NmlBadge.jsx:179` P `How:`
-- `src/ui/mobile/NmlBadge.jsx:179` T `tap a player, or swing or shoot at them, and choose`
-- `src/ui/mobile/NmlBadge.jsx:179` P `Attack`
-- `src/ui/mobile/NmlBadge.jsx:179` P `. Until you do, your blows never hurt them.`
-- `src/ui/mobile/NmlBadge.jsx:181` P `Attack first:`
-- `src/ui/mobile/NmlBadge.jsx:181` P `you become an`
-- `src/ui/mobile/NmlBadge.jsx:181` P `outlaw`
-- `src/ui/mobile/NmlBadge.jsx:181` P `(a red skull) for 20 minutes of play, starting over with every hit. Beaten by a player ...`
-- `src/ui/mobile/NmlBadge.jsx:181` P `everything`
-- `src/ui/mobile/NmlBadge.jsx:181` P `, worn gear too; killed by a monster, everything but what you wear.`
-- `src/ui/mobile/NmlBadge.jsx:183` P `Get attacked:`
-- `src/ui/mobile/NmlBadge.jsx:183` P `a`
-- `src/ui/mobile/NmlBadge.jsx:183` T `To hit back, swing, shoot or tap them and choose`
-- `src/ui/mobile/NmlBadge.jsx:183` P `Attack`
-- `src/ui/mobile/NmlBadge.jsx:183` P `once: hitting back never makes you an outlaw.`
-- `src/ui/mobile/NmlBadge.jsx:184` P `Keep things safe:`
-- `src/ui/mobile/NmlBadge.jsx:184` P `the Bank in BroTown holds gold and things, out of reach of any death. Diego sells a los...`
-- `src/ui/mobile/NmlBadge.jsx:186` P `Walk back toward BroTown to leave.`
-- `src/ui/mobile/NmlBadge.jsx:191` P `You carry a red skull: {…} min of play left.`
-- `src/ui/mobile/NmlBadge.jsx:192` P `You carry a white skull: {…} min of play left.`
-- `src/ui/mobile/NmlBadge.jsx:205` P `Outlaw`
-- `src/ui/mobile/NmlBadge.jsx:205` P `{…} · Safe`
-- `src/ui/mobile/NmlBadge.jsx:210` P `Out past the safe ground is No man's land, where other players can attack you. The mini...`
-- `src/ui/mobile/NmlBadge.jsx:273` T `Tap`
-- `src/ui/mobile/NmlBadge.jsx:273` P? `Outlaw: you attacked a player first, {…} minutes left. {…} for what it means.`
-- `src/ui/mobile/NmlBadge.jsx:274` T `Tap`
-- `src/ui/mobile/NmlBadge.jsx:274` P? `No man's land {…}: players can attack you here. {…} for what it means.`
 
 ### NotificationsPanel (6)
 
@@ -2835,66 +1389,14 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/OriginScreen.js:91` P? `Play at`
 - `src/ui/OriginScreen.js:94` P? `This page is at`
 
-### PartyHUD (10)
+### PartyHUD (1)
 
-- `src/ui/panels/PartyHUD.jsx:180` P? `Party Invite`
-- `src/ui/panels/PartyHUD.jsx:182` P? `invites you`
-- `src/ui/panels/PartyHUD.jsx:182` P? `in party)`
-- `src/ui/panels/PartyHUD.jsx:246` T `of`
-- `src/ui/panels/PartyHUD.jsx:246` T `: tap to see who`
-- `src/ui/panels/PartyHUD.jsx:247` T `Tap to see your party`
-- `src/ui/panels/PartyHUD.jsx:297` P? `Fold the party list`
-- `src/ui/panels/PartyHUD.jsx:306` P `Leave party`
-- `src/ui/panels/PartyHUD.jsx:344` P `Kick`
-- `src/ui/panels/PartyHUD.jsx:374` P? `away — reconnecting…`
+- `src/ui/panels/PartyHUD.jsx:249` T `Tap to see your party`
 
-### PartyPanel (45)
+### PartyPanel (2)
 
-- `src/ui/panels/buildings/PartyPanel.jsx:171` P? `Gladiator Arena`
-- `src/ui/panels/buildings/PartyPanel.jsx:184` P? `Your gold:`
-- `src/ui/panels/buildings/PartyPanel.jsx:193` P? `G entry · Up to 8 fighters · Single elimination · No healing`
-- `src/ui/panels/buildings/PartyPanel.jsx:254` P? `Enter a single elimination tournament of up to 8 fighters. Blind matchups — any level c...`
-- `src/ui/panels/buildings/PartyPanel.jsx:260` P? `Only the final victor earns the Gladiator title and up to 250G for every fighter in the...`
-- `src/ui/panels/buildings/PartyPanel.jsx:260` P? `AP; later wins pay the gold.`
-- `src/ui/panels/buildings/PartyPanel.jsx:262` P? `Only the final victor earns the Gladiator title and up to 250G for every fighter in the...`
-- `src/ui/panels/buildings/PartyPanel.jsx:262` P? `AP for your first win.`
-- `src/ui/panels/buildings/PartyPanel.jsx:264` P? `Only the final victor earns the Gladiator title and`
-- `src/ui/panels/buildings/PartyPanel.jsx:264` P? `AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8).`
-- `src/ui/panels/buildings/PartyPanel.jsx:265` P? `Only the final victor earns the Gladiator title and up to 250G for every fighter in the...`
-- `src/ui/panels/buildings/PartyPanel.jsx:306` P `queued`
-- `src/ui/panels/buildings/PartyPanel.jsx:312` P? `Entered arena queue!`
-- `src/ui/panels/buildings/PartyPanel.jsx:319` P? `Server error`
-- `src/ui/panels/buildings/PartyPanel.jsx:363` P? `Enter Arena ·`
-- `src/ui/panels/buildings/PartyPanel.jsx:370` P? `G more`
-- `src/ui/panels/buildings/PartyPanel.jsx:390` P? `In Queue`
-- `src/ui/panels/buildings/PartyPanel.jsx:399` P? `Bracket starts in`
-- `src/ui/panels/buildings/PartyPanel.jsx:399` P? `Waiting for`
-- `src/ui/panels/buildings/PartyPanel.jsx:405` P? `You can close this panel — you'll be notified when matched!`
-- `src/ui/panels/buildings/PartyPanel.jsx:422` P? `Left arena queue (+`
-- `src/ui/panels/buildings/PartyPanel.jsx:451` P? `Leave Queue (refund`
-- `src/ui/panels/buildings/PartyPanel.jsx:469` P? `FIGHT! Round`
-- `src/ui/panels/buildings/PartyPanel.jsx:548` P? `Find and defeat your opponent!`
-- `src/ui/panels/buildings/PartyPanel.jsx:554` P? `3 minutes on the clock: then the one with more health left wins.`
-- `src/ui/panels/buildings/PartyPanel.jsx:571` P? `Eliminated — Round`
-- `src/ui/panels/buildings/PartyPanel.jsx:577` P? `wins · You can spectate the rest!`
-- `src/ui/panels/buildings/PartyPanel.jsx:592` P? `Tournament — Round`
-- `src/ui/panels/buildings/PartyPanel.jsx:635` P? `Current Matches`
-- `src/ui/panels/buildings/PartyPanel.jsx:689` P? `Spectator Stakes`
-- `src/ui/panels/buildings/PartyPanel.jsx:708` P? `G pot`
-- `src/ui/panels/buildings/PartyPanel.jsx:728` P? `GLADIATOR CHAMPION`
-- `src/ui/panels/buildings/PartyPanel.jsx:740` P? `wins · Lv`
-- `src/ui/panels/buildings/PartyPanel.jsx:759` P? `"Gladiator" title`
-- `src/ui/panels/buildings/PartyPanel.jsx:767` P? `Recent Results`
-- `src/ui/panels/buildings/PartyPanel.jsx:813` P? `Spectator Betting`
-- `src/ui/panels/buildings/PartyPanel.jsx:818` P? `Bet placed:`
-- `src/ui/panels/buildings/PartyPanel.jsx:818` P? `G on`
-- `src/ui/panels/buildings/PartyPanel.jsx:820` P? `— waiting for results...`
-- `src/ui/panels/buildings/PartyPanel.jsx:826` P? `Blind bet — pick who you think will win this round.`
-- `src/ui/panels/buildings/PartyPanel.jsx:826` P? `players left.`
-- `src/ui/panels/buildings/PartyPanel.jsx:893` P? `G (max`
-- `src/ui/panels/buildings/PartyPanel.jsx:921` P? `Betting is closed`
-- `src/ui/panels/buildings/PartyPanel.jsx:938` P? `Place Bet`
-- `src/ui/panels/buildings/PartyPanel.jsx:964` P? `Hall of Fame`
+- `src/ui/panels/buildings/PartyPanel.jsx:308` P `queued`
+- `src/ui/panels/buildings/PartyPanel.jsx:314` P? `Entered arena queue!`
 
 ### PetHousePanel (4)
 
@@ -2902,66 +1404,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/PetHousePanel.jsx:119` P? `pets · Trapping Lv`
 - `src/ui/panels/PetHousePanel.jsx:163` T `No pets yet. Target a monster out in the lands and tap TRAP, then kill it.`
 - `src/ui/panels/PetHousePanel.jsx:264` T `Tap to set active. Active pet follows and auto-loots.`
-
-### PetsPanel (57)
-
-- `src/ui/mobile/dash/PetsPanel.jsx:68` P `caught`
-- `src/ui/mobile/dash/PetsPanel.jsx:68` P `Not caught`
-- `src/ui/mobile/dash/PetsPanel.jsx:68` P `Not tried`
-- `src/ui/mobile/dash/PetsPanel.jsx:70` P `tries`
-- `src/ui/mobile/dash/PetsPanel.jsx:71` P `golden`
-- `src/ui/mobile/dash/PetsPanel.jsx:72` P `Biggest`
-- `src/ui/mobile/dash/PetsPanel.jsx:138` P `in your collection`
-- `src/ui/mobile/dash/PetsPanel.jsx:140` P `With you:`
-- `src/ui/mobile/dash/PetsPanel.jsx:140` P `No pet out with you`
-- `src/ui/mobile/dash/PetsPanel.jsx:140` P `· Trapping`
-- `src/ui/mobile/dash/PetsPanel.jsx:151` P `Your pets are not ready yet. Try again after you rejoin.`
-- `src/ui/mobile/dash/PetsPanel.jsx:154` T `No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap`
-- `src/ui/mobile/dash/PetsPanel.jsx:154` P `TRAP`
-- `src/ui/mobile/dash/PetsPanel.jsx:154` P `, then kill it. About one try in a hundred at best, and every try pays Trapping XP.`
-- `src/ui/mobile/dash/PetsPanel.jsx:167` P `Your Pet House holds`
-- `src/ui/mobile/dash/PetsPanel.jsx:167` P `, as many as it can.`
-- `src/ui/mobile/dash/PetsPanel.jsx:180` P `Buy room for`
-- `src/ui/mobile/dash/PetsPanel.jsx:180` P `more pets for`
-- `src/ui/mobile/dash/PetsPanel.jsx:180` P `gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:181` P `Pet House: room for`
-- `src/ui/mobile/dash/PetsPanel.jsx:181` P `more pets,`
-- `src/ui/mobile/dash/PetsPanel.jsx:181` P `gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:181` P `(you have`
-- `src/ui/mobile/dash/PetsPanel.jsx:185` P `Buy`
-- `src/ui/mobile/dash/PetsPanel.jsx:186` P `Keep`
-- `src/ui/mobile/dash/PetsPanel.jsx:189` P `More room`
-- `src/ui/mobile/dash/PetsPanel.jsx:196` P `. It waits at the Auction House until it sells, and comes back if it does not.`
-- `src/ui/mobile/dash/PetsPanel.jsx:219` P `Lv`
-- `src/ui/mobile/dash/PetsPanel.jsx:221` P `With you`
-- `src/ui/mobile/dash/PetsPanel.jsx:222` P `Golden`
-- `src/ui/mobile/dash/PetsPanel.jsx:223` P `Big`
-- `src/ui/mobile/dash/PetsPanel.jsx:238` P `when out`
-- `src/ui/mobile/dash/PetsPanel.jsx:246` P `Works at Lv`
-- `src/ui/mobile/dash/PetsPanel.jsx:246` P `until your Trapping reaches`
-- `src/ui/mobile/dash/PetsPanel.jsx:253` P `Save`
-- `src/ui/mobile/dash/PetsPanel.jsx:257` P `Release`
-- `src/ui/mobile/dash/PetsPanel.jsx:257` P `for good?`
-- `src/ui/mobile/dash/PetsPanel.jsx:258` P `Release`
-- `src/ui/mobile/dash/PetsPanel.jsx:259` P `Keep`
-- `src/ui/mobile/dash/PetsPanel.jsx:263` P `Put away`
-- `src/ui/mobile/dash/PetsPanel.jsx:263` P `Take out`
-- `src/ui/mobile/dash/PetsPanel.jsx:264` P `Rename`
-- `src/ui/mobile/dash/PetsPanel.jsx:265` P `Release`
-- `src/ui/mobile/dash/PetsPanel.jsx:268` P `2-16 letters, numbers, spaces, - or '`
-- `src/ui/mobile/dash/PetsPanel.jsx:285` P `Sell at the Auction House`
-- `src/ui/mobile/dash/PetsPanel.jsx:290` P `Price in gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:307` P `Listed for`
-- `src/ui/mobile/dash/PetsPanel.jsx:307` P `gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:308` P `Not listed`
-- `src/ui/mobile/dash/PetsPanel.jsx:309` P `List`
-- `src/ui/mobile/dash/PetsPanel.jsx:323` P `The pet with you picks up loot from further away`
-- `src/ui/mobile/dash/PetsPanel.jsx:323` P `, and softens what its own land's monsters do to you`
-- `src/ui/mobile/dash/PetsPanel.jsx:323` P `. Pets are never lost, not even in No man's land.`
-- `src/ui/mobile/dash/PetsPanel.jsx:330` P `Journal`
-- `src/ui/mobile/dash/PetsPanel.jsx:331` P `of`
-- `src/ui/mobile/dash/PetsPanel.jsx:331` P `caught`
-- `src/ui/mobile/dash/PetsPanel.jsx:341` P `Each land's monsters become its pet. Past level 20 they come in the land's second colours.`
 
 ### PinCards (11)
 
@@ -2982,330 +1424,90 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/PlayerListPanel.jsx:41` P? `No other players nearby`
 - `src/ui/panels/PlayerListPanel.jsx:72` P? `Hemi Bro`
 
-### PlayerPaint (102)
+### PlayerPaint (3)
 
-- `src/ui/panels/PlayerPaint.jsx:77` P `Shirt design`
-- `src/ui/panels/PlayerPaint.jsx:78` P `shirt`
-- `src/ui/panels/PlayerPaint.jsx:82` P `Front and back are separate — the back shows when you walk away.`
-- `src/ui/panels/PlayerPaint.jsx:85` P `Pants design`
-- `src/ui/panels/PlayerPaint.jsx:86` P `pants`
-- `src/ui/panels/PlayerPaint.jsx:88` P `Sits on the upper leg. Leg armour covers it.`
-- `src/ui/panels/PlayerPaint.jsx:91` P `Tattoos`
-- `src/ui/panels/PlayerPaint.jsx:92` P `tattoo`
-- `src/ui/panels/PlayerPaint.jsx:101` P `Draw on the chest or the arms. A shirt or breastplate covers the chest; sleeves cover t...`
-- `src/ui/panels/PlayerPaint.jsx:116` P `back of the pants`
-- `src/ui/panels/PlayerPaint.jsx:118` P `Shows when you walk away. Separate from the front — leg armour covers it.`
-- `src/ui/panels/PlayerPaint.jsx:121` P `back tattoo`
-- `src/ui/panels/PlayerPaint.jsx:123` P `Shows when you walk away. Separate from your chest — a shirt or breastplate covers it.`
-- `src/ui/panels/PlayerPaint.jsx:126` P `face tattoo`
-- `src/ui/panels/PlayerPaint.jsx:128` P `On your face. A hat or a beard can cover part of it.`
-- `src/ui/panels/PlayerPaint.jsx:131` P `arm tattoo`
-- `src/ui/panels/PlayerPaint.jsx:133` P `Goes on BOTH arms. Sleeves cover the upper arm, so it shows below them.`
-- `src/ui/panels/PlayerPaint.jsx:140` P `back of head`
-- `src/ui/panels/PlayerPaint.jsx:142` P `Shows when you walk away. Separate from your face — hair covers part of it.`
-- `src/ui/panels/PlayerPaint.jsx:148` P `Shoe pattern`
-- `src/ui/panels/PlayerPaint.jsx:149` P `shoes`
-- `src/ui/panels/PlayerPaint.jsx:152` P `Boots are small, so these are the patterns that still read at that size.`
-- `src/ui/panels/PlayerPaint.jsx:179` P `tattoo`
-- `src/ui/panels/PlayerPaint.jsx:203` P `tattoo`
-- `src/ui/panels/PlayerPaint.jsx:284` P? `Back of Head`
-- `src/ui/panels/PlayerPaint.jsx:289` P? `Chest + Arms`
-- `src/ui/panels/PlayerPaint.jsx:289` P? `Back + Arms`
-- `src/ui/panels/PlayerPaint.jsx:309` P? `Draw freehand`
-- `src/ui/panels/PlayerPaint.jsx:310` P `Drag for a straight line`
-- `src/ui/panels/PlayerPaint.jsx:311` P? `Drag for a box outline`
-- `src/ui/panels/PlayerPaint.jsx:312` P? `Drag for a circle outline`
-- `src/ui/panels/PlayerPaint.jsx:314` P? `Pick a letter, then tap to place it`
-- `src/ui/panels/PlayerPaint.jsx:318` P? `Tap something you already drew to pick it up — recolour, resize or re-layer it`
-- `src/ui/panels/PlayerPaint.jsx:335` P `A`
-- `src/ui/panels/PlayerPaint.jsx:371` P? `brush stroke`
-- `src/ui/panels/PlayerPaint.jsx:379` P `To back`
-- `src/ui/panels/PlayerPaint.jsx:379` P `Send it behind everything else`
-- `src/ui/panels/PlayerPaint.jsx:380` P `Back`
-- `src/ui/panels/PlayerPaint.jsx:380` P `One step further back`
-- `src/ui/panels/PlayerPaint.jsx:381` P `Forward`
-- `src/ui/panels/PlayerPaint.jsx:381` P `One step further forward`
-- `src/ui/panels/PlayerPaint.jsx:382` P `To front`
-- `src/ui/panels/PlayerPaint.jsx:382` P `Bring it in front of everything else`
-- `src/ui/panels/PlayerPaint.jsx:434` P `Plain`
-- `src/ui/panels/PlayerPaint.jsx:801` P? `Preview on your character`
-- `src/ui/panels/PlayerPaint.jsx:864` P `Edit`
-- `src/ui/panels/PlayerPaint.jsx:877` P? `Turn round to the front`
-- `src/ui/panels/PlayerPaint.jsx:877` P? `Turn round to the back`
-- `src/ui/panels/PlayerPaint.jsx:878` P `Turn round to the front`
-- `src/ui/panels/PlayerPaint.jsx:878` P `Turn round to the back`
-- `src/ui/panels/PlayerPaint.jsx:2331` P? `Draw your`
-- `src/ui/panels/PlayerPaint.jsx:2331` P? `Pattern your`
-- `src/ui/panels/PlayerPaint.jsx:2377` P `Design`
-- `src/ui/panels/PlayerPaint.jsx:2403` P `Tap a zone to edit`
-- `src/ui/panels/PlayerPaint.jsx:2412` P `A pattern fills the whole garment. Anything you draw goes on top of it.`
-- `src/ui/panels/PlayerPaint.jsx:2422` P `Put this drawing on the`
-- `src/ui/panels/PlayerPaint.jsx:2422` P `back`
-- `src/ui/panels/PlayerPaint.jsx:2422` P `front`
-- `src/ui/panels/PlayerPaint.jsx:2422` P `as well`
-- `src/ui/panels/PlayerPaint.jsx:2435` P `Copied ✓`
-- `src/ui/panels/PlayerPaint.jsx:2435` P? `Copy to`
-- `src/ui/panels/PlayerPaint.jsx:2446` P `Choose a ready-made design for your`
-- `src/ui/panels/PlayerPaint.jsx:2448` P `Designs…`
-- `src/ui/panels/PlayerPaint.jsx:2619` P `Keeping the proportions you drew — tap to size width and height freely`
-- `src/ui/panels/PlayerPaint.jsx:2620` P `Width and height are free — tap to keep the proportions you drew`
-- `src/ui/panels/PlayerPaint.jsx:2622` P `✓ Keep shape`
-- `src/ui/panels/PlayerPaint.jsx:2622` P `Free size`
-- `src/ui/panels/PlayerPaint.jsx:2636` P `Make a copy of this one beside it, and hold the copy`
-- `src/ui/panels/PlayerPaint.jsx:2637` P `Copy`
-- `src/ui/panels/PlayerPaint.jsx:2642` P `Finished with this one`
-- `src/ui/panels/PlayerPaint.jsx:2644` P `Place`
-- `src/ui/panels/PlayerPaint.jsx:2644` P `Done`
-- `src/ui/panels/PlayerPaint.jsx:2650` P `Throw this one away`
-- `src/ui/panels/PlayerPaint.jsx:2650` P `Put it back the way you found it`
-- `src/ui/panels/PlayerPaint.jsx:2651` P `Cancel`
-- `src/ui/panels/PlayerPaint.jsx:2679` P `Fine`
-- `src/ui/panels/PlayerPaint.jsx:2679` P `Medium`
-- `src/ui/panels/PlayerPaint.jsx:2679` P `Thick`
-- `src/ui/panels/PlayerPaint.jsx:2692` P `Mirror: paint both halves at once`
-- `src/ui/panels/PlayerPaint.jsx:2694` P `Mirror`
-- `src/ui/panels/PlayerPaint.jsx:2747` P? `Tap something you drew to pick it up — then recolour, resize or re-layer it`
-- `src/ui/panels/PlayerPaint.jsx:2748` P? `Pick Select, then tap something you drew to change it`
-- `src/ui/panels/PlayerPaint.jsx:2768` P `Take this one off the drawing`
-- `src/ui/panels/PlayerPaint.jsx:2769` P `Delete`
-- `src/ui/panels/PlayerPaint.jsx:2778` P `Pattern colour`
-- `src/ui/panels/PlayerPaint.jsx:2790` P `Eraser — works with every tool`
-- `src/ui/panels/PlayerPaint.jsx:2791` P `Recolour what you picked up`
-- `src/ui/panels/PlayerPaint.jsx:2791` P `Colour`
-- `src/ui/panels/PlayerPaint.jsx:2829` P `Undo the last thing you did`
-- `src/ui/panels/PlayerPaint.jsx:2829` P `Nothing to undo yet`
-- `src/ui/panels/PlayerPaint.jsx:2830` P `Undo`
-- `src/ui/panels/PlayerPaint.jsx:2838` P `Put back what you just undid`
-- `src/ui/panels/PlayerPaint.jsx:2838` P `Nothing to redo`
-- `src/ui/panels/PlayerPaint.jsx:2839` P `Redo`
-- `src/ui/panels/PlayerPaint.jsx:2847` P `Remove the pattern`
-- `src/ui/panels/PlayerPaint.jsx:2847` P `Erase the whole`
-- `src/ui/panels/PlayerPaint.jsx:2847` P `of the shirt`
-- `src/ui/panels/PlayerPaint.jsx:2848` P? `Remove the pattern`
-- `src/ui/panels/PlayerPaint.jsx:2848` P? `Erase the whole`
-- `src/ui/panels/PlayerPaint.jsx:2848` P? `of the shirt`
-- `src/ui/panels/PlayerPaint.jsx:2870` P `No pattern`
-- `src/ui/panels/PlayerPaint.jsx:2886` P `Done`
+- `src/ui/panels/PlayerPaint.jsx:181` P `tattoo`
+- `src/ui/panels/PlayerPaint.jsx:205` P `tattoo`
+- `src/ui/panels/PlayerPaint.jsx:340` P `A`
 
-### PlayerProfilePanel (39)
+### QuestCard (1)
 
-- `src/ui/panels/PlayerProfilePanel.jsx:133` P `Close`
-- `src/ui/panels/PlayerProfilePanel.jsx:142` P `Back to the player card`
-- `src/ui/panels/PlayerProfilePanel.jsx:142` P `Back`
-- `src/ui/panels/PlayerProfilePanel.jsx:153` P `Verified Hemi Bro`
-- `src/ui/panels/PlayerProfilePanel.jsx:154` P `Verified Hemi Bro`
-- `src/ui/panels/PlayerProfilePanel.jsx:155` P `held`
-- `src/ui/panels/PlayerProfilePanel.jsx:159` P `LV`
-- `src/ui/panels/PlayerProfilePanel.jsx:164` P `Friend`
-- `src/ui/panels/PlayerProfilePanel.jsx:167` P `Achievement points`
-- `src/ui/panels/PlayerProfilePanel.jsx:168` P `AP`
-- `src/ui/panels/PlayerProfilePanel.jsx:176` P `Hemi Bros held by their verified wallet`
-- `src/ui/panels/PlayerProfilePanel.jsx:178` P `Hemi Bro`
-- `src/ui/panels/PlayerProfilePanel.jsx:178` P `s`
-- `src/ui/panels/PlayerProfilePanel.jsx:185` P `Quests`
-- `src/ui/panels/PlayerProfilePanel.jsx:187` P `Leaderboard`
-- `src/ui/panels/PlayerProfilePanel.jsx:188` P `Leaderboard`
-- `src/ui/panels/PlayerProfilePanel.jsx:201` P `Title: an achievement`
-- `src/ui/panels/PlayerProfilePanel.jsx:209` P `No Clan`
-- `src/ui/panels/PlayerProfilePanel.jsx:234` P `Equipment`
-- `src/ui/panels/PlayerProfilePanel.jsx:238` P `No`
-- `src/ui/panels/PlayerProfilePanel.jsx:254` P `Lifetime Kills`
-- `src/ui/panels/PlayerProfilePanel.jsx:263` P? `Rarest achievement:`
-- `src/ui/panels/PlayerProfilePanel.jsx:263` P? `No achievements yet`
-- `src/ui/panels/PlayerProfilePanel.jsx:268` P `achievement`
-- `src/ui/panels/PlayerProfilePanel.jsx:273` P `Rarest achievement`
-- `src/ui/panels/PlayerProfilePanel.jsx:274` P `None yet`
-- `src/ui/panels/PlayerProfilePanel.jsx:283` P `Homestead`
-- `src/ui/panels/PlayerProfilePanel.jsx:295` P `Pet`
-- `src/ui/panels/PlayerProfilePanel.jsx:297` P `Open the Codex`
-- `src/ui/panels/PlayerProfilePanel.jsx:297` P `Codex`
-- `src/ui/panels/PlayerProfilePanel.jsx:305` P `plot`
-- `src/ui/panels/PlayerProfilePanel.jsx:305` P `plots`
-- `src/ui/panels/PlayerProfilePanel.jsx:305` P `ready`
-- `src/ui/panels/PlayerProfilePanel.jsx:318` P `In party`
-- `src/ui/panels/PlayerProfilePanel.jsx:322` P `Invite to Party`
-- `src/ui/panels/PlayerProfilePanel.jsx:324` P `Invite to Party`
-- `src/ui/panels/PlayerProfilePanel.jsx:324` P `Invite`
-- `src/ui/panels/PlayerProfilePanel.jsx:328` P `Trade`
-- `src/ui/panels/PlayerProfilePanel.jsx:331` P `Duel`
+- `src/ui/QuestCard.jsx:103` P `Talk to`
 
-### QuestCard (10)
+### QuestCoach (45)
 
-- `src/ui/QuestCard.jsx:98` P `Quest`
-- `src/ui/QuestCard.jsx:99` P `Next:`
-- `src/ui/QuestCard.jsx:101` P `Talk to`
-- `src/ui/QuestCard.jsx:105` P `more: look for a gold ! on your map`
-- `src/ui/QuestCard.jsx:128` P `Show this quest`
-- `src/ui/QuestCard.jsx:128` P `Fold this quest`
-- `src/ui/QuestCard.jsx:155` P `Ready to hand in`
-- `src/ui/QuestCard.jsx:155` P `Quest`
-- `src/ui/QuestCard.jsx:176` P `Open this quest's page`
-- `src/ui/QuestCard.jsx:180` P `Open quest ›`
+- `src/ui/mobile/QuestCoach.jsx:561` P? `Drag to move.`
+- `src/ui/mobile/QuestCoach.jsx:562` P? `Hold to attack the nearest enemy.`
+- `src/ui/mobile/QuestCoach.jsx:563` P? `A quick swipe on the Attack button.`
+- `src/ui/mobile/QuestCoach.jsx:597` P `Your bag, your gear and your stats live down here. Tap the handle.`
+- `src/ui/mobile/QuestCoach.jsx:598` P? `[data-land-fold], [data-desk-foldstrip]`
+- `src/ui/mobile/QuestCoach.jsx:607` P `Your bag, your gear and your stats live in here. Tap the arrow.`
+- `src/ui/mobile/QuestCoach.jsx:609` P `Your dashboard`
+- `src/ui/mobile/QuestCoach.jsx:653` P `Move`
+- `src/ui/mobile/QuestCoach.jsx:672` P `He has your first quest.`
+- `src/ui/mobile/QuestCoach.jsx:676` P? `[data-joyzone], canvas`
+- `src/ui/mobile/QuestCoach.jsx:678` P `Talk to Mayor Bro`
+- `src/ui/mobile/QuestCoach.jsx:699` P `Tap each glowing item, then Equip.`
+- `src/ui/mobile/QuestCoach.jsx:712` P `Open your dashboard and equip your gear.`
+- `src/ui/mobile/QuestCoach.jsx:713` P? `[data-land-fold], [data-desk-foldstrip]`
+- `src/ui/mobile/QuestCoach.jsx:714` P `Open your dashboard and equip your gear.`
+- `src/ui/mobile/QuestCoach.jsx:716` P `Gear up`
+- `src/ui/mobile/QuestCoach.jsx:740` P `Your map. The gold star is where your quest leads.`
+- `src/ui/mobile/QuestCoach.jsx:755` P `Your map`
+- `src/ui/mobile/QuestCoach.jsx:769` P `Your quest, and how far along you are.`
+- `src/ui/mobile/QuestCoach.jsx:770` P `Your quest`
+- `src/ui/mobile/QuestCoach.jsx:804` P `Mayor Bro paid you in gear. Tap the handle to find it.`
+- `src/ui/mobile/QuestCoach.jsx:805` P? `[data-land-fold], [data-desk-foldstrip]`
+- `src/ui/mobile/QuestCoach.jsx:806` P `Mayor Bro paid you in gear. Open the dashboard to find it.`
+- `src/ui/mobile/QuestCoach.jsx:808` P `Mayor Bro paid you in gear. Tap Dashboard to find it.`
+- `src/ui/mobile/QuestCoach.jsx:810` P `Your reward`
+- `src/ui/mobile/QuestCoach.jsx:832` P `Equip the bow and the staff too.`
+- `src/ui/mobile/QuestCoach.jsx:836` P `Open your dashboard — equip the bow and the staff.`
+- `src/ui/mobile/QuestCoach.jsx:837` P? `[data-land-fold], [data-desk-foldstrip]`
+- `src/ui/mobile/QuestCoach.jsx:838` P `Open your dashboard — equip the bow and the staff.`
+- `src/ui/mobile/QuestCoach.jsx:840` P `Three weapons`
+- `src/ui/mobile/QuestCoach.jsx:862` P `Double-tap to cycle. Use whichever you like best.`
+- `src/ui/mobile/QuestCoach.jsx:863` P `Swap weapons`
+- `src/ui/mobile/QuestCoach.jsx:959` P `With the bow or staff out, tap the Block button to raise your shield.`
+- `src/ui/mobile/QuestCoach.jsx:960` P `Guard with the bow`
+- `src/ui/mobile/QuestCoach.jsx:996` P `Attack`
+- `src/ui/mobile/QuestCoach.jsx:1008` P `Special attack`
+- `src/ui/mobile/QuestCoach.jsx:1063` P? `[data-prog3-band="lane"] [data-prog3-lane]`
+- `src/ui/mobile/QuestCoach.jsx:1071` P? `[data-land-fold], [data-desk-foldstrip]`
+- `src/ui/mobile/QuestCoach.jsx:1074` P `Level up!`
+- `src/ui/mobile/QuestCoach.jsx:1103` P `Everyone here is a real player. Tap yourself to say something.`
+- `src/ui/mobile/QuestCoach.jsx:1134` P `This is a live server`
+- `src/ui/mobile/QuestCoach.jsx:1149` P `Your Login Key is the ONLY way back to this character. Open it and save it somewhere.`
+- `src/ui/mobile/QuestCoach.jsx:1152` P `More > Account. Your Login Key is the only way back to this character — save it somewhere.`
+- `src/ui/mobile/QuestCoach.jsx:1153` P `Save your Login Key`
+- `src/ui/mobile/QuestCoach.jsx:2235` P? `Dismiss tip`
 
-### QuestCoach (48)
+### QuestDetailPanel (1)
 
-- `src/ui/mobile/QuestCoach.jsx:517` P `Your bag, your gear and your stats live down here. Tap the handle.`
-- `src/ui/mobile/QuestCoach.jsx:518` P? `[data-land-fold], [data-desk-foldstrip]`
-- `src/ui/mobile/QuestCoach.jsx:527` P `Your bag, your gear and your stats live in here. Tap the arrow.`
-- `src/ui/mobile/QuestCoach.jsx:529` P `Your dashboard`
-- `src/ui/mobile/QuestCoach.jsx:572` P `Drag to move.`
-- `src/ui/mobile/QuestCoach.jsx:573` P `Move`
-- `src/ui/mobile/QuestCoach.jsx:592` P `He has your first quest.`
-- `src/ui/mobile/QuestCoach.jsx:596` P? `[data-joyzone], canvas`
-- `src/ui/mobile/QuestCoach.jsx:598` P `Talk to Mayor Bro`
-- `src/ui/mobile/QuestCoach.jsx:619` P `Tap each glowing item, then Equip.`
-- `src/ui/mobile/QuestCoach.jsx:632` P `Open your dashboard and equip your gear.`
-- `src/ui/mobile/QuestCoach.jsx:633` P? `[data-land-fold], [data-desk-foldstrip]`
-- `src/ui/mobile/QuestCoach.jsx:634` P `Open your dashboard and equip your gear.`
-- `src/ui/mobile/QuestCoach.jsx:636` P `Gear up`
-- `src/ui/mobile/QuestCoach.jsx:660` P `Your map. The gold star is where your quest leads.`
-- `src/ui/mobile/QuestCoach.jsx:675` P `Your map`
-- `src/ui/mobile/QuestCoach.jsx:689` P `Your quest, and how far along you are.`
-- `src/ui/mobile/QuestCoach.jsx:690` P `Your quest`
-- `src/ui/mobile/QuestCoach.jsx:724` P `Mayor Bro paid you in gear. Tap the handle to find it.`
-- `src/ui/mobile/QuestCoach.jsx:725` P? `[data-land-fold], [data-desk-foldstrip]`
-- `src/ui/mobile/QuestCoach.jsx:726` P `Mayor Bro paid you in gear. Open the dashboard to find it.`
-- `src/ui/mobile/QuestCoach.jsx:728` P `Mayor Bro paid you in gear. Tap Dashboard to find it.`
-- `src/ui/mobile/QuestCoach.jsx:730` P `Your reward`
-- `src/ui/mobile/QuestCoach.jsx:752` P `Equip the bow and the staff too.`
-- `src/ui/mobile/QuestCoach.jsx:756` P `Open your dashboard — equip the bow and the staff.`
-- `src/ui/mobile/QuestCoach.jsx:757` P? `[data-land-fold], [data-desk-foldstrip]`
-- `src/ui/mobile/QuestCoach.jsx:758` P `Open your dashboard — equip the bow and the staff.`
-- `src/ui/mobile/QuestCoach.jsx:760` P `Three weapons`
-- `src/ui/mobile/QuestCoach.jsx:782` P `Double-tap to cycle. Use whichever you like best.`
-- `src/ui/mobile/QuestCoach.jsx:783` P `Swap weapons`
-- `src/ui/mobile/QuestCoach.jsx:879` P `With the bow or staff out, tap the Block button to raise your shield.`
-- `src/ui/mobile/QuestCoach.jsx:880` P `Guard with the bow`
-- `src/ui/mobile/QuestCoach.jsx:913` P `Hold to attack the nearest enemy.`
-- `src/ui/mobile/QuestCoach.jsx:915` P `Hold to attack the nearest enemy.`
-- `src/ui/mobile/QuestCoach.jsx:916` P `Attack`
-- `src/ui/mobile/QuestCoach.jsx:925` P `A quick swipe on the Attack button.`
-- `src/ui/mobile/QuestCoach.jsx:927` P `A quick swipe on the Attack button.`
-- `src/ui/mobile/QuestCoach.jsx:928` P `Special attack`
-- `src/ui/mobile/QuestCoach.jsx:983` P? `[data-prog3-band="lane"] [data-prog3-lane]`
-- `src/ui/mobile/QuestCoach.jsx:991` P? `[data-land-fold], [data-desk-foldstrip]`
-- `src/ui/mobile/QuestCoach.jsx:994` P `Level up!`
-- `src/ui/mobile/QuestCoach.jsx:1023` P `Everyone here is a real player. Tap yourself to say something.`
-- `src/ui/mobile/QuestCoach.jsx:1046` P `This is a live server`
-- `src/ui/mobile/QuestCoach.jsx:1061` P `Your Login Key is the ONLY way back to this character. Open it and save it somewhere.`
-- `src/ui/mobile/QuestCoach.jsx:1064` P `More > Account. Your Login Key is the only way back to this character — save it somewhere.`
-- `src/ui/mobile/QuestCoach.jsx:1065` P `Save your Login Key`
-- `src/ui/mobile/QuestCoach.jsx:1487` P `melee`
-- `src/ui/mobile/QuestCoach.jsx:2107` P? `Dismiss tip`
+- `src/ui/mobile/dash/QuestDetailPanel.jsx:79` T `★ Tracked — tap to untrack`
 
-### QuestDetailPanel (4)
+### QuestJournalPage (7)
 
-- `src/ui/mobile/dash/QuestDetailPanel.jsx:48` P `Quest not found.`
-- `src/ui/mobile/dash/QuestDetailPanel.jsx:75` T `★ Tracked — tap to untrack`
-- `src/ui/mobile/dash/QuestDetailPanel.jsx:75` P `☆ Track this quest`
-- `src/ui/mobile/dash/QuestDetailPanel.jsx:80` P `Your map's gold star follows this quest.`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:169` P `now`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:276` P `Show on map`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:297` P `where`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:313` P `who`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:348` P `given`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:357` P `reward`
+- `src/ui/mobile/dash/QuestJournalPage.jsx:379` P `next`
 
-### QuestJournalPage (28)
+### QuestOfferPanel (1)
 
-- `src/ui/mobile/dash/QuestJournalPage.jsx:163` P `now`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:163` P `Now`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:221` P? `Tracked: stop tracking this quest`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:221` P? `Track this quest`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:221` P `Stop tracking`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:221` P `Track this quest`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:230` P `Track`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:237` P `Now`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:270` P `Show on map`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:270` P `Where:`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:270` P `. Show on map`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:278` P `Map`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:287` P `Your map's gold star follows this quest.`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:291` P `where`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:291` P `Where`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:301` P `Show on map`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:307` P `who`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:307` P `Who`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:342` P `given`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:342` P `Given to you`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:351` P `reward`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:351` P `You got`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:351` P `Reward`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:356` P `gold`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:359` P `XP`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:373` P `next`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:373` P `Next`
-- `src/ui/mobile/dash/QuestJournalPage.jsx:396` P `· ★ Tracked`
+- `src/ui/panels/QuestOfferPanel.jsx:81` P? `[data-qw-gold] img`
 
-### QuestOfferPanel (14)
+### QuestPages (2)
 
-- `src/ui/panels/QuestOfferPanel.jsx:79` P? `[data-qw-gold] img`
-- `src/ui/panels/QuestOfferPanel.jsx:95` P `Quest Complete`
-- `src/ui/panels/QuestOfferPanel.jsx:98` P `Your rewards`
-- `src/ui/panels/QuestOfferPanel.jsx:105` P `XP to`
-- `src/ui/panels/QuestOfferPanel.jsx:108` P `Rewards claimed!`
-- `src/ui/panels/QuestOfferPanel.jsx:152` P? `this quest`
-- `src/ui/panels/QuestOfferPanel.jsx:152` P? `For finishing “{…}”`
-- `src/ui/panels/QuestOfferPanel.jsx:154` P? `He hands you now`
-- `src/ui/panels/QuestOfferPanel.jsx:201` P `Close. Your reward stays waiting for you.`
-- `src/ui/panels/QuestOfferPanel.jsx:204` P `New Quest`
-- `src/ui/panels/QuestOfferPanel.jsx:204` P `Quest Complete`
-- `src/ui/panels/QuestOfferPanel.jsx:245` P `Accept Quest`
-- `src/ui/panels/QuestOfferPanel.jsx:245` P `Claim Rewards`
-- `src/ui/panels/QuestOfferPanel.jsx:257` P `Not now`
-
-### QuestPanel (7)
-
-- `src/ui/panels/QuestPanel.jsx:102` P? `Choose where to train it`
-- `src/ui/panels/QuestPanel.jsx:127` P? `Pick the pine one he swaps`
-- `src/ui/panels/QuestPanel.jsx:127` P? `Bring a Pine Bow or Pine Staff`
-- `src/ui/panels/QuestPanel.jsx:132` P `Bow`
-- `src/ui/panels/QuestPanel.jsx:132` P `Staff`
-- `src/ui/panels/QuestPanel.jsx:347` P? `See the quest`
-- `src/ui/panels/QuestPanel.jsx:347` P? `Claim reward`
-
-### QuestsPanel (11)
-
-- `src/ui/mobile/dash/QuestsPanel.jsx:99` P `Quest path`
-- `src/ui/mobile/dash/QuestsPanel.jsx:112` P `Quest path`
-- `src/ui/mobile/dash/QuestsPanel.jsx:116` P `on the ground`
-- `src/ui/mobile/dash/QuestsPanel.jsx:272` P `Done`
-- `src/ui/mobile/dash/QuestsPanel.jsx:273` P `Daily`
-- `src/ui/mobile/dash/QuestsPanel.jsx:273` P `Daily rewards`
-- `src/ui/mobile/dash/QuestsPanel.jsx:288` T `Your free spin and the day's rewards. Tap to open them.`
-- `src/ui/mobile/dash/QuestsPanel.jsx:305` P `AP`
-- `src/ui/mobile/dash/QuestsPanel.jsx:321` P `Done quests`
-- `src/ui/mobile/dash/QuestsPanel.jsx:329` P `No quest right now. Look for a gold ! over someone's head in BroTown.`
-- `src/ui/mobile/dash/QuestsPanel.jsx:353` P `Your quests`
+- `src/ui/mobile/dash/QuestPages.jsx:115` P `XP`
+- `src/ui/mobile/dash/QuestPages.jsx:337` P `Show on map`
 
 ### QuickEatButton (1)
 
 - `src/ui/panels/QuickEatButton.jsx:119` P `food`
-
-### RaceHud (14)
-
-- `src/ui/mobile/RaceHud.jsx:63` P `GO!`
-- `src/ui/mobile/RaceHud.jsx:73` P `flags, then back here`
-- `src/ui/mobile/RaceHud.jsx:89` P `Flags`
-- `src/ui/mobile/RaceHud.jsx:89` P `Back to the start!`
-- `src/ui/mobile/RaceHud.jsx:92` P `Lil Bro`
-- `src/ui/mobile/RaceHud.jsx:102` P `You beat Lil Bro!`
-- `src/ui/mobile/RaceHud.jsx:102` P `Lil Bro wins!`
-- `src/ui/mobile/RaceHud.jsx:102` P `No race.`
-- `src/ui/mobile/RaceHud.jsx:118` P `You`
-- `src/ui/mobile/RaceHud.jsx:118` P `· Lil Bro`
-- `src/ui/mobile/RaceHud.jsx:121` P `Talk to Lil Bro for your reward.`
-- `src/ui/mobile/RaceHud.jsx:122` P `Sprint, and drink Zoom Juice at the start line.`
-- `src/ui/mobile/RaceHud.jsx:124` P `Race again`
-- `src/ui/mobile/RaceHud.jsx:125` P `OK`
-
-### RenameRow (11)
-
-- `src/ui/panels/RenameRow.jsx:41` P? `rename anyone`
-- `src/ui/panels/RenameRow.jsx:55` P `The rename did not go through`
-- `src/ui/panels/RenameRow.jsx:61` P `Rename my character`
-- `src/ui/panels/RenameRow.jsx:61` P `Rename`
-- `src/ui/panels/RenameRow.jsx:70` P `new name (`
-- `src/ui/panels/RenameRow.jsx:70` P `letters at most)`
-- `src/ui/panels/RenameRow.jsx:75` P `Staff word: yes`
-- `src/ui/panels/RenameRow.jsx:75` P `Staff word`
-- `src/ui/panels/RenameRow.jsx:79` P `Sure? Rename`
-- `src/ui/panels/RenameRow.jsx:79` P `Rename`
-- `src/ui/panels/RenameRow.jsx:81` P `Cancel`
 
 ### RevealOverlay (2)
 
@@ -3314,8 +1516,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### RideButton (2)
 
-- `src/ui/panels/RideButton.jsx:157` P? `Get off the skateboard`
-- `src/ui/panels/RideButton.jsx:157` P? `Ride the skateboard`
+- `src/ui/panels/RideButton.jsx:164` P? `Get off the skateboard`
+- `src/ui/panels/RideButton.jsx:164` P? `Ride the skateboard`
 
 ### RoomFullScreen (14)
 
@@ -3334,113 +1536,16 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/RoomFullScreen.js:149` P? `bros inside`
 - `src/ui/RoomFullScreen.js:150` P? `World at capacity`
 
-### SelfPanel (7)
+### SettingsPanel (4)
 
-- `src/ui/mobile/dash/SelfPanel.jsx:50` P `No profile.`
-- `src/ui/mobile/dash/SelfPanel.jsx:95` P `Lv`
-- `src/ui/mobile/dash/SelfPanel.jsx:95` P `wanderer`
-- `src/ui/mobile/dash/SelfPanel.jsx:103` P `POW`
-- `src/ui/mobile/dash/SelfPanel.jsx:104` P `VIT`
-- `src/ui/mobile/dash/SelfPanel.jsx:106` P `AGI`
-- `src/ui/mobile/dash/SelfPanel.jsx:107` P `MND`
-
-### SettingsPanel (32)
-
-- `src/ui/mobile/dash/SettingsPanel.jsx:161` P? `Not while you are fighting a player`
-- `src/ui/mobile/dash/SettingsPanel.jsx:244` P `Restart Character?`
-- `src/ui/mobile/dash/SettingsPanel.jsx:246` P `Restarting…`
-- `src/ui/mobile/dash/SettingsPanel.jsx:248` P `Connecting to the game server…`
-- `src/ui/mobile/dash/SettingsPanel.jsx:251` P `. Nothing was changed: try again once the fight is over.`
-- `src/ui/mobile/dash/SettingsPanel.jsx:255` P `Can't restart right now — no connection to the game server. Try again in a moment.`
-- `src/ui/mobile/dash/SettingsPanel.jsx:259` P `Your character starts over at`
-- `src/ui/mobile/dash/SettingsPanel.jsx:259` P `Level 1`
-- `src/ui/mobile/dash/SettingsPanel.jsx:259` P `. All items, gold, skills and quest progress are`
-- `src/ui/mobile/dash/SettingsPanel.jsx:260` P `deleted forever`
-- `src/ui/mobile/dash/SettingsPanel.jsx:260` P `. Your name, login key and friends are kept.`
-- `src/ui/mobile/dash/SettingsPanel.jsx:273` P `Keep playing`
-- `src/ui/mobile/dash/SettingsPanel.jsx:282` P `Restarting…`
-- `src/ui/mobile/dash/SettingsPanel.jsx:282` P `Connecting…`
-- `src/ui/mobile/dash/SettingsPanel.jsx:282` P `Restart at Lv 1`
-- `src/ui/mobile/dash/SettingsPanel.jsx:290` P `Audio`
-- `src/ui/mobile/dash/SettingsPanel.jsx:291` P `Music`
-- `src/ui/mobile/dash/SettingsPanel.jsx:292` P `Effects`
 - `src/ui/mobile/dash/SettingsPanel.jsx:293` P `Debug overlay (D)`
-- `src/ui/mobile/dash/SettingsPanel.jsx:305` P `Quest path`
-- `src/ui/mobile/dash/SettingsPanel.jsx:323` P `Landscape menu side`
-- `src/ui/mobile/dash/SettingsPanel.jsx:363` T `Notifications — SILENCED, tap to turn them back on`
-- `src/ui/mobile/dash/SettingsPanel.jsx:364` P `Notifications — silence all of them`
-- `src/ui/mobile/dash/SettingsPanel.jsx:366` P `Login Key — save it, or continue a character`
-- `src/ui/mobile/dash/SettingsPanel.jsx:368` P `Controls — replay the tutorial`
-- `src/ui/mobile/dash/SettingsPanel.jsx:382` P `Play full screen — hide the browser bar`
-- `src/ui/mobile/dash/SettingsPanel.jsx:386` P `Feedback — message the developers`
-- `src/ui/mobile/dash/SettingsPanel.jsx:389` P `About — privacy, rules and credits`
-- `src/ui/mobile/dash/SettingsPanel.jsx:393` P `Restart character — start over at Level 1`
 - `src/ui/mobile/dash/SettingsPanel.jsx:398` P `Tap the floating`
 - `src/ui/mobile/dash/SettingsPanel.jsx:398` P `D`
 - `src/ui/mobile/dash/SettingsPanel.jsx:398` P `button for the full devtools console.`
 
-### ShardCrackPanel (32)
-
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:73` P `Gem Cutter`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:74` P `Gem Cutting Lv`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:74` P `% a shard`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:87` P `Raw`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:87` P `Gem`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:91` P? `no gem this time`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:165` P `Crack a land's shards: some hold its raw gem.`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:165` P `raw gems make one elemental gem to set into your gear.`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:168` P `Each shard:`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:168` P? `% at Gem Cutting`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:171` P `Shards`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:181` P `% a Raw`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:181` P `Gem`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:184` P `Crack`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:190` P `No shards to crack. Monsters and resources out in the lands drop their land's shard.`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:193` P `Raw gems`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:201` P `Raw`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:201` P `Gem`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:203` P? `make a`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:204` P? `more for a`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:207` P `Combine`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:207` P `Need`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:210` P `Raw gems you find show here.`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:214` P `Rare Gem`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:215` P `· cut it into any elemental gem: pick one.`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:232` P `Cut into a`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:232` P `Gem`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:232` P `Pick a gem first`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:238` P `Your gems`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:246` P `Gem ×`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:250` P `Set them into your gear on the Set gems tab.`
-- `src/ui/panels/buildings/ShardCrackPanel.jsx:252` P `Elemental gems you make show here.`
-
 ### ShieldButton (1)
 
-- `src/ui/panels/ShieldButton.jsx:883` P? `Shield up`
-
-### ShopkeeperPanel (21)
-
-- `src/ui/panels/ShopkeeperPanel.jsx:133` P `g`
-- `src/ui/panels/ShopkeeperPanel.jsx:375` P `Diego`
-- `src/ui/panels/ShopkeeperPanel.jsx:379` P `“The more I have, the less I pay.”`
-- `src/ui/panels/ShopkeeperPanel.jsx:409` P `Close`
-- `src/ui/panels/ShopkeeperPanel.jsx:428` P `His shelf`
-- `src/ui/panels/ShopkeeperPanel.jsx:433` P `His shelf is bare. Sell him something.`
-- `src/ui/panels/ShopkeeperPanel.jsx:471` T `Tap his shelf to buy · tap your bag to sell`
-- `src/ui/panels/ShopkeeperPanel.jsx:472` T `Tap his shelf to buy · tap your bag below to sell`
-- `src/ui/panels/ShopkeeperPanel.jsx:500` P `Always in stock`
-- `src/ui/panels/ShopkeeperPanel.jsx:502` P `You have one`
-- `src/ui/panels/ShopkeeperPanel.jsx:503` P `Mayor Bro's quest gives the first`
-- `src/ui/panels/ShopkeeperPanel.jsx:504` P `A replacement, if yours was lost`
-- `src/ui/panels/ShopkeeperPanel.jsx:506` P `Bro has`
-- `src/ui/panels/ShopkeeperPanel.jsx:508` P `you have`
-- `src/ui/panels/ShopkeeperPanel.jsx:519` P `One fewer`
-- `src/ui/panels/ShopkeeperPanel.jsx:525` P `One more`
-- `src/ui/panels/ShopkeeperPanel.jsx:547` P `Not enough gold`
-- `src/ui/panels/ShopkeeperPanel.jsx:548` P `He won't buy`
-- `src/ui/panels/ShopkeeperPanel.jsx:549` P `You have one`
-- `src/ui/panels/ShopkeeperPanel.jsx:550` P `Not yet`
-- `src/ui/panels/ShopkeeperPanel.jsx:551` P `Not for sale`
+- `src/ui/panels/ShieldButton.jsx:891` P? `Shield up`
 
 ### SilenceButtons (12)
 
@@ -3464,203 +1569,19 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/mobile/dash/SkillTiles.jsx:134` P `Lv`
 - `src/ui/mobile/dash/SkillTiles.jsx:142` P `Fully levelled`
 
-### SkillsPanel (78)
+### SmithyPanel (1)
 
-- `src/ui/mobile/dash/SkillsPanel.jsx:109` P `‹ All skills`
-- `src/ui/mobile/dash/SkillsPanel.jsx:118` P `Level`
-- `src/ui/mobile/dash/SkillsPanel.jsx:125` P `XP ·`
-- `src/ui/mobile/dash/SkillsPanel.jsx:125` P `XP to Lv`
-- `src/ui/mobile/dash/SkillsPanel.jsx:128` P? `Each hit`
-- `src/ui/mobile/dash/SkillsPanel.jsx:129` P? `At Lv {…}`
-- `src/ui/mobile/dash/SkillsPanel.jsx:135` P? `Full XP`
-- `src/ui/mobile/dash/SkillsPanel.jsx:135` P? `Nothing at your level`
-- `src/ui/mobile/dash/SkillsPanel.jsx:136` P? `Less XP`
-- `src/ui/mobile/dash/SkillsPanel.jsx:139` P? `Next unlock`
-- `src/ui/mobile/dash/SkillsPanel.jsx:139` P? `{…} at Lv {…}`
-- `src/ui/mobile/dash/SkillsPanel.jsx:140` P? `{…} at Lv {…}`
-- `src/ui/mobile/dash/SkillsPanel.jsx:143` P? `Found at`
-- `src/ui/mobile/dash/SkillsPanel.jsx:149` P `Higher levels improve results and unlock new content as it's added.`
-- `src/ui/mobile/dash/SkillsPanel.jsx:223` P `Lv {…}`
-- `src/ui/mobile/dash/SkillsPanel.jsx:253` P `{…} / {…} XP`
-- `src/ui/panels/SkillsPanel.jsx:182` P? `Life Skills`
-- `src/ui/panels/SkillsPanel.jsx:187` P `Woodcutting`
-- `src/ui/panels/SkillsPanel.jsx:191` P `Chop trees for wood + zone gems`
-- `src/ui/panels/SkillsPanel.jsx:193` P `Fishing`
-- `src/ui/panels/SkillsPanel.jsx:197` P `Catch fish for cooking + zone gems`
-- `src/ui/panels/SkillsPanel.jsx:199` P `Mining`
-- `src/ui/panels/SkillsPanel.jsx:203` P `Mine ore (iron Lv1-5, steel Lv6-10) + zone gems`
-- `src/ui/panels/SkillsPanel.jsx:219` P `Cooking`
-- `src/ui/panels/SkillsPanel.jsx:223` P `Cook fish + ingredients for healing food`
-- `src/ui/panels/SkillsPanel.jsx:225` P `Blacksmithing`
-- `src/ui/panels/SkillsPanel.jsx:229` P `Forge melee gear bases with gem slots`
-- `src/ui/panels/SkillsPanel.jsx:231` P `Woodworking`
-- `src/ui/panels/SkillsPanel.jsx:235` P `Craft bows & staves with gem slots`
-- `src/ui/panels/SkillsPanel.jsx:237` P `Gem Cutting`
-- `src/ui/panels/SkillsPanel.jsx:241` P `Cut raw gems into polished slottable gems`
-- `src/ui/panels/SkillsPanel.jsx:243` P `Enchanting`
-- `src/ui/panels/SkillsPanel.jsx:247` P `Slot gems into gear for elemental power`
-- `src/ui/panels/SkillsPanel.jsx:263` P `Farming`
-- `src/ui/panels/SkillsPanel.jsx:267` P `Grow ingredients at the farm`
-- `src/ui/panels/SkillsPanel.jsx:269` P `Trapping`
-- `src/ui/panels/SkillsPanel.jsx:273` P `Capture weakened monsters as pets`
-- `src/ui/panels/SkillsPanel.jsx:304` P? `No gems yet. Crack shards at the Gem Works to find them!`
-- `src/ui/panels/SkillsPanel.jsx:349` P? `Active Quests`
-- `src/ui/panels/SkillsPanel.jsx:360` P? `No active quests. Talk to NPCs with ❗ markers!`
-- `src/ui/panels/SkillsPanel.jsx:427` P? `Achievement Points`
-- `src/ui/panels/SkillsPanel.jsx:432` P? `Achievement points:`
-- `src/ui/panels/SkillsPanel.jsx:432` P? `. Open your achievements`
-- `src/ui/panels/SkillsPanel.jsx:464` P? `Player Stats`
-- `src/ui/panels/SkillsPanel.jsx:473` P `Combat`
-- `src/ui/panels/SkillsPanel.jsx:474` P? `Monsters Killed`
-- `src/ui/panels/SkillsPanel.jsx:474` P? `Grand Slams`
-- `src/ui/panels/SkillsPanel.jsx:474` P? `Bosses Killed`
-- `src/ui/panels/SkillsPanel.jsx:474` P? `Highest Kill Lv`
-- `src/ui/panels/SkillsPanel.jsx:474` P? `Crits Landed`
-- `src/ui/panels/SkillsPanel.jsx:477` P? `PvP Kills`
-- `src/ui/panels/SkillsPanel.jsx:477` P? `PvP Deaths`
-- `src/ui/panels/SkillsPanel.jsx:477` P? `Duels Won`
-- `src/ui/panels/SkillsPanel.jsx:477` P? `Duels Lost`
-- `src/ui/panels/SkillsPanel.jsx:479` P `Life Skills`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Fish Caught`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Trees Felled`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Ores Mined`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Items Crafted`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Items Salvaged`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Cook Success`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Cook Burns`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Harden OK`
-- `src/ui/panels/SkillsPanel.jsx:480` P? `Harden Fail`
-- `src/ui/panels/SkillsPanel.jsx:482` P `Economy`
-- `src/ui/panels/SkillsPanel.jsx:483` P? `Gold Earned`
-- `src/ui/panels/SkillsPanel.jsx:483` P? `Gold Spent`
-- `src/ui/panels/SkillsPanel.jsx:483` P? `Gold Lost (death)`
-- `src/ui/panels/SkillsPanel.jsx:483` P? `Total Gambled`
-- `src/ui/panels/SkillsPanel.jsx:483` P? `Gamble Won`
-- `src/ui/panels/SkillsPanel.jsx:483` P? `Gamble Lost`
-- `src/ui/panels/SkillsPanel.jsx:485` P `Progress`
-- `src/ui/panels/SkillsPanel.jsx:486` P? `Quests Done`
-- `src/ui/panels/SkillsPanel.jsx:486` P? `Rare Drops`
-- `src/ui/panels/SkillsPanel.jsx:486` P? `Zones Explored`
-- `src/ui/panels/SkillsPanel.jsx:486` P? `Dungeons Cleared`
-- `src/ui/panels/SkillsPanel.jsx:486` P? `Pets Captured`
-- `src/ui/panels/SkillsPanel.jsx:536` P? `No resources. Harvest nodes in combat zones!`
+- `src/ui/panels/buildings/SmithyPanel.jsx:99` P `Forge`
 
-### SmithyPanel (63)
+### SocialPanel (3)
 
-- `src/ui/panels/buildings/SmithyPanel.jsx:94` P `Smelt`
-- `src/ui/panels/buildings/SmithyPanel.jsx:97` P `Forge`
-- `src/ui/panels/buildings/SmithyPanel.jsx:99` P `Armor`
-- `src/ui/panels/buildings/SmithyPanel.jsx:102` P `Upgrade`
-- `src/ui/panels/buildings/SmithyPanel.jsx:106` P `Amulet`
-- `src/ui/panels/buildings/SmithyPanel.jsx:108` P `Salvage`
-- `src/ui/panels/buildings/SmithyPanel.jsx:172` P `Blacksmith`
-- `src/ui/panels/buildings/SmithyPanel.jsx:174` P `Lv`
-- `src/ui/panels/buildings/SmithyPanel.jsx:219` P? `Could not smelt`
-- `src/ui/panels/buildings/SmithyPanel.jsx:226` P `Locked`
-- `src/ui/panels/buildings/SmithyPanel.jsx:226` P `Smelt`
-- `src/ui/panels/buildings/SmithyPanel.jsx:232` P `Smithing`
-- `src/ui/panels/buildings/SmithyPanel.jsx:270` P `Holding`
-- `src/ui/panels/buildings/SmithyPanel.jsx:271` P `Weapon bag full`
-- `src/ui/panels/buildings/SmithyPanel.jsx:299` P? `Could not forge`
-- `src/ui/panels/buildings/SmithyPanel.jsx:300` P `Forge`
-- `src/ui/panels/buildings/SmithyPanel.jsx:301` P `Smithing`
-- `src/ui/panels/buildings/SmithyPanel.jsx:341` P? `Could not forge`
-- `src/ui/panels/buildings/SmithyPanel.jsx:342` P `Locked`
-- `src/ui/panels/buildings/SmithyPanel.jsx:342` P `Forge`
-- `src/ui/panels/buildings/SmithyPanel.jsx:343` P `Smithing`
-- `src/ui/panels/buildings/SmithyPanel.jsx:349` P `Level`
-- `src/ui/panels/buildings/SmithyPanel.jsx:349` P `Defense`
-- `src/ui/panels/buildings/SmithyPanel.jsx:349` P `to wear`
-- `src/ui/panels/buildings/SmithyPanel.jsx:388` P `· max`
-- `src/ui/panels/buildings/SmithyPanel.jsx:388` P `H`
-- `src/ui/panels/buildings/SmithyPanel.jsx:388` P `→ H`
-- `src/ui/panels/buildings/SmithyPanel.jsx:395` P `Harden`
-- `src/ui/panels/buildings/SmithyPanel.jsx:396` P `Smithing`
-- `src/ui/panels/buildings/SmithyPanel.jsx:404` P `Fail keeps H`
-- `src/ui/panels/buildings/SmithyPanel.jsx:404` P `Fail → H0`
-- `src/ui/panels/buildings/SmithyPanel.jsx:422` P `Take gem out of`
-- `src/ui/panels/buildings/SmithyPanel.jsx:428` P? `Gem removed`
-- `src/ui/panels/buildings/SmithyPanel.jsx:428` P? `Could not remove the gem`
-- `src/ui/panels/buildings/SmithyPanel.jsx:429` P `Take out`
-- `src/ui/panels/buildings/SmithyPanel.jsx:436` P `Hold a weapon to upgrade it.`
-- `src/ui/panels/buildings/SmithyPanel.jsx:447` P `Gold Bar`
-- `src/ui/panels/buildings/SmithyPanel.jsx:452` P? `+1 Gold Bar`
-- `src/ui/panels/buildings/SmithyPanel.jsx:452` P? `Could not smelt`
-- `src/ui/panels/buildings/SmithyPanel.jsx:453` P `Smelt`
-- `src/ui/panels/buildings/SmithyPanel.jsx:462` P `Amulet`
-- `src/ui/panels/buildings/SmithyPanel.jsx:462` P `· worn`
-- `src/ui/panels/buildings/SmithyPanel.jsx:468` P? `Could not craft`
-- `src/ui/panels/buildings/SmithyPanel.jsx:469` P `Craft`
-- `src/ui/panels/buildings/SmithyPanel.jsx:470` P `Smithing`
-- `src/ui/panels/buildings/SmithyPanel.jsx:521` P `Greaves`
-- `src/ui/panels/buildings/SmithyPanel.jsx:521` P `Torso`
-- `src/ui/panels/buildings/SmithyPanel.jsx:530` P `Sword`
-- `src/ui/panels/buildings/SmithyPanel.jsx:530` P `H`
-- `src/ui/panels/buildings/SmithyPanel.jsx:571` P `Salvaged`
-- `src/ui/panels/buildings/SmithyPanel.jsx:571` P `Bars`
-- `src/ui/panels/buildings/SmithyPanel.jsx:571` P `bars`
-- `src/ui/panels/buildings/SmithyPanel.jsx:572` P `Now`
-- `src/ui/panels/buildings/SmithyPanel.jsx:581` P `of`
-- `src/ui/panels/buildings/SmithyPanel.jsx:581` P `bars back.`
-- `src/ui/panels/buildings/SmithyPanel.jsx:581` P `Rare, Elite and Godly also leave their`
-- `src/ui/panels/buildings/SmithyPanel.jsx:581` P `essence`
-- `src/ui/panels/buildings/SmithyPanel.jsx:585` P `Carry a copper, iron or black steel piece to salvage it.`
-- `src/ui/panels/buildings/SmithyPanel.jsx:597` P `Too old to salvage`
-- `src/ui/panels/buildings/SmithyPanel.jsx:603` P `Essences`
-- `src/ui/panels/buildings/SmithyPanel.jsx:617` P `No`
-- `src/ui/panels/buildings/SmithyPanel.jsx:617` P `piece below`
-- `src/ui/panels/buildings/SmithyPanel.jsx:617` P `in your bag.`
-
-### SocialPanel (44)
-
-- `src/ui/mobile/dash/SocialPanel.jsx:73` P? `bt-chisel bt-chisel--chip`
-- `src/ui/mobile/dash/SocialPanel.jsx:192` P `Blocked ({…})`
-- `src/ui/mobile/dash/SocialPanel.jsx:192` P `{…} online`
-- `src/ui/mobile/dash/SocialPanel.jsx:197` P `Add friend`
-- `src/ui/mobile/dash/SocialPanel.jsx:205` P `Add Friend`
-- `src/ui/mobile/dash/SocialPanel.jsx:209` P? `Back to friends`
-- `src/ui/mobile/dash/SocialPanel.jsx:209` P? `Blocked players`
-- `src/ui/mobile/dash/SocialPanel.jsx:232` T `Tap another player anywhere in BroTown to view their profile and add them as a friend.`
-- `src/ui/mobile/dash/SocialPanel.jsx:237` P? `Link copied!`
-- `src/ui/mobile/dash/SocialPanel.jsx:244` P `Share Invite Link`
-- `src/ui/mobile/dash/SocialPanel.jsx:256` P `Friends ({…})`
-- `src/ui/mobile/dash/SocialPanel.jsx:257` P `Requests ({…})`
-- `src/ui/mobile/dash/SocialPanel.jsx:285` P `No requests`
-- `src/ui/mobile/dash/SocialPanel.jsx:286` P `Requests you receive — and ones you've sent — show up here.`
-- `src/ui/mobile/dash/SocialPanel.jsx:296` P `wants to be Bros`
-- `src/ui/mobile/dash/SocialPanel.jsx:300` P `Accept`
-- `src/ui/mobile/dash/SocialPanel.jsx:302` P `Decline`
-- `src/ui/mobile/dash/SocialPanel.jsx:308` P `Sent`
-- `src/ui/mobile/dash/SocialPanel.jsx:319` P `Pending`
-- `src/ui/mobile/dash/SocialPanel.jsx:331` P `Search friends`
-- `src/ui/mobile/dash/SocialPanel.jsx:342` P `Reconnecting…`
-- `src/ui/mobile/dash/SocialPanel.jsx:342` P `Friend presence returns when the connection is back.`
-- `src/ui/mobile/dash/SocialPanel.jsx:346` P `No friends yet`
-- `src/ui/mobile/dash/SocialPanel.jsx:347` T `Tap another player anywhere in BroTown to view their profile and add them as a friend.`
-- `src/ui/mobile/dash/SocialPanel.jsx:349` P `No matches`
-- `src/ui/mobile/dash/SocialPanel.jsx:349` P `Try a different name.`
-- `src/ui/mobile/dash/SocialPanel.jsx:392` P `· Lv {…}`
-- `src/ui/mobile/dash/SocialPanel.jsx:397` P? `· with you`
-- `src/ui/mobile/dash/SocialPanel.jsx:398` P `Offline{…}`
-- `src/ui/mobile/dash/SocialPanel.jsx:414` P? `Actions for {…}`
-- `src/ui/mobile/dash/SocialPanel.jsx:429` P `Profile`
-- `src/ui/mobile/dash/SocialPanel.jsx:435` P `Message`
-- `src/ui/mobile/dash/SocialPanel.jsx:439` P `Invite`
-- `src/ui/mobile/dash/SocialPanel.jsx:442` P `Remove`
-- `src/ui/mobile/dash/SocialPanel.jsx:459` P `Say hi — messages reach`
-- `src/ui/mobile/dash/SocialPanel.jsx:459` P `even while they're offline.`
-- `src/ui/mobile/dash/SocialPanel.jsx:484` P `Message…`
-- `src/ui/mobile/dash/SocialPanel.jsx:500` P `Send`
-- `src/ui/mobile/dash/SocialPanel.jsx:509` P `Nobody blocked.`
-- `src/ui/panels/SocialPanel.jsx:136` P? `No friends yet. Tap a player and add them!`
-- `src/ui/panels/SocialPanel.jsx:238` P? `Blocked players can't chat, attack, trade, or duel you.`
-- `src/ui/panels/SocialPanel.jsx:242` P? `Nobody blocked.`
-- `src/ui/panels/SocialPanel.jsx:298` P? `Muted players' messages don't reach you. Saved to your account, so it follows you betwe...`
-- `src/ui/panels/SocialPanel.jsx:302` P? `Nobody muted.`
+- `src/ui/mobile/dash/SocialPanel.jsx:75` P? `bt-chisel bt-chisel--chip`
+- `src/ui/mobile/dash/SocialPanel.jsx:234` T `Tap another player anywhere in BroTown to view their profile and add them as a friend.`
+- `src/ui/mobile/dash/SocialPanel.jsx:349` T `Tap another player anywhere in BroTown to view their profile and add them as a friend.`
 
 ### SpecialButton (1)
 
-- `src/ui/panels/SpecialButton.jsx:319` P `special`
+- `src/ui/panels/SpecialButton.jsx:324` P `special`
 
 ### SpendPointConfirm (6)
 
@@ -3673,9 +1594,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### SprintButton (3)
 
-- `src/ui/panels/SprintButton.jsx:72` P? `Not enough energy!`
-- `src/ui/panels/SprintButton.jsx:264` P? `Sprint on`
-- `src/ui/panels/SprintButton.jsx:296` P `boot`
+- `src/ui/panels/SprintButton.jsx:73` P? `Not enough energy!`
+- `src/ui/panels/SprintButton.jsx:273` P? `Sprint on`
+- `src/ui/panels/SprintButton.jsx:305` P `boot`
 
 ### StatScreenPanel (7)
 
@@ -3686,112 +1607,6 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/StatScreenPanel.jsx:397` P `Lock`
 - `src/ui/panels/StatScreenPanel.jsx:397` P `at`
 - `src/ui/panels/StatScreenPanel.jsx:397` P `to commit to a pure build. XP that would train it will be burned.`
-
-### StatsPanel (15)
-
-- `src/ui/mobile/dash/StatsPanel.jsx:104` P `Vitals`
-- `src/ui/mobile/dash/StatsPanel.jsx:111` P `HP`
-- `src/ui/mobile/dash/StatsPanel.jsx:112` P `MP`
-- `src/ui/mobile/dash/StatsPanel.jsx:113` P `Stamina`
-- `src/ui/mobile/dash/StatsPanel.jsx:115` P `Attributes`
-- `src/ui/mobile/dash/StatsPanel.jsx:117` P `POW`
-- `src/ui/mobile/dash/StatsPanel.jsx:118` P `VIT`
-- `src/ui/mobile/dash/StatsPanel.jsx:120` P `AGI`
-- `src/ui/mobile/dash/StatsPanel.jsx:121` P `MND`
-- `src/ui/mobile/dash/StatsPanel.jsx:124` P `Record`
-- `src/ui/mobile/dash/StatsPanel.jsx:125` P `Level`
-- `src/ui/mobile/dash/StatsPanel.jsx:126` P `XP`
-- `src/ui/mobile/dash/StatsPanel.jsx:127` P `Kills`
-- `src/ui/mobile/dash/StatsPanel.jsx:128` P `Deaths`
-- `src/ui/mobile/dash/StatsPanel.jsx:129` P `Gold earned`
-
-### StoreChatPanel (31)
-
-- `src/ui/panels/buildings/StoreChatPanel.jsx:42` P? `Still available?`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:42` P? `Would you take less?`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:42` P? `I have a question`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:58` P `Accept`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:58` P `g`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:59` P `I'll think about it`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:60` P `No`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:121` P `Your listing`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:121` P `Chat with`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:121` P? `the seller`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:123` P `Discuss this item directly`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:140` P `🕑 Listing expires`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:143` P `g`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:165` P `Opening…`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:169` P `Nobody has asked about this listing yet.`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:170` P `Say hello — the seller sees this next time they are online.`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:190` P `You`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:218` P `Your offer of`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:218` P `g`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:218` P `is being held`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:219` P `— the seller is thinking about it`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:226` P `Take it back`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:230` P `Offer gold`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:249` P `Offer`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:253` P `Your gold is held while the seller decides, and comes straight back if they say no, if ...`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:263` P `Offers on this listing`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:272` P `offers`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:272` P `g`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:292` P? `What's your offer?`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:306` P `Type a message...`
-- `src/ui/panels/buildings/StoreChatPanel.jsx:320` P `Send`
-
-### StorePanel (33)
-
-- `src/ui/panels/buildings/StorePanel.jsx:75` P `Auction House`
-- `src/ui/panels/buildings/StorePanel.jsx:76` P `What everyone is selling`
-- `src/ui/panels/buildings/StorePanel.jsx:158` P `expiring`
-- `src/ui/panels/buildings/StorePanel.jsx:163` P `d`
-- `src/ui/panels/buildings/StorePanel.jsx:208` P? `of them`
-- `src/ui/panels/buildings/StorePanel.jsx:237` P `+ List an Item`
-- `src/ui/panels/buildings/StorePanel.jsx:319` P `The store said no`
-- `src/ui/panels/buildings/StorePanel.jsx:328` P `The store is not open on this world yet. It arrives with the next server update — every...`
-- `src/ui/panels/buildings/StorePanel.jsx:367` P `Yours`
-- `src/ui/panels/buildings/StorePanel.jsx:367` P `Seller:`
-- `src/ui/panels/buildings/StorePanel.jsx:376` P? `Messages about your listing`
-- `src/ui/panels/buildings/StorePanel.jsx:376` P? `Message the seller`
-- `src/ui/panels/buildings/StorePanel.jsx:400` P `Top bid:`
-- `src/ui/panels/buildings/StorePanel.jsx:400` P `g`
-- `src/ui/panels/buildings/StorePanel.jsx:400` P `No bids`
-- `src/ui/panels/buildings/StorePanel.jsx:405` P `g`
-- `src/ui/panels/buildings/StorePanel.jsx:410` P? `Take down`
-- `src/ui/panels/buildings/StorePanel.jsx:414` P `Yours`
-- `src/ui/panels/buildings/StorePanel.jsx:458` P `Back to the shelf`
-- `src/ui/panels/buildings/StorePanel.jsx:477` P `Pets`
-- `src/ui/panels/buildings/StorePanel.jsx:481` P? `Nothing is for sale right now.`
-- `src/ui/panels/buildings/StorePanel.jsx:481` P? `Nothing in this category right now.`
-- `src/ui/panels/buildings/StorePanel.jsx:482` T `Be the first — open your bag, tap something and choose Sell.`
-- `src/ui/panels/buildings/StorePanel.jsx:483` P? `Try another category, or put one up yourself.`
-- `src/ui/panels/buildings/StorePanel.jsx:492` P? `My Listings`
-- `src/ui/panels/buildings/StorePanel.jsx:493` P? `My Bids`
-- `src/ui/panels/buildings/StorePanel.jsx:498` P? `You're not selling anything yet.`
-- `src/ui/panels/buildings/StorePanel.jsx:499` T `Open your bag, tap something and choose Sell.`
-- `src/ui/panels/buildings/StorePanel.jsx:502` P `of`
-- `src/ui/panels/buildings/StorePanel.jsx:502` P `slots used`
-- `src/ui/panels/buildings/StorePanel.jsx:509` P? `You have no bids standing.`
-- `src/ui/panels/buildings/StorePanel.jsx:510` P? `Your gold is only held while your bid is the top one.`
-- `src/ui/panels/buildings/StorePanel.jsx:526` P `Listings last one week. If nobody buys, it comes back to you — and any bid goes back to...`
-
-### T2Panel (15)
-
-- `src/ui/mobile/dash/T2Panel.jsx:45` P `Defense`
-- `src/ui/mobile/dash/T2Panel.jsx:60` P `Vitality`
-- `src/ui/mobile/dash/T2Panel.jsx:64` P `Stamina`
-- `src/ui/mobile/dash/T2Panel.jsx:120` P `No character loaded.`
-- `src/ui/mobile/dash/T2Panel.jsx:334` P `skill · Lv`
-- `src/ui/mobile/dash/T2Panel.jsx:336` P `· {…}% to next`
-- `src/ui/mobile/dash/T2Panel.jsx:357` P `pts`
-- `src/ui/mobile/dash/T2Panel.jsx:379` P `Unlocks with next server update — points safe.`
-- `src/ui/mobile/dash/T2Panel.jsx:386` P? `Combat trains Vitality · +1 pt per level`
-- `src/ui/mobile/dash/T2Panel.jsx:387` P? `Sprint, block & roll to train · +1 pt per level`
-- `src/ui/mobile/dash/T2Panel.jsx:389` P `Block & mitigate to train · +1 pt per level`
-- `src/ui/mobile/dash/T2Panel.jsx:390` P `Deal damage to train · +1 pt per level`
-- `src/ui/mobile/dash/T2Panel.jsx:395` P `· complete`
-- `src/ui/mobile/dash/T2Panel.jsx:466` P `SOON`
-- `src/ui/mobile/dash/T2Panel.jsx:469` P `MAX`
 
 ### ThreatIncomingPanel (7)
 
@@ -3830,110 +1645,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/TradePanel.jsx:281` P? `Trade sent!`
 - `src/ui/panels/TradePanel.jsx:285` P? `Send Trade Offer`
 
-### TradeWindowPanel (87)
+### TradeWindowPanel (1)
 
-- `src/ui/panels/TradeWindowPanel.jsx:249` P `Close`
-- `src/ui/panels/TradeWindowPanel.jsx:456` P? `One fewer`
-- `src/ui/panels/TradeWindowPanel.jsx:461` P? `One more`
-- `src/ui/panels/TradeWindowPanel.jsx:513` P `A pet no longer offered`
-- `src/ui/panels/TradeWindowPanel.jsx:526` P `Gold`
-- `src/ui/panels/TradeWindowPanel.jsx:989` P? `bt-t2-lane bt-t2-lane--theirs`
-- `src/ui/panels/TradeWindowPanel.jsx:1021` P `They`
-- `src/ui/panels/TradeWindowPanel.jsx:1021` P `gave you`
-- `src/ui/panels/TradeWindowPanel.jsx:1021` P `Trade complete ✓`
-- `src/ui/panels/TradeWindowPanel.jsx:1033` P `You received`
-- `src/ui/panels/TradeWindowPanel.jsx:1053` P `You`
-- `src/ui/panels/TradeWindowPanel.jsx:1054` P `You sent`
-- `src/ui/panels/TradeWindowPanel.jsx:1066` P `Balance`
-- `src/ui/panels/TradeWindowPanel.jsx:1068` P `G`
-- `src/ui/panels/TradeWindowPanel.jsx:1085` P `Trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1087` P `Trade failed — nothing was exchanged`
-- `src/ui/panels/TradeWindowPanel.jsx:1089` P `A pet in it could no longer be traded.`
-- `src/ui/panels/TradeWindowPanel.jsx:1090` P `There was no room in a collection for the pets.`
-- `src/ui/panels/TradeWindowPanel.jsx:1104` P `{…} wants to trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1109` P `Open trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1113` P `Decline`
-- `src/ui/panels/TradeWindowPanel.jsx:1122` P `Trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1125` P `Trade request sent — waiting…`
-- `src/ui/panels/TradeWindowPanel.jsx:1129` P `Cancel`
-- `src/ui/panels/TradeWindowPanel.jsx:1299` P `{…} x{…}`
-- `src/ui/panels/TradeWindowPanel.jsx:1303` P `A pet no longer offered`
-- `src/ui/panels/TradeWindowPanel.jsx:1304` P `, Lv`
-- `src/ui/panels/TradeWindowPanel.jsx:1304` P `, Golden`
-- `src/ui/panels/TradeWindowPanel.jsx:1305` P `, Lv`
-- `src/ui/panels/TradeWindowPanel.jsx:1305` P `, Golden`
-- `src/ui/panels/TradeWindowPanel.jsx:1336` P `Nothing`
-- `src/ui/panels/TradeWindowPanel.jsx:1354` P `gold`
-- `src/ui/panels/TradeWindowPanel.jsx:1382` P `item`
-- `src/ui/panels/TradeWindowPanel.jsx:1382` P `s`
-- `src/ui/panels/TradeWindowPanel.jsx:1398` P `Confirm with {…}`
-- `src/ui/panels/TradeWindowPanel.jsx:1427` P? `YOU GIVE`
-- `src/ui/panels/TradeWindowPanel.jsx:1428` P `You`
-- `src/ui/panels/TradeWindowPanel.jsx:1429` P? `YOU RECEIVE`
-- `src/ui/panels/TradeWindowPanel.jsx:1436` P `That is a large amount of gold. Check the numbers, then tap Accept twice.`
-- `src/ui/panels/TradeWindowPanel.jsx:1440` P `has accepted — waiting on you.`
-- `src/ui/panels/TradeWindowPanel.jsx:1449` P `Leave this trade?`
-- `src/ui/panels/TradeWindowPanel.jsx:1454` P `Keep Trading`
-- `src/ui/panels/TradeWindowPanel.jsx:1458` P `Leave Trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1477` P `Accepted ✓ — waiting`
-- `src/ui/panels/TradeWindowPanel.jsx:1478` P `Wait {…}s…`
-- `src/ui/panels/TradeWindowPanel.jsx:1479` P `Accept (large trade)`
-- `src/ui/panels/TradeWindowPanel.jsx:1480` P `Accept`
-- `src/ui/panels/TradeWindowPanel.jsx:1484` P `Back`
-- `src/ui/panels/TradeWindowPanel.jsx:1490` P `Not while one of you is fighting a player. Try again in a few seconds.`
-- `src/ui/panels/TradeWindowPanel.jsx:1498` P `Saving is paused for a moment, try again.`
-- `src/ui/panels/TradeWindowPanel.jsx:1536` P `Trading with {…}`
-- `src/ui/panels/TradeWindowPanel.jsx:1560` P `You`
-- `src/ui/panels/TradeWindowPanel.jsx:1561` P `You offer`
-- `src/ui/panels/TradeWindowPanel.jsx:1566` P `Confirmed ✓`
-- `src/ui/panels/TradeWindowPanel.jsx:1579` P `Your bag is empty`
-- `src/ui/panels/TradeWindowPanel.jsx:1579` P `Nothing staged yet`
-- `src/ui/panels/TradeWindowPanel.jsx:1599` P `Your weapons`
-- `src/ui/panels/TradeWindowPanel.jsx:1599` P `· max`
-- `src/ui/panels/TradeWindowPanel.jsx:1615` P `Weapon`
-- `src/ui/panels/TradeWindowPanel.jsx:1624` P `Your pets`
-- `src/ui/panels/TradeWindowPanel.jsx:1624` P `· max`
-- `src/ui/panels/TradeWindowPanel.jsx:1639` P `· Lv`
-- `src/ui/panels/TradeWindowPanel.jsx:1649` P `Gold`
-- `src/ui/panels/TradeWindowPanel.jsx:1668` P `of`
-- `src/ui/panels/TradeWindowPanel.jsx:1700` P? `Presets subtract gold. Tap to make them add again.`
-- `src/ui/panels/TradeWindowPanel.jsx:1701` P? `Presets add gold. Tap to make them subtract.`
-- `src/ui/panels/TradeWindowPanel.jsx:1739` P `Offer no gold`
-- `src/ui/panels/TradeWindowPanel.jsx:1748` P `Clear`
-- `src/ui/panels/TradeWindowPanel.jsx:1793` P? `Take back`
-- `src/ui/panels/TradeWindowPanel.jsx:1793` P? `gold from your offer`
-- `src/ui/panels/TradeWindowPanel.jsx:1794` P? `more gold`
-- `src/ui/panels/TradeWindowPanel.jsx:1839` P `offers`
-- `src/ui/panels/TradeWindowPanel.jsx:1848` P `confirmed ✓`
-- `src/ui/panels/TradeWindowPanel.jsx:1849` P `ready ✓`
-- `src/ui/panels/TradeWindowPanel.jsx:1869` P? `Nothing staged yet`
-- `src/ui/panels/TradeWindowPanel.jsx:1882` P `Offer changed — review and confirm again`
-- `src/ui/panels/TradeWindowPanel.jsx:1892` P `Leave this trade?`
-- `src/ui/panels/TradeWindowPanel.jsx:1897` P `Keep Trading`
-- `src/ui/panels/TradeWindowPanel.jsx:1901` P `Leave Trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1922` P `Add an item or gold`
-- `src/ui/panels/TradeWindowPanel.jsx:1922` P `Ready ✓ — waiting`
-- `src/ui/panels/TradeWindowPanel.jsx:1922` P `Ready to trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1944` P `Add an item or gold`
-- `src/ui/panels/TradeWindowPanel.jsx:1944` P `Confirmed ✓`
-- `src/ui/panels/TradeWindowPanel.jsx:1944` P `Confirm trade`
-- `src/ui/panels/TradeWindowPanel.jsx:1949` P `Cancel`
-- `src/ui/panels/TradeWindowPanel.jsx:1956` P `Waiting for`
-
-### TrapCatchCard (12)
-
-- `src/ui/panels/TrapCatchCard.jsx:60` P `A big golden one!`
-- `src/ui/panels/TrapCatchCard.jsx:60` P `A golden one!`
-- `src/ui/panels/TrapCatchCard.jsx:60` P `A big one!`
-- `src/ui/panels/TrapCatchCard.jsx:60` P `Caught!`
-- `src/ui/panels/TrapCatchCard.jsx:69` P `Lv`
-- `src/ui/panels/TrapCatchCard.jsx:70` P `Golden!`
-- `src/ui/panels/TrapCatchCard.jsx:71` P `Big`
-- `src/ui/panels/TrapCatchCard.jsx:73` P `Name your`
-- `src/ui/panels/TrapCatchCard.jsx:78` P `Names are 2-16 letters, numbers or spaces`
-- `src/ui/panels/TrapCatchCard.jsx:78` P `You can name it later on the Pets page`
-- `src/ui/panels/TrapCatchCard.jsx:83` P `Done`
-- `src/ui/panels/TrapCatchCard.jsx:87` P `Name it`
+- `src/ui/panels/TradeWindowPanel.jsx:991` P? `bt-t2-lane bt-t2-lane--theirs`
 
 ### TrapsTab (8)
 
@@ -3971,26 +1685,20 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/UsageMeter.jsx:73` P `read`
 - `src/ui/panels/UsageMeter.jsx:79` P `Any of them turns off in Live flags, Set a switch: its name, then off.`
 
-### VendorPanel (18)
+### VendorPanel (12)
 
-- `src/ui/panels/buildings/VendorPanel.jsx:104` P? `Auction House`
-- `src/ui/panels/buildings/VendorPanel.jsx:104` P? `Individual item listings and bids`
-- `src/ui/panels/buildings/VendorPanel.jsx:108` P? `Your gold`
-- `src/ui/panels/buildings/VendorPanel.jsx:136` P? `Buy, sell, and bid with players`
-- `src/ui/panels/buildings/VendorPanel.jsx:139` P? `The market is not open on this world yet. It arrives with the next server update.`
-- `src/ui/panels/buildings/VendorPanel.jsx:142` P? `Meals and drinks are cooked at the Cookhouse, from what the farm grows.`
-- `src/ui/panels/buildings/VendorPanel.jsx:153` P `Cooked Minnow`
-- `src/ui/panels/buildings/VendorPanel.jsx:153` P `Heals 23 HP (pre-cooked)`
-- `src/ui/panels/buildings/VendorPanel.jsx:154` P `Stamina Tonic`
-- `src/ui/panels/buildings/VendorPanel.jsx:154` P `Restore 60 Stamina`
-- `src/ui/panels/buildings/VendorPanel.jsx:155` P `Mana Draught`
-- `src/ui/panels/buildings/VendorPanel.jsx:155` P `Cast specials nonstop for 3 min`
-- `src/ui/panels/buildings/VendorPanel.jsx:156` P `Swift Draught`
-- `src/ui/panels/buildings/VendorPanel.jsx:156` P `1.5x run speed for 3 min`
-- `src/ui/panels/buildings/VendorPanel.jsx:157` P `Fury Tonic`
-- `src/ui/panels/buildings/VendorPanel.jsx:157` P `Double damage for 3 min`
-- `src/ui/panels/buildings/VendorPanel.jsx:159` P `Zoom Juice`
-- `src/ui/panels/buildings/VendorPanel.jsx:159` P `25% faster for 5 min`
+- `src/ui/panels/buildings/VendorPanel.jsx:155` P `Cooked Minnow`
+- `src/ui/panels/buildings/VendorPanel.jsx:155` P `Heals 23 HP (pre-cooked)`
+- `src/ui/panels/buildings/VendorPanel.jsx:156` P `Stamina Tonic`
+- `src/ui/panels/buildings/VendorPanel.jsx:156` P `Restore 60 Stamina`
+- `src/ui/panels/buildings/VendorPanel.jsx:157` P `Mana Draught`
+- `src/ui/panels/buildings/VendorPanel.jsx:157` P `Cast specials nonstop for 3 min`
+- `src/ui/panels/buildings/VendorPanel.jsx:158` P `Swift Draught`
+- `src/ui/panels/buildings/VendorPanel.jsx:158` P `1.5x run speed for 3 min`
+- `src/ui/panels/buildings/VendorPanel.jsx:159` P `Fury Tonic`
+- `src/ui/panels/buildings/VendorPanel.jsx:159` P `Double damage for 3 min`
+- `src/ui/panels/buildings/VendorPanel.jsx:161` P `Zoom Juice`
+- `src/ui/panels/buildings/VendorPanel.jsx:161` P `25% faster for 5 min`
 
 ### WarBanner (4)
 
@@ -4015,114 +1723,17 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/WeaponPill.jsx:295` P `Weapon in hand:`
 - `src/ui/panels/WeaponPill.jsx:295` P `Switch to`
 
-### WheelHallPanel (37)
-
-- `src/ui/panels/buildings/WheelHallPanel.jsx:88` P? `Make a party in the Saloon; at 20 active members it is an alliance`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:89` P? `Skill guilds`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:89` P? `Your rank in each life skill’s guild, and its quests`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:95` P? `Your clan`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:96` P? `Invite waiting: [`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:97` P? `Make a clan, or join one when a clan leader invites you`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:99` P? `Your clan`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:100` P? `Skill guilds`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:100` P? `Your rank in each life skill’s guild, and its quests`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:109` P `Your mail`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:130` P `Nothing yet this visit. Sales, refunds, trade payouts and rewards come here, and so doe...`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:134` P? `Messages from friends`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:134` P? `Write to a friend. They read it when they next come in.`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:164` P `You are Well Rested: +`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:164` P `% combat XP for`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:164` P `more.`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:165` P `A night here fills your health, stamina and mana, and makes you Well Rested: +`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:165` P `% combat XP for`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:165` P `minutes. Free.`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:168` P? `Rest again to start the`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:168` P? `minutes over`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:168` P? `Full health, stamina and mana, then Well Rested`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:174` P? `Duel a player`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:174` T `Pick a player, then tap Duel on their card`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:175` P? `The arena`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:175` P? `Sign up for the gladiator arena`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:226` P? `Invite a player`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:226` T `Pick a player, then tap Invite to Party on their card`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:232` P `Saloon`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:233` P `Team up with other bros`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:241` P `Your party`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:249` P `You`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:249` P `· leader`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:251` P `offline`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:252` P `Lv`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:258` P `You're not in a party. Up to 50 bros can team up and stay together until they leave: yo...`
-- `src/ui/panels/buildings/WheelHallPanel.jsx:259` P `You're not in a party. Up to four bros can team up: you see each other's health, talk o...`
-
-### WoodworkPanel (21)
-
-- `src/ui/panels/buildings/WoodworkPanel.jsx:67` P `Bow`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:68` P `Staff`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:69` P `Hardened`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:70` P `Upgrade`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:71` P `Traps`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:133` P `Woodworker`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:135` P `Lv`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:186` P `Holding`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:187` P `Weapon bag full`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:216` P? `Could not make it`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:217` P `Make`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:217` P `Locked`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:218` P `Woodworking`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:260` P `· max`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:260` P `· H`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:260` P `→ H`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:267` P `Harden`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:268` P `Woodworking`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:275` P `Fail keeps H`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:275` P `Fail → H0`
-- `src/ui/panels/buildings/WoodworkPanel.jsx:280` P `Hold a bow or a staff to upgrade it.`
-
 ### WorldChatFeed (3)
 
 - `src/ui/mobile/WorldChatFeed.jsx:174` P? `{…}/{…} golden tickets left`
 - `src/ui/mobile/WorldChatFeed.jsx:545` P `World Chat`
 - `src/ui/mobile/WorldChatFeed.jsx:575` T `Tap to close`
 
-### WorldMapOverlay (36)
+### WorldMapOverlay (3)
 
-- `src/ui/WorldMapOverlay.jsx:191` P `Open the world map`
-- `src/ui/WorldMapOverlay.jsx:192` P `World map (M)`
-- `src/ui/WorldMapOverlay.jsx:534` P `You are in {…}`
-- `src/ui/WorldMapOverlay.jsx:534` P `Finding you…`
-- `src/ui/WorldMapOverlay.jsx:536` P `Close the map`
-- `src/ui/WorldMapOverlay.jsx:548` P `North is up`
-- `src/ui/WorldMapOverlay.jsx:551` P `N`
-- `src/ui/WorldMapOverlay.jsx:556` P `Zoom in`
-- `src/ui/WorldMapOverlay.jsx:557` P `Zoom out`
-- `src/ui/WorldMapOverlay.jsx:558` P `Back to you`
-- `src/ui/WorldMapOverlay.jsx:570` P `Remove {…}`
-- `src/ui/WorldMapOverlay.jsx:570` P `Remove pin`
-- `src/ui/WorldMapOverlay.jsx:578` T `Tap the map to drop a pin`
-- `src/ui/WorldMapOverlay.jsx:586` P `town`
-- `src/ui/WorldMapOverlay.jsx:587` P `camp`
-- `src/ui/WorldMapOverlay.jsx:588` P `pass`
-- `src/ui/WorldMapOverlay.jsx:589` P `gate`
-- `src/ui/WorldMapOverlay.jsx:590` P `landmark`
-- `src/ui/WorldMapOverlay.jsx:591` P `road`
-- `src/ui/WorldMapOverlay.jsx:592` P `river`
-- `src/ui/WorldMapOverlay.jsx:593` P `quest`
-- `src/ui/WorldMapOverlay.jsx:594` P `has a quest`
-- `src/ui/WorldMapOverlay.jsx:595` P `your pins`
-- `src/ui/WorldMapOverlay.jsx:595` P `your pin`
-- `src/ui/WorldMapOverlay.jsx:596` P `party`
-- `src/ui/WorldMapOverlay.jsx:597` P `bro`
-- `src/ui/WorldMapOverlay.jsx:598` P `monster`
-- `src/ui/WorldMapOverlay.jsx:599` P `ore`
-- `src/ui/WorldMapOverlay.jsx:600` P `tree`
-- `src/ui/WorldMapOverlay.jsx:601` P `fish`
-- `src/ui/WorldMapOverlay.jsx:602` P `Zoom in for more`
-- `src/ui/WorldMapOverlay.jsx:1128` P `{…}Lv {…}–{…}`
-- `src/ui/WorldMapOverlay.jsx:1136` P? `to {…} · Lv 80–100`
-- `src/ui/WorldMapOverlay.jsx:1138` P? `safe, no monsters`
-- `src/ui/WorldMapOverlay.jsx:1149` P? `camp · Lv {…}`
-- `src/ui/WorldMapOverlay.jsx:1150` P? `pass · Lv {…}`
+- `src/ui/WorldMapOverlay.jsx:554` P `N`
+- `src/ui/WorldMapOverlay.jsx:581` T `Tap the map to drop a pin`
+- `src/ui/WorldMapOverlay.jsx:599` P `party`
 
 ### XpFlyOverlay (2)
 
@@ -4133,24 +1744,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 - `src/ui/mobile/XpTrack.jsx:48` P? `transform {…}ms {…} {…}ms`
 
-### ZoneHeader (16)
+### ZoneHeader (1)
 
-- `src/ui/mobile/ZoneHeader.jsx:153` P `gold`
-- `src/ui/mobile/ZoneHeader.jsx:163` P `AP`
-- `src/ui/mobile/ZoneHeader.jsx:198` P `Current zone`
-- `src/ui/mobile/ZoneHeader.jsx:203` P `Log out`
-- `src/ui/mobile/ZoneHeader.jsx:205` P `Log out`
-- `src/ui/mobile/ZoneHeader.jsx:208` P `LOGOUT`
-- `src/ui/mobile/ZoneHeader.jsx:266` P `Test mode: the anti-cheat is off for this character`
-- `src/ui/mobile/ZoneHeader.jsx:266` P `TEST MODE`
-- `src/ui/mobile/ZoneHeader.jsx:283` P? `{…} level {…}, {…} XP to the next`
-- `src/ui/mobile/ZoneHeader.jsx:293` P `Lv`
-- `src/ui/mobile/ZoneHeader.jsx:318` P? `Free daily spin`
-- `src/ui/mobile/ZoneHeader.jsx:318` P? `Free daily spin, already spun today`
-- `src/ui/mobile/ZoneHeader.jsx:352` P `Leave the world?`
-- `src/ui/mobile/ZoneHeader.jsx:354` P `You’ll log out to the title screen. Your bro is saved.`
-- `src/ui/mobile/ZoneHeader.jsx:363` P `Cancel`
-- `src/ui/mobile/ZoneHeader.jsx:373` P `Log Out`
+- `src/ui/mobile/ZoneHeader.jsx:165` P `AP`
 
 ### bagFilterBus (4)
 
@@ -4210,7 +1806,111 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/abilities.js:233` T? `No shield equipped!`
 - `src/data/abilities.js:234` T? `No weapon equipped!`
 
-### data: achievements (80)
+### data: aboutPanel (28)
+
+- `src/data/say/aboutPanel.js:5` T? `An early demo of an online action RPG. Everything you do is saved on our server, so the...`
+- `src/data/say/aboutPanel.js:7` T? `What we keep, and why`
+- `src/data/say/aboutPanel.js:8` T? `Your character`
+- `src/data/say/aboutPanel.js:9` T? `{what} — its name, look, level, items and gold, so you can come back to it.`
+- `src/data/say/aboutPanel.js:10` T? `A scrambled copy of your Login Key`
+- `src/data/say/aboutPanel.js:11` T? `{what} — so only you can open your character. We never store the key itself.`
+- `src/data/say/aboutPanel.js:12` T? `A device id`
+- `src/data/say/aboutPanel.js:13` T? `{what} — a random id and a rough summary of your browser and screen, to spot cheating a...`
+- `src/data/say/aboutPanel.js:14` T? `Crash reports`
+- `src/data/say/aboutPanel.js:15` T? `{what} — the error message and your browser type when the game breaks, so we can fix it.`
+- `src/data/say/aboutPanel.js:16` T? `Feedback you send`
+- `src/data/say/aboutPanel.js:17` T? `{what} — it appears on the public Feedback board with your character's name.`
+- `src/data/say/aboutPanel.js:18` T? `Reported chat`
+- `src/data/say/aboutPanel.js:19` T? `{what} — if someone reports a chat message, we keep that message so it can be reviewed.`
+- `src/data/say/aboutPanel.js:20` T? `A wallet address`
+- `src/data/say/aboutPanel.js:21` T? `{what} — only if you choose to link one to verify a Hemi Bro.`
+- `src/data/say/aboutPanel.js:22` T? `No ads, no selling your data, no email or real name required. Chat is seen by other pla...`
+- `src/data/say/aboutPanel.js:24` T? `Smoothness reports`
+- `src/data/say/aboutPanel.js:25` T? `{what} — every few minutes while you play: how smoothly the game ran (frame times, what...`
+- `src/data/say/aboutPanel.js:26` T? `On: turn off`
+- `src/data/say/aboutPanel.js:27` T? `Off: turn on`
+- `src/data/say/aboutPanel.js:30` T? `Be decent in chat. Harassment, hate and spam get muted or removed.`
+- `src/data/say/aboutPanel.js:31` T? `No cheating, bots, or exploiting bugs. Report bugs instead.`
+- `src/data/say/aboutPanel.js:32` T? `Keep your Login Key private — anyone with it can play your character.`
+- `src/data/say/aboutPanel.js:33` T? `BroTown is meant for players aged 13 and over.`
+- `src/data/say/aboutPanel.js:34` T? `The demo is provided as-is, and characters or items may be changed or reset while it is...`
+- `src/data/say/aboutPanel.js:37` T? `A Hemi Bros game. Most art and all music were made for this game with AI tools (OpenAI ...`
+- `src/data/say/aboutPanel.js:39` T? `Questions or problems? Send feedback`
+
+### data: accountKey (7)
+
+- `src/data/say/accountKey.js:4` T? `Guest session — this tab has no Login Key.`
+- `src/data/say/accountKey.js:5` T? `Play in a normal tab to get a character that can be continued on other devices.`
+- `src/data/say/accountKey.js:7` T? `Your Login Key`
+- `src/data/say/accountKey.js:9` T? `Copy Login Key`
+- `src/data/say/accountKey.js:12` T? `This Login Key is the {only} way to get your character back on a new phone or after cle...`
+- `src/data/say/accountKey.js:14` T? `This key works on any phone or computer: type its eight words at the start screen's Log...`
+- `src/data/say/accountKey.js:15` T? `On a new phone or computer, the game's owner also has to let it in: the screen there gi...`
+
+### data: accountLogin (16)
+
+- `src/data/say/accountLogin.js:4` T? `No character found with that key — check for typos.`
+- `src/data/say/accountLogin.js:5` T? `That key doesn't match. Check for typos.`
+- `src/data/say/accountLogin.js:6` T? `Too many attempts — wait a minute and try again.`
+- `src/data/say/accountLogin.js:7` T? `Too many attempts — wait a minute and try again.`
+- `src/data/say/accountLogin.js:8` T? `Login isn't available right now — try again later.`
+- `src/data/say/accountLogin.js:9` T? `That doesn’t look like a Login Key.`
+- `src/data/say/accountLogin.js:10` T? `You're already playing as this character.`
+- `src/data/say/accountLogin.js:11` T? `This character has a new Login Key now. Use the new one: it’s on the Account card of a ...`
+- `src/data/say/accountLogin.js:13` T? `Found it!`
+- `src/data/say/accountLogin.js:14` T? `Continue as your {level} character{created}?`
+- `src/data/say/accountLogin.js:15` T? `Lv {lvl}`
+- `src/data/say/accountLogin.js:16` T? `(created {date})`
+- `src/data/say/accountLogin.js:17` T? `The character currently on this device will be signed out. Its Login Key is {key} — sav...`
+- `src/data/say/accountLogin.js:22` T? `Continue a character from another device`
+- `src/data/say/accountLogin.js:23` T? `type your Login Key…`
+- `src/data/say/accountLogin.js:26` T? `Log in`
+
+### data: accountPanel (9)
+
+- `src/data/say/accountPanel.js:4` T? `Switch bro, or log out`
+- `src/data/say/accountPanel.js:5` T? `Log out to the character screen`
+- `src/data/say/accountPanel.js:6` T? `Switch character`
+- `src/data/say/accountPanel.js:7` T? `Log out`
+- `src/data/say/accountPanel.js:9` T? `Switch bro?`
+- `src/data/say/accountPanel.js:10` T? `Leave the world?`
+- `src/data/say/accountPanel.js:11` T? `You’ll go to your list of bros. This one is saved.`
+- `src/data/say/accountPanel.js:14` T? `Switch Bro`
+- `src/data/say/accountPanel.js:15` T? `Log Out`
+
+### data: aceFlip (29)
+
+- `src/data/say/aceFlip.js:4` T? `YOU WON!`
+- `src/data/say/aceFlip.js:5` T? `YOU LOST!`
+- `src/data/say/aceFlip.js:6` T? `+{amount} gold`
+- `src/data/say/aceFlip.js:7` T? `−{amount} gold`
+- `src/data/say/aceFlip.js:8` T? `+{count} items`
+- `src/data/say/aceFlip.js:9` T? `−{count} items`
+- `src/data/say/aceFlip.js:11` T? `Ace shakes his head. "You don't have enough gold for that bet, friend. Try a smaller st...`
+- `src/data/say/aceFlip.js:12` T? `Ace puts his coin away. "No coin flips right now, friend. Come back later."`
+- `src/data/say/aceFlip.js:13` T? `Ace shakes his head. "Gold only today, friend. Keep your items in your Bag."`
+- `src/data/say/aceFlip.js:22` T? `My record book: the biggest win and the biggest loss on my coin, one line for each player.`
+- `src/data/say/aceFlip.js:23` T? `Biggest wins`
+- `src/data/say/aceFlip.js:24` T? `Biggest losses`
+- `src/data/say/aceFlip.js:25` T? `Nothing in the book yet. Be the first name in it. I'm not saying which column.`
+- `src/data/say/aceFlip.js:28` T? `Bet items from your Bag. If you win, you get double. If you lose, I keep them. I win {a...`
+- `src/data/say/aceFlip.js:29` T? `have {held}`
+- `src/data/say/aceFlip.js:31` T? `Your Bag is empty. Go find some loot first, then come back.`
+- `src/data/say/aceFlip.js:32` T? `Staked: {count} item`
+- `src/data/say/aceFlip.js:32` T? `Staked: {count} items`
+- `src/data/say/aceFlip.js:35` T? `Double or nothing · {total}`
+- `src/data/say/aceFlip.js:36` T? `Stake something`
+- `src/data/say/aceFlip.js:38` T? `I'm Ace, and I flip coins for gold. Pick your stake. If you win, I pay you {mult} times...`
+- `src/data/say/aceFlip.js:39` T? `Your stake`
+- `src/data/say/aceFlip.js:40` T? `Bag {gold}`
+- `src/data/say/aceFlip.js:41` T? `Max {stake}`
+- `src/data/say/aceFlip.js:42` T? `Win ({pct}%)`
+- `src/data/say/aceFlip.js:43` T? `Lose ({pct}%)`
+- `src/data/say/aceFlip.js:44` T? `You need {gold} in the bag to cover his smallest bet.`
+- `src/data/say/aceFlip.js:45` T? `Pick a stake`
+- `src/data/say/aceFlip.js:46` T? `Flip for {risk}g`
+
+### data: achievements (92)
 
 - `src/data/achievements.js:27` T `Common`
 - `src/data/achievements.js:28` T `Rare`
@@ -4292,6 +1992,156 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/achievements.js:96` T? `Eat a large`
 - `src/data/achievements.js:96` T? `Eat a large`
 - `src/data/achievements.js:96` T? `(1 in 1,000 caught is large; it heals double).`
+- `src/data/say/achievements.js:4` T? `{ap} AP`
+- `src/data/say/achievements.js:5` T? `Not earned yet`
+- `src/data/say/achievements.js:6` T? `· {count} times`
+- `src/data/say/achievements.js:8` T? `Your title`
+- `src/data/say/achievements.js:10` T? `Remove title`
+- `src/data/say/achievements.js:12` T? `Use as title`
+- `src/data/say/achievements.js:13` T? `Title: {name}`
+- `src/data/say/achievements.js:14` T? `No title yet: tap one you have`
+- `src/data/say/achievements.js:16` T? `Achievements aren't on yet.`
+- `src/data/say/achievements.js:17` T? `This server doesn't keep them yet.`
+- `src/data/say/achievements.js:18` T? `Achievements can't be read right now.`
+- `src/data/say/achievements.js:19` T? `Nothing you have earned is lost: they come back when the server can read them.`
+
+### data: alliancePart (26)
+
+- `src/data/say/alliancePart.js:4` T? `Alliance name`
+- `src/data/say/alliancePart.js:6` T? `Alliance tag`
+- `src/data/say/alliancePart.js:9` T? `Name your alliance`
+- `src/data/say/alliancePart.js:10` T? `You can rename it again in {wait}.`
+- `src/data/say/alliancePart.js:11` T? `The name and tag are yours alone, and every member wears the tag. You can change them o...`
+- `src/data/say/alliancePart.js:13` T? `War with {tag} {name}`
+- `src/data/say/alliancePart.js:14` T? `{left} min left. Kills count in No man's land, under its usual rules. Everyone who figh...`
+- `src/data/say/alliancePart.js:15` T? `{sign} · {killer} beat {victim}`
+- `src/data/say/alliancePart.js:17` T? `No war right now. Your leader can declare one on another alliance.`
+- `src/data/say/alliancePart.js:18` T? `Name your alliance to fight wars.`
+- `src/data/say/alliancePart.js:19` T? `Their tag`
+- `src/data/say/alliancePart.js:20` T? `Declare war`
+- `src/data/say/alliancePart.js:21` T? `Your alliance rests {wait} before its next war.`
+- `src/data/say/alliancePart.js:22` T? `A war lasts 30 minutes. Kills count in No man's land under its usual rules. Everyone wh...`
+- `src/data/say/alliancePart.js:25` T? `No alliances yet. A party becomes one when 20 of its members are level 5 or more and pl...`
+- `src/data/say/alliancePart.js:26` T? `Unnamed alliance`
+- `src/data/say/alliancePart.js:27` T? `{active} active · Lv {total}`
+- `src/data/say/alliancePart.js:28` T? `Yours: #{rank}, {active} active`
+- `src/data/say/alliancePart.js:29` T? `Alliance board`
+- `src/data/say/alliancePart.js:32` T? `{active} active`
+- `src/data/say/alliancePart.js:33` T? `Members who played in the last 7 days and are level 5 or more count. It stays an allian...`
+- `src/data/say/alliancePart.js:34` T? `is resting`
+- `src/data/say/alliancePart.js:35` T? `Not an alliance yet`
+- `src/data/say/alliancePart.js:36` T? `Your clan is this party now, and its members keep the tag.`
+- `src/data/say/alliancePart.js:37` T? `When {at} members have played in the last 7 days and are level 5 or more, your party be...`
+- `src/data/say/alliancePart.js:38` T? `A party becomes an alliance when {at} of its members are level 5 or more and played in ...`
+
+### data: bandGrip (2)
+
+- `src/data/say/bandGrip.js:4` T? `Expand dashboard`
+- `src/data/say/bandGrip.js:5` T? `Minimize dashboard`
+
+### data: bank (21)
+
+- `src/data/say/bank.js:5` T? `Vault & equipment`
+- `src/data/say/bank.js:6` T? `Your vault`
+- `src/data/say/bank.js:8` T? `Your gold and what you wear. Nothing can be stored here yet.`
+- `src/data/say/bank.js:9` T? `Gold on hand`
+- `src/data/say/bank.js:11` T? `Kept when you die, unless a player kills you in No man's land or you die with a red skull.`
+- `src/data/say/bank.js:22` T? `{name} x{count}`
+- `src/data/say/bank.js:26` T? `{label} amount`
+- `src/data/say/bank.js:28` T? `Put in`
+- `src/data/say/bank.js:29` T? `Take out`
+- `src/data/say/bank.js:31` T? `The vault could not be opened just now. Trying again… What is in it stays safe.`
+- `src/data/say/bank.js:32` T? `The vault is closed for now. What is in it stays safe.`
+- `src/data/say/bank.js:33` T? `Safe from death: what is in the vault stays here when you die. Materials, food and gold...`
+- `src/data/say/bank.js:35` T? `On you`
+- `src/data/say/bank.js:36` T? `In the vault`
+- `src/data/say/bank.js:40` T? `The vault`
+- `src/data/say/bank.js:41` T? `({used} of {slots})`
+- `src/data/say/bank.js:42` T? `Nothing in the vault yet.`
+- `src/data/say/bank.js:43` T? `Opening the vault…`
+- `src/data/say/bank.js:45` T? `Your bag`
+- `src/data/say/bank.js:46` T? `Your bag is empty.`
+- `src/data/say/bank.js:47` T? `Tools stay in your bag.`
+
+### data: bottomDashboard (7)
+
+- `src/data/say/bottomDashboard.js:16` T? `Life Skills`
+- `src/data/say/bottomDashboard.js:22` T? `About & privacy`
+- `src/data/say/bottomDashboard.js:43` T? `Back from {title}`
+- `src/data/say/bottomDashboard.js:45` T? `Open dashboard`
+- `src/data/say/bottomDashboard.js:46` T? `Open dashboard (I)`
+- `src/data/say/bottomDashboard.js:48` T? `Minimize dashboard`
+- `src/data/say/bottomDashboard.js:49` T? `Expand dashboard`
+
+### data: broCard (32)
+
+- `src/data/say/broCard.js:5` T? `Lv {level}`
+- `src/data/say/broCard.js:6` T? `Title: {title}. Change`
+- `src/data/say/broCard.js:7` T? `No title. Choose one`
+- `src/data/say/broCard.js:8` T? `No title`
+- `src/data/say/broCard.js:9` T? `No party`
+- `src/data/say/broCard.js:10` T? `No clan`
+- `src/data/say/broCard.js:11` T? `Clan: {clan}. Open`
+- `src/data/say/broCard.js:12` T? `{clan}. Open`
+- `src/data/say/broCard.js:13` T? `{ap} Achievement Points. Open Achievements`
+- `src/data/say/broCard.js:14` T? `{ap} AP`
+- `src/data/say/broCard.js:16` T? `Achievements: {earned} of {total}. Open`
+- `src/data/say/broCard.js:17` T? `Achievements. Open`
+- `src/data/say/broCard.js:19` T? `Lifetime Kills`
+- `src/data/say/broCard.js:21` T? `Combat skills`
+- `src/data/say/broCard.js:22` T? `{skill} level {lvl}, {prog} of {thresh} XP: show {weapon} stats`
+- `src/data/say/broCard.js:23` T? `{skill} level {lvl}, fully levelled: show {weapon} stats`
+- `src/data/say/broCard.js:24` T? `Combat Stats`
+- `src/data/say/broCard.js:25` T? `No {weapon} equipped`
+- `src/data/say/broCard.js:27` T? `{earned} of {total}`
+- `src/data/say/broCard.js:28` T? `Life Skills`
+- `src/data/say/broCard.js:29` T? `Total level {total}`
+- `src/data/say/broCard.js:31` T? `{n} to spend`
+- `src/data/say/broCard.js:32` T? `All spent`
+- `src/data/say/broCard.js:34` T? `{worn} of {slots} worn`
+- `src/data/say/broCard.js:36` T? `{n} plot ready`
+- `src/data/say/broCard.js:36` T? `{n} plots ready`
+- `src/data/say/broCard.js:37` T? `Nothing ready`
+- `src/data/say/broCard.js:39` T? `No pet`
+- `src/data/say/broCard.js:41` T? `{n} unlocked`
+- `src/data/say/broCard.js:46` T? `{n} plot ready to harvest. Your farm is reached from the Feed & Seed in BroTown: walk i...`
+- `src/data/say/broCard.js:47` T? `{n} plots ready to harvest. Your farm is reached from the Feed & Seed in BroTown: walk ...`
+- `src/data/say/broCard.js:49` T? `Nothing ready to harvest yet. Your farm is reached from the Feed & Seed in BroTown: wal...`
+
+### data: broPages (32)
+
+- `src/data/say/broPages.js:6` T? `Bro pages`
+- `src/data/say/broPages.js:10` T? `Back to the Overview`
+- `src/data/say/broPages.js:12` T? `LV {level}`
+- `src/data/say/broPages.js:13` T? `No title equipped`
+- `src/data/say/broPages.js:14` T? `{n} point`
+- `src/data/say/broPages.js:14` T? `{n} points`
+- `src/data/say/broPages.js:15` T? `{n} point to spend: open Points`
+- `src/data/say/broPages.js:15` T? `{n} points to spend: open Points`
+- `src/data/say/broPages.js:17` T? `Combat overview`
+- `src/data/say/broPages.js:19` T? `Combat stats: details`
+- `src/data/say/broPages.js:23` T? `Gear worn`
+- `src/data/say/broPages.js:29` T? `Weapon mastery`
+- `src/data/say/broPages.js:30` T? `Tap to inspect`
+- `src/data/say/broPages.js:33` T? `Lv {lvl}`
+- `src/data/say/broPages.js:34` T? `{weapon} mastery, level {lvl}: show its combat stats`
+- `src/data/say/broPages.js:36` T? `Your progress`
+- `src/data/say/broPages.js:37` T? `Your progress: achievements, lifetime kills and points. Open`
+- `src/data/say/broPages.js:39` T? `Lifetime kills`
+- `src/data/say/broPages.js:40` T? `Achievement pts`
+- `src/data/say/broPages.js:42` T? `Combat stats`
+- `src/data/say/broPages.js:49` T? `No {weapon} equipped`
+- `src/data/say/broPages.js:50` T? `{prog} / {thresh} XP`
+- `src/data/say/broPages.js:51` T? `Fully levelled`
+- `src/data/say/broPages.js:54` T? `Attack speed`
+- `src/data/say/broPages.js:56` T? `Crit chance`
+- `src/data/say/broPages.js:57` T? `Crit damage`
+- `src/data/say/broPages.js:58` T? `Special damage`
+- `src/data/say/broPages.js:59` T? `Element power`
+- `src/data/say/broPages.js:64` T? `Move speed`
+- `src/data/say/broPages.js:71` T? `Crit dmg`
+- `src/data/say/broPages.js:80` T? `Achievements {achv}, lifetime kills {kills}, achievement points {ap}. Open Achievements`
+- `src/data/say/broPages.js:81` T? `{earned} of {total}`
 
 ### data: buildings (24)
 
@@ -4319,6 +2169,127 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/buildings.js:21` T `Cut raw gems`
 - `src/data/buildings.js:22` T `YOUR FARM`
 - `src/data/buildings.js:22` T `Visit your farm`
+
+### data: characterPicker (36)
+
+- `src/data/say/characterPicker.js:4` T? `New here`
+- `src/data/say/characterPicker.js:5` T? `Played just now`
+- `src/data/say/characterPicker.js:6` T? `Played {n}m ago`
+- `src/data/say/characterPicker.js:7` T? `Played {n}h ago`
+- `src/data/say/characterPicker.js:8` T? `Played {n}d ago`
+- `src/data/say/characterPicker.js:9` T? `Played a while ago`
+- `src/data/say/characterPicker.js:11` T? `Could not reach the server. Nothing was changed.`
+- `src/data/say/characterPicker.js:12` T? `Too many attempts — wait a minute and try again. Nothing was changed.`
+- `src/data/say/characterPicker.js:13` T? `This character can only be restarted on a device it was played on. Nothing was changed.`
+- `src/data/say/characterPicker.js:14` T? `This character is in a fight with a player right now. Nothing was changed: try again on...`
+- `src/data/say/characterPicker.js:15` T? `This character has something on the market. Nothing was changed: cancel its listings, o...`
+- `src/data/say/characterPicker.js:16` T? `That did not work. Nothing was changed.`
+- `src/data/say/characterPicker.js:18` T? `CHOOSE YOUR BRO`
+- `src/data/say/characterPicker.js:19` T? `{n} / {max}`
+- `src/data/say/characterPicker.js:20` T? `No bros on this device yet. Use Create Character on the screen behind this one, or brin...`
+- `src/data/say/characterPicker.js:21` T? `Unnamed bro`
+- `src/data/say/characterPicker.js:22` T? `LEVEL {level}`
+- `src/data/say/characterPicker.js:24` T? `Options for {name}`
+- `src/data/say/characterPicker.js:25` T? `this character`
+- `src/data/say/characterPicker.js:26` T? `Playing on another device?`
+- `src/data/say/characterPicker.js:27` T? `USE LOGIN KEY`
+- `src/data/say/characterPicker.js:30` T? `This character`
+- `src/data/say/characterPicker.js:31` T? `Level {level}`
+- `src/data/say/characterPicker.js:32` T? `Level unknown`
+- `src/data/say/characterPicker.js:33` T? `Restart at level 1`
+- `src/data/say/characterPicker.js:34` T? `Keeps the name and the face. Everything earned is gone.`
+- `src/data/say/characterPicker.js:35` T? `Remove from this device`
+- `src/data/say/characterPicker.js:36` T? `Frees a slot. Their Login Key still brings them back.`
+- `src/data/say/characterPicker.js:39` T? `Are you sure?`
+- `src/data/say/characterPicker.js:40` T? `{name} goes back to {level}. Their levels, gear, coins and quests are gone and cannot b...`
+- `src/data/say/characterPicker.js:42` T? `{name} is removed from this device and their slot is freed. You can bring them back wit...`
+- `src/data/say/characterPicker.js:43` T? `Type {word} to confirm.`
+- `src/data/say/characterPicker.js:45` T? `Type yes to confirm`
+- `src/data/say/characterPicker.js:47` T? `Restart at level 1`
+- `src/data/say/characterPicker.js:48` T? `Remove from this device`
+- `src/data/say/characterPicker.js:49` T? `Keep them as they are`
+
+### data: characterView (1)
+
+- `src/data/say/characterView.js:4` T? `Your character`
+
+### data: chestReveal (10)
+
+- `src/data/say/chestReveal.js:4` T? `+{coins} coins`
+- `src/data/say/chestReveal.js:5` T? `{count} Cooked Fish`
+- `src/data/say/chestReveal.js:6` T? `{count} Fish to cook`
+- `src/data/say/chestReveal.js:7` T? `A Rare Gem`
+- `src/data/say/chestReveal.js:9` T? `A prize`
+- `src/data/say/chestReveal.js:11` T? `Daily chest`
+- `src/data/say/chestReveal.js:12` T? `You have {count} chests waiting.`
+- `src/data/say/chestReveal.js:13` T? `Your daily chest is here.`
+- `src/data/say/chestReveal.js:14` T? `The chest would not open — try again.`
+- `src/data/say/chestReveal.js:20` T? `Claim next ({count})`
+
+### data: clan (54)
+
+- `src/data/say/clan.js:5` T? `Your clan, now a party`
+- `src/data/say/clan.js:6` T? `{kind} · {n} member · {active} active`
+- `src/data/say/clan.js:6` T? `{kind} · {n} members · {active} active`
+- `src/data/say/clan.js:7` T? `No party yet`
+- `src/data/say/clan.js:8` T? `Your party stays together when you log out.`
+- `src/data/say/clan.js:9` T? `A party of {at} members who played in the last 7 days and are level 5 or more becomes a...`
+- `src/data/say/clan.js:10` T? `Invite a player`
+- `src/data/say/clan.js:12` T? `You aren't in a clan.`
+- `src/data/say/clan.js:13` T? `Make one, or join one when a clan leader invites you. Clans meet at the Guild Hall in B...`
+- `src/data/say/clan.js:14` T? `Make a clan`
+- `src/data/say/clan.js:15` T? `{n} member`
+- `src/data/say/clan.js:15` T? `{n} members`
+- `src/data/say/clan.js:17` T? `Lv {level}`
+- `src/data/say/clan.js:18` T? `Open the clan window`
+- `src/data/say/clan.js:22` T? `A party stays together when you log out, and when 20 of its members have played in the ...`
+- `src/data/say/clan.js:26` T? `Clans are groups of up to {max} players. Create one with a custom name, tag, and pixel ...`
+- `src/data/say/clan.js:27` T? `Create Clan ({cost}g)`
+- `src/data/say/clan.js:28` T? `Joining [{tag}]...`
+- `src/data/say/clan.js:29` T? `Accept invite: [{tag}] {clan} (from {from})`
+- `src/data/say/clan.js:30` T? `To join a clan, have a clan member invite you by tapping your character.`
+- `src/data/say/clan.js:32` T? `Create Clan`
+- `src/data/say/clan.js:33` T? `Clan Name`
+- `src/data/say/clan.js:34` T? `My Awesome Clan`
+- `src/data/say/clan.js:35` T? `Clan Tag (max {max} chars)`
+- `src/data/say/clan.js:37` T? `Name too short (min 3)`
+- `src/data/say/clan.js:38` T? `Need a clan tag`
+- `src/data/say/clan.js:39` T? `Need {cost}g`
+- `src/data/say/clan.js:40` T? `Founding [{tag}]...`
+- `src/data/say/clan.js:41` T? `Clans are closed`
+- `src/data/say/clan.js:42` T? `Create ({cost}g)`
+- `src/data/say/clan.js:45` T? `{n}/{max} members · Lv{level}`
+- `src/data/say/clan.js:46` T? `Logo Editor`
+- `src/data/say/clan.js:47` T? `Clear Logo`
+- `src/data/say/clan.js:48` T? `Logo saved!`
+- `src/data/say/clan.js:49` T? `Save Logo`
+- `src/data/say/clan.js:50` T? `Members ({n})`
+- `src/data/say/clan.js:51` T? `You (Founder)`
+- `src/data/say/clan.js:53` T? `Clan Wars`
+- `src/data/say/clan.js:55` T? `{zone} · {left}m remaining · {kills} kills`
+- `src/data/say/clan.js:56` T? `Travel to {zone} to fight! PvP kills score points.`
+- `src/data/say/clan.js:57` T? `{killer} defeated {victim} (+{points}pts)`
+- `src/data/say/clan.js:58` T? `Challenge another clan to a 30-minute PvP battle in a zone. Most kills wins!`
+- `src/data/say/clan.js:59` T? `Battle Zone`
+- `src/data/say/clan.js:60` T? `Target Clan`
+- `src/data/say/clan.js:61` T? `No other clans online`
+- `src/data/say/clan.js:62` T? `Select a target clan!`
+- `src/data/say/clan.js:63` T? `WAR DECLARED vs [{tag}]!`
+- `src/data/say/clan.js:64` T? `Battle zone: {zone}`
+- `src/data/say/clan.js:65` T? `Declare War`
+- `src/data/say/clan.js:67` T? `Leaving clan...`
+- `src/data/say/clan.js:68` T? `Left clan`
+- `src/data/say/clan.js:69` T? `Tap again to DISBAND [{tag}] — the clan and its name are gone`
+- `src/data/say/clan.js:70` T? `Tap again to leave the clan`
+- `src/data/say/clan.js:71` T? `Leave Clan`
+
+### data: clanInvite (5)
+
+- `src/data/say/clanInvite.js:6` T? `Clan invite`
+- `src/data/say/clanInvite.js:7` T? `{from} invites you to join {clan}.`
+- `src/data/say/clanInvite.js:8` T? `It lasts two minutes. Your clan is in the Guild Hall in BroTown.`
+- `src/data/say/clanInvite.js:10` T? `Not now`
+- `src/data/say/clanInvite.js:11` T? `Joining [{tag}]...`
 
 ### data: codexDrops (68)
 
@@ -4405,6 +2376,128 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/codexStage.js:168` T `QUAKE!`
 - `src/data/codexStage.js:169` T `ENRAGED!`
 
+### data: contextButton (1)
+
+- `src/data/say/contextButton.js:14` T? `Do this here`
+
+### data: controlsTutorial (21)
+
+- `src/data/say/controlsTutorial.js:5` T? `Drag the left joystick to move.`
+- `src/data/say/controlsTutorial.js:7` T? `The button lights up when something is in reach. Tap it to swing, hold it to keep fight...`
+- `src/data/say/controlsTutorial.js:8` T? `Your target`
+- `src/data/say/controlsTutorial.js:9` T? `You always aim at the closest enemy. Tap a different one to lock onto it instead, and t...`
+- `src/data/say/controlsTutorial.js:10` T? `You always aim at the closest enemy: hold the right stick toward it and keep fighting.`
+- `src/data/say/controlsTutorial.js:11` T? `Aiming and specials`
+- `src/data/say/controlsTutorial.js:13` T? `Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.`
+- `src/data/say/controlsTutorial.js:15` T? `Your items and gear live here. Tap one to equip it.`
+- `src/data/say/controlsTutorial.js:17` T? `Menus live down here. Tap your character to chat.`
+- `src/data/say/controlsTutorial.js:18` T? `Swipe / Dodge`
+- `src/data/say/controlsTutorial.js:19` T? `Swipe anywhere in the world to dodge-roll.`
+- `src/data/say/controlsTutorial.js:21` T? `Push the left stick a little to turn and face that way. Push it further to walk.`
+- `src/data/say/controlsTutorial.js:23` T? `Push the left stick a little to turn and face that way. Push it further to walk. Push t...`
+- `src/data/say/controlsTutorial.js:24` T? `Face a monster in reach and a line points to it. Tap Attack once: you lock on and keep ...`
+- `src/data/say/controlsTutorial.js:26` T? `Face a monster in reach and tap Attack: you lock on, and each tap is one attack. Hold A...`
+- `src/data/say/controlsTutorial.js:27` T? `The line finds the monster you face once it is in reach (a bow or a staff reaches furth...`
+- `src/data/say/controlsTutorial.js:28` T? `Your sight line`
+- `src/data/say/controlsTutorial.js:29` T? `The line finds the monster you face once it is in reach (a bow or a staff reaches furth...`
+- `src/data/say/controlsTutorial.js:30` T? `It comes up beside Attack while a monster is in sight. Tap to raise your shield. It sta...`
+- `src/data/say/controlsTutorial.js:32` T? `Close tutorial`
+- `src/data/say/controlsTutorial.js:33` T? `Step {step} of {total}`
+
+### data: dailyCard (9)
+
+- `src/data/say/dailyCard.js:3` T? `Daily rewards`
+- `src/data/say/dailyCard.js:5` T? `Daily quests: soon`
+- `src/data/say/dailyCard.js:6` T? `{done}/{all} daily quests`
+- `src/data/say/dailyCard.js:8` T? `{count} to claim`
+- `src/data/say/dailyCard.js:9` T? `free spin ready`
+- `src/data/say/dailyCard.js:10` T? `spin going`
+- `src/data/say/dailyCard.js:11` T? `{n} bonus spin`
+- `src/data/say/dailyCard.js:11` T? `{n} bonus spins`
+- `src/data/say/dailyCard.js:12` T? `{days}-day streak`
+
+### data: dailyRewards (38)
+
+- `src/data/say/dailyRewards.js:5` T? `{coins} coins · {star} 1`
+- `src/data/say/dailyRewards.js:6` T? `Swap "{quest}" for another quest`
+- `src/data/say/dailyRewards.js:8` T? `{days}-day streak`
+- `src/data/say/dailyRewards.js:9` T? `A freeze saved your streak!`
+- `src/data/say/dailyRewards.js:10` T? `Play each day to keep it. It raises the free spin's prizes.`
+- `src/data/say/dailyRewards.js:11` T? `Streak freezes`
+- `src/data/say/dailyRewards.js:12` T? `A freeze is used automatically if you miss a day. You earn one every {every} days of st...`
+- `src/data/say/dailyRewards.js:14` T? `The free daily spin`
+- `src/data/say/dailyRewards.js:15` T? `Your pot of {pot} coins is waiting`
+- `src/data/say/dailyRewards.js:16` T? `Your free spin is ready`
+- `src/data/say/dailyRewards.js:17` T? `{n} bonus spin to use`
+- `src/data/say/dailyRewards.js:17` T? `{n} bonus spins to use`
+- `src/data/say/dailyRewards.js:18` T? `Today's spin is done`
+- `src/data/say/dailyRewards.js:19` T? `Opens when you hand in Mayor Bro's first quest.`
+- `src/data/say/dailyRewards.js:20` T? `At the Gambling Den in BroTown: take it, or double or nothing.`
+- `src/data/say/dailyRewards.js:21` T? `At the Gambling Den in BroTown. Spin for a lump sum, up to the {jackpot} jackpot.`
+- `src/data/say/dailyRewards.js:22` T? `At the Gambling Den in BroTown. Spin for a lump sum.`
+- `src/data/say/dailyRewards.js:23` T? `Next free spin in {until}.`
+- `src/data/say/dailyRewards.js:25` T? `resets in {until}`
+- `src/data/say/dailyRewards.js:26` T? `Daily quests`
+- `src/data/say/dailyRewards.js:27` T? `Hand in Mayor Bro's first quest to open the daily quests.`
+- `src/data/say/dailyRewards.js:28` T? `All three done! You got +{stars} ★ and a bonus spin.`
+- `src/data/say/dailyRewards.js:29` T? `Finish all three: +{stars} ★ and a bonus spin`
+- `src/data/say/dailyRewards.js:30` T? `Not your thing? Tap ↻ to swap one quest for another (once a day).`
+- `src/data/say/dailyRewards.js:31` T? `You've used today's swap.`
+- `src/data/say/dailyRewards.js:32` T? `Each quest also puts a ★ on the season.`
+- `src/data/say/dailyRewards.js:35` T? `Season {season}`
+- `src/data/say/dailyRewards.js:36` T? `ends in {until}`
+- `src/data/say/dailyRewards.js:37` T? `Tier {tier} at {need} ★`
+- `src/data/say/dailyRewards.js:38` T? `Every tier reached! A bonus spin every {every} ★ more.`
+- `src/data/say/dailyRewards.js:39` T? `Earn ★ from each daily quest, from finishing all three, and from your free spin.`
+- `src/data/say/dailyRewards.js:40` T? `Earn {stars} ★ a day with your free spin at the Gambling Den.`
+- `src/data/say/dailyRewards.js:41` T? `Missed days never cost ★, and anything you reach but don't claim is sent to you when th...`
+- `src/data/say/dailyRewards.js:42` T? `Claim all ({count})`
+- `src/data/say/dailyRewards.js:43` T? `{got}/{all} claimed`
+- `src/data/say/dailyRewards.js:45` T? `{glyph} Past tier {tier}: a bonus spin every {every} ★.`
+- `src/data/say/dailyRewards.js:47` T? `Daily rewards`
+- `src/data/say/dailyRewards.js:52` T? `Daily rewards are not open right now.`
+
+### data: dailySpin (38)
+
+- `src/data/say/dailySpin.js:4` T? `Rare: 1 in {bigOdds} lands {big}+, 1 in {topOdds} the {top} jackpot.`
+- `src/data/say/dailySpin.js:6` T? `The wheel didn't hear back. Nothing was spent — try again.`
+- `src/data/say/dailySpin.js:7` T? `No spins left today.`
+- `src/data/say/dailySpin.js:8` T? `Take your pot or double it first.`
+- `src/data/say/dailySpin.js:9` T? `That's the house limit — take it!`
+- `src/data/say/dailySpin.js:10` T? `Hand in Mayor Bro's first quest to unlock the free spin.`
+- `src/data/say/dailySpin.js:11` T? `Nothing to take.`
+- `src/data/say/dailySpin.js:12` T? `Taking {pot}…`
+- `src/data/say/dailySpin.js:13` T? `Double or nothing…`
+- `src/data/say/dailySpin.js:15` T? `JACKPOT! {pot} coins!`
+- `src/data/say/dailySpin.js:16` T? `You won {pot} coins!`
+- `src/data/say/dailySpin.js:17` T? `Doubled! {pot} — the house limit, paid!`
+- `src/data/say/dailySpin.js:18` T? `Doubled! {pot} coins.`
+- `src/data/say/dailySpin.js:19` T? `Lost it all — {lost} coins.`
+- `src/data/say/dailySpin.js:20` T? `+{paid} coins!`
+- `src/data/say/dailySpin.js:21` T? `Your pot: {pot} coins.`
+- `src/data/say/dailySpin.js:22` T? `Free today! Spin for a lump sum of coins.`
+- `src/data/say/dailySpin.js:23` T? `You have {n} bonus spin.`
+- `src/data/say/dailySpin.js:23` T? `You have {n} bonus spins.`
+- `src/data/say/dailySpin.js:24` T? `Today's spin is done.`
+- `src/data/say/dailySpin.js:26` T? `Take it, or double or nothing: 50% to make it {twice}, 50% to lose it.`
+- `src/data/say/dailySpin.js:27` T? `The house limit is {limit}. Take it!`
+- `src/data/say/dailySpin.js:28` T? `Next free spin in {until}.`
+- `src/data/say/dailySpin.js:30` T? `Unlocks with the first quest`
+- `src/data/say/dailySpin.js:31` T? `Spin · free`
+- `src/data/say/dailySpin.js:32` T? `Use a bonus spin ({n})`
+- `src/data/say/dailySpin.js:33` T? `Next free spin in {until}`
+- `src/data/say/dailySpin.js:35` T? `Free daily spin`
+- `src/data/say/dailySpin.js:36` T? `{days}-day streak`
+- `src/data/say/dailySpin.js:39` T? `Take {pot}`
+- `src/data/say/dailySpin.js:40` T? `Double or nothing`
+- `src/data/say/dailySpin.js:41` T? `50% for {twice}`
+- `src/data/say/dailySpin.js:42` T? `House limit`
+- `src/data/say/dailySpin.js:43` T? `{n} bonus spin saved for later`
+- `src/data/say/dailySpin.js:43` T? `{n} bonus spins saved for later`
+- `src/data/say/dailySpin.js:45` T? `Daily quests & season`
+- `src/data/say/dailySpin.js:46` T? `Daily quests`
+- `src/data/say/dailySpin.js:47` T? `Season rewards`
+
 ### data: dishes (10)
 
 - `src/data/dishes.js:28` T `Herb Bread`
@@ -4417,6 +2510,16 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/dishes.js:45` T `Heals 150 HP at once`
 - `src/data/dishes.js:50` T `Pumpkin Pie`
 - `src/data/dishes.js:50` T `+10% combat XP, 30 min`
+
+### data: duelRequest (7)
+
+- `src/data/say/duelRequest.js:4` T? `Duel challenge expired`
+- `src/data/say/duelRequest.js:6` T? `Duel Challenge`
+- `src/data/say/duelRequest.js:7` T? `{name} challenges you!`
+- `src/data/say/duelRequest.js:8` T? `Wager: {wager}g (winner takes all)`
+- `src/data/say/duelRequest.js:9` T? `Duels are consensual. No reputation penalty. The loser pays the wager. No item loss.`
+- `src/data/say/duelRequest.js:10` T? `Duels are consensual. No wager, no item loss, no reputation penalty.`
+- `src/data/say/duelRequest.js:13` T? `Accept ({wager}g)`
 
 ### data: effects (6)
 
@@ -4451,6 +2554,75 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/elements.js:16` T `curse`
 - `src/data/elements.js:17` T `reveal`
 
+### data: enchant (25)
+
+- `src/data/say/enchant.js:5` T? `Enchanting Lv{lvl}`
+- `src/data/say/enchant.js:6` T? `Slot polished gems into gear with open gem slots.`
+- `src/data/say/enchant.js:7` T? `Gems you made pay 400 Enchanting XP when set: {owed} still to come.`
+- `src/data/say/enchant.js:8` T? `Gems you make pay 400 Enchanting XP when set. Bought, traded or taken-out gems pay none.`
+- `src/data/say/enchant.js:16` T? `Gem slots: {used}/{max} used`
+- `src/data/say/enchant.js:17` T? `· Craft slotted gear at the Blacksmith or Woodworker first`
+- `src/data/say/enchant.js:18` T? `· Req Enchanting Lv20 for 2nd slot`
+- `src/data/say/enchant.js:19` T? `Choose a polished gem for Slot 1:`
+- `src/data/say/enchant.js:20` T? `Choose a polished gem for Slot 2 (Fusion):`
+- `src/data/say/enchant.js:21` T? `Volatile combo requires Fusion-Compatible gear base`
+- `src/data/say/enchant.js:22` T? `Needs Fusion-Compatible gear!`
+- `src/data/say/enchant.js:23` T? `{elem} enchanted!`
+- `src/data/say/enchant.js:24` T? `Enchanting Lv{lvl}!`
+- `src/data/say/enchant.js:25` T? `No polished gems`
+- `src/data/say/enchant.js:27` T? `No open gem slot`
+- `src/data/say/enchant.js:28` T? `Taking out…`
+- `src/data/say/enchant.js:29` T? `Take out`
+- `src/data/say/enchant.js:30` T? `{cost} gold · the gem comes back`
+- `src/data/say/enchant.js:33` T? `{gem} gem`
+- `src/data/say/enchant.js:34` T? `Slotted: {gem}. Slot a new gem to replace (old gem lost).`
+- `src/data/say/enchant.js:35` T? `Slot a polished gem to activate the amulet.`
+- `src/data/say/enchant.js:36` T? `📿 Craft an amulet at the Blacksmith to slot gems here.`
+- `src/data/say/enchant.js:39` T? `Slotted: {gem}. Slot new gem to replace.`
+- `src/data/say/enchant.js:40` T? `Slot a polished gem for defensive power.`
+- `src/data/say/enchant.js:41` T? `No shield equipped. Wear one to slot defensive gems here.`
+
+### data: equippedTab (5)
+
+- `src/data/say/equippedTab.js:4` T? `EQUIP {slot}`
+- `src/data/say/equippedTab.js:5` T? `Nothing in inventory fits this slot.`
+- `src/data/say/equippedTab.js:7` T? `SHORTCUT SLOT {slot}`
+- `src/data/say/equippedTab.js:8` T? `Remove shortcut`
+- `src/data/say/equippedTab.js:18` T? `Tap a slot to set`
+
+### data: exchange (30)
+
+- `src/data/say/exchange.js:5` T? `Auction House`
+- `src/data/say/exchange.js:6` T? `Buy now or bid ›`
+- `src/data/say/exchange.js:7` T? `Trade by gear type · Orders last 24h · Refunds by mail`
+- `src/data/say/exchange.js:11` T? `My Orders`
+- `src/data/say/exchange.js:16` T? `Any element`
+- `src/data/say/exchange.js:18` T? `Material Tier`
+- `src/data/say/exchange.js:19` T? `Element (optional)`
+- `src/data/say/exchange.js:23` T? `Max you'll pay`
+- `src/data/say/exchange.js:24` T? `Ask Price`
+- `src/data/say/exchange.js:26` T? `Est. value: ~{gold}G`
+- `src/data/say/exchange.js:28` T? `Select Item from Stash`
+- `src/data/say/exchange.js:29` T? `No items in stash to sell`
+- `src/data/say/exchange.js:31` T? `Place Buy Order ({price}G)`
+- `src/data/say/exchange.js:32` T? `List for Sale ({price}G)`
+- `src/data/say/exchange.js:33` T? `Not enough gold!`
+- `src/data/say/exchange.js:34` T? `Select an item first!`
+- `src/data/say/exchange.js:36` T? `Bought for {price}G!`
+- `src/data/say/exchange.js:37` T? `Sold for {price}G!`
+- `src/data/say/exchange.js:38` T? `Buy order placed!`
+- `src/data/say/exchange.js:39` T? `Listed for sale!`
+- `src/data/say/exchange.js:40` T? `Server error!`
+- `src/data/say/exchange.js:42` T? `Order Book — {tier} {type}`
+- `src/data/say/exchange.js:43` T? `SELL ORDERS (lowest first)`
+- `src/data/say/exchange.js:44` T? `BUY ORDERS (highest first)`
+- `src/data/say/exchange.js:46` T? `No orders yet. Be the first!`
+- `src/data/say/exchange.js:48` T? `Your Active Orders ({count})`
+- `src/data/say/exchange.js:49` T? `No active orders`
+- `src/data/say/exchange.js:52` T? `{min}m left`
+- `src/data/say/exchange.js:53` T? `Order cancelled`
+- `src/data/say/exchange.js:54` T? `Cancel failed`
+
 ### data: farmCrops (16)
 
 - `src/data/farmCrops.js:25` T `Carrot`
@@ -4476,6 +2648,40 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/farmLayout.js:87` T `Dungeon Workshop`
 - `src/data/farmLayout.js:88` T `Pet House`
 
+### data: feedSeed (25)
+
+- `src/data/say/feedSeed.js:4` T? `{n} ready to harvest`
+- `src/data/say/feedSeed.js:5` T? `{n} growing`
+- `src/data/say/feedSeed.js:6` T? `{n} bed to plant`
+- `src/data/say/feedSeed.js:6` T? `{n} beds to plant`
+- `src/data/say/feedSeed.js:8` T? `Could not`
+- `src/data/say/feedSeed.js:9` T? `+{count} {item}`
+- `src/data/say/feedSeed.js:10` T? `· +{xp} XP`
+- `src/data/say/feedSeed.js:11` T? `Delivered · +{gold} gold · +{xp} XP`
+- `src/data/say/feedSeed.js:12` T? `Your Farm`
+- `src/data/say/feedSeed.js:14` T? `Feed & Seed`
+- `src/data/say/feedSeed.js:15` T? `Farming {lvl}`
+- `src/data/say/feedSeed.js:16` T? `Visit Your Farm`
+- `src/data/say/feedSeed.js:17` T? `Your plots`
+- `src/data/say/feedSeed.js:21` T? `What you can deliver for gold`
+- `src/data/say/feedSeed.js:22` T? `What you can buy`
+- `src/data/say/feedSeed.js:23` T? `Your beds keep growing.`
+- `src/data/say/feedSeed.js:25` T? `⏱ grow · {water} watered · {harvest} harvest ·`
+- `src/data/say/feedSeed.js:26` T? `with compost`
+- `src/data/say/feedSeed.js:28` T? `🔒 Farming {lvl}`
+- `src/data/say/feedSeed.js:30` T? `Try again`
+- `src/data/say/feedSeed.js:31` T? `Opening the orders…`
+- `src/data/say/feedSeed.js:32` T? `Today's orders`
+- `src/data/say/feedSeed.js:34` T? `You have {count}`
+- `src/data/say/feedSeed.js:37` T? `New orders are on their way…`
+- `src/data/say/feedSeed.js:38` T? `New orders in {time}`
+
+### data: fishBoard (3)
+
+- `src/data/say/fishBoard.js:10` T? `The scales are closed for now.`
+- `src/data/say/fishBoard.js:11` T? `The records can't be read right now.`
+- `src/data/say/fishBoard.js:12` T? `Nobody has weighed a {name} yet. Tap a fish in your bag, then Inspect.`
+
 ### data: fishVariants (13)
 
 - `src/data/fishVariants.js:21` T `Minnow`
@@ -4491,6 +2697,39 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/fishVariants.js:112` T? `The scales are closed for now.`
 - `src/data/fishVariants.js:113` T? `The scales can't read your log right now. Try again soon.`
 - `src/data/fishVariants.js:114` T? `You've weighed all your`
+
+### data: fishWeigh (6)
+
+- `src/data/say/fishWeigh.js:8` T? `Weighing your {name}…`
+- `src/data/say/fishWeigh.js:9` T? `Weighing your {variant} {name}…`
+- `src/data/say/fishWeigh.js:10` T? `Your heaviest {name} yet!`
+- `src/data/say/fishWeigh.js:11` T? `Your best: {kg}`
+- `src/data/say/fishWeigh.js:12` T? `· #{rank} on the board`
+- `src/data/say/fishWeigh.js:13` T? `· {left} more to weigh`
+
+### data: gamble (21)
+
+- `src/data/say/gamble.js:4` T? `Gambling Den`
+- `src/data/say/gamble.js:5` T? `Free daily spin, a gold wager & the weekly jackpot`
+- `src/data/say/gamble.js:6` T? `Your gold:`
+- `src/data/say/gamble.js:8` T? `{ap} AP`
+- `src/data/say/gamble.js:10` T? `Wager · Double or Nothing`
+- `src/data/say/gamble.js:11` T? `A separate bet with your own gold: 40% chance to double it, 60% chance to lose it.`
+- `src/data/say/gamble.js:13` T? `WON! +{amount}g`
+- `src/data/say/gamble.js:14` T? `LOST! -{amount}g`
+- `src/data/say/gamble.js:15` T? `The table is closed`
+- `src/data/say/gamble.js:16` T? `Roll · {wager}G`
+- `src/data/say/gamble.js:17` T? `Select a wager`
+- `src/data/say/gamble.js:19` T? `Weekly Jackpot`
+- `src/data/say/gamble.js:20` T? `Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house ...`
+- `src/data/say/gamble.js:22` T? `Your tickets this week: {tickets} · Min deposit: {min}g`
+- `src/data/say/gamble.js:23` T? `Deposit {amount}G`
+- `src/data/say/gamble.js:24` T? `The jackpot is closed`
+- `src/data/say/gamble.js:25` T? `Need {min}G`
+- `src/data/say/gamble.js:27` T? `Gambling Stats`
+- `src/data/say/gamble.js:28` T? `Total wagered:`
+- `src/data/say/gamble.js:29` T? `Total won:`
+- `src/data/say/gamble.js:30` T? `Total lost:`
 
 ### data: gameDisplay (180)
 
@@ -5540,6 +3779,59 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/gameSystems.js:8518` T `Suspect`
 - `src/data/gameSystems.js:8523` T `Outlaw`
 
+### data: gemWorks (6)
+
+- `src/data/say/gemWorks.js:4` T? `Cut gems`
+- `src/data/say/gemWorks.js:5` T? `Set gems`
+- `src/data/say/gemWorks.js:7` T? `Raw to polished`
+- `src/data/say/gemWorks.js:8` T? `Polished into gear`
+- `src/data/say/gemWorks.js:9` T? `Shards to gems`
+- `src/data/say/gemWorks.js:10` T? `Gems into gear`
+
+### data: gemcut (11)
+
+- `src/data/say/gemcut.js:4` T? `Gem Cutter`
+- `src/data/say/gemcut.js:5` T? `Gem Cutting Lv{lvl}`
+- `src/data/say/gemcut.js:6` T? `Cut raw gems into polished gems for your gear. Higher Gem Cutting raises your success c...`
+- `src/data/say/gemcut.js:8` T? `Your gems`
+- `src/data/say/gemcut.js:9` T? `{elem} Gem`
+- `src/data/say/gemcut.js:10` T? `◇ Raw: {raw} · ◆ Polished: {polished}`
+- `src/data/say/gemcut.js:11` T? `Success: {pct}%`
+- `src/data/say/gemcut.js:13` T? `Polished {gem}!`
+- `src/data/say/gemcut.js:14` T? `Gem shattered!`
+- `src/data/say/gemcut.js:15` T? `Gem Cutting Lv{lvl}!`
+- `src/data/say/gemcut.js:16` T? `No raw gems yet. Defeat monsters out in the lands to find them.`
+
+### data: hallPanel (27)
+
+- `src/data/say/hallPanel.js:5` T? `Make a party in the Saloon; at 20 active members it is an alliance`
+- `src/data/say/hallPanel.js:6` T? `Skill guilds`
+- `src/data/say/hallPanel.js:7` T? `Your rank in each life skill’s guild, and its quests`
+- `src/data/say/hallPanel.js:8` T? `[{tag}] {name}`
+- `src/data/say/hallPanel.js:9` T? `Your clan`
+- `src/data/say/hallPanel.js:10` T? `Invite waiting: [{tag}] {name}, from {from}`
+- `src/data/say/hallPanel.js:11` T? `Make a clan, or join one when a clan leader invites you`
+- `src/data/say/hallPanel.js:14` T? `Your mail`
+- `src/data/say/hallPanel.js:15` T? `{n}× {name}`
+- `src/data/say/hallPanel.js:16` T? `Nothing yet this visit. Sales, refunds, trade payouts and rewards come here, and so doe...`
+- `src/data/say/hallPanel.js:17` T? `Messages from friends`
+- `src/data/say/hallPanel.js:18` T? `Write to a friend. They read it when they next come in.`
+- `src/data/say/hallPanel.js:20` T? `You are Well Rested: +{pct}% combat XP for {left} more.`
+- `src/data/say/hallPanel.js:21` T? `A night here fills your health, stamina and mana, and makes you Well Rested: +{pct}% co...`
+- `src/data/say/hallPanel.js:23` T? `Rest again to start the {mins} minutes over`
+- `src/data/say/hallPanel.js:24` T? `Full health, stamina and mana, then Well Rested`
+- `src/data/say/hallPanel.js:26` T? `Duel a player`
+- `src/data/say/hallPanel.js:27` T? `Pick a player, then tap Duel on their card`
+- `src/data/say/hallPanel.js:28` T? `The arena`
+- `src/data/say/hallPanel.js:29` T? `Sign up for the gladiator arena`
+- `src/data/say/hallPanel.js:31` T? `Invite a player`
+- `src/data/say/hallPanel.js:32` T? `Pick a player, then tap Invite to Party on their card`
+- `src/data/say/hallPanel.js:34` T? `Team up with other bros`
+- `src/data/say/hallPanel.js:35` T? `Your party`
+- `src/data/say/hallPanel.js:40` T? `Lv {lv}`
+- `src/data/say/hallPanel.js:41` T? `You're not in a party. Up to 50 bros can team up and stay together until they leave: yo...`
+- `src/data/say/hallPanel.js:42` T? `You're not in a party. Up to four bros can team up: you see each other's health, talk o...`
+
 ### data: hardenCosts (6)
 
 - `src/data/hardenCosts.js:38` T? `Copper Bar`
@@ -5562,6 +3854,303 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/hardenedWood.js:29` T `Hardened Maple Wood`
 - `src/data/hardenedWood.js:29` T? `Maple Wood`
 - `src/data/hardenedWood.js:29` T? `Maple Wood`
+
+### data: heroExpanded (65)
+
+- `src/data/say/heroExpanded.js:7` T? `{n} point`
+- `src/data/say/heroExpanded.js:7` T? `{n} points`
+- `src/data/say/heroExpanded.js:8` T? `{pts} of {cap} points`
+- `src/data/say/heroExpanded.js:9` T? `{pts} of {cap}`
+- `src/data/say/heroExpanded.js:18` T? `{stat} {value} — what is this?`
+- `src/data/say/heroExpanded.js:19` T? `{vital} {cur} of {max}: what it is made of`
+- `src/data/say/heroExpanded.js:22` T? `{n} to spend`
+- `src/data/say/heroExpanded.js:23` T? `Close {window}`
+- `src/data/say/heroExpanded.js:29` T? `Nothing equipped here.`
+- `src/data/say/heroExpanded.js:30` T? `No stat bonuses.`
+- `src/data/say/heroExpanded.js:33` T? `This character is playing in another window.`
+- `src/data/say/heroExpanded.js:34` T? `Reconnecting to the server. Try again in a moment.`
+- `src/data/say/heroExpanded.js:35` T? `No {pool} points to spend.`
+- `src/data/say/heroExpanded.js:38` T? `{stat} is already at its cap.`
+- `src/data/say/heroExpanded.js:41` T? `{perText} per point.`
+- `src/data/say/heroExpanded.js:42` T? `Crit chance`
+- `src/data/say/heroExpanded.js:43` T? `Crit damage`
+- `src/data/say/heroExpanded.js:45` T? `does not change damage`
+- `src/data/say/heroExpanded.js:46` T? `equip a weapon to see`
+- `src/data/say/heroExpanded.js:48` T? `Each point: {perText}`
+- `src/data/say/heroExpanded.js:49` T? `Weaker vs. higher levels`
+- `src/data/say/heroExpanded.js:51` T? `Spend point`
+- `src/data/say/heroExpanded.js:52` T? `✓ {n} point spent`
+- `src/data/say/heroExpanded.js:52` T? `✓ {n} points spent`
+- `src/data/say/heroExpanded.js:53` T? `Unspent Points`
+- `src/data/say/heroExpanded.js:56` T? `Shared — Level {level}`
+- `src/data/say/heroExpanded.js:57` T? `Every level-up in any combat skill also earns shared points. They buy the stats that be...`
+- `src/data/say/heroExpanded.js:58` T? `The stats that belong to your character rather than to one weapon: HP, Defense, Mana, S...`
+- `src/data/say/heroExpanded.js:59` T? `You have {n} shared point to spend.`
+- `src/data/say/heroExpanded.js:59` T? `You have {n} shared points to spend.`
+- `src/data/say/heroExpanded.js:60` T? `Level up any combat skill to earn more.`
+- `src/data/say/heroExpanded.js:61` T? `{skill} — Level {level}`
+- `src/data/say/heroExpanded.js:62` T? `Its points buy only this weapon's six stats: Range, Power, Speed, Luck, Special and Ele...`
+- `src/data/say/heroExpanded.js:63` T? `You have {n} {lane} point to spend.`
+- `src/data/say/heroExpanded.js:63` T? `You have {n} {lane} points to spend.`
+- `src/data/say/heroExpanded.js:64` T? `Fight with a {lane} weapon to earn more.`
+- `src/data/say/heroExpanded.js:67` T? `{lane}, level {level}`
+- `src/data/say/heroExpanded.js:69` T? `{lane} — level {level} — {n} point to spend — {spent} already applied`
+- `src/data/say/heroExpanded.js:70` T? `{lane} — level {level} — {n} points to spend — {spent} already applied`
+- `src/data/say/heroExpanded.js:72` T? `{n} points to spend on {lane}`
+- `src/data/say/heroExpanded.js:73` T? `{n} PT`
+- `src/data/say/heroExpanded.js:73` T? `{n} PTS`
+- `src/data/say/heroExpanded.js:74` T? `{n} points applied to {lane}`
+- `src/data/say/heroExpanded.js:75` T? `{n} SPENT`
+- `src/data/say/heroExpanded.js:78` T? `{stat}{lane}, {pts}. {perText}{perPoint}.`
+- `src/data/say/heroExpanded.js:79` T? `for {lane}`
+- `src/data/say/heroExpanded.js:80` T? `per point`
+- `src/data/say/heroExpanded.js:81` T? `{stat} — {pts} — now {now} — {perText}{perPoint}`
+- `src/data/say/heroExpanded.js:82` T? `{stat}{lane}: {pts} applied`
+- `src/data/say/heroExpanded.js:85` T? `{lane}, level {level}. {pools}`
+- `src/data/say/heroExpanded.js:86` T? `{lane} {n} to spend`
+- `src/data/say/heroExpanded.js:87` T? `Shared, level {level}. {n} to spend`
+- `src/data/say/heroExpanded.js:88` T? `Tap a weapon to see its points`
+- `src/data/say/heroExpanded.js:89` T? `Shared stats`
+- `src/data/say/heroExpanded.js:90` T? `Show {lane}'s points`
+- `src/data/say/heroExpanded.js:93` T? `Attack Speed`
+- `src/data/say/heroExpanded.js:94` T? `Now {now}`
+- `src/data/say/heroExpanded.js:95` T? `Character · every weapon`
+- `src/data/say/heroExpanded.js:98` T? `Back to categories`
+- `src/data/say/heroExpanded.js:101` T? `About {lane}`
+- `src/data/say/heroExpanded.js:105` T? `Tap again: every point comes back`
+- `src/data/say/heroExpanded.js:106` T? `↺ Reset points (free)`
+- `src/data/say/heroExpanded.js:109` T? `BUILD POINTS`
+- `src/data/say/heroExpanded.js:110` T? `{n} AVAILABLE`
+- `src/data/say/heroExpanded.js:111` T? `Lv {level}`
+
+### data: incomingTrade (4)
+
+- `src/data/say/incomingTrade.js:4` T? `Incoming Trade`
+- `src/data/say/incomingTrade.js:5` T? `{name} wants to trade. They offer:`
+- `src/data/say/incomingTrade.js:7` T? `Trade accepted!`
+- `src/data/say/incomingTrade.js:8` T? `Open trade`
+
+### data: infoPanel (16)
+
+- `src/data/say/infoPanel.js:4` T? `{count} online`
+- `src/data/say/infoPanel.js:6` T? `⚠ Combat numbers may read low — {why}.`
+- `src/data/say/infoPanel.js:7` T? `not connected to the server`
+- `src/data/say/infoPanel.js:8` T? `server has not sent combat rules yet`
+- `src/data/say/infoPanel.js:9` T? `character has no trained-skill record`
+- `src/data/say/infoPanel.js:10` T? `link {link} · rules {rules} · skills {skills}`
+- `src/data/say/infoPanel.js:14` T? `build {game} ({sha})`
+- `src/data/say/infoPanel.js:20` T? `Check your wallet…`
+- `src/data/say/infoPanel.js:21` T? `✓ {n} Hemi Bro · check again`
+- `src/data/say/infoPanel.js:21` T? `✓ {n} Hemi Bros · check again`
+- `src/data/say/infoPanel.js:22` T? `Verify my Hemi Bros`
+- `src/data/say/infoPanel.js:23` T? `Hemi Bro holder? Open BroTown in your wallet app to verify`
+- `src/data/say/infoPanel.js:24` T? `This wallet holds no Hemi Bros.`
+- `src/data/say/infoPanel.js:26` T? `✓ Hemi Bro #{id} verified`
+- `src/data/say/infoPanel.js:27` T? `Verify Hemi Bro #{id}`
+- `src/data/say/infoPanel.js:28` T? `No wallet in this browser`
+
+### data: infoPopup (8)
+
+- `src/data/say/infoPopup.js:5` T? `At its cap — no more points can go here.`
+- `src/data/say/infoPopup.js:7` T? `Got it`
+- `src/data/say/infoPopup.js:9` T? `{label}, {n} point to spend`
+- `src/data/say/infoPopup.js:9` T? `{label}, {n} points to spend`
+- `src/data/say/infoPopup.js:11` T? `One fewer point`
+- `src/data/say/infoPopup.js:12` T? `One more point`
+- `src/data/say/infoPopup.js:14` T? `Spend {n} point`
+- `src/data/say/infoPopup.js:14` T? `Spend {n} points`
+
+### data: inspectCard (15)
+
+- `src/data/say/inspectCard.js:11` T? `Lv {level} · {archetype} · {pole}`
+- `src/data/say/inspectCard.js:15` T? `{hp} HP`
+- `src/data/say/inspectCard.js:16` T? `{stam} stam`
+- `src/data/say/inspectCard.js:17` T? `{pct}% eva`
+- `src/data/say/inspectCard.js:18` T? `{mp} MP`
+- `src/data/say/inspectCard.js:22` T? `(no vows yet)`
+- `src/data/say/inspectCard.js:23` T? `vowed {days} days`
+- `src/data/say/inspectCard.js:24` T? `vowed {days} days · with {partner}`
+- `src/data/say/inspectCard.js:35` T? `Gem Cutting`
+- `src/data/say/inspectCard.js:45` T? `(no titles yet)`
+- `src/data/say/inspectCard.js:46` T? `{zones} zones · {apex} apex kills`
+- `src/data/say/inspectCard.js:47` T? `All titles:`
+- `src/data/say/inspectCard.js:51` T? `{count} entries`
+- `src/data/say/inspectCard.js:52` T? `Day {day}`
+- `src/data/say/inspectCard.js:55` T? `long-press any name or number to learn more · tap to dismiss`
+
+### data: inspectPlayer (19)
+
+- `src/data/say/inspectPlayer.js:4` T? `Party invite sent`
+- `src/data/say/inspectPlayer.js:5` T? `Duel sent`
+- `src/data/say/inspectPlayer.js:6` T? `Removed friend`
+- `src/data/say/inspectPlayer.js:7` T? `Friend request sent!`
+- `src/data/say/inspectPlayer.js:8` T? `Threat on cooldown`
+- `src/data/say/inspectPlayer.js:9` T? `Threat issued!`
+- `src/data/say/inspectPlayer.js:10` T? `Clan invite sent`
+- `src/data/say/inspectPlayer.js:12` T? `Muted — their chat stops here`
+- `src/data/say/inspectPlayer.js:15` T? `Can't block in lawless zone!`
+- `src/data/say/inspectPlayer.js:16` T? `Blocked: no chat, emotes or requests from them`
+- `src/data/say/inspectPlayer.js:19` T? `Inspect {name}`
+- `src/data/say/inspectPlayer.js:21` T? `LV {lv}`
+- `src/data/say/inspectPlayer.js:22` T? `In party`
+- `src/data/say/inspectPlayer.js:25` T? `Invite to Party`
+- `src/data/say/inspectPlayer.js:27` T? `Friends — tap to remove`
+- `src/data/say/inspectPlayer.js:28` T? `Add friend`
+- `src/data/say/inspectPlayer.js:30` T? `Add Friend`
+- `src/data/say/inspectPlayer.js:33` T? `Invite to [{tag}]`
+- `src/data/say/inspectPlayer.js:42` T? `Why are you reporting {name}?`
+
+### data: inventoryDash (3)
+
+- `src/data/say/inventoryDash.js:10` T? `Your bag is empty.`
+- `src/data/say/inventoryDash.js:11` T? `No {what} items yet.`
+- `src/data/say/inventoryDash.js:13` T? `Defeat monsters and gather materials to fill it up.`
+
+### data: inventoryPanel (37)
+
+- `src/data/say/inventoryPanel.js:5` T? `Active: {slot}`
+- `src/data/say/inventoryPanel.js:10` T? `Melee Weapon`
+- `src/data/say/inventoryPanel.js:11` T? `Ranged Weapon`
+- `src/data/say/inventoryPanel.js:19` T? `E1: {element} ({status})`
+- `src/data/say/inventoryPanel.js:20` T? `E2: {element} ({status})`
+- `src/data/say/inventoryPanel.js:23` T? `No elements`
+- `src/data/say/inventoryPanel.js:25` T? `WORN ARMOR`
+- `src/data/say/inventoryPanel.js:26` T? `Steel Plate`
+- `src/data/say/inventoryPanel.js:28` T? `Steel Greaves`
+- `src/data/say/inventoryPanel.js:31` T? `Chest · under armor`
+- `src/data/say/inventoryPanel.js:34` T? `No Armor`
+- `src/data/say/inventoryPanel.js:35` T? `Attuned: {attunement}`
+- `src/data/say/inventoryPanel.js:36` T? `No attunement`
+- `src/data/say/inventoryPanel.js:38` T? `{tier} Amulet`
+- `src/data/say/inventoryPanel.js:40` T? `{gem} gem`
+- `src/data/say/inventoryPanel.js:41` T? `No gem — visit the Enchanter to slot one`
+- `src/data/say/inventoryPanel.js:42` T? `No Amulet`
+- `src/data/say/inventoryPanel.js:43` T? `Craft at Blacksmith from gold bars (nuggets: {nuggets}/{perBar}, bars: {bars})`
+- `src/data/say/inventoryPanel.js:46` T? `No bonuses yet`
+- `src/data/say/inventoryPanel.js:47` T? `No Shield`
+- `src/data/say/inventoryPanel.js:48` T? `Craft at the Blacksmith from ore`
+- `src/data/say/inventoryPanel.js:50` T? `Golden Ticket`
+- `src/data/say/inventoryPanel.js:51` T? `Open Golden Ticket`
+- `src/data/say/inventoryPanel.js:53` T? `Food ({count})`
+- `src/data/say/inventoryPanel.js:54` T? `{fish} ×{qty} (+{heal}HP)`
+- `src/data/say/inventoryPanel.js:55` T? `+{heal} HP`
+- `src/data/say/inventoryPanel.js:57` T? `Weapon Stash ({count}/{max})`
+- `src/data/say/inventoryPanel.js:58` T? `Empty. Weapon drops are auto-stashed here for comparison.`
+- `src/data/say/inventoryPanel.js:59` T? `Need {label} {req} (have {have})`
+- `src/data/say/inventoryPanel.js:60` T? `Not sold: no connection`
+- `src/data/say/inventoryPanel.js:62` T? `Sell ({gold}g)`
+- `src/data/say/inventoryPanel.js:64` T? `Codex: {count} collisions discovered`
+- `src/data/say/inventoryPanel.js:66` T? `Pets: {count}/{max}`
+- `src/data/say/inventoryPanel.js:67` T? `Trapping Lv{level}`
+- `src/data/say/inventoryPanel.js:68` T? `No pets. Weaken a monster to <20% HP then tap 🪤 to capture!`
+- `src/data/say/inventoryPanel.js:69` T? `Lv{level} {archetype}`
+- `src/data/say/inventoryPanel.js:70` T? `Tap a pet to set active. Active pet follows you and auto-collects loot within {radius}px.`
+
+### data: inventorySurface (6)
+
+- `src/data/say/inventorySurface.js:4` T? `Newest first`
+- `src/data/say/inventorySurface.js:5` T? `Oldest first`
+- `src/data/say/inventorySurface.js:6` T? `Tier (high to low)`
+- `src/data/say/inventorySurface.js:7` T? `Tier (low to high)`
+- `src/data/say/inventorySurface.js:18` T? `No matches`
+- `src/data/say/inventorySurface.js:19` T? `Nothing here yet`
+
+### data: itemDetail (70)
+
+- `src/data/say/itemDetail.js:7` T? `{n} make a {element} Gem at the Gem Works`
+- `src/data/say/itemDetail.js:8` T? `Cut into a {element} Gem at the Gem Works`
+- `src/data/say/itemDetail.js:9` T? `Set into your gear at the Gem Works`
+- `src/data/say/itemDetail.js:10` T? `· on a weapon: {does}`
+- `src/data/say/itemDetail.js:11` T? `Crack at the Gem Works: {chance}% hold a Raw {element} Gem`
+- `src/data/say/itemDetail.js:12` T? `Cut into any elemental gem at the Gem Works`
+- `src/data/say/itemDetail.js:14` T? `· Needs level {req}`
+- `src/data/say/itemDetail.js:15` T? `(you are {have})`
+- `src/data/say/itemDetail.js:16` T? `· Needs {req} Defense`
+- `src/data/say/itemDetail.js:17` T? `(you have {have})`
+- `src/data/say/itemDetail.js:19` T? `Same {unit} as equipped`
+- `src/data/say/itemDetail.js:20` T? `{sign}{mag}{sep}{unit} vs equipped`
+- `src/data/say/itemDetail.js:23` T? `% Damage Reduced`
+- `src/data/say/itemDetail.js:25` T? `Tap Block in a fight to raise it`
+- `src/data/say/itemDetail.js:25` T? `Press Q to block`
+- `src/data/say/itemDetail.js:27` T? `+{hp} HP when eaten`
+- `src/data/say/itemDetail.js:28` T? `Open it to claim your cape`
+- `src/data/say/itemDetail.js:29` T? `Open it for a prize — usually coins, sometimes fish, a rare gem or armour`
+- `src/data/say/itemDetail.js:30` T? `Worn — a contest prize`
+- `src/data/say/itemDetail.js:31` T? `A contest prize, in your bag`
+- `src/data/say/itemDetail.js:32` T? `{desc} · replaces your meal`
+- `src/data/say/itemDetail.js:33` T? `{desc} · replaces your brew`
+- `src/data/say/itemDetail.js:34` T? `Cook over a campfire`
+- `src/data/say/itemDetail.js:36` T? `Light a campfire, or harden {n} into {name} at the Woodworker`
+- `src/data/say/itemDetail.js:37` T? `Light a campfire to cook at`
+- `src/data/say/itemDetail.js:38` T? `Hardens a {log} bow or staff at the Woodworker`
+- `src/data/say/itemDetail.js:39` T? `Made from {n} {log}`
+- `src/data/say/itemDetail.js:40` T? `Smelt {n} into a {name} at the Blacksmith`
+- `src/data/say/itemDetail.js:41` T? `Forge into armor at the Blacksmith`
+- `src/data/say/itemDetail.js:42` T? `Smelted from {n} {ore}`
+- `src/data/say/itemDetail.js:43` T? `Quantity: {n}`
+- `src/data/say/itemDetail.js:46` T? `Damage {dmg} · DPS {dps}`
+- `src/data/say/itemDetail.js:49` T? `{tier} · Shield`
+- `src/data/say/itemDetail.js:51` T? `{pct}% damage reduced`
+- `src/data/say/itemDetail.js:53` T? `{tier} · Chest`
+- `src/data/say/itemDetail.js:55` T? `Armor · Legs`
+- `src/data/say/itemDetail.js:56` T? `Worn armor`
+- `src/data/say/itemDetail.js:57` T? `In bag`
+- `src/data/say/itemDetail.js:58` T? `Steel · {slot}`
+- `src/data/say/itemDetail.js:61` T? `Golden Ticket`
+- `src/data/say/itemDetail.js:62` T? `{colour} Cape`
+- `src/data/say/itemDetail.js:66` T? `DMG {dmg} · DPS {dps}`
+- `src/data/say/itemDetail.js:69` T? `{tier} Shield`
+- `src/data/say/itemDetail.js:70` T? `{tier} shield · raise to block`
+- `src/data/say/itemDetail.js:73` T? `Plate armor · chest · raises defense`
+- `src/data/say/itemDetail.js:74` T? `Plate greaves · legs · raises defense`
+- `src/data/say/itemDetail.js:76` T? `Cloth shirt · worn under armor`
+- `src/data/say/itemDetail.js:80` T? `Nothing to equip here.`
+- `src/data/say/itemDetail.js:81` T? `⌄ swipe · {n} items`
+- `src/data/say/itemDetail.js:83` T? `Chest — Layers`
+- `src/data/say/itemDetail.js:84` T? `No chest armor`
+- `src/data/say/itemDetail.js:85` T? `Armor · top layer`
+- `src/data/say/itemDetail.js:86` T? `Clothing · under armor`
+- `src/data/say/itemDetail.js:88` T? `No greaves`
+- `src/data/say/itemDetail.js:89` T? `Armor · legs`
+- `src/data/say/itemDetail.js:91` T? `Put a price on it first`
+- `src/data/say/itemDetail.js:92` T? `That piece moved — open it again`
+- `src/data/say/itemDetail.js:93` T? `That weapon moved — open it again`
+- `src/data/say/itemDetail.js:94` T? `The store could not take it`
+- `src/data/say/itemDetail.js:97` T? `Unpin from the top of the bag`
+- `src/data/say/itemDetail.js:98` T? `Pin to the top of the bag`
+- `src/data/say/itemDetail.js:101` T? `Drop on the ground`
+- `src/data/say/itemDetail.js:102` T? `How many`
+- `src/data/say/itemDetail.js:104` T? `Only you can see it for a minute, then anyone can pick it up. At two minutes it starts ...`
+- `src/data/say/itemDetail.js:105` T? `Drop {n}`
+- `src/data/say/itemDetail.js:106` T? `Drop it`
+- `src/data/say/itemDetail.js:109` T? `Sell in the Auction House`
+- `src/data/say/itemDetail.js:110` T? `Price in gold`
+- `src/data/say/itemDetail.js:111` T? `It leaves your bag now and comes back in a week if nobody buys it.`
+- `src/data/say/itemDetail.js:113` T? `Put it up`
+
+### data: itemTooltip (21)
+
+- `src/data/say/itemTooltip.js:4` T? `Tier {tier}`
+- `src/data/say/itemTooltip.js:5` T? `Hardness {hardness}`
+- `src/data/say/itemTooltip.js:6` T? `Temper {temper}`
+- `src/data/say/itemTooltip.js:8` T? `Hits harder`
+- `src/data/say/itemTooltip.js:10` T? `A bit slower`
+- `src/data/say/itemTooltip.js:11` T? `Lucky strike`
+- `src/data/say/itemTooltip.js:15` T? `Crit chance`
+- `src/data/say/itemTooltip.js:17` T? `Salvaged {name} · Undo`
+- `src/data/say/itemTooltip.js:19` T? `Salvaged {count} items · Undo All`
+- `src/data/say/itemTooltip.js:21` T? `VS YOUR {gear}`
+- `src/data/say/itemTooltip.js:23` T? `COMPARED TO WHAT YOU'RE WEARING`
+- `src/data/say/itemTooltip.js:27` T? `{filled} of {slots} slots`
+- `src/data/say/itemTooltip.js:29` T? `{low}-{high}g recently`
+- `src/data/say/itemTooltip.js:34` T? `Take off`
+- `src/data/say/itemTooltip.js:38` T? `Keep safe`
+- `src/data/say/itemTooltip.js:39` T? `Add shortcut`
+- `src/data/say/itemTooltip.js:42` T? `Pick a shortcut slot to assign:`
+- `src/data/say/itemTooltip.js:43` T? `SLOT {slot}`
+- `src/data/say/itemTooltip.js:46` T? `forged by {crafter}`
+- `src/data/say/itemTooltip.js:47` T? `forged by {crafter} · {when}`
+- `src/data/say/itemTooltip.js:50` T? `{days} days ago`
 
 ### data: items (103)
 
@@ -5676,6 +4265,85 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/joinGate.js:82` T? `Pick another name`
 - `src/data/joinGate.js:83` T? `Pinch back to 100% zoom`
 
+### data: journey (11)
+
+- `src/data/say/journey.js:6` T? `Lifetime Gold`
+- `src/data/say/journey.js:7` T? `Lifetime XP`
+- `src/data/say/journey.js:8` T? `Duels Won`
+- `src/data/say/journey.js:9` T? `Deepest Zone`
+- `src/data/say/journey.js:12` T? `{count} shot`
+- `src/data/say/journey.js:12` T? `{count} shots`
+- `src/data/say/journey.js:13` T? `no shots yet`
+- `src/data/say/journey.js:14` T? `Basic attacks that hit an enemy. Specials are not counted.`
+- `src/data/say/journey.js:15` T? `Your last 200: {recent}.`
+- `src/data/say/journey.js:17` T? `Level {level} recorded on Hemi`
+- `src/data/say/journey.js:18` T? `Tap to view the transaction`
+
+### data: keyboardHints (9)
+
+- `src/data/say/keyboardHints.js:5` T? `Show the keyboard controls`
+- `src/data/say/keyboardHints.js:6` T? `Hide the keyboard controls`
+- `src/data/say/keyboardHints.js:7` T? `Show the keyboard controls (H)`
+- `src/data/say/keyboardHints.js:8` T? `Hide the keyboard controls (H)`
+- `src/data/say/keyboardHints.js:10` T? `Fewer keys`
+- `src/data/say/keyboardHints.js:11` T? `More keys`
+- `src/data/say/keyboardHints.js:13` T? `Show keyboard controls`
+- `src/data/say/keyboardHints.js:14` T? `Hide keyboard controls`
+- `src/data/say/keyboardHints.js:15` T? `Hide these (H)`
+
+### data: leaderboard (50)
+
+- `src/data/say/leaderboard.js:5` T? `Overall power`
+- `src/data/say/leaderboard.js:11` T? `{stat} points`
+- `src/data/say/leaderboard.js:14` T? `Achievement points`
+- `src/data/say/leaderboard.js:23` T? `Gem Cutting`
+- `src/data/say/leaderboard.js:26` T? `Daily spin`
+- `src/data/say/leaderboard.js:27` T? `Coin flip`
+- `src/data/say/leaderboard.js:28` T? `Biggest fish`
+- `src/data/say/leaderboard.js:38` T? `{v} AP`
+- `src/data/say/leaderboard.js:39` T? `{v} kill`
+- `src/data/say/leaderboard.js:40` T? `{v} kills`
+- `src/data/say/leaderboard.js:41` T? `{v} pt`
+- `src/data/say/leaderboard.js:42` T? `{v} pts`
+- `src/data/say/leaderboard.js:45` T? `Rank {place}: {name}, {value}{gone}`
+- `src/data/say/leaderboard.js:46` T? `level {lv}`
+- `src/data/say/leaderboard.js:47` T? `, a deleted character`
+- `src/data/say/leaderboard.js:49` T? `400 points ahead = 10× likelier to win`
+- `src/data/say/leaderboard.js:50` T? `Power: {hint}`
+- `src/data/say/leaderboard.js:51` T? `What Power means`
+- `src/data/say/leaderboard.js:56` T? `Melee, Bow and Magic levels added up`
+- `src/data/say/leaderboard.js:58` T? `Show the total`
+- `src/data/say/leaderboard.js:59` T? `Show Melee, Bow and Magic`
+- `src/data/say/leaderboard.js:62` T? `Nobody has achievement points yet.`
+- `src/data/say/leaderboard.js:63` T? `Nobody has a kill yet.`
+- `src/data/say/leaderboard.js:64` T? `Nobody has put points in this yet.`
+- `src/data/say/leaderboard.js:65` T? `Nobody has trained this yet.`
+- `src/data/say/leaderboard.js:67` T? `Biggest wins`
+- `src/data/say/leaderboard.js:68` T? `Biggest losses`
+- `src/data/say/leaderboard.js:69` T? `The spin's records are closed for now.`
+- `src/data/say/leaderboard.js:70` T? `The records can't be read right now.`
+- `src/data/say/leaderboard.js:71` T? `Nobody has taken a pot from the daily spin yet.`
+- `src/data/say/leaderboard.js:72` T? `Nobody has lost a pot to double or nothing yet.`
+- `src/data/say/leaderboard.js:73` T? `Won from Ace on one flip`
+- `src/data/say/leaderboard.js:74` T? `Lost to Ace on one flip`
+- `src/data/say/leaderboard.js:75` T? `Nobody has won a flip against Ace yet.`
+- `src/data/say/leaderboard.js:76` T? `Nobody has lost a flip to Ace yet.`
+- `src/data/say/leaderboard.js:86` T? `Kinds of board`
+- `src/data/say/leaderboard.js:87` T? `{board}: tap to choose a board`
+- `src/data/say/leaderboard.js:89` T? `Close the list of boards`
+- `src/data/say/leaderboard.js:90` T? `All-time leaderboard`
+- `src/data/say/leaderboard.js:93` T? `Rank {rank}`
+- `src/data/say/leaderboard.js:94` T? `{name}, a deleted character`
+- `src/data/say/leaderboard.js:95` T? `{name}, you`
+- `src/data/say/leaderboard.js:99` T? `{count} players online`
+- `src/data/say/leaderboard.js:108` T? `Skill Total`
+- `src/data/say/leaderboard.js:109` T? `Achievement Pts`
+- `src/data/say/leaderboard.js:110` T? `Monsters Killed`
+- `src/data/say/leaderboard.js:111` T? `Dungeons Cleared`
+- `src/data/say/leaderboard.js:112` T? `Gold Earned`
+- `src/data/say/leaderboard.js:117` T? `Lv {lv}`
+- `src/data/say/leaderboard.js:118` T? `Connect with more players to see rankings!`
+
 ### data: lifeSkills (106)
 
 - `src/data/lifeSkills.js:14` T `Rough`
@@ -5785,7 +4453,39 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/lifeSkills.js:230` T `Origin Ore`
 - `src/data/lifeSkills.js:230` T? `Origin Deposit`
 
-### data: monsterCodex (118)
+### data: loginScreen (11)
+
+- `src/data/say/loginScreen.js:4` T? `Hemi Bros — BroTown, multiplayer RPG`
+- `src/data/say/loginScreen.js:6` T? `Create Character`
+- `src/data/say/loginScreen.js:8` T? `This device is full`
+- `src/data/say/loginScreen.js:9` T? `You have all {max} bros this device can hold. Play one, or free a slot: tap a bro's •••...`
+- `src/data/say/loginScreen.js:10` T? `Choose a bro`
+- `src/data/say/loginScreen.js:11` T? `Never mind`
+- `src/data/say/loginScreen.js:13` T? `Checking for your character…`
+- `src/data/say/loginScreen.js:14` T? `Your Login Key lets you access your character on any device.`
+- `src/data/say/loginScreen.js:15` T? `Any device • Any browser • No download • Free`
+- `src/data/say/loginScreen.js:16` T? `Built {time}`
+- `src/data/say/loginScreen.js:17` T? `v{game} · {sha}`
+
+### data: loginSpin (15)
+
+- `src/data/say/loginSpin.js:5` T? `Double or nothing?`
+- `src/data/say/loginSpin.js:6` T? `Nothing. Better luck tomorrow.`
+- `src/data/say/loginSpin.js:7` T? `Doubled: {pot} gold!`
+- `src/data/say/loginSpin.js:8` T? `Round and round...`
+- `src/data/say/loginSpin.js:9` T? `{pot} gold`
+- `src/data/say/loginSpin.js:10` T? `Win it for {twice}, or lose it all. 50 / 50.`
+- `src/data/say/loginSpin.js:11` T? `{unsafe} (NO still collects)`
+- `src/data/say/loginSpin.js:12` T? `Exactly 50/50 every spin`
+- `src/data/say/loginSpin.js:14` T? `Yes, double or nothing`
+- `src/data/say/loginSpin.js:16` T? `No, collect the gold`
+- `src/data/say/loginSpin.js:19` T? `Free daily spin`
+- `src/data/say/loginSpin.js:20` T? `{pot} gold!`
+- `src/data/say/loginSpin.js:21` T? `+{pot} gold`
+- `src/data/say/loginSpin.js:24` T? `The wheel did not answer. What you hold is kept.`
+- `src/data/say/loginSpin.js:25` T? `Tap SPIN: one free spin a day`
+
+### data: monsterCodex (159)
 
 - `src/data/monsterCodex.js:55` T `Frost`
 - `src/data/monsterCodex.js:55` T `Chill`
@@ -5905,6 +4605,47 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/monsterCodex.js:249` T? `the South Road`
 - `src/data/monsterCodex.js:249` T? `the Bog Trail`
 - `src/data/monsterCodex.js:249` T? `the West Road`
+- `src/data/say/monsterCodex.js:6` T? `Lv {lo}`
+- `src/data/say/monsterCodex.js:7` T? `Lv {lo}–{hi}`
+- `src/data/say/monsterCodex.js:8` T? `Leave BroTown by its {gate} gate and follow {road} straight on.`
+- `src/data/say/monsterCodex.js:9` T? `Leave BroTown by its {gate} gate on {road}, then take {fork} where it forks off.`
+- `src/data/say/monsterCodex.js:14` T? `{n} defeated`
+- `src/data/say/monsterCodex.js:15` T? `Not met yet`
+- `src/data/say/monsterCodex.js:18` T? `{n} defeated`
+- `src/data/say/monsterCodex.js:19` T? `· {n} past Lv 20`
+- `src/data/say/monsterCodex.js:28` T? `All monsters`
+- `src/data/say/monsterCodex.js:36` T? `Each kill rolls once, 1–{sides}. The item whose numbers it lands on drops{free}.`
+- `src/data/say/monsterCodex.js:37` T? `; {range} drops nothing more`
+- `src/data/say/monsterCodex.js:38` T? `Each kill rolls 1–{sides} for every item. A roll in its range drops it.`
+- `src/data/say/monsterCodex.js:39` T? `Tap an item to see what it is and the grades it can roll.`
+- `src/data/say/monsterCodex.js:43` T? `Found from`
+- `src/data/say/monsterCodex.js:44` T? `Base drop chance`
+- `src/data/say/monsterCodex.js:45` T? `(chance for this item to drop)`
+- `src/data/say/monsterCodex.js:46` T? `drops on a roll of {range} out of {sides}`
+- `src/data/say/monsterCodex.js:47` T? `Possible rarity`
+- `src/data/say/monsterCodex.js:48` T? `(rolls after drop)`
+- `src/data/say/monsterCodex.js:51` T? `What it does`
+- `src/data/say/monsterCodex.js:52` T? `Element · {name}`
+- `src/data/say/monsterCodex.js:53` T? `A pet from {land}, out with you, softens it.`
+- `src/data/say/monsterCodex.js:54` T? `Special attack · {name}`
+- `src/data/say/monsterCodex.js:56` T? `Its story`
+- `src/data/say/monsterCodex.js:57` T? `Elder form · {name}`
+- `src/data/say/monsterCodex.js:60` T? `Its land`
+- `src/data/say/monsterCodex.js:61` T? `{land}, {levels}: the weakest at the land's near end by BroTown, stronger the further o...`
+- `src/data/say/monsterCodex.js:62` T? `Before the first pass`
+- `src/data/say/monsterCodex.js:63` T? `{name}, {levels}.`
+- `src/data/say/monsterCodex.js:64` T? `Past the first pass`
+- `src/data/say/monsterCodex.js:65` T? `{name}, its elder form, {levels}.`
+- `src/data/say/monsterCodex.js:66` T? `The way there`
+- `src/data/say/monsterCodex.js:68` T? `{dungeon}, in {land}: {levels}, in waves, its land's monsters with a boss at the end.`
+- `src/data/say/monsterCodex.js:71` T? `‹ All monsters`
+- `src/data/say/monsterCodex.js:72` T? `Defeat one to open its page.`
+- `src/data/say/monsterCodex.js:73` T? `It lives in {land}.`
+- `src/data/say/monsterCodex.js:76` T? `Monsters of the world`
+- `src/data/say/monsterCodex.js:77` T? `{met} of {total} met`
+- `src/data/say/monsterCodex.js:78` T? `The codex starts counting your kills after the next game update.`
+- `src/data/say/monsterCodex.js:79` T? `Your codex can't be read right now. It will be back.`
+- `src/data/say/monsterCodex.js:80` T? `Defeat one of a kind to open its whole page: everything it drops, what it does, its sto...`
 
 ### data: monsterDeathZones (14)
 
@@ -5922,6 +4663,115 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/monsterDeathZones.js:458` T? `{…}: {…} of {…} points in no zone`
 - `src/data/monsterDeathZones.js:459` T? `{…}: {…} of {…} points in more than one zone`
 - `src/data/monsterDeathZones.js:463` T? `alias {…}: no look {…}`
+
+### data: morePanel (37)
+
+- `src/data/say/morePanel.js:5` T? `Life Skills`
+- `src/data/say/morePanel.js:23` T? `{label} — {status}`
+- `src/data/say/morePanel.js:25` T? `{kills} · {duels}`
+- `src/data/say/morePanel.js:26` T? `{kills} kill`
+- `src/data/say/morePanel.js:26` T? `{kills} kills`
+- `src/data/say/morePanel.js:27` T? `{duels} duel won`
+- `src/data/say/morePanel.js:27` T? `{duels} duels won`
+- `src/data/say/morePanel.js:28` T? `{earned} of {total} earned`
+- `src/data/say/morePanel.js:29` T? `{fresh} new in the codex`
+- `src/data/say/morePanel.js:30` T? `{met} of {total} monsters met`
+- `src/data/say/morePanel.js:31` T? `Learn about the monsters you defeat`
+- `src/data/say/morePanel.js:32` T? `{ready} ready to turn in`
+- `src/data/say/morePanel.js:33` T? `Track your quests`
+- `src/data/say/morePanel.js:34` T? `New level-ups to view`
+- `src/data/say/morePanel.js:35` T? `Cooking · Fishing · Mining`
+- `src/data/say/morePanel.js:36` T? `{count} waiting`
+- `src/data/say/morePanel.js:37` T? `{count} online`
+- `src/data/say/morePanel.js:38` T? `{n} friend`
+- `src/data/say/morePanel.js:38` T? `{n} friends`
+- `src/data/say/morePanel.js:39` T? `Add friends · direct messages`
+- `src/data/say/morePanel.js:40` T? `Your party · {n} member`
+- `src/data/say/morePanel.js:40` T? `Your party · {n} members`
+- `src/data/say/morePanel.js:41` T? `Make a party in the Saloon`
+- `src/data/say/morePanel.js:42` T? `Not joined · player clans`
+- `src/data/say/morePanel.js:43` T? `{rank} · {guild}`
+- `src/data/say/morePanel.js:44` T? `Novice in every skill guild`
+- `src/data/say/morePanel.js:45` T? `{n} pet`
+- `src/data/say/morePanel.js:45` T? `{n} pets`
+- `src/data/say/morePanel.js:46` T? `Trap a monster to tame it`
+- `src/data/say/morePanel.js:47` T? `Sound · Controls · Login Key · Feedback · Privacy`
+- `src/data/say/morePanel.js:48` T? `The world map: the lands, the town, your quest`
+- `src/data/say/morePanel.js:49` T? `{count} new`
+- `src/data/say/morePanel.js:50` T? `World chat and the game’s news`
+- `src/data/say/morePanel.js:51` T? `Tell the developer what you think`
+- `src/data/say/morePanel.js:52` T? `About the game, privacy, rules and credits`
+- `src/data/say/morePanel.js:53` T? `Log out · switch bro · save your Login Key`
+- `src/data/say/morePanel.js:54` T? `Log out · guest tab, no key`
+
+### data: nameModal (28)
+
+- `src/data/say/nameModal.js:8` T? `Skin Tone`
+- `src/data/say/nameModal.js:9` T? `Bro type`
+- `src/data/say/nameModal.js:15` T? `Pattern or draw on this shirt`
+- `src/data/say/nameModal.js:16` T? `Pattern or draw on these pants`
+- `src/data/say/nameModal.js:17` T? `Tattoo your body or face`
+- `src/data/say/nameModal.js:18` T? `Pattern these shoes`
+- `src/data/say/nameModal.js:20` T? `Bro type`
+- `src/data/say/nameModal.js:33` T? `Live preview — tap to zoom`
+- `src/data/say/nameModal.js:35` T? `BRO NAME`
+- `src/data/say/nameModal.js:36` T? `Tap to name`
+- `src/data/say/nameModal.js:36` T? `Type a name`
+- `src/data/say/nameModal.js:37` T? `Random name`
+- `src/data/say/nameModal.js:38` T? `Generate a random name`
+- `src/data/say/nameModal.js:39` T? `✓ Ready to go`
+- `src/data/say/nameModal.js:40` T? `At least 2 characters`
+- `src/data/say/nameModal.js:42` T? `Randomize Bro`
+- `src/data/say/nameModal.js:43` T? `Back to the look you started with`
+- `src/data/say/nameModal.js:45` T? `Enter BroTown`
+- `src/data/say/nameModal.js:46` T? `Enter BroTown`
+- `src/data/say/nameModal.js:47` T? `Back to the main menu`
+- `src/data/say/nameModal.js:49` T? `Hemi Bros`
+- `src/data/say/nameModal.js:52` T? `Trait Picker`
+- `src/data/say/nameModal.js:53` T? `Appearance category`
+- `src/data/say/nameModal.js:54` T? `{label} options`
+- `src/data/say/nameModal.js:56` T? `{label} colors`
+- `src/data/say/nameModal.js:58` T? `Eraser, and open the editor`
+- `src/data/say/nameModal.js:59` T? `Colour {i}, and open the editor`
+- `src/data/say/nameModal.js:60` T? `Brush {n} wide, and open the editor`
+
+### data: nmlAsk (11)
+
+- `src/data/say/nmlAsk.js:4` T? `{name} beat you`
+- `src/data/say/nmlAsk.js:5` T? `{name} beat you.`
+- `src/data/say/nmlAsk.js:6` T? `You can't attack them for {n} more minute.`
+- `src/data/say/nmlAsk.js:6` T? `You can't attack them for {n} more minutes.`
+- `src/data/say/nmlAsk.js:7` T? `Ask for a rematch`
+- `src/data/say/nmlAsk.js:9` T? `Hit back {name}?`
+- `src/data/say/nmlAsk.js:10` T? `Attack {name}?`
+- `src/data/say/nmlAsk.js:11` T? `Hitting back the player who attacked you gives you no red skull. Tap for what No man's ...`
+- `src/data/say/nmlAsk.js:12` T? `Attacking a player gives you a red skull. Tap for what No man's land means.`
+- `src/data/say/nmlAsk.js:13` T? `Lv {lv}`
+- `src/data/say/nmlAsk.js:19` T? `Let {name} attack you again`
+
+### data: nmlBadge (21)
+
+- `src/data/say/nmlBadge.js:4` T? `Lv {lo}–{hi}`
+- `src/data/say/nmlBadge.js:6` T? `No man's land {ring} · Lv {lv} monsters`
+- `src/data/say/nmlBadge.js:7` T? `No man's land {ring} · {levels}`
+- `src/data/say/nmlBadge.js:8` T? `The rules`
+- `src/data/say/nmlBadge.js:9` T? `{n} level`
+- `src/data/say/nmlBadge.js:9` T? `{n} levels`
+- `src/data/say/nmlBadge.js:11` T? `{label} players within {within} of yours, while they stand in No man's land too. The lo...`
+- `src/data/say/nmlBadge.js:13` T? `{label} tap a player, or swing or shoot at them, and choose {attack}. Until you do, you...`
+- `src/data/say/nmlBadge.js:15` T? `Attack first:`
+- `src/data/say/nmlBadge.js:16` T? `{label} you become an {outlaw} (a red skull) for 20 minutes of play, starting over with...`
+- `src/data/say/nmlBadge.js:19` T? `Get attacked:`
+- `src/data/say/nmlBadge.js:20` T? `{label} a {skull}. To hit back, swing, shoot or tap them and choose {attack} once: hitt...`
+- `src/data/say/nmlBadge.js:22` T? `Keep things safe:`
+- `src/data/say/nmlBadge.js:23` T? `{label} the Bank in BroTown holds gold and things, out of reach of any death. Diego sel...`
+- `src/data/say/nmlBadge.js:24` T? `Walk back toward BroTown to leave.`
+- `src/data/say/nmlBadge.js:25` T? `You carry a red skull: {min} min of play left.`
+- `src/data/say/nmlBadge.js:26` T? `You carry a white skull: {min} min of play left.`
+- `src/data/say/nmlBadge.js:29` T? `{place} · Safe`
+- `src/data/say/nmlBadge.js:30` T? `Out past the safe ground is No man's land, where other players can attack you. The mini...`
+- `src/data/say/nmlBadge.js:32` T? `Outlaw: you attacked a player first, {min} minutes left. Tap for what it means.`
+- `src/data/say/nmlBadge.js:33` T? `No man's land {ring}: players can attack you here. Tap for what it means.`
 
 ### data: npcLooks (42)
 
@@ -5975,6 +4825,213 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/oreArt.js:11` T `blacksteel`
 - `src/data/oreArt.js:12` T `titanium`
 - `src/data/oreArt.js:13` T `obsidian`
+
+### data: paint (77)
+
+- `src/data/say/paint.js:4` T? `Shirt design`
+- `src/data/say/paint.js:6` T? `Front and back are separate — the back shows when you walk away.`
+- `src/data/say/paint.js:7` T? `Pants design`
+- `src/data/say/paint.js:9` T? `Sits on the upper leg. Leg armour covers it.`
+- `src/data/say/paint.js:12` T? `Draw on the chest or the arms. A shirt or breastplate covers the chest; sleeves cover t...`
+- `src/data/say/paint.js:13` T? `back of the pants`
+- `src/data/say/paint.js:14` T? `Shows when you walk away. Separate from the front — leg armour covers it.`
+- `src/data/say/paint.js:15` T? `back tattoo`
+- `src/data/say/paint.js:16` T? `Shows when you walk away. Separate from your chest — a shirt or breastplate covers it.`
+- `src/data/say/paint.js:17` T? `face tattoo`
+- `src/data/say/paint.js:18` T? `On your face. A hat or a beard can cover part of it.`
+- `src/data/say/paint.js:19` T? `arm tattoo`
+- `src/data/say/paint.js:20` T? `Goes on BOTH arms. Sleeves cover the upper arm, so it shows below them.`
+- `src/data/say/paint.js:21` T? `back of head`
+- `src/data/say/paint.js:22` T? `Shows when you walk away. Separate from your face — hair covers part of it.`
+- `src/data/say/paint.js:23` T? `Shoe pattern`
+- `src/data/say/paint.js:25` T? `Boots are small, so these are the patterns that still read at that size.`
+- `src/data/say/paint.js:29` T? `Back of Head`
+- `src/data/say/paint.js:30` T? `Chest + Arms`
+- `src/data/say/paint.js:31` T? `Back + Arms`
+- `src/data/say/paint.js:36` T? `Draw freehand`
+- `src/data/say/paint.js:37` T? `Drag for a straight line`
+- `src/data/say/paint.js:38` T? `Drag for a box outline`
+- `src/data/say/paint.js:39` T? `Drag for a circle outline`
+- `src/data/say/paint.js:40` T? `Tap an area to flood it — with the eraser chosen, to clear it`
+- `src/data/say/paint.js:41` T? `Pick a letter, then tap to place it`
+- `src/data/say/paint.js:42` T? `Tap something you already drew to pick it up — recolour, resize or re-layer it`
+- `src/data/say/paint.js:48` T? `letter {g}`
+- `src/data/say/paint.js:51` T? `brush stroke`
+- `src/data/say/paint.js:54` T? `To back`
+- `src/data/say/paint.js:55` T? `Send it behind everything else`
+- `src/data/say/paint.js:57` T? `One step further back`
+- `src/data/say/paint.js:59` T? `One step further forward`
+- `src/data/say/paint.js:60` T? `To front`
+- `src/data/say/paint.js:61` T? `Bring it in front of everything else`
+- `src/data/say/paint.js:65` T? `Preview on your character`
+- `src/data/say/paint.js:68` T? `Edit {name} ({side})`
+- `src/data/say/paint.js:69` T? `Turn round to the front`
+- `src/data/say/paint.js:70` T? `Turn round to the back`
+- `src/data/say/paint.js:73` T? `{side} • {zone}`
+- `src/data/say/paint.js:74` T? `Tap a zone to edit`
+- `src/data/say/paint.js:75` T? `shirt {side}`
+- `src/data/say/paint.js:78` T? `Draw your {what}`
+- `src/data/say/paint.js:79` T? `Pattern your {what}`
+- `src/data/say/paint.js:83` T? `A pattern fills the whole garment. Anything you draw goes on top of it.`
+- `src/data/say/paint.js:84` T? `Put this drawing on the back as well`
+- `src/data/say/paint.js:85` T? `Put this drawing on the front as well`
+- `src/data/say/paint.js:87` T? `Copy to back`
+- `src/data/say/paint.js:88` T? `Copy to front`
+- `src/data/say/paint.js:89` T? `Choose a ready-made design for your {what}`
+- `src/data/say/paint.js:93` T? `Keeping the proportions you drew — tap to size width and height freely`
+- `src/data/say/paint.js:94` T? `Width and height are free — tap to keep the proportions you drew`
+- `src/data/say/paint.js:95` T? `✓ Keep shape`
+- `src/data/say/paint.js:96` T? `Free size`
+- `src/data/say/paint.js:97` T? `Make a copy of this one beside it, and hold the copy`
+- `src/data/say/paint.js:99` T? `Finished with this one`
+- `src/data/say/paint.js:102` T? `Throw this one away`
+- `src/data/say/paint.js:103` T? `Put it back the way you found it`
+- `src/data/say/paint.js:105` T? `Letter {ch}`
+- `src/data/say/paint.js:106` T? `Brush {w} wide`
+- `src/data/say/paint.js:110` T? `Mirror: paint both halves at once`
+- `src/data/say/paint.js:114` T? `Layer {at} of {count} · {what}`
+- `src/data/say/paint.js:115` T? `Tap something you drew to pick it up — then recolour, resize or re-layer it`
+- `src/data/say/paint.js:116` T? `Pick Select, then tap something you drew to change it`
+- `src/data/say/paint.js:117` T? `Take this one off the drawing`
+- `src/data/say/paint.js:121` T? `Pattern colour`
+- `src/data/say/paint.js:122` T? `Eraser — works with every tool`
+- `src/data/say/paint.js:123` T? `Recolour what you picked up`
+- `src/data/say/paint.js:126` T? `Colour {i}`
+- `src/data/say/paint.js:129` T? `Undo the last thing you did`
+- `src/data/say/paint.js:130` T? `Nothing to undo yet`
+- `src/data/say/paint.js:132` T? `Put back what you just undid`
+- `src/data/say/paint.js:133` T? `Nothing to redo`
+- `src/data/say/paint.js:135` T? `Remove the pattern`
+- `src/data/say/paint.js:136` T? `Erase the whole {side} of the shirt`
+- `src/data/say/paint.js:137` T? `Erase the whole {what}`
+- `src/data/say/paint.js:138` T? `No pattern`
+
+### data: partyHud (9)
+
+- `src/data/say/partyHud.js:4` T? `Party Invite`
+- `src/data/say/partyHud.js:5` T? `{name} invites you`
+- `src/data/say/partyHud.js:6` T? `({size} in party)`
+- `src/data/say/partyHud.js:10` T? `Party, {count} of {max}: tap to see who`
+- `src/data/say/partyHud.js:13` T? `Fold the party list`
+- `src/data/say/partyHud.js:14` T? `Leave party`
+- `src/data/say/partyHud.js:20` T? `offline · {ago}`
+- `src/data/say/partyHud.js:21` T? `away — reconnecting…`
+- `src/data/say/partyHud.js:23` T? `+{more} more · {online} online`
+
+### data: partyPanel (45)
+
+- `src/data/say/partyPanel.js:4` T? `Gladiator Arena`
+- `src/data/say/partyPanel.js:5` T? `Your gold:`
+- `src/data/say/partyPanel.js:6` T? `· {fee}G entry · Up to 8 fighters · Single elimination · No healing`
+- `src/data/say/partyPanel.js:8` T? `Enter a single elimination tournament of up to 8 fighters. Blind matchups — any level c...`
+- `src/data/say/partyPanel.js:9` T? `Only the final victor earns the Gladiator title and up to 250G for every fighter in the...`
+- `src/data/say/partyPanel.js:10` T? `Only the final victor earns the Gladiator title and up to 250G for every fighter in the...`
+- `src/data/say/partyPanel.js:11` T? `Only the final victor earns the Gladiator title and {ap} AP, plus up to 250G for every ...`
+- `src/data/say/partyPanel.js:12` T? `Only the final victor earns the Gladiator title and up to 250G for every fighter in the...`
+- `src/data/say/partyPanel.js:13` T? `Need {fee}G!`
+- `src/data/say/partyPanel.js:15` T? `Server error`
+- `src/data/say/partyPanel.js:16` T? `Enter Arena · {fee}G`
+- `src/data/say/partyPanel.js:17` T? `Need {gold}G more`
+- `src/data/say/partyPanel.js:19` T? `In Queue`
+- `src/data/say/partyPanel.js:20` T? `Position: {pos}/{size} ·`
+- `src/data/say/partyPanel.js:21` T? `Bracket starts in {secs}s`
+- `src/data/say/partyPanel.js:22` T? `Waiting for {count} players...`
+- `src/data/say/partyPanel.js:23` T? `You can close this panel — you'll be notified when matched!`
+- `src/data/say/partyPanel.js:24` T? `Left arena queue (+{fee}G)`
+- `src/data/say/partyPanel.js:25` T? `Leave Queue (refund {fee}G)`
+- `src/data/say/partyPanel.js:27` T? `FIGHT! Round {round}`
+- `src/data/say/partyPanel.js:30` T? `Find and defeat your opponent!`
+- `src/data/say/partyPanel.js:31` T? `3 minutes on the clock: then the one with more health left wins.`
+- `src/data/say/partyPanel.js:32` T? `Eliminated — Round {round}`
+- `src/data/say/partyPanel.js:33` T? `{wins} wins · You can spectate the rest!`
+- `src/data/say/partyPanel.js:35` T? `Tournament — Round {round}/{max}`
+- `src/data/say/partyPanel.js:36` T? `{left}/{count} remaining`
+- `src/data/say/partyPanel.js:38` T? `Current Matches`
+- `src/data/say/partyPanel.js:40` T? `Winner: {name}`
+- `src/data/say/partyPanel.js:43` T? `Spectator Stakes`
+- `src/data/say/partyPanel.js:46` T? `{gold}G pot`
+- `src/data/say/partyPanel.js:48` T? `GLADIATOR CHAMPION`
+- `src/data/say/partyPanel.js:49` T? `{wins} wins · Lv{lv}`
+- `src/data/say/partyPanel.js:52` T? `"Gladiator" title`
+- `src/data/say/partyPanel.js:54` T? `Recent Results`
+- `src/data/say/partyPanel.js:55` T? `R{round}: {mark1} {p1} vs {p2} {mark2}`
+- `src/data/say/partyPanel.js:57` T? `Spectator Betting`
+- `src/data/say/partyPanel.js:58` T? `Bet placed: {gold}G on {name}`
+- `src/data/say/partyPanel.js:59` T? `Round {round} — waiting for results...`
+- `src/data/say/partyPanel.js:60` T? `Blind bet — pick who you think will win this round. {left} players left.`
+- `src/data/say/partyPanel.js:61` T? `{name} (Lv{lv})`
+- `src/data/say/partyPanel.js:63` T? `G (max {max})`
+- `src/data/say/partyPanel.js:64` T? `Betting is closed`
+- `src/data/say/partyPanel.js:65` T? `Place Bet`
+- `src/data/say/partyPanel.js:67` T? `Hall of Fame`
+- `src/data/say/partyPanel.js:68` T? `{wins}W · {players}P`
+
+### data: pets (36)
+
+- `src/data/say/pets.js:7` T? `{count} caught`
+- `src/data/say/pets.js:8` T? `Not caught`
+- `src/data/say/pets.js:9` T? `Not tried`
+- `src/data/say/pets.js:10` T? `{tries} tries`
+- `src/data/say/pets.js:11` T? `{gold} golden`
+- `src/data/say/pets.js:12` T? `Biggest {pct}%`
+- `src/data/say/pets.js:14` T? `in your collection`
+- `src/data/say/pets.js:15` T? `With you: {name}`
+- `src/data/say/pets.js:16` T? `No pet out with you`
+- `src/data/say/pets.js:17` T? `· Trapping {level}`
+- `src/data/say/pets.js:19` T? `Your pets are not ready yet. Try again after you rejoin.`
+- `src/data/say/pets.js:20` T? `No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap {...`
+- `src/data/say/pets.js:23` T? `Your Pet House holds {max}, as many as it can.`
+- `src/data/say/pets.js:24` T? `Buy room for {step} more pets for {price}?`
+- `src/data/say/pets.js:25` T? `Pet House: room for {step} more pets, {price}{have}`
+- `src/data/say/pets.js:26` T? `{gold} gold`
+- `src/data/say/pets.js:27` T? `(you have {coins})`
+- `src/data/say/pets.js:30` T? `More room`
+- `src/data/say/pets.js:32` T? `{text}. It waits at the Auction House until it sells, and comes back if it does not.`
+- `src/data/say/pets.js:34` T? `Lv {lv}`
+- `src/data/say/pets.js:35` T? `Lv {lv} ({own})`
+- `src/data/say/pets.js:36` T? `With you`
+- `src/data/say/pets.js:39` T? `when out`
+- `src/data/say/pets.js:41` T? `Works at Lv {lv} until your Trapping reaches {own}.`
+- `src/data/say/pets.js:43` T? `Release {name} for good?`
+- `src/data/say/pets.js:46` T? `Put away`
+- `src/data/say/pets.js:47` T? `Take out`
+- `src/data/say/pets.js:50` T? `2-16 letters, numbers, spaces, - or '`
+- `src/data/say/pets.js:52` T? `Sell at the Auction House`
+- `src/data/say/pets.js:53` T? `Price in gold`
+- `src/data/say/pets.js:54` T? `Listed for {price} gold`
+- `src/data/say/pets.js:55` T? `Not listed`
+- `src/data/say/pets.js:58` T? `The pet with you picks up loot from further away{ward}. Pets are never lost, not even i...`
+- `src/data/say/pets.js:59` T? `, and softens what its own land's monsters do to you`
+- `src/data/say/pets.js:62` T? `{caught} of {total} caught`
+- `src/data/say/pets.js:63` T? `Each land's monsters become its pet. Past level 20 they come in the land's second colours.`
+
+### data: playerProfile (25)
+
+- `src/data/say/playerProfile.js:9` T? `Back to the player card`
+- `src/data/say/playerProfile.js:12` T? `Verified Hemi Bro`
+- `src/data/say/playerProfile.js:13` T? `Verified Hemi Bro{token}{held}`
+- `src/data/say/playerProfile.js:15` T? `· {count} held`
+- `src/data/say/playerProfile.js:16` T? `LV {lv}`
+- `src/data/say/playerProfile.js:18` T? `Achievement points`
+- `src/data/say/playerProfile.js:19` T? `{ap} AP`
+- `src/data/say/playerProfile.js:20` T? `Hemi Bros held by their verified wallet`
+- `src/data/say/playerProfile.js:21` T? `{count} Hemi Bro`
+- `src/data/say/playerProfile.js:21` T? `{count} Hemi Bros`
+- `src/data/say/playerProfile.js:22` T? `{count} Quests`
+- `src/data/say/playerProfile.js:25` T? `Title: an achievement`
+- `src/data/say/playerProfile.js:26` T? `No Clan`
+- `src/data/say/playerProfile.js:29` T? `No {slot}`
+- `src/data/say/playerProfile.js:31` T? `Lifetime Kills`
+- `src/data/say/playerProfile.js:32` T? `Rarest achievement: {name}`
+- `src/data/say/playerProfile.js:33` T? `No achievements yet`
+- `src/data/say/playerProfile.js:34` T? `{tier} achievement`
+- `src/data/say/playerProfile.js:35` T? `Rarest achievement`
+- `src/data/say/playerProfile.js:36` T? `None yet`
+- `src/data/say/playerProfile.js:39` T? `Open the Codex`
+- `src/data/say/playerProfile.js:41` T? `{count} plot ready`
+- `src/data/say/playerProfile.js:41` T? `{count} plots ready`
+- `src/data/say/playerProfile.js:43` T? `In party`
+- `src/data/say/playerProfile.js:44` T? `Invite to Party`
 
 ### data: prog3 (79)
 
@@ -6058,6 +5115,106 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/prog3.js:383` T `Bow`
 - `src/data/prog3.js:384` T `Magic`
 
+### data: questCard (7)
+
+- `src/data/say/questCard.js:5` T? `Ready to hand in`
+- `src/data/say/questCard.js:7` T? `Next: {quest}`
+- `src/data/say/questCard.js:8` T? `+{more} more: look for a gold ! on your map`
+- `src/data/say/questCard.js:10` T? `Show this quest`
+- `src/data/say/questCard.js:11` T? `Fold this quest`
+- `src/data/say/questCard.js:12` T? `Open this quest's page`
+- `src/data/say/questCard.js:13` T? `Open quest ›`
+
+### data: questCoach (4)
+
+- `src/data/say/questCoach.js:3` T? `Push a little to turn, further to walk.`
+- `src/data/say/questCoach.js:4` T? `Face a monster in reach, then tap once: you keep fighting until you tap again.`
+- `src/data/say/questCoach.js:6` T? `Face a monster in reach and tap Attack: one hit a tap. Hold it until the ring fills to ...`
+- `src/data/say/questCoach.js:7` T? `Your specials come up beside Attack while a monster is in sight. Tap one.`
+
+### data: questDetail (3)
+
+- `src/data/say/questDetail.js:4` T? `Quest not found.`
+- `src/data/say/questDetail.js:6` T? `☆ Track this quest`
+- `src/data/say/questDetail.js:7` T? `Your map's gold star follows this quest.`
+
+### data: questJournal (11)
+
+- `src/data/say/questJournal.js:7` T? `Given to you`
+- `src/data/say/questJournal.js:9` T? `You got`
+- `src/data/say/questJournal.js:12` T? `Tracked: stop tracking this quest`
+- `src/data/say/questJournal.js:13` T? `Stop tracking`
+- `src/data/say/questJournal.js:14` T? `Track this quest`
+- `src/data/say/questJournal.js:16` T? `Your map's gold star follows this quest.`
+- `src/data/say/questJournal.js:19` T? `Where: {where}. Show on map`
+- `src/data/say/questJournal.js:20` T? `Where: {where}`
+- `src/data/say/questJournal.js:22` T? `Show on map`
+- `src/data/say/questJournal.js:24` T? `{gold} gold`
+- `src/data/say/questJournal.js:25` T? `+{xp} XP`
+
+### data: questOffer (12)
+
+- `src/data/say/questOffer.js:4` T? `New Quest`
+- `src/data/say/questOffer.js:5` T? `Quest Complete`
+- `src/data/say/questOffer.js:7` T? `He hands you now`
+- `src/data/say/questOffer.js:8` T? `For finishing “{title}”`
+- `src/data/say/questOffer.js:9` T? `this quest`
+- `src/data/say/questOffer.js:11` T? `Accept Quest`
+- `src/data/say/questOffer.js:12` T? `Claim Rewards`
+- `src/data/say/questOffer.js:13` T? `Not now`
+- `src/data/say/questOffer.js:14` T? `Close. Your reward stays waiting for you.`
+- `src/data/say/questOffer.js:16` T? `Your rewards`
+- `src/data/say/questOffer.js:17` T? `+{xp} XP to {skill}`
+- `src/data/say/questOffer.js:18` T? `Rewards claimed!`
+
+### data: questPages (12)
+
+- `src/data/say/questPages.js:6` T? `Active ({n})`
+- `src/data/say/questPages.js:9` T? `Your quests`
+- `src/data/say/questPages.js:13` T? `Pages of this quest`
+- `src/data/say/questPages.js:16` T? `What to do now: {now}. Tap to see the quest journey`
+- `src/data/say/questPages.js:17` T? `Rewards. Tap to see them and what comes next`
+- `src/data/say/questPages.js:19` T? `Quest journey`
+- `src/data/say/questPages.js:20` T? `Hand it in to {npc}`
+- `src/data/say/questPages.js:22` T? `Completion rewards`
+- `src/data/say/questPages.js:23` T? `Next quest`
+- `src/data/say/questPages.js:24` T? `Available after {title}`
+- `src/data/say/questPages.js:26` T? `+{ap} AP`
+- `src/data/say/questPages.js:28` T? `Pick another quest`
+
+### data: questPanel (6)
+
+- `src/data/say/questPanel.js:4` T? `+{xp} XP`
+- `src/data/say/questPanel.js:5` T? `Choose where to train it`
+- `src/data/say/questPanel.js:7` T? `Pick the pine one he swaps`
+- `src/data/say/questPanel.js:8` T? `Bring a Pine Bow or Pine Staff`
+- `src/data/say/questPanel.js:13` T? `See the quest`
+- `src/data/say/questPanel.js:14` T? `Claim reward`
+
+### data: questsPanel (7)
+
+- `src/data/say/questsPanel.js:4` T? `Quest path`
+- `src/data/say/questsPanel.js:5` T? `{look} on the ground`
+- `src/data/say/questsPanel.js:9` T? `Your quests`
+- `src/data/say/questsPanel.js:15` T? `Daily rewards`
+- `src/data/say/questsPanel.js:17` T? `+{ap} AP`
+- `src/data/say/questsPanel.js:18` T? `Done quests`
+- `src/data/say/questsPanel.js:20` T? `No quest right now. Look for a gold ! over someone's head in BroTown.`
+
+### data: raceHud (11)
+
+- `src/data/say/raceHud.js:5` T? `Touch all {flags} flags, then back here`
+- `src/data/say/raceHud.js:7` T? `Flags {touched}/{of}`
+- `src/data/say/raceHud.js:8` T? `Back to the start!`
+- `src/data/say/raceHud.js:9` T? `Lil Bro {time}`
+- `src/data/say/raceHud.js:11` T? `You beat Lil Bro!`
+- `src/data/say/raceHud.js:12` T? `Lil Bro wins!`
+- `src/data/say/raceHud.js:13` T? `No race.`
+- `src/data/say/raceHud.js:14` T? `You {you} · Lil Bro {lil}`
+- `src/data/say/raceHud.js:15` T? `Talk to Lil Bro for your reward.`
+- `src/data/say/raceHud.js:16` T? `Sprint, and drink Zoom Juice at the start line.`
+- `src/data/say/raceHud.js:17` T? `Race again`
+
 ### data: remains (4)
 
 - `src/data/remains.js:15` T? `Snowman Remains`
@@ -6074,6 +5231,66 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/salvage.js:88` T? `torso, greaves or sword`
 - `src/data/salvage.js:88` T? `(Blacksmith, Salvage tab)`
 
+### data: selfPanel (5)
+
+- `src/data/say/selfPanel.js:4` T? `No profile.`
+- `src/data/say/selfPanel.js:6` T? `Lv {level} · {archetype}`
+- `src/data/say/selfPanel.js:16` T? `Weapon: {name}`
+- `src/data/say/selfPanel.js:17` T? `Armor: {name}`
+- `src/data/say/selfPanel.js:18` T? `Pet: {name}`
+
+### data: settingsPanel (19)
+
+- `src/data/say/settingsPanel.js:4` T? `Restart Character?`
+- `src/data/say/settingsPanel.js:6` T? `Connecting to the game server…`
+- `src/data/say/settingsPanel.js:7` T? `Not while you are fighting a player`
+- `src/data/say/settingsPanel.js:8` T? `{why}. Nothing was changed: try again once the fight is over.`
+- `src/data/say/settingsPanel.js:9` T? `Can't restart right now — no connection to the game server. Try again in a moment.`
+- `src/data/say/settingsPanel.js:10` T? `Your character starts over at {level}. All items, gold, skills and quest progress are {...`
+- `src/data/say/settingsPanel.js:12` T? `deleted forever`
+- `src/data/say/settingsPanel.js:13` T? `Keep playing`
+- `src/data/say/settingsPanel.js:15` T? `Restart at Lv 1`
+- `src/data/say/settingsPanel.js:21` T? `Quest path`
+- `src/data/say/settingsPanel.js:22` T? `Landscape menu side`
+- `src/data/say/settingsPanel.js:24` T? `Notifications — SILENCED, tap to turn them back on`
+- `src/data/say/settingsPanel.js:25` T? `Notifications — silence all of them`
+- `src/data/say/settingsPanel.js:26` T? `Login Key — save it, or continue a character`
+- `src/data/say/settingsPanel.js:27` T? `Controls — replay the tutorial`
+- `src/data/say/settingsPanel.js:28` T? `Play full screen — hide the browser bar`
+- `src/data/say/settingsPanel.js:29` T? `Feedback — message the developers`
+- `src/data/say/settingsPanel.js:30` T? `About — privacy, rules and credits`
+- `src/data/say/settingsPanel.js:31` T? `Restart character — start over at Level 1`
+
+### data: shardCrack (27)
+
+- `src/data/say/shardCrack.js:4` T? `Gem Cutter`
+- `src/data/say/shardCrack.js:5` T? `Gem Cutting Lv {lvl} · {chance}% a shard`
+- `src/data/say/shardCrack.js:7` T? `Raw {element} Gem`
+- `src/data/say/shardCrack.js:9` T? `{n} {shard} cracked: {found}`
+- `src/data/say/shardCrack.js:9` T? `{n} {shard}s cracked: {found}`
+- `src/data/say/shardCrack.js:10` T? `{count} {name}s!`
+- `src/data/say/shardCrack.js:11` T? `a {name}!`
+- `src/data/say/shardCrack.js:12` T? `no gem this time`
+- `src/data/say/shardCrack.js:14` T? `Crack a land's shards: some hold its raw gem. {per} raw gems make one elemental gem to ...`
+- `src/data/say/shardCrack.js:15` T? `Each shard: {chance}%{next}.`
+- `src/data/say/shardCrack.js:16` T? `({pct}% at Gem Cutting {lvl})`
+- `src/data/say/shardCrack.js:19` T? `×{have} · {chance}% a Raw {element} Gem`
+- `src/data/say/shardCrack.js:21` T? `All {count}`
+- `src/data/say/shardCrack.js:22` T? `No shards to crack. Monsters and resources out in the lands drop their land's shard.`
+- `src/data/say/shardCrack.js:24` T? `Raw gems`
+- `src/data/say/shardCrack.js:25` T? `×{have} · {per} make a {element} Gem`
+- `src/data/say/shardCrack.js:26` T? `×{have} · {more} more for a {element} Gem`
+- `src/data/say/shardCrack.js:28` T? `Need {per}`
+- `src/data/say/shardCrack.js:29` T? `Raw gems you find show here.`
+- `src/data/say/shardCrack.js:31` T? `Rare Gem`
+- `src/data/say/shardCrack.js:32` T? `×{count} · cut it into any elemental gem: pick one.`
+- `src/data/say/shardCrack.js:33` T? `Cut into a {element} Gem`
+- `src/data/say/shardCrack.js:34` T? `Pick a gem first`
+- `src/data/say/shardCrack.js:36` T? `Your gems`
+- `src/data/say/shardCrack.js:37` T? `{element} Gem ×{count}`
+- `src/data/say/shardCrack.js:38` T? `Set them into your gear on the Set gems tab.`
+- `src/data/say/shardCrack.js:39` T? `Elemental gems you make show here.`
+
 ### data: shards (9)
 
 - `src/data/shards.js:24` T `Floral Shard`
@@ -6086,11 +5303,262 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/shards.js:31` T `Water Shard`
 - `src/data/shards.js:39` T `Floral Shard`
 
+### data: shopkeeper (19)
+
+- `src/data/say/shopkeeper.js:9` T? `“The more I have, the less I pay.”`
+- `src/data/say/shopkeeper.js:12` T? `His shelf`
+- `src/data/say/shopkeeper.js:13` T? `His shelf is bare. Sell him something.`
+- `src/data/say/shopkeeper.js:15` T? `Tap his shelf to buy · tap your bag to sell`
+- `src/data/say/shopkeeper.js:16` T? `Tap his shelf to buy · tap your bag below to sell`
+- `src/data/say/shopkeeper.js:18` T? `Always in stock`
+- `src/data/say/shopkeeper.js:19` T? `You have one`
+- `src/data/say/shopkeeper.js:20` T? `Mayor Bro's quest gives the first`
+- `src/data/say/shopkeeper.js:21` T? `A replacement, if yours was lost`
+- `src/data/say/shopkeeper.js:22` T? `Bro has {count}`
+- `src/data/say/shopkeeper.js:23` T? `you have {count}`
+- `src/data/say/shopkeeper.js:24` T? `One fewer`
+- `src/data/say/shopkeeper.js:25` T? `One more`
+- `src/data/say/shopkeeper.js:27` T? `Not enough gold`
+- `src/data/say/shopkeeper.js:28` T? `He won't buy`
+- `src/data/say/shopkeeper.js:29` T? `Not yet`
+- `src/data/say/shopkeeper.js:30` T? `Not for sale`
+- `src/data/say/shopkeeper.js:31` T? `BUY {price}`
+- `src/data/say/shopkeeper.js:32` T? `SELL {price}`
+
+### data: skills (66)
+
+- `src/data/say/skills.js:4` T? `‹ All skills`
+- `src/data/say/skills.js:5` T? `Level {lvl}`
+- `src/data/say/skills.js:6` T? `{xp} / {need} XP · {left} XP to Lv {next}`
+- `src/data/say/skills.js:7` T? `Each hit`
+- `src/data/say/skills.js:8` T? `At Lv {lvl}`
+- `src/data/say/skills.js:9` T? `Full XP`
+- `src/data/say/skills.js:10` T? `Nothing at your level`
+- `src/data/say/skills.js:11` T? `Less XP`
+- `src/data/say/skills.js:13` T? `Next unlock`
+- `src/data/say/skills.js:15` T? `{name} at Lv {lvl}`
+- `src/data/say/skills.js:17` T? `Found at`
+- `src/data/say/skills.js:18` T? `Higher levels improve results and unlock new content as it's added.`
+- `src/data/say/skills.js:21` T? `{name}, level {lvl}`
+- `src/data/say/skills.js:22` T? `Lv {lvl}`
+- `src/data/say/skills.js:23` T? `{xp} / {need} XP`
+- `src/data/say/skills.js:26` T? `Life Skills`
+- `src/data/say/skills.js:27` T? `{xp}/{need} XP · {desc}`
+- `src/data/say/skills.js:30` T? `Chop trees for wood + zone gems`
+- `src/data/say/skills.js:32` T? `Catch fish for cooking + zone gems`
+- `src/data/say/skills.js:34` T? `Mine ore (iron Lv1-5, steel Lv6-10) + zone gems`
+- `src/data/say/skills.js:37` T? `Cook fish + ingredients for healing food`
+- `src/data/say/skills.js:39` T? `Forge melee gear bases with gem slots`
+- `src/data/say/skills.js:41` T? `Craft bows & staves with gem slots`
+- `src/data/say/skills.js:42` T? `Gem Cutting`
+- `src/data/say/skills.js:43` T? `Cut raw gems into polished slottable gems`
+- `src/data/say/skills.js:45` T? `Slot gems into gear for elemental power`
+- `src/data/say/skills.js:48` T? `Grow ingredients at the farm`
+- `src/data/say/skills.js:50` T? `Capture weakened monsters as pets`
+- `src/data/say/skills.js:54` T? `{elem} Gem`
+- `src/data/say/skills.js:55` T? `No gems yet. Crack shards at the Gem Works to find them!`
+- `src/data/say/skills.js:58` T? `Active Quests`
+- `src/data/say/skills.js:59` T? `No active quests. Talk to NPCs with ❗ markers!`
+- `src/data/say/skills.js:62` T? `Achievement Points`
+- `src/data/say/skills.js:63` T? `Achievement points: {n}. Open your achievements`
+- `src/data/say/skills.js:66` T? `Player Stats`
+- `src/data/say/skills.js:68` T? `Monsters Killed`
+- `src/data/say/skills.js:70` T? `Grand Slams`
+- `src/data/say/skills.js:71` T? `Bosses Killed`
+- `src/data/say/skills.js:72` T? `Highest Kill Lv`
+- `src/data/say/skills.js:73` T? `Crits Landed`
+- `src/data/say/skills.js:76` T? `PvP Kills`
+- `src/data/say/skills.js:77` T? `PvP Deaths`
+- `src/data/say/skills.js:78` T? `Duels Won`
+- `src/data/say/skills.js:79` T? `Duels Lost`
+- `src/data/say/skills.js:80` T? `Life Skills`
+- `src/data/say/skills.js:81` T? `Fish Caught`
+- `src/data/say/skills.js:82` T? `Trees Felled`
+- `src/data/say/skills.js:83` T? `Ores Mined`
+- `src/data/say/skills.js:84` T? `Items Crafted`
+- `src/data/say/skills.js:85` T? `Items Salvaged`
+- `src/data/say/skills.js:86` T? `Cook Success`
+- `src/data/say/skills.js:87` T? `Cook Burns`
+- `src/data/say/skills.js:89` T? `Harden OK`
+- `src/data/say/skills.js:90` T? `Harden Fail`
+- `src/data/say/skills.js:92` T? `Gold Earned`
+- `src/data/say/skills.js:93` T? `Gold Spent`
+- `src/data/say/skills.js:94` T? `Gold Lost (death)`
+- `src/data/say/skills.js:95` T? `Total Gambled`
+- `src/data/say/skills.js:96` T? `Gamble Won`
+- `src/data/say/skills.js:97` T? `Gamble Lost`
+- `src/data/say/skills.js:99` T? `Quests Done`
+- `src/data/say/skills.js:100` T? `Rare Drops`
+- `src/data/say/skills.js:101` T? `Zones Explored`
+- `src/data/say/skills.js:102` T? `Dungeons Cleared`
+- `src/data/say/skills.js:103` T? `Pets Captured`
+- `src/data/say/skills.js:109` T? `No resources. Harvest nodes in combat zones!`
+
+### data: smithy (35)
+
+- `src/data/say/smithy.js:17` T? `Lv {lvl}`
+- `src/data/say/smithy.js:23` T? `Smithing {lvl}`
+- `src/data/say/smithy.js:26` T? `Could not smelt`
+- `src/data/say/smithy.js:27` T? `All ({count})`
+- `src/data/say/smithy.js:30` T? `Holding {name}`
+- `src/data/say/smithy.js:31` T? `Weapon bag full`
+- `src/data/say/smithy.js:32` T? `Forged {name}!`
+- `src/data/say/smithy.js:33` T? `Could not forge`
+- `src/data/say/smithy.js:36` T? `Level {def} to wear`
+- `src/data/say/smithy.js:37` T? `Defense {def} to wear`
+- `src/data/say/smithy.js:41` T? `{name} · max`
+- `src/data/say/smithy.js:42` T? `H{h} → H{next}`
+- `src/data/say/smithy.js:44` T? `Fail keeps H{h}`
+- `src/data/say/smithy.js:45` T? `Fail → H0`
+- `src/data/say/smithy.js:46` T? `Take gem out of {name}`
+- `src/data/say/smithy.js:47` T? `Gem removed`
+- `src/data/say/smithy.js:48` T? `Could not remove the gem`
+- `src/data/say/smithy.js:49` T? `Take out`
+- `src/data/say/smithy.js:50` T? `Hold a weapon to upgrade it.`
+- `src/data/say/smithy.js:53` T? `Gold Bar`
+- `src/data/say/smithy.js:54` T? `+1 Gold Bar`
+- `src/data/say/smithy.js:55` T? `{tier} Amulet{worn}`
+- `src/data/say/smithy.js:57` T? `Crafted {tier} Amulet!`
+- `src/data/say/smithy.js:58` T? `Could not craft`
+- `src/data/say/smithy.js:62` T? `{metal} Greaves`
+- `src/data/say/smithy.js:63` T? `{metal} Torso`
+- `src/data/say/smithy.js:64` T? `{metal} {type}{hard}`
+- `src/data/say/smithy.js:68` T? `Salvaged{name}: +{bars} {what}{essence}`
+- `src/data/say/smithy.js:69` T? `{metal} Bars`
+- `src/data/say/smithy.js:72` T? `Now {grade}!`
+- `src/data/say/smithy.js:76` T? `{back} Rare, Elite and Godly also leave their {essence}.`
+- `src/data/say/smithy.js:77` T? `{bars} of {cost} bars back.`
+- `src/data/say/smithy.js:79` T? `Carry a copper, iron or black steel piece to salvage it.`
+- `src/data/say/smithy.js:81` T? `Too old to salvage`
+- `src/data/say/smithy.js:83` T? `No {metal} piece below {grade} in your bag.`
+
+### data: socialDash (24)
+
+- `src/data/say/socialDash.js:6` T? `Blocked ({count})`
+- `src/data/say/socialDash.js:7` T? `{count} online`
+- `src/data/say/socialDash.js:8` T? `Add friend`
+- `src/data/say/socialDash.js:9` T? `Add Friend`
+- `src/data/say/socialDash.js:10` T? `Back to friends`
+- `src/data/say/socialDash.js:11` T? `Blocked players`
+- `src/data/say/socialDash.js:13` T? `Link copied!`
+- `src/data/say/socialDash.js:14` T? `Share Invite Link`
+- `src/data/say/socialDash.js:16` T? `Friends ({count})`
+- `src/data/say/socialDash.js:17` T? `Requests ({count})`
+- `src/data/say/socialDash.js:19` T? `No requests`
+- `src/data/say/socialDash.js:20` T? `Requests you receive — and ones you've sent — show up here.`
+- `src/data/say/socialDash.js:21` T? `wants to be Bros`
+- `src/data/say/socialDash.js:27` T? `Search friends`
+- `src/data/say/socialDash.js:29` T? `Friend presence returns when the connection is back.`
+- `src/data/say/socialDash.js:30` T? `No friends yet`
+- `src/data/say/socialDash.js:31` T? `No matches`
+- `src/data/say/socialDash.js:32` T? `Try a different name.`
+- `src/data/say/socialDash.js:34` T? `· Lv {lv}`
+- `src/data/say/socialDash.js:38` T? `· with you`
+- `src/data/say/socialDash.js:40` T? `Offline · {seen}`
+- `src/data/say/socialDash.js:41` T? `Actions for {name}`
+- `src/data/say/socialDash.js:48` T? `Say hi — messages reach {name} even while they're offline.`
+- `src/data/say/socialDash.js:52` T? `Nobody blocked.`
+
+### data: socialPanel (9)
+
+- `src/data/say/socialPanel.js:6` T? `Friends ({count})`
+- `src/data/say/socialPanel.js:7` T? `No friends yet. Tap a player and add them!`
+- `src/data/say/socialPanel.js:8` T? `Online · {zone}`
+- `src/data/say/socialPanel.js:11` T? `Blocked ({count})`
+- `src/data/say/socialPanel.js:12` T? `Blocked players can't chat, attack, trade, or duel you.`
+- `src/data/say/socialPanel.js:13` T? `Nobody blocked.`
+- `src/data/say/socialPanel.js:16` T? `Muted ({count})`
+- `src/data/say/socialPanel.js:17` T? `Muted players' messages don't reach you. Saved to your account, so it follows you betwe...`
+- `src/data/say/socialPanel.js:18` T? `Nobody muted.`
+
+### data: statsPanel (1)
+
+- `src/data/say/statsPanel.js:21` T? `Gold earned`
+
+### data: storeChat (24)
+
+- `src/data/say/storeChat.js:4` T? `Still available?`
+- `src/data/say/storeChat.js:5` T? `Would you take less?`
+- `src/data/say/storeChat.js:6` T? `I have a question`
+- `src/data/say/storeChat.js:7` T? `What's your offer?`
+- `src/data/say/storeChat.js:9` T? `Accept {gold}g`
+- `src/data/say/storeChat.js:10` T? `I'll think about it`
+- `src/data/say/storeChat.js:14` T? `in {mins}m`
+- `src/data/say/storeChat.js:15` T? `in {hours}h`
+- `src/data/say/storeChat.js:16` T? `in {days}d`
+- `src/data/say/storeChat.js:18` T? `Your listing`
+- `src/data/say/storeChat.js:19` T? `Chat with {name}`
+- `src/data/say/storeChat.js:20` T? `the seller`
+- `src/data/say/storeChat.js:21` T? `Discuss this item directly`
+- `src/data/say/storeChat.js:24` T? `🕑 Listing expires {when}`
+- `src/data/say/storeChat.js:28` T? `Nobody has asked about this listing yet.`
+- `src/data/say/storeChat.js:29` T? `Say hello — the seller sees this next time they are online.`
+- `src/data/say/storeChat.js:32` T? `Your offer of {gold} is being held{thinking}`
+- `src/data/say/storeChat.js:34` T? `— the seller is thinking about it`
+- `src/data/say/storeChat.js:35` T? `Take it back`
+- `src/data/say/storeChat.js:36` T? `Offer gold`
+- `src/data/say/storeChat.js:38` T? `Your gold is held while the seller decides, and comes straight back if they say no, if ...`
+- `src/data/say/storeChat.js:40` T? `Offers on this listing`
+- `src/data/say/storeChat.js:41` T? `{name} offers {gold}`
+- `src/data/say/storeChat.js:43` T? `Type a message...`
+
+### data: storePanel (37)
+
+- `src/data/say/storePanel.js:4` T? `Auction House`
+- `src/data/say/storePanel.js:5` T? `What everyone is selling`
+- `src/data/say/storePanel.js:8` T? `{mins}m left`
+- `src/data/say/storePanel.js:9` T? `{hours}h left`
+- `src/data/say/storePanel.js:10` T? `{days}d {hours}h left`
+- `src/data/say/storePanel.js:14` T? `Lv {lv}`
+- `src/data/say/storePanel.js:17` T? `{owners} owners`
+- `src/data/say/storePanel.js:21` T? `{qty} of them · {cat}`
+- `src/data/say/storePanel.js:22` T? `One · {cat}`
+- `src/data/say/storePanel.js:25` T? `+ List an Item`
+- `src/data/say/storePanel.js:27` T? `The store said no`
+- `src/data/say/storePanel.js:29` T? `The store is not open on this world yet. It arrives with the next server update — every...`
+- `src/data/say/storePanel.js:32` T? `Seller: {name}`
+- `src/data/say/storePanel.js:34` T? `Messages about your listing`
+- `src/data/say/storePanel.js:35` T? `Message the seller`
+- `src/data/say/storePanel.js:36` T? `Top bid: {amount}g`
+- `src/data/say/storePanel.js:37` T? `No bids`
+- `src/data/say/storePanel.js:39` T? `Take {amount}g`
+- `src/data/say/storePanel.js:40` T? `Sold for {amount} gold`
+- `src/data/say/storePanel.js:41` T? `Take down`
+- `src/data/say/storePanel.js:42` T? `Back in your bag`
+- `src/data/say/storePanel.js:43` T? `Buy {price}g`
+- `src/data/say/storePanel.js:44` T? `Bought for {price} gold`
+- `src/data/say/storePanel.js:47` T? `Bid placed`
+- `src/data/say/storePanel.js:49` T? `Back to the shelf`
+- `src/data/say/storePanel.js:53` T? `My Listings`
+- `src/data/say/storePanel.js:54` T? `My Bids`
+- `src/data/say/storePanel.js:56` T? `Nothing is for sale right now.`
+- `src/data/say/storePanel.js:57` T? `Nothing in this category right now.`
+- `src/data/say/storePanel.js:58` T? `Be the first — open your bag, tap something and choose Sell.`
+- `src/data/say/storePanel.js:59` T? `Try another category, or put one up yourself.`
+- `src/data/say/storePanel.js:60` T? `You're not selling anything yet.`
+- `src/data/say/storePanel.js:61` T? `Open your bag, tap something and choose Sell.`
+- `src/data/say/storePanel.js:62` T? `{used} of {max} slots used`
+- `src/data/say/storePanel.js:63` T? `You have no bids standing.`
+- `src/data/say/storePanel.js:64` T? `Your gold is only held while your bid is the top one.`
+- `src/data/say/storePanel.js:66` T? `Listings last one week. If nobody buys, it comes back to you — and any bid goes back to...`
+
 ### data: stormSparks (3)
 
 - `src/data/stormSparks.js:33` T `arcs jumping over its body`
 - `src/data/stormSparks.js:34` T `lightning thrown off it every way`
 - `src/data/stormSparks.js:35` T `arcs round its shot`
+
+### data: t2Panel (9)
+
+- `src/data/say/t2Panel.js:8` T? `No character loaded.`
+- `src/data/say/t2Panel.js:10` T? `{skill} skill · Lv {level}`
+- `src/data/say/t2Panel.js:12` T? `· {pct}% to next`
+- `src/data/say/t2Panel.js:13` T? `{pts} pts`
+- `src/data/say/t2Panel.js:15` T? `Unlocks with next server update — points safe.`
+- `src/data/say/t2Panel.js:16` T? `Combat trains Vitality · +1 pt per level`
+- `src/data/say/t2Panel.js:17` T? `Sprint, block & roll to train · +1 pt per level`
+- `src/data/say/t2Panel.js:18` T? `Block & mitigate to train · +1 pt per level`
+- `src/data/say/t2Panel.js:19` T? `Deal damage to train · +1 pt per level`
 
 ### data: townBoard (170)
 
@@ -6265,6 +5733,75 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/townBoard.js:226` T? `Press the board button (Z on a computer) to get on or off. You step off at the edge of ...`
 - `src/data/townBoard.js:227` T? `Anywhere on BroTown’s safe ground.`
 
+### data: tradeWindow (55)
+
+- `src/data/say/tradeWindow.js:7` T? `One fewer {name}`
+- `src/data/say/tradeWindow.js:8` T? `One more {name}`
+- `src/data/say/tradeWindow.js:9` T? `Remove {name}`
+- `src/data/say/tradeWindow.js:12` T? `A pet no longer offered`
+- `src/data/say/tradeWindow.js:13` T? `Lv {lv}`
+- `src/data/say/tradeWindow.js:20` T? `{name} gave you`
+- `src/data/say/tradeWindow.js:21` T? `Trade complete ✓`
+- `src/data/say/tradeWindow.js:22` T? `You received`
+- `src/data/say/tradeWindow.js:26` T? `You sent`
+- `src/data/say/tradeWindow.js:31` T? `Trade failed — nothing was exchanged`
+- `src/data/say/tradeWindow.js:32` T? `A pet in it could no longer be traded.`
+- `src/data/say/tradeWindow.js:33` T? `There was no room in a collection for the pets.`
+- `src/data/say/tradeWindow.js:36` T? `{name} wants to trade`
+- `src/data/say/tradeWindow.js:37` T? `Open trade`
+- `src/data/say/tradeWindow.js:39` T? `Trade request sent — waiting…`
+- `src/data/say/tradeWindow.js:43` T? `{name} x{qty}`
+- `src/data/say/tradeWindow.js:44` T? `{name} ({kind}, Lv {lv}{golden})`
+- `src/data/say/tradeWindow.js:45` T? `{kind}, Lv {lv}{golden}`
+- `src/data/say/tradeWindow.js:47` T? `{n} gold`
+- `src/data/say/tradeWindow.js:48` T? `{n} item`
+- `src/data/say/tradeWindow.js:48` T? `{n} items`
+- `src/data/say/tradeWindow.js:49` T? `Confirm with {name}`
+- `src/data/say/tradeWindow.js:50` T? `YOU GIVE`
+- `src/data/say/tradeWindow.js:51` T? `YOU RECEIVE`
+- `src/data/say/tradeWindow.js:52` T? `That is a large amount of gold. Check the numbers, then tap Accept twice.`
+- `src/data/say/tradeWindow.js:53` T? `{name} has accepted — waiting on you.`
+- `src/data/say/tradeWindow.js:54` T? `Leave this trade?`
+- `src/data/say/tradeWindow.js:55` T? `Keep Trading`
+- `src/data/say/tradeWindow.js:56` T? `Leave Trade`
+- `src/data/say/tradeWindow.js:57` T? `Accepted ✓ — waiting`
+- `src/data/say/tradeWindow.js:58` T? `Wait {s}s…`
+- `src/data/say/tradeWindow.js:59` T? `Accept (large trade)`
+- `src/data/say/tradeWindow.js:62` T? `Not while one of you is fighting a player. Try again in a few seconds.`
+- `src/data/say/tradeWindow.js:63` T? `Saving is paused for a moment, try again.`
+- `src/data/say/tradeWindow.js:66` T? `Trading with {name}`
+- `src/data/say/tradeWindow.js:67` T? `You offer`
+- `src/data/say/tradeWindow.js:69` T? `Your bag is empty`
+- `src/data/say/tradeWindow.js:70` T? `Nothing staged yet`
+- `src/data/say/tradeWindow.js:71` T? `Your weapons`
+- `src/data/say/tradeWindow.js:72` T? `· max {n}`
+- `src/data/say/tradeWindow.js:73` T? `Your pets`
+- `src/data/say/tradeWindow.js:74` T? `{name} · Lv {lv}`
+- `src/data/say/tradeWindow.js:78` T? `of {n}`
+- `src/data/say/tradeWindow.js:79` T? `Presets subtract gold. Tap to make them add again.`
+- `src/data/say/tradeWindow.js:80` T? `Presets add gold. Tap to make them subtract.`
+- `src/data/say/tradeWindow.js:81` T? `Offer no gold`
+- `src/data/say/tradeWindow.js:83` T? `Take back {n} gold from your offer`
+- `src/data/say/tradeWindow.js:84` T? `Offer {n} more gold`
+- `src/data/say/tradeWindow.js:87` T? `{name} offers`
+- `src/data/say/tradeWindow.js:92` T? `Offer changed — review and confirm again`
+- `src/data/say/tradeWindow.js:93` T? `Add an item or gold`
+- `src/data/say/tradeWindow.js:94` T? `Ready ✓ — waiting`
+- `src/data/say/tradeWindow.js:95` T? `Ready to trade`
+- `src/data/say/tradeWindow.js:96` T? `Confirm trade`
+- `src/data/say/tradeWindow.js:97` T? `Waiting for {name}…`
+
+### data: trapCatch (8)
+
+- `src/data/say/trapCatch.js:4` T? `A big golden one!`
+- `src/data/say/trapCatch.js:5` T? `A golden one!`
+- `src/data/say/trapCatch.js:6` T? `A big one!`
+- `src/data/say/trapCatch.js:9` T? `Lv {lv}`
+- `src/data/say/trapCatch.js:13` T? `Name your {kind}`
+- `src/data/say/trapCatch.js:14` T? `Names are 2-16 letters, numbers or spaces`
+- `src/data/say/trapCatch.js:15` T? `You can name it later on the Pets page`
+- `src/data/say/trapCatch.js:17` T? `Name it`
+
 ### data: trapping (46)
 
 - `src/data/trapping.js:96` T `Snowling`
@@ -6321,6 +5858,15 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/treeArt.js:17` T `hardwood`
 - `src/data/treeArt.js:19` T `cedar`
 - `src/data/treeArt.js:21` T `maple`
+
+### data: vendor (6)
+
+- `src/data/say/vendor.js:4` T? `Auction House`
+- `src/data/say/vendor.js:5` T? `Individual item listings and bids`
+- `src/data/say/vendor.js:7` T? `Your gold`
+- `src/data/say/vendor.js:10` T? `Buy, sell, and bid with players`
+- `src/data/say/vendor.js:11` T? `The market is not open on this world yet. It arrives with the next server update.`
+- `src/data/say/vendor.js:13` T? `Meals and drinks are cooked at the Cookhouse, from what the farm grows.`
 
 ### data: waterAttack (2)
 
@@ -6403,6 +5949,20 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/wheelStageLooks.js:47` T `Bramble Shambler`
 - `src/data/wheelStageLooks.js:48` T `Pollen Slime`
 
+### data: woodwork (11)
+
+- `src/data/say/woodwork.js:8` T? `Lv {lvl}`
+- `src/data/say/woodwork.js:15` T? `Holding {name}`
+- `src/data/say/woodwork.js:16` T? `Weapon bag full`
+- `src/data/say/woodwork.js:17` T? `Made {name}!`
+- `src/data/say/woodwork.js:18` T? `Could not make it`
+- `src/data/say/woodwork.js:21` T? `Woodworking {lvl}`
+- `src/data/say/woodwork.js:24` T? `{name} · max`
+- `src/data/say/woodwork.js:25` T? `{name} · H{h} → H{next}`
+- `src/data/say/woodwork.js:27` T? `Fail keeps H{h}`
+- `src/data/say/woodwork.js:28` T? `Fail → H0`
+- `src/data/say/woodwork.js:29` T? `Hold a bow or a staff to upgrade it.`
+
 ### data: words (4)
 
 - `src/data/words.js:11` T? `{item} sold to {buyer} for {price}`
@@ -6410,11 +5970,51 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/words.js:13` T? `trade with {from}`
 - `src/data/words.js:14` T? `clan war vs [{tag}]{outcome}`
 
+### data: worldMap (22)
+
+- `src/data/say/worldMap.js:4` T? `Open the world map`
+- `src/data/say/worldMap.js:5` T? `World map (M)`
+- `src/data/say/worldMap.js:8` T? `You are in {where}`
+- `src/data/say/worldMap.js:9` T? `Finding you…`
+- `src/data/say/worldMap.js:10` T? `Close the map`
+- `src/data/say/worldMap.js:12` T? `North is up`
+- `src/data/say/worldMap.js:13` T? `Zoom in`
+- `src/data/say/worldMap.js:14` T? `Zoom out`
+- `src/data/say/worldMap.js:15` T? `Back to you`
+- `src/data/say/worldMap.js:17` T? `Remove {pin}`
+- `src/data/say/worldMap.js:18` T? `Remove pin`
+- `src/data/say/worldMap.js:28` T? `has a quest`
+- `src/data/say/worldMap.js:29` T? `your pin`
+- `src/data/say/worldMap.js:29` T? `your pins`
+- `src/data/say/worldMap.js:35` T? `Zoom in for more`
+- `src/data/say/worldMap.js:39` T? `Lv {lo}–{hi}`
+- `src/data/say/worldMap.js:40` T? `{element} · Lv {lo}–{hi}`
+- `src/data/say/worldMap.js:41` T? `to {to} · Lv 80–100`
+- `src/data/say/worldMap.js:42` T? `safe, no monsters`
+- `src/data/say/worldMap.js:43` T? `{land} · Lv {lo}–{hi}`
+- `src/data/say/worldMap.js:44` T? `camp · Lv {lv}`
+- `src/data/say/worldMap.js:45` T? `pass · Lv {lv}`
+
 ### data: worldProps (3)
 
 - `src/data/worldProps.js:218` T `BLACKSMITH`
 - `src/data/worldProps.js:285` T `AUCTION HOUSE`
 - `src/data/worldProps.js:439` T `BANK`
+
+### data: zoneHeader (12)
+
+- `src/data/say/zoneHeader.js:4` T? `+{gold} gold`
+- `src/data/say/zoneHeader.js:6` T? `Current zone`
+- `src/data/say/zoneHeader.js:7` T? `Log out`
+- `src/data/say/zoneHeader.js:11` T? `Test mode: the anti-cheat is off for this character`
+- `src/data/say/zoneHeader.js:12` T? `TEST MODE`
+- `src/data/say/zoneHeader.js:14` T? `{skill} level {level}, {next} XP to the next`
+- `src/data/say/zoneHeader.js:16` T? `Lv {level}`
+- `src/data/say/zoneHeader.js:18` T? `Free daily spin`
+- `src/data/say/zoneHeader.js:19` T? `Free daily spin, already spun today`
+- `src/data/say/zoneHeader.js:21` T? `Leave the world?`
+- `src/data/say/zoneHeader.js:22` T? `You’ll log out to the title screen. Your bro is saved.`
+- `src/data/say/zoneHeader.js:24` T? `Log Out`
 
 ### data: zones (14)
 
@@ -6818,8 +6418,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/game/drawLanes.js:264` P `every look baked`
 - `src/game/drawLanes.js:265` P `the look palette asked for (QA: even on Windows)`
 - `src/game/drawLanes.js:266` P `the sea still`
-- `src/game/drawLanes.js:267` P `the pacer off ('?pace=0'): the rate is read by nothing`
-- `src/game/drawLanes.js:268` P `a crowd cap of its own ('?crowd=K'): the knob is read by nothing`
+- `src/game/drawLanes.js:271` P `the pacer off ('?pace=0'): the rate is read by nothing`
+- `src/game/drawLanes.js:272` P `a crowd cap of its own ('?crowd=K'): the knob is read by nothing`
 
 ### game: dropLines (6)
 
@@ -6957,25 +6557,26 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: framePacer (1)
 
-- `src/game/framePacer.js:505` P `pending`
+- `src/game/framePacer.js:657` P `pending`
 
-### game: frameSteps (15)
+### game: frameSteps (16)
 
-- `src/game/frameSteps.js:71` P `legacy`
-- `src/game/frameSteps.js:74` P `tap`
-- `src/game/frameSteps.js:75` P `sound`
-- `src/game/frameSteps.js:76` P `ride`
-- `src/game/frameSteps.js:77` P `zone`
-- `src/game/frameSteps.js:78` P `farm`
-- `src/game/frameSteps.js:79` P `townsfolk`
-- `src/game/frameSteps.js:80` P `monsters`
-- `src/game/frameSteps.js:82` P `loot`
-- `src/game/frameSteps.js:83` P `peers`
-- `src/game/frameSteps.js:85` P `visual`
-- `src/game/frameSteps.js:86` P `arrows`
-- `src/game/frameSteps.js:87` P `slime`
-- `src/game/frameSteps.js:88` P `cleanup`
-- `src/game/frameSteps.js:89` P `render`
+- `src/game/frameSteps.js:73` P `legacy`
+- `src/game/frameSteps.js:76` P `tap`
+- `src/game/frameSteps.js:79` P `input`
+- `src/game/frameSteps.js:80` P `sound`
+- `src/game/frameSteps.js:81` P `ride`
+- `src/game/frameSteps.js:82` P `zone`
+- `src/game/frameSteps.js:83` P `farm`
+- `src/game/frameSteps.js:84` P `townsfolk`
+- `src/game/frameSteps.js:85` P `monsters`
+- `src/game/frameSteps.js:87` P `loot`
+- `src/game/frameSteps.js:88` P `peers`
+- `src/game/frameSteps.js:90` P `visual`
+- `src/game/frameSteps.js:91` P `arrows`
+- `src/game/frameSteps.js:92` P `slime`
+- `src/game/frameSteps.js:93` P `cleanup`
+- `src/game/frameSteps.js:94` P `render`
 
 ### game: friendErrors (9)
 
@@ -7076,8 +6677,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: loginSpinWheel (2)
 
-- `src/game/loginSpinWheel.js:106` P? `Spin in a safe area`
-- `src/game/loginSpinWheel.js:114` P? `Next free spin in`
+- `src/game/loginSpinWheel.js:128` P? `Spin in a safe area`
+- `src/game/loginSpinWheel.js:136` P? `Next free spin in`
 
 ### game: lookPaletteChoice (1)
 
@@ -7578,7 +7179,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: targeting (1)
 
-- `src/game/targeting.js:521` P? `Duel did not start`
+- `src/game/targeting.js:545` P? `Duel did not start`
 
 ### game: timeOfDay (10)
 
@@ -7823,26 +7424,26 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### guideArrow (20)
 
-- `src/ui/guideArrow.js:68` P? `<svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">`
-- `src/ui/guideArrow.js:69` P? `<path d="M18 3 H38 V26 H51 L28 53 L5 26 H18 Z" fill="`
-- `src/ui/guideArrow.js:69` P? `" stroke-width="3" stroke-linejoin="round"/>`
-- `src/ui/guideArrow.js:132` P? `[data-coach], [data-guide-arrow]`
-- `src/ui/guideArrow.js:134` P? `canvas, [data-joyzone]`
-- `src/ui/guideArrow.js:205` P? `Click a weapon or press 1 2 3`
-- `src/ui/guideArrow.js:205` P? `Tap a weapon to switch`
-- `src/ui/guideArrow.js:207` T `Tap CLOSE to see more of the world`
-- `src/ui/guideArrow.js:208` P? `Press E to collect, or drag here`
-- `src/ui/guideArrow.js:209` T `Tap to raise your shield`
-- `src/ui/guideArrow.js:209` T `Tap, then attack: your special`
-- `src/ui/guideArrow.js:209` T `Tap for a special attack`
-- `src/ui/guideArrow.js:210` P? `Tap here`
-- `src/ui/guideArrow.js:211` P? `Tap Forge`
-- `src/ui/guideArrow.js:212` P? `Tap to open`
-- `src/ui/guideArrow.js:213` P? `Tap Gear`
-- `src/ui/guideArrow.js:214` P? `Tap to equip`
-- `src/ui/guideArrow.js:215` P? `Tap Bro: points to spend`
-- `src/ui/guideArrow.js:216` P? `Tap Points`
-- `src/ui/guideArrow.js:432` P? `left .2s ease-out, top .2s ease-out`
+- `src/ui/guideArrow.js:70` P? `<svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">`
+- `src/ui/guideArrow.js:71` P? `<path d="M18 3 H38 V26 H51 L28 53 L5 26 H18 Z" fill="`
+- `src/ui/guideArrow.js:71` P? `" stroke-width="3" stroke-linejoin="round"/>`
+- `src/ui/guideArrow.js:134` P? `[data-coach], [data-guide-arrow]`
+- `src/ui/guideArrow.js:136` P? `canvas, [data-joyzone]`
+- `src/ui/guideArrow.js:207` P? `Click a weapon or press 1 2 3`
+- `src/ui/guideArrow.js:207` P? `Tap a weapon to switch`
+- `src/ui/guideArrow.js:209` T `Tap CLOSE to see more of the world`
+- `src/ui/guideArrow.js:210` P? `Press E to collect, or drag here`
+- `src/ui/guideArrow.js:211` T `Tap to raise your shield`
+- `src/ui/guideArrow.js:211` T `Tap, then attack: your special`
+- `src/ui/guideArrow.js:211` T `Tap for a special attack`
+- `src/ui/guideArrow.js:212` P? `Tap here`
+- `src/ui/guideArrow.js:213` P? `Tap Forge`
+- `src/ui/guideArrow.js:214` P? `Tap to open`
+- `src/ui/guideArrow.js:215` P? `Tap Gear`
+- `src/ui/guideArrow.js:216` P? `Tap to equip`
+- `src/ui/guideArrow.js:217` P? `Tap Bro: points to spend`
+- `src/ui/guideArrow.js:218` P? `Tap Points`
+- `src/ui/guideArrow.js:438` P? `left .2s ease-out, top .2s ease-out`
 
 ### heroModel (18)
 
@@ -8191,70 +7792,70 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### networking: wsClient (64)
 
-- `src/networking/wsClient.js:298` P `Anon`
-- `src/networking/wsClient.js:551` P? `tab moved`
-- `src/networking/wsClient.js:556` P? `This account connected from another window.`
-- `src/networking/wsClient.js:556` P? `Play here instead`
-- `src/networking/wsClient.js:948` P `joined BroTown!`
-- `src/networking/wsClient.js:1044` P `Anon`
-- `src/networking/wsClient.js:1181` P `Anon`
-- `src/networking/wsClient.js:1573` P? `🧊 Account frozen — contact the game owner`
-- `src/networking/wsClient.js:1629` P? `Not while you are fighting a player`
-- `src/networking/wsClient.js:1630` P `fight`
-- `src/networking/wsClient.js:2189` P? `Smithing XP`
-- `src/networking/wsClient.js:2404` P? `Requires Woodworking`
-- `src/networking/wsClient.js:2405` P? `Cannot harden wood right now`
-- `src/networking/wsClient.js:2408` P? `Hardened Wood`
-- `src/networking/wsClient.js:2410` P? `Woodworking XP`
-- `src/networking/wsClient.js:2429` P? `Smithing XP`
-- `src/networking/wsClient.js:2792` P? `a cape`
-- `src/networking/wsClient.js:2794` P `You claimed the`
-- `src/networking/wsClient.js:2819` P? `Gold Nugget!`
-- `src/networking/wsClient.js:3184` P? `Not handed in`
-- `src/networking/wsClient.js:3467` P? `BURNED TO DEATH`
-- `src/networking/wsClient.js:3467` P? `YOU DIED`
-- `src/networking/wsClient.js:3471` P? `Your bag is safe`
-- `src/networking/wsClient.js:3551` P? `No log to light`
-- `src/networking/wsClient.js:3577` P? `Gem shattered!`
-- `src/networking/wsClient.js:3587` P? `Gem Cutting Lv`
-- `src/networking/wsClient.js:3812` P? `Quest Armor`
-- `src/networking/wsClient.js:3874` P `In your bag — equip it on your legs`
-- `src/networking/wsClient.js:3875` P `In your bag — your chest slot was already full`
-- `src/networking/wsClient.js:3901` P? `ON-CHAIN ✓ Lv`
-- `src/networking/wsClient.js:4019` P `Anon`
-- `src/networking/wsClient.js:4071` P `Anon`
-- `src/networking/wsClient.js:4320` P `G`
-- `src/networking/wsClient.js:4369` P? `+ RARE GEM`
-- `src/networking/wsClient.js:4475` P? `G (sold, stash full)`
-- `src/networking/wsClient.js:4722` P `gone`
-- `src/networking/wsClient.js:4877` P? `Too many wrong Login Keys tried for this character. Trying again in`
-- `src/networking/wsClient.js:4909` P? `joined BroTown!`
-- `src/networking/wsClient.js:4950` P? `You were away, so your character logged out.`
-- `src/networking/wsClient.js:4950` P? `I'm back`
-- `src/networking/wsClient.js:4956` P? `This account connected from another window.`
-- `src/networking/wsClient.js:4956` P? `Play here instead`
-- `src/networking/wsClient.js:5036` P? `One quick check`
-- `src/networking/wsClient.js:5041` P? `That didn't go through. One more try:`
-- `src/networking/wsClient.js:5042` P? `Before your character is made, BroTown checks that a person is here.`
-- `src/networking/wsClient.js:5048` P? `Try again`
-- `src/networking/wsClient.js:5061` P? `The check couldn't load. Check your connection and try again.`
-- `src/networking/wsClient.js:5076` P? `The check didn't go through. Try again.`
-- `src/networking/wsClient.js:5079` P? `The check couldn't start. Try again.`
-- `src/networking/wsClient.js:5090` P? `The check couldn't load. Check your connection and try again.`
-- `src/networking/wsClient.js:5185` P? `still connecting after`
-- `src/networking/wsClient.js:5190` P `silent`
-- `src/networking/wsClient.js:5190` P `s`
-- `src/networking/wsClient.js:5192` P `no answer`
-- `src/networking/wsClient.js:5192` P `s after a settled action`
-- `src/networking/wsClient.js:5203` P? `, forcing rejoin`
-- `src/networking/wsClient.js:5223` P? `dead pipe`
-- `src/networking/wsClient.js:5223` P? `resume resync`
-- `src/networking/wsClient.js:5333` P? `pictures read back empty (`
-- `src/networking/wsClient.js:5335` P? `pictures emptied while away --`
-- `src/networking/wsClient.js:5409` P? `: context LOST on resume, waiting for restore`
-- `src/networking/wsClient.js:6101` P? `idle timeout`
-- `src/networking/wsClient.js:6104` P? `You were away, so your character logged out.`
-- `src/networking/wsClient.js:6104` P? `I'm back`
+- `src/networking/wsClient.js:300` P `Anon`
+- `src/networking/wsClient.js:553` P? `tab moved`
+- `src/networking/wsClient.js:558` P? `This account connected from another window.`
+- `src/networking/wsClient.js:558` P? `Play here instead`
+- `src/networking/wsClient.js:950` P `joined BroTown!`
+- `src/networking/wsClient.js:1046` P `Anon`
+- `src/networking/wsClient.js:1183` P `Anon`
+- `src/networking/wsClient.js:1575` P? `🧊 Account frozen — contact the game owner`
+- `src/networking/wsClient.js:1631` P? `Not while you are fighting a player`
+- `src/networking/wsClient.js:1632` P `fight`
+- `src/networking/wsClient.js:2191` P? `Smithing XP`
+- `src/networking/wsClient.js:2406` P? `Requires Woodworking`
+- `src/networking/wsClient.js:2407` P? `Cannot harden wood right now`
+- `src/networking/wsClient.js:2410` P? `Hardened Wood`
+- `src/networking/wsClient.js:2412` P? `Woodworking XP`
+- `src/networking/wsClient.js:2431` P? `Smithing XP`
+- `src/networking/wsClient.js:2794` P? `a cape`
+- `src/networking/wsClient.js:2796` P `You claimed the`
+- `src/networking/wsClient.js:2821` P? `Gold Nugget!`
+- `src/networking/wsClient.js:3186` P? `Not handed in`
+- `src/networking/wsClient.js:3473` P? `BURNED TO DEATH`
+- `src/networking/wsClient.js:3473` P? `YOU DIED`
+- `src/networking/wsClient.js:3477` P? `Your bag is safe`
+- `src/networking/wsClient.js:3557` P? `No log to light`
+- `src/networking/wsClient.js:3583` P? `Gem shattered!`
+- `src/networking/wsClient.js:3593` P? `Gem Cutting Lv`
+- `src/networking/wsClient.js:3818` P? `Quest Armor`
+- `src/networking/wsClient.js:3880` P `In your bag — equip it on your legs`
+- `src/networking/wsClient.js:3881` P `In your bag — your chest slot was already full`
+- `src/networking/wsClient.js:3907` P? `ON-CHAIN ✓ Lv`
+- `src/networking/wsClient.js:4025` P `Anon`
+- `src/networking/wsClient.js:4077` P `Anon`
+- `src/networking/wsClient.js:4327` P `G`
+- `src/networking/wsClient.js:4376` P? `+ RARE GEM`
+- `src/networking/wsClient.js:4482` P? `G (sold, stash full)`
+- `src/networking/wsClient.js:4729` P `gone`
+- `src/networking/wsClient.js:4884` P? `Too many wrong Login Keys tried for this character. Trying again in`
+- `src/networking/wsClient.js:4916` P? `joined BroTown!`
+- `src/networking/wsClient.js:4957` P? `You were away, so your character logged out.`
+- `src/networking/wsClient.js:4957` P? `I'm back`
+- `src/networking/wsClient.js:4963` P? `This account connected from another window.`
+- `src/networking/wsClient.js:4963` P? `Play here instead`
+- `src/networking/wsClient.js:5043` P? `One quick check`
+- `src/networking/wsClient.js:5048` P? `That didn't go through. One more try:`
+- `src/networking/wsClient.js:5049` P? `Before your character is made, BroTown checks that a person is here.`
+- `src/networking/wsClient.js:5055` P? `Try again`
+- `src/networking/wsClient.js:5068` P? `The check couldn't load. Check your connection and try again.`
+- `src/networking/wsClient.js:5083` P? `The check didn't go through. Try again.`
+- `src/networking/wsClient.js:5086` P? `The check couldn't start. Try again.`
+- `src/networking/wsClient.js:5097` P? `The check couldn't load. Check your connection and try again.`
+- `src/networking/wsClient.js:5208` P? `still connecting after`
+- `src/networking/wsClient.js:5213` P `silent`
+- `src/networking/wsClient.js:5213` P `s`
+- `src/networking/wsClient.js:5215` P `no answer`
+- `src/networking/wsClient.js:5215` P `s after a settled action`
+- `src/networking/wsClient.js:5226` P? `, forcing rejoin`
+- `src/networking/wsClient.js:5246` P? `dead pipe`
+- `src/networking/wsClient.js:5246` P? `resume resync`
+- `src/networking/wsClient.js:5356` P? `pictures read back empty (`
+- `src/networking/wsClient.js:5358` P? `pictures emptied while away --`
+- `src/networking/wsClient.js:5432` P? `: context LOST on resume, waiting for restore`
+- `src/networking/wsClient.js:6124` P? `idle timeout`
+- `src/networking/wsClient.js:6127` P? `You were away, so your character logged out.`
+- `src/networking/wsClient.js:6127` P? `I'm back`
 
 ### playerProfile (6)
 
@@ -8290,6 +7891,10 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 ### questJournalModel (1)
 
 - `src/ui/mobile/sheet/questJournalModel.js:169` P `Ready: hand it in to`
+
+### questParts (1)
+
+- `src/ui/mobile/dash/questParts.jsx:168` T `Your free spin and the day's rewards. Tap to open them.`
 
 ### rendering: artTools (7)
 
@@ -8383,46 +7988,46 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: effectsRenderer (16)
 
-- `src/rendering/systems/effectsRenderer.js:2576` P? `Source Sans 3, sans-serif`
-- `src/rendering/systems/effectsRenderer.js:2614` P? `let go`
-- `src/rendering/systems/effectsRenderer.js:2683` P? `-0 BLOCK Dodge!`
-- `src/rendering/systems/effectsRenderer.js:2684` P? `🛡️🔥 Defense Lv 0`
-- `src/rendering/systems/effectsRenderer.js:4920` P? `a tree in reach`
-- `src/rendering/systems/effectsRenderer.js:4921` P? `a campfire in reach`
-- `src/rendering/systems/effectsRenderer.js:4926` P? `a campfire lit`
-- `src/rendering/systems/effectsRenderer.js:4932` P? `the farm`
-- `src/rendering/systems/effectsRenderer.js:4938` P? `lighting a fire`
-- `src/rendering/systems/effectsRenderer.js:4941` P? `a log in the bag`
-- `src/rendering/systems/effectsRenderer.js:4950` P? `another player`
-- `src/rendering/systems/effectsRenderer.js:10189` P? `'s loot`
-- `src/rendering/systems/effectsRenderer.js:10349` P `RARE DROP!`
-- `src/rendering/systems/effectsRenderer.js:10741` P? `Rare Gem`
-- `src/rendering/systems/effectsRenderer.js:15005` P `dressed:`
-- `src/rendering/systems/effectsRenderer.js:17737` P `dressed:`
+- `src/rendering/systems/effectsRenderer.js:2032` P? `Source Sans 3, sans-serif`
+- `src/rendering/systems/effectsRenderer.js:2070` P? `let go`
+- `src/rendering/systems/effectsRenderer.js:2139` P? `-0 BLOCK Dodge!`
+- `src/rendering/systems/effectsRenderer.js:2140` P? `🛡️🔥 Defense Lv 0`
+- `src/rendering/systems/effectsRenderer.js:4241` P? `a tree in reach`
+- `src/rendering/systems/effectsRenderer.js:4242` P? `a campfire in reach`
+- `src/rendering/systems/effectsRenderer.js:4247` P? `a campfire lit`
+- `src/rendering/systems/effectsRenderer.js:4253` P? `the farm`
+- `src/rendering/systems/effectsRenderer.js:4259` P? `lighting a fire`
+- `src/rendering/systems/effectsRenderer.js:4262` P? `a log in the bag`
+- `src/rendering/systems/effectsRenderer.js:4271` P? `another player`
+- `src/rendering/systems/effectsRenderer.js:9467` P? `'s loot`
+- `src/rendering/systems/effectsRenderer.js:9627` P `RARE DROP!`
+- `src/rendering/systems/effectsRenderer.js:10019` P? `Rare Gem`
+- `src/rendering/systems/effectsRenderer.js:14283` P `dressed:`
+- `src/rendering/systems/effectsRenderer.js:17015` P `dressed:`
 
 ### rendering: entity-look (4)
 
-- `src/rendering/leaves/entity-look.js:44` P? `asked {…}s`
-- `src/rendering/leaves/entity-look.js:45` P? `retry in {…}s`
-- `src/rendering/leaves/entity-look.js:46` P? `meta gave up`
-- `src/rendering/leaves/entity-look.js:46` P? `no meta`
+- `src/rendering/leaves/entity-look.js:45` P? `asked {…}s`
+- `src/rendering/leaves/entity-look.js:46` P? `retry in {…}s`
+- `src/rendering/leaves/entity-look.js:47` P? `meta gave up`
+- `src/rendering/leaves/entity-look.js:47` P? `no meta`
 
 ### rendering: entityRenderer (14)
 
-- `src/rendering/systems/entityRenderer.js:1051` P `asked again`
-- `src/rendering/systems/entityRenderer.js:1051` P `{…} {…} {…}s [{…}]{…}`
-- `src/rendering/systems/entityRenderer.js:2560` P `worker error`
-- `src/rendering/systems/entityRenderer.js:2733` P `no worker`
-- `src/rendering/systems/entityRenderer.js:2746` P `worker let go`
-- `src/rendering/systems/entityRenderer.js:2747` P `gear numbers not sent`
-- `src/rendering/systems/entityRenderer.js:2775` P `no sheet`
-- `src/rendering/systems/entityRenderer.js:3000` P `worker stuck`
-- `src/rendering/systems/entityRenderer.js:6130` P `LV`
-- `src/rendering/systems/entityRenderer.js:14448` P `stand-in has its own arm`
-- `src/rendering/systems/entityRenderer.js:14579` P `shield down`
-- `src/rendering/systems/entityRenderer.js:15087` P `pet`
-- `src/rendering/systems/entityRenderer.js:16071` P `1 quest available`
-- `src/rendering/systems/entityRenderer.js:16279` P `round`
+- `src/rendering/systems/entityRenderer.js:1088` P `asked again`
+- `src/rendering/systems/entityRenderer.js:1088` P `{…} {…} {…}s [{…}]{…}`
+- `src/rendering/systems/entityRenderer.js:2640` P `worker error`
+- `src/rendering/systems/entityRenderer.js:2834` P `no worker`
+- `src/rendering/systems/entityRenderer.js:2847` P `worker let go`
+- `src/rendering/systems/entityRenderer.js:2848` P `gear numbers not sent`
+- `src/rendering/systems/entityRenderer.js:2876` P `no sheet`
+- `src/rendering/systems/entityRenderer.js:3104` P `worker stuck`
+- `src/rendering/systems/entityRenderer.js:6257` P `LV`
+- `src/rendering/systems/entityRenderer.js:14575` P `stand-in has its own arm`
+- `src/rendering/systems/entityRenderer.js:14706` P `shield down`
+- `src/rendering/systems/entityRenderer.js:15214` P `pet`
+- `src/rendering/systems/entityRenderer.js:16215` P `1 quest available`
+- `src/rendering/systems/entityRenderer.js:16424` P `round`
 
 ### rendering: eyeColorCatalog (4)
 
@@ -8647,7 +8252,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: paletteLoad (1)
 
-- `src/rendering/paletteLoad.js:115` P `stopped`
+- `src/rendering/paletteLoad.js:126` P `stopped`
 
 ### rendering: paletteTex (18)
 
@@ -8684,9 +8289,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: pixiApp (3)
 
-- `src/rendering/pixiApp.js:214` P `world`
-- `src/rendering/pixiApp.js:684` P? `canvas context lost`
-- `src/rendering/pixiApp.js:687` P? `canvas context restored`
+- `src/rendering/pixiApp.js:230` P `world`
+- `src/rendering/pixiApp.js:710` P? `canvas context lost`
+- `src/rendering/pixiApp.js:713` P? `canvas context restored`
 
 ### rendering: pixiRenderer (7)
 
@@ -8725,8 +8330,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: png8Worker (2)
 
-- `src/rendering/png8Worker.js:77` P `piece`
-- `src/rendering/png8Worker.js:77` P `does not come back`
+- `src/rendering/png8Worker.js:81` P `piece`
+- `src/rendering/png8Worker.js:81` P `does not come back`
 
 ### rendering: preloadAnimations (1)
 
@@ -8800,7 +8405,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: stripRead (1)
 
-- `src/rendering/stripRead.js:122` P? `no answer`
+- `src/rendering/stripRead.js:123` P? `no answer`
 
 ### rendering: tileRenderer (1)
 
@@ -8946,7 +8551,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: daybook (1)
 
-- `server/src/daybook.js:550` S `could not read the book`
+- `server/src/daybook.js:581` S `could not read the book`
 
 ### server: devicelock (2)
 
@@ -9054,8 +8659,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: index (2)
 
-- `server/src/index.js:354` S `no such room`
-- `server/src/index.js:5299` S `Shop unavailable`
+- `server/src/index.js:355` S `no such room`
+- `server/src/index.js:5305` S `Shop unavailable`
 
 ### server: killroll (2)
 
@@ -9068,12 +8673,12 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: liveops (6)
 
-- `server/src/liveops.js:465` S `cursor: the 'next' an earlier page of /economy gave.`
-- `server/src/liveops.js:611` S `flag name must match`
-- `server/src/liveops.js:611` S `or be one of`
-- `server/src/liveops.js:614` S `value must be a boolean or finite number`
-- `server/src/liveops.js:621` S `flag budget exhausted (`
-- `server/src/liveops.js:659` S `text required`
+- `server/src/liveops.js:478` S `cursor: the 'next' an earlier page of /economy gave.`
+- `server/src/liveops.js:624` S `flag name must match`
+- `server/src/liveops.js:624` S `or be one of`
+- `server/src/liveops.js:627` S `value must be a boolean or finite number`
+- `server/src/liveops.js:634` S `flag budget exhausted (`
+- `server/src/liveops.js:673` S `text required`
 
 ### server: loginspin (2)
 
@@ -9121,7 +8726,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: migrations (1)
 
-- `server/src/migrations.js:620` S `Pine Shield`
+- `server/src/migrations.js:627` S `Pine Shield`
 
 ### server: origin (1)
 
@@ -9139,20 +8744,20 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: playerroads (14)
 
-- `server/src/playerroads.js:87` S `the trade window: both sides staged, both confirmed, swapped in one write (weapons stag...`
-- `server/src/playerroads.js:93` S `the old one-way gift: the sender stages, the other accepts, nothing comes back`
-- `server/src/playerroads.js:99` S `No man's land: a player killed under its rule loses the purse and the spare weapons (a ...`
-- `server/src/playerroads.js:109` S `the General Store's order book: a buy order's gold and a sell order's weapon rest in 'm...`
-- `server/src/playerroads.js:118` S `the Auction House, bought now: the seller's goods held in 'store_listing:', the buyer's...`
-- `server/src/playerroads.js:127` S `the Auction House, a bid won: the bid's gold held on the listing until it wins (or is r...`
-- `server/src/playerroads.js:136` S `the Auction House, an offer taken: the offer's gold held on the listing until the selle...`
-- `server/src/playerroads.js:144` S `a duel's wagers: both held in 'duelEscrow:' in one write, the pot paid to the winner ('...`
-- `server/src/playerroads.js:151` S `the Gladiator Arena's entry fees: held in 'arena_entry:', paid to the champion with the...`
-- `server/src/playerroads.js:160` S `the arena's sponsorship stakes: held in 'arena_stake:', paid as the fighter's cut, the ...`
-- `server/src/playerroads.js:167` S `the threat's levy: a threatener the guards were called on is fined 10%, held on their h...`
-- `server/src/playerroads.js:174` S `the weekly jackpot: every ticket's gold pooled in 'jackpot:draw', the pool paid to one ...`
-- `server/src/playerroads.js:181` S `a pile on the ground: a death's bag ('death_pile:') or a dropped stack, taken by whoeve...`
-- `server/src/playerroads.js:188` S `Diego's pile ('shop_stock', the room's): what one player sells him, the next buys from him`
+- `server/src/playerroads.js:103` S `the trade window: both sides staged, both confirmed, swapped in one write (weapons stag...`
+- `server/src/playerroads.js:109` S `the old one-way gift: the sender stages, the other accepts, nothing comes back`
+- `server/src/playerroads.js:115` S `No man's land: a player killed under its rule loses the purse and the spare weapons (a ...`
+- `server/src/playerroads.js:125` S `the General Store's order book: a buy order's gold and a sell order's weapon rest in 'm...`
+- `server/src/playerroads.js:134` S `the Auction House, bought now: the seller's goods held in 'store_listing:', the buyer's...`
+- `server/src/playerroads.js:143` S `the Auction House, a bid won: the bid's gold held on the listing until it wins (or is r...`
+- `server/src/playerroads.js:152` S `the Auction House, an offer taken: the offer's gold held on the listing until the selle...`
+- `server/src/playerroads.js:160` S `a duel's wagers: both held in 'duelEscrow:' in one write, the pot paid to the winner ('...`
+- `server/src/playerroads.js:167` S `the Gladiator Arena's entry fees: held in 'arena_entry:', paid to the champion with the...`
+- `server/src/playerroads.js:176` S `the arena's sponsorship stakes: held in 'arena_stake:', paid as the fighter's cut, the ...`
+- `server/src/playerroads.js:183` S `the threat's levy: a threatener the guards were called on is fined 10%, held on their h...`
+- `server/src/playerroads.js:190` S `the weekly jackpot: every ticket's gold pooled in 'jackpot:draw', the pool paid to one ...`
+- `server/src/playerroads.js:197` S `a pile on the ground: a death's bag ('death_pile:') or a dropped stack, taken by whoeve...`
+- `server/src/playerroads.js:204` S `Diego's pile ('shop_stock', the room's): what one player sells him, the next buys from him`
 
 ### server: power (6)
 
@@ -9367,8 +8972,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: testmode (2)
 
-- `server/src/testmode.js:188` S `playerId required`
-- `server/src/testmode.js:243` S `could not read the list`
+- `server/src/testmode.js:200` S `playerId required`
+- `server/src/testmode.js:255` S `could not read the list`
 
 ### server: threat (1)
 
