@@ -93,11 +93,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${label}: in the Wheel (guard)`, !!inW, inW);
       if (!inW) continue;
       const me = await H.readState(P, (S) => S.myId);
-      await H.devOp(wsPort, 'kit', me, { what: 'weapons' }).catch(() => null);
-      /* the bow owned, the sword in hand (5 swaps between them) */
-      const eqB = await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged').catch((e) => ({ ok: false, why: String(e) }));
+      /* the bow owned (armed the worker's way: harness armWorker, TRAPS 207),
+         the sword in hand (5 swaps between them) */
+      const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
       const eqS = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));
-      rec.ok(`${label}: a bow owned and the sword in hand (guard)`, !!(eqB && eqB.ok) && !!(eqS && eqS.ok), { eqB, eqS });
+      rec.ok(`${label}: a bow owned and the sword in hand (guard)`, armed.includes('bow') && !!(eqS && eqS.ok), { armed, eqS });
       await H.unfoldBand(P).catch(() => null);
       await P.page.waitForTimeout(2500);
       const O1 = await LOOK(P);
