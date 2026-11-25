@@ -330,6 +330,17 @@ async function armForFight(P, wsPort, myId) {
   }
 }
 
+/* v2.3.5503: a board on the Ranks page: its tab, the picker, the board in the list */
+async function pickBoard(P, tab, id) {
+  const e = await tapSel(P, '[data-lb-tab="' + tab + '"]');
+  if (e) return e;
+  await wait(P, 300);
+  const e2 = await tapSel(P, '[data-lb-picker]');
+  if (e2) return e2;
+  await wait(P, 300);
+  return tapSel(P, '[data-lb-menu] [data-lb-cat="' + id + '"]');
+}
+
 export const STATES = [
   /* ═══ BEFORE THE WORLD ═══ */
   {
@@ -802,27 +813,39 @@ export const STATES = [
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the
      table */
-  dash('leaderboard', 'Leaderboards', 'The Leaderboards, from the Ranks button on the row (the owner\'s 2026-11-14 mockups): "RANKS" between two laurels down the left, then the boards as pills on the sheet\'s bars, the lit one gold (Overall, Melee, Bow, Magic with the sheet\'s tiles, Level; the Stats group: Defense, Max HP, Dodge, Stamina, Resist, Max Mana, Speed, Damage; a gold divider; Kills, AP, Records, Skills). Overall opens first: its table the Power rating in full. Beside them the podium of the first three on the gold, silver and bronze shields, each with a face, its name on the ribbon and the board\'s value; under it the table: #, Player, Lv, then (an upright phone) the Total or the sword, bow and staff columns, a button in the head swapping them (a computer shows all four), rows 1-3 on the gold, silver and bronze bars with the laurel medals and a crown by the first name. The board scrolls inside the band; no pages.'),
+  dash('leaderboard', 'Leaderboards', 'The Ranks page (v2.3.5503, the owner\'s 2026-11-25 mockup): four tabs across the top, each its picture and word, the open one gold (Power, Stats, Records, Skills); under them one row -- the picker naming the open board (Overall first), "RANKS" between two laurels, the tag "All-time leaderboard"; the heads #, Player, a "?" on Overall (what the Power rating means), Lv and Power; the rows, the only part that scrolls: 1-3 on the gold, silver and bronze bars with the laurel medals and a crown by the leader, 4 on the plain number, each a face, the name, an Lv chip and the value in big numerals; your own row pinned at the foot, framed in gold ("Rank #N", or "Rank #\u2014" off the board). ?rankstyle=0 gives back the list-and-podium page.'),
   {
     id: 'leaderboard-skill', group: 'Dashboard', title: 'Leaderboards: a skill',
-    about: 'Leaderboards, Skills, Fishing (a board below the divider, in the same new look): the podium, then the table: #, Player, Lv and the skill\'s level under its name (one "Lv" a row); or, with nobody on it, one line saying so.',
+    about: 'The Ranks page, the Skills tab, Fishing (picked in the picker\'s list): #, Player, Lv and the skill\'s level under its name (one "Lv" a row), your row pinned at the foot; or, with nobody on it, one line saying so.',
     run: async ({ P }) => {
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
       await wait(P, 500);
-      const e2 = await tapSel(P, '[data-lb-cat="fishing"]');
+      const e2 = await pickBoard(P, 'skills', 'fishing');
       if (e2) return 'no Fishing board (' + e2 + ')';
       await wait(P, 900);
     },
   },
   {
-    id: 'leaderboard-spin', group: 'Dashboard', title: 'Leaderboards: Daily spin',
-    about: 'Leaderboards, Records, Daily spin: Biggest wins / Biggest losses on the board\'s first line, then the ten biggest pots taken from the daily spin (or lost to double or nothing), one row a player: face, name, the level pill, how many doubles, the gold. A deleted character\'s record stays as a grey row with DELETED across its face.',
+    id: 'leaderboard-picker', group: 'Dashboard', title: 'Leaderboards: the picker open',
+    about: 'The Ranks page with its picker open (v2.3.5503): the list of the open tab\'s boards over the table, each a 44 px row on the sheet\'s pill bar with its picture, the open one gold, a \u2715 (Escape on a computer) at its head.',
     run: async ({ P }) => {
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
       await wait(P, 500);
-      const e2 = await tapSel(P, '[data-lb-cat="spin"]');
+      const e2 = await tapSel(P, '[data-lb-picker]');
+      if (e2) return 'no picker (' + e2 + ')';
+      await wait(P, 500);
+    },
+  },
+  {
+    id: 'leaderboard-spin', group: 'Dashboard', title: 'Leaderboards: Daily spin',
+    about: 'The Ranks page, the Records tab, Daily spin: Biggest wins / Biggest losses on the board\'s first line, then the ten biggest pots taken from the daily spin (or lost to double or nothing), one row a player: face, name, the level pill, how many doubles, the gold; your row pinned at the foot. A deleted character\'s record stays as a grey row with DELETED across its face.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'leaderboard');
+      if (e) return e;
+      await wait(P, 500);
+      const e2 = await pickBoard(P, 'records', 'spin');
       if (e2) return 'no Daily spin board (' + e2 + ')';
       await wait(P, 900);
     },
@@ -1050,8 +1073,8 @@ export const STATES = [
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
       await wait(P, 500);
-      const e2 = await tapSel(P, '[data-lb-cat="fish"]');
-      if (e2) return 'no Biggest fish chip (' + e2 + ')';
+      const e2 = await pickBoard(P, 'records', 'fish');   /* v2.3.5503: the Ranks page's Records tab */
+      if (e2) return 'no Biggest fish board (' + e2 + ')';
       await wait(P, 500);
       await tapSel(P, '[data-fish-board-sp="trout"]');
       await P.page.waitForSelector('[data-fish-board-row]', { timeout: 6000 }).catch(() => {});

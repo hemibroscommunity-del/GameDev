@@ -240,6 +240,7 @@ const FORMS = {
   'questpages': '0',
   'questpath': '',
   'racedoor': '0',
+  'rankstyle': '0',
   'reachspecials': '0',
   'repairms': '*',
   'report': '0',

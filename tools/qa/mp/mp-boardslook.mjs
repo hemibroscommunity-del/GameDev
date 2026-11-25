@@ -38,6 +38,10 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 export const lane = 'full';
+/* v2.3.5503 (card LB part 2): this checks the page BEFORE the Ranks page's new
+   style -- the list down the left, the podium -- which `?rankstyle=0` gives
+   back; the new page is mp-ranksstyle's */
+const RANKSTYLE_OLD = 'rankstyle=0';
 
 const PHONE = { width: 390, height: 844 };
 
@@ -146,7 +150,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `boardslook-${name}.png`) }).catch(() => {});
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Sunburn', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  const A = await H.newPlayer(browser, { name: 'Sunburn', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: RANKSTYLE_OLD });
   A.page.on('pageerror', (e) => errs.push(String((e && e.message) || e).slice(0, 200)));
   let stop = () => {};
   const bots = [];
@@ -357,7 +361,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(800);
 
     /* ── 6 ── a computer */
-    D = await H.newPlayer(browser, { name: 'Deskbro', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true });
+    D = await H.newPlayer(browser, { name: 'Deskbro', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true, query: RANKSTYLE_OLD });
     D.page.on('pageerror', (e) => errs.push('desk: ' + String((e && e.message) || e).slice(0, 200)));
     await H.enterWorld(D);
     const inD = await H.waitFor(D, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
