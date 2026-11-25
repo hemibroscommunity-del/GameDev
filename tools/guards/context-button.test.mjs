@@ -40,7 +40,7 @@
  * branch (6a), `_ex = S._extraction` and `_harvestCtx = S._btnHarvest`
  * (6b), the anchor's order swapped (6d).  Survivors: none.
  */
-import { readFileSync } from 'node:fs';
+import { readSystem } from './lib/filesOf.mjs';
 import { createRequire } from 'node:module';
 import { ctxButtonsOn, ctxPick, ctxScreen, ctxTap, ctxExtractionNode, ctxSkillOf, CTX_TALK_REACH, CTX_BELOW_CSS, CTX_NPC_FOOT } from '../../src/game/contextButton.js';
 
@@ -158,7 +158,9 @@ const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50
   check('6. @babel/parser, traverse and generator load (npm install in the root or server/)', !!B);
   if (B) {
     const gen = (n) => (B.gen.default || B.gen)(n, { comments: false }).code.replace(/\s+/g, ' ');
-    const src = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+    /* the screens' file, found by system (filesOf.mjs): the one that calls ctxButtonFrame */
+    let src = '';
+    for (const [file, text] of readSystem('ui')) if (/\.jsx?$/.test(file) && text.includes('ctxButtonFrame(ctxBtnRef')) src = text;
     const ast = B.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
     const decl = Object.create(null), ifs = [], frames = [], assigns = [];
     B.traverse(ast, {
@@ -175,7 +177,8 @@ const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50
       && (decl._harvestCtx || []).join() === 'S._btnHarvest && !_ctxOn' && assigns.join() === '!!(S._nearNode && !_lockHeld && !_monNear)', { decl, assigns });
     check('6c. ONE frame call, with the fight, the zone and the controls\' showing',
       frames.length === 1 && frames[0] === 'ctxButtonFrame(ctxBtnRef.current, S, { live: _ctxOn, busy: !!(_lockHeld || _monNear), npcsHere: _npcZone(S.currentZone), shown: S._rBtnShown !== false })', frames);
-    const esl = readFileSync(new URL('../../src/ui/ExtractionSwipeLayer.jsx', import.meta.url), 'utf8');
+    let esl = '';
+    for (const [file, text] of readSystem('ui')) if (text.includes('export function buttonCueScreenPos')) esl = text;
     check('6d. the beat\'s anchor: the button under the node while it shows, else the Attack disc',
       esl.includes("document.querySelector('.bt-ctx-btn[data-show=\"1\"]') || document.querySelector('.bt-rjoy-base')"));
   }

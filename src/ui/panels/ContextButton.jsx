@@ -25,6 +25,7 @@ import React, { useRef } from 'react';
 import { ctxPick, ctxScreen, CTX_KINDS } from '../../game/contextButton.js';
 import { canvasPlace } from '../mayorScreen.js';
 import { RDISC_ICONS } from './controlSkin.jsx';
+import { SAY } from '../../data/say/contextButton.js';
 
 const SKILL_ICONS = RDISC_ICONS.filter(function (ic) { return ic[0] === 'mining' || ic[0] === 'woodcutting' || ic[0] === 'fishing' || ic[0] === 'cooking'; });
 const BTN_H = 48;
@@ -50,10 +51,10 @@ export function ctxButtonFrame(el, S, o) {
   if (el._btIcon !== ic) {
     el.setAttribute('data-icon', ic);
     el._btIcon = ic;
-    const imgs = el.querySelectorAll ? el.querySelectorAll('[data-ctx-icon]') : [];
+    const imgs = el._btImgs || [];   /* kept by the ref (no search a frame) */
     for (let i = 0; i < imgs.length; i++) imgs[i].style.display = imgs[i].getAttribute('data-ctx-icon') === ic ? 'block' : 'none';
   }
-  const w = el.querySelector && el._btWord !== use.word ? el.querySelector('[data-ctx="word"]') : null;
+  const w = el._btWord !== use.word ? el._btWordEl : null;
   if (w) { w.textContent = use.word; el._btWord = use.word; }
   const tf = 'translate(' + pos.x + 'px,' + pos.y + 'px) translate(-50%,-50%)';
   if (el._btTf !== tf) { el.style.transform = tf; el._btTf = tf; }
@@ -83,11 +84,23 @@ export function ContextButton(props) {
     if (typeof props.onTap === 'function') props.onTap(p, el._btPos);
   };
   return React.createElement('button', {
-    ref: props.btnRef ? function (n) { ref.current = n; props.btnRef.current = n; } : ref,
+    ref: function (n) {
+      ref.current = n;
+      if (props.btnRef) props.btnRef.current = n;
+      /* its pictures and its word, kept once here: the frame searches nothing */
+      if (n) {
+        n._btImgs = [];
+        for (let i = 0; i < n.children.length; i++) {
+          const c = n.children[i];
+          if (c.hasAttribute('data-ctx-icon')) n._btImgs.push(c);
+          else if (c.getAttribute('data-ctx') === 'word') n._btWordEl = c;
+        }
+      }
+    },
     type: 'button',
     className: 'bt-chisel bt-chisel--brass bt-ctx-btn bt-desktop-hide',
     'data-show': '0',
-    'aria-label': 'Do this here',
+    'aria-label': SAY['contextButton.label'],
     style: {
       position: 'fixed', left: 0, top: 0, zIndex: 31, display: 'none',
       height: BTN_H, minWidth: 72, padding: '0 12px 0 8px', boxSizing: 'border-box',

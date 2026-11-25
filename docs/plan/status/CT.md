@@ -6,21 +6,11 @@ state: working
 ## Done
 - PRs 1-5 (6540-6544) merged or in via #2330; items 6-8 (6545 rim sprint,
   6546 the line in combat, 6547 the free arrow, `?freefire=0`) in #2340.
-- Part 15 (6548, working): tap and hold. A tap on Attack is one attack (a
-  lock that stays); a hold on a lock fills a ring (600 ms, `?autohold=<ms>`)
-  and turns auto-attack on (lit); a tap while auto ends it; a kill lets
-  everything go (no hop). The latch's phases idle/active/auto (one field,
-  latchTo; S.autoAttack from latchHolds). `?holdauto=0` the old press.
-  latch.js + freeAttack.js; latch.test 6, free-attack 4-5 (no server/src).
-- Part 17 (6550, working): in mode 5 Attack always attacks (its word, its
-  sword, its press, beside a node and during a harvest); ONE brass button
-  under the one nearest thing: CHOP/MINE/FISH/COOK under a node on today's
-  harvest condition (S._btnHarvest), the beat's word and the strokes on it
-  during the work (ExtractionSwipeLayer's anchor), TALK under a townsperson
-  within 120 px with no fight. `?ctxbuttons=0` the old Attack.
-  game/contextButton.js (the rule), panels/ContextButton.jsx (one DOM button
-  moved by transform), guards/context-button.test (35 mutants, none left),
-  mp-contextbuttons (new). No server file.
+- Part 15 (6548): tap and hold (`?holdauto=0`, `?autohold=<ms>`): latch.js, freeAttack.js.
+- Part 17 (6550, working): mode 5's Attack always attacks; ONE button under
+  the nearest thing (CHOP/MINE/FISH/COOK on S._btnHarvest, the beat on it in
+  the work, TALK within 120 px). `?ctxbuttons=0`. contextButton.js (35
+  mutants, none left), ContextButton.jsx, mp-contextbuttons. No server file.
 
 ## Next
 - Part 15 handed over at 264k: mp-twobuttons on its head (a helper), after
@@ -33,16 +23,9 @@ state: working
   went auto both ways: bE's release sat after its findT and missed.
 - #2340's helper run: 92/94, 7d both ways (the arrow flew and hurt; free 0):
   7d now waits for nothing in sight and counts any arrow loosed.
-- Item 8's repro (430x775 @3x, a greatsword, one press, 5 s): the body
-  moved 0 px; nothing on mode 5's press reaches maybeSwordDash. Main from
-  #2293 to #2330 (11-24 06:56-10:24 -0800) ran it as mode 4's press: the lunge.
-- 3c/3d sideways: Block/Special flip in the DOM while their probes say
-  shown and the phase holds (part 12's; seen again in item 8's run).
-- mp-twobuttons (item 8, last run): 94, 89 pass; 2c's stay and 7b pass up
-  and sideways. 7a/7c red were the bow firing at a prop on its line (today's
-  rule): the steps now read the line (not rerun). 7d (a free arrow meets a
-  monster): the test's hiding of a sighted monster did not take in my runs
-  (the press locked it); the helper's run passed it upright (58 -> 49).
+- Part 17's own runs: TALK, CHOP, the swing, the beats, `ctxbuttons=0` green
+  upright; mode 4's disc press started no chop (pre-existing? the helper's
+  run says what was under the finger).
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
