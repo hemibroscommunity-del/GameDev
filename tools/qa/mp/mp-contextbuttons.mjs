@@ -8,7 +8,11 @@
  *   1. TALK: Mayor Bro reached with H.approachNpc (a tap on him still talks);
  *      his window closed, a TALK button stands under his feet (44 px or
  *      more, on the screen), nothing opens by itself, and a touch on it opens
- *      him again (its tap, `__btCtxTap.did === 'talk'`);
+ *      him again (its tap, `__btCtxTap.did === 'talk'`).  v2.3.6552 (card CT
+ *      part 19, the owner: "Your talk button is intrusive use the left icon
+ *      I attached here instead"): it is the owner's pill, the picture alone
+ *      (decoded, 44 x 30 or so), NO word drawn, no brass plate, named "Talk",
+ *      in a 44 px or wider touch box, `touch-action: manipulation`;
  *   2. A TREE, the axe in the bag: beside a pine in reach, Attack keeps its
  *      word and picture (ATTACK, the weapon's), a CHOP button stands under the
  *      tree; a press of Attack swings (a tap attack counted) and starts no
@@ -41,6 +45,13 @@ const LOOK = (P) => P.page.evaluate(() => {
   return {
     show: b ? b.getAttribute('data-show') : null, kind: b ? b.getAttribute('data-kind') : null,
     word: b ? (b.querySelector('[data-ctx="word"]') || {}).textContent : null,
+    /* v2.3.6552: what is drawn -- the pill (TALK's picture), the word's
+       span showing or not, the brass plate (the chisel class), the name */
+    pill: (() => { const im = b && b.querySelector('[data-ctx-icon="talk"]'); if (!im) return null; const q = im.getBoundingClientRect();
+      return { shown: im.style.display === 'block', decoded: im.complete && im.naturalWidth === 132, w: q.width, h: q.height, inline: im.src.slice(0, 22) === 'data:image/png;base64,' }; })(),
+    wordShown: b ? (b.querySelector('[data-ctx="word"]') || { style: {} }).style.display !== 'none' : null,
+    chisel: b ? b.classList.contains('bt-chisel') : null, name: b ? b.getAttribute('aria-label') : null,
+    touchAction: b ? getComputedStyle(b).touchAction : null,
     box: r ? { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null,
     vw: window.innerWidth, vh: window.innerHeight,
     probe: window.__btCtxButton || null, tap: window.__btCtxTap || null,
@@ -177,9 +188,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const t1 = await H.waitFor(P, () => { const p = window.__btCtxButton; return p && p.kind; }, (k) => k === 'talk', { timeout: 6000, label: 'TALK' }).catch(() => null);
       const L1 = await LOOK(P);
       const f1 = mayor ? await FEET(P, 'npc', mayor.id) : null;
-      rec.ok(`1b. beside him (${mayor && mayor.d} px), his window closed: a TALK button under his feet, ${L1.box && Math.round(L1.box.h)} px tall, on the screen`,
-        t1 === 'talk' && L1.show === '1' && L1.word === 'TALK' && L1.probe.name === 'Mayor Bro' && !!L1.box && L1.box.h >= 44 && !!f1 && L1.box.top > f1.y && Math.abs(L1.box.x - f1.x) < 2
+      rec.ok(`1b. beside him (${mayor && mayor.d} px), his window closed: a TALK button under his feet, ${L1.box && Math.round(L1.box.w)} x ${L1.box && Math.round(L1.box.h)} px to touch, on the screen`,
+        t1 === 'talk' && L1.show === '1' && L1.probe.word === 'TALK' && L1.probe.name === 'Mayor Bro' && !!L1.box && L1.box.h >= 44 && L1.box.w >= 44 && !!f1 && L1.box.top > f1.y && Math.abs(L1.box.x - f1.x) < 2
         && L1.box.left >= 0 && L1.box.right <= L1.vw && L1.box.bottom <= L1.vh, { L1, f1, mayor });
+      /* v2.3.6552: the owner's pill, no word, no plate */
+      rec.ok(`1b. it is the owner's pill (${L1.pill && Math.round(L1.pill.w)} x ${L1.pill && Math.round(L1.pill.h)}, inline, decoded), no word drawn, no brass plate, named "${L1.name}", touch-action ${L1.touchAction}`,
+        !!L1.pill && L1.pill.shown && L1.pill.decoded && L1.pill.inline && Math.abs(L1.pill.w - 44) <= 1 && Math.abs(L1.pill.h - 30) <= 1
+        && L1.word === '' && L1.wordShown === false && L1.chisel === false && L1.name === 'Talk' && L1.touchAction === 'manipulation'
+        && L1.probe.pic === 'talk' && L1.probe.drawn === '' && L1.probe.plate === false, L1);
       rec.ok('1c. nothing opens by itself standing there', !(await H.npcDialogueOpen(P)));
       rec.ok('1c. Attack keeps the weapon beside him', weaponIcon(L1.ricon) && L1.label === 'ATTACK', { ricon: L1.ricon, label: L1.label });
       if (L1.box) await A.touch(L1.box);
@@ -197,7 +213,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const L2 = await LOOK(P);
         const f2 = await FEET(P, 'node', t.id);
         rec.ok(`2a. Attack keeps its word and picture (${L2.label}, ${L2.ricon})`, L2.label === 'ATTACK' && weaponIcon(L2.ricon), L2);
-        rec.ok('2b. a CHOP button under the tree (44 px or more)', L2.show === '1' && L2.kind === 'node' && L2.word === 'CHOP' && L2.probe.id === t.id && !!L2.box && L2.box.h >= 44 && !!f2 && L2.box.top > f2.y && Math.abs(L2.box.x - f2.x) < 2, { L2, f2 });
+        rec.ok('2b. a CHOP button under the tree (44 px or more; the brass word button, never the pill)', L2.show === '1' && L2.kind === 'node' && L2.word === 'CHOP' && L2.wordShown === true && L2.chisel === true && !!L2.pill && !L2.pill.shown && L2.name === 'Do this here' && L2.probe.id === t.id && !!L2.box && L2.box.h >= 44 && !!f2 && L2.box.top > f2.y && Math.abs(L2.box.x - f2.x) < 2, { L2, f2 });
         const rd = await rdCentre(P);
         if (rd) await A.touch(rd, 2);
         await P.page.waitForTimeout(700);

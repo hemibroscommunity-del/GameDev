@@ -1609,8 +1609,9 @@ export const STATES = [
     after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); }).catch(() => {}); await wait(P, 400); },
   },
   {
-    id: 'two-buttons-ctx-talk', group: 'Fighting', title: 'The two buttons, beside a townsperson: TALK under him',
-    about: 'The two-button trial standing beside Mayor Bro (within 120 px): a brass TALK button stands under his feet. Nothing opens by itself; a tap on TALK talks to him, exactly as a tap on him does (which still works). Only the nearest one thing gets a button.',
+    /* v2.3.6552 (card CT part 19): TALK is the owner's pill, the picture alone */
+    id: 'two-buttons-ctx-talk', group: 'Fighting', title: 'The two buttons, beside a townsperson: the talk pill under him',
+    about: 'The two-button trial standing beside Mayor Bro (within 120 px): the owner\'s talk pill (a small dark slate pill with a gold rim and a cream speech bubble with three dots, about 44 x 30, no word; v2.3.6552, the owner: "Your talk button is intrusive use the left icon I attached here instead") stands under his feet, in a clear 48 px touch box. Nothing opens by itself; a tap on it talks to him, exactly as a tap on him does (which still works). Only the nearest one thing gets a button; CHOP, MINE, FISH and COOK keep the brass word button.',
     views: ['portrait', 'landscape'],
     settle: 800,
     run: async ({ P }) => {

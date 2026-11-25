@@ -26,6 +26,19 @@
  *      S._btnHarvest && !_ctxOn` (today's condition kept whole in
  *      S._btnHarvest); ONE frame call; the gesture's anchor prefers the
  *      button while it shows.
+ *   7. THE LOOK (ctxLook, v2.3.6552, card CT part 19: the owner's "use the
+ *      left icon I attached here instead"): TALK draws the owner's pill and
+ *      NO word, no plate, named "Talk"; every harvest kind (CHOP, MINE, FISH,
+ *      COOK, each beat) the brass plate, its word and its skill's picture,
+ *      NEVER the pill; the pick's own word unchanged (TALK, for the probe);
+ *   8. THE PILL (src/data/talkPill.js, a data address the cut tool writes):
+ *      a palette PNG on 256 colours or fewer, under 4096 bytes (it rides in
+ *      the script: nothing fetched), its shape the drawn one (CTX_TALK_W x CTX_TALK_H at 3 device
+ *      pixels a point), the touch box 44 or more round it;
+ *   9. THE PANEL AND THE PRELOAD, off the syntax tree: the frame draws the
+ *      look's picture and word (never the pick's), dresses on a kind change,
+ *      the picture-alone dress has no chisel class and a touch box past 44,
+ *      the pill's <img> is TALK_PILL_URL, controlsPreload warms it.
  *
  * A guard under tools/guards (server/test/run.mjs runs it; nothing deploys).
  *
@@ -39,10 +52,21 @@
  * (1).  By hand on the screens: `!_ctxPress` dropped from either press
  * branch (6a), `_ex = S._extraction` and `_harvestCtx = S._btnHarvest`
  * (6b), the anchor's order swapped (6d).  Survivors: none.
+ * Mutants (v2.3.6552, parts 7-9; 19 played by a script): 12 of contextButton.js,
+ * each changed alone (the sizes 44/30/48 to 40/31/40, the picture's name,
+ * `if (!pick)` dropped, TALK's plate, word and label, a harvest kind's
+ * plate, word and picture): every one red.  By hand in the panel: `ic =
+ * use.skill || 'none'` (9a), `w.textContent = use.word` (9a), ctxDress not
+ * called (9b), the chisel class on PIC_CLASS (9c), PIC_DRESS's 48 to 40
+ * (9c), the pill's src (9d), the preload's push dropped (9e): every one red.
+ * Survivors: none.
  */
 import { readSystem } from './lib/filesOf.mjs';
 import { createRequire } from 'node:module';
-import { ctxButtonsOn, ctxPick, ctxScreen, ctxTap, ctxExtractionNode, ctxSkillOf, CTX_TALK_REACH, CTX_BELOW_CSS, CTX_NPC_FOOT } from '../../src/game/contextButton.js';
+import fs from 'node:fs';
+import { ctxButtonsOn, ctxPick, ctxScreen, ctxTap, ctxExtractionNode, ctxSkillOf, ctxLook, CTX_TALK_REACH, CTX_BELOW_CSS, CTX_NPC_FOOT,
+  CTX_NODE_WORDS, CTX_BEAT_WORDS, CTX_TALK_W, CTX_TALK_H, CTX_TOUCH, CTX_TALK_PIC } from '../../src/game/contextButton.js';
+import { TALK_PILL_DATA, TALK_PILL_W, TALK_PILL_H } from '../../src/data/talkPill.js';
 
 let failures = 0, passes = 0;
 const check = (name, ok, detail) => {
@@ -181,6 +205,75 @@ const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50
     for (const [file, text] of readSystem('ui')) if (text.includes('export function buttonCueScreenPos')) esl = text;
     check('6d. the beat\'s anchor: the button under the node while it shows, else the Attack disc',
       esl.includes("document.querySelector('.bt-ctx-btn[data-show=\"1\"]') || document.querySelector('.bt-rjoy-base')"));
+  }
+}
+
+/* 7. the look (v2.3.6552) */
+{
+  const S = base({ npcs: [{ name: 'Mo', x: 100, y: 150, alive: true }] });
+  const talk = ctxPick(S, O);
+  const tl = ctxLook(talk);
+  check('7a. TALK: the owner\'s pill, no word, no plate, named "Talk"',
+    !!talk && talk.kind === 'talk' && !!tl && tl.pic === 'talk' && CTX_TALK_PIC === 'talk' && tl.word === '' && tl.plate === false && tl.label === 'Talk', tl);
+  check('7a. the pick\'s own word stays TALK (the probe\'s)', !!talk && talk.word === 'TALK', talk);
+  const kinds = [
+    ...Object.keys(CTX_NODE_WORDS).map((t) => ({ kind: 'node', word: CTX_NODE_WORDS[t], skill: t === 'campfire' ? 'cooking' : ctxSkillOf({ nodeType: t }) })),
+    ...Object.keys(CTX_BEAT_WORDS).map((sk) => ({ kind: 'beat', word: CTX_BEAT_WORDS[sk], skill: sk })),
+    { kind: 'beat', word: 'WAIT', skill: 'mining' }, { kind: 'beat', word: 'GO', skill: null },
+  ];
+  const bad = kinds.filter((p) => { const l = ctxLook(Object.assign({ thing: tree }, p)); return !l || l.plate !== true || l.word !== p.word || !l.word || l.pic === CTX_TALK_PIC || l.pic !== (p.skill || 'none') || l.label !== 'Do this here'; });
+  check('7b. every harvest kind (' + kinds.length + '): the brass plate, its word, its skill\'s picture, never the pill', kinds.length === 10 && bad.length === 0, bad);
+  check('7c. no pick: no look', ctxLook(null) === null);
+}
+
+/* 8. the pill's file */
+{
+  const uri = TALK_PILL_DATA, head = 'data:image/png;base64,';
+  const b = typeof uri === 'string' && uri.startsWith(head) ? Buffer.from(uri.slice(head.length), 'base64') : Buffer.alloc(0);
+  const png = b.length > 33 && b.toString('latin1', 1, 4) === 'PNG' && b.toString('latin1', 12, 16) === 'IHDR';
+  const w = png ? b.readUInt32BE(16) : 0, h = png ? b.readUInt32BE(20) : 0, type = png ? b[25] : -1;
+  let plte = -1;
+  for (let at = 8; png && at + 8 <= b.length;) { const n = b.readUInt32BE(at), t = b.toString('latin1', at + 4, at + 8); if (t === 'PLTE') { plte = n / 3; break; } at += 12 + n; }
+  check('8a. a palette PNG on 256 colours or fewer (' + plte + ')', png && type === 3 && plte > 0 && plte <= 256, { type, plte });
+  check('8b. a data address of a PNG under 4096 bytes, small in the script (' + b.length + ')', b.length > 0 && b.length < 4096, b.length);
+  check('8c. its shape the drawn one at 3 device pixels a point (' + w + 'x' + h + ' for ' + CTX_TALK_W + 'x' + CTX_TALK_H + ')',
+    w === CTX_TALK_W * 3 && Math.round(h / 3) === CTX_TALK_H && w === TALK_PILL_W && h === TALK_PILL_H, { w, h });
+  check('8d. the touch box round it past 44, the picture inside it', CTX_TOUCH >= 44 && CTX_TALK_W <= CTX_TOUCH && CTX_TALK_H <= CTX_TOUCH, { CTX_TOUCH });
+}
+
+/* 9. the panel and the preload, off the syntax tree */
+{
+  let B = null;
+  for (const pkg of ['package.json', 'server/package.json']) {
+    try { const req = createRequire(new URL('../../' + pkg, import.meta.url)); const tr = req('@babel/traverse'); B = { parse: req('@babel/parser').parse, traverse: tr.default || tr, gen: req('@babel/generator') }; break; } catch (e) { /* the next */ }
+  }
+  if (B) {
+    const gen = (n) => (B.gen.default || B.gen)(n, { comments: false }).code.replace(/\s+/g, ' ');
+    const read = (rel) => fs.readFileSync(new URL('../../' + rel, import.meta.url), 'utf8');
+    const ast = B.parse(read('src/ui/panels/ContextButton.jsx'), { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    const decl = Object.create(null), calls = [], assigns = [], objs = [];
+    B.traverse(ast, {
+      VariableDeclarator(p) { if (p.node.id.type === 'Identifier' && p.node.init) (decl[p.node.id.name] = decl[p.node.id.name] || []).push(gen(p.node.init)); },
+      CallExpression(p) {
+        if (p.node.callee.type !== 'Identifier' || p.node.callee.name !== 'ctxDress') return;
+        const st = p.findParent((q) => q.isIfStatement());
+        calls.push(st ? gen(st.node.test) + ' => ' + gen(p.node) : gen(p.node));
+      },
+      AssignmentExpression(p) { if (gen(p.node.left) === 'w.textContent') assigns.push(gen(p.node.right)); },
+      ObjectExpression(p) { const k = p.node.properties.find((q) => q.key && (q.key.value === 'data-ctx-icon' || q.key.name === 'data-ctx-icon')); if (k) objs.push(gen(p.node)); },
+    });
+    check('9a. the frame draws the look\'s picture and word: `look = ctxLook(use)`, `ic = look.pic`, `w.textContent = look.word`',
+      (decl.look || []).join() === 'ctxLook(use)' && (decl.ic || []).join() === 'look.pic' && assigns.join() === 'look.word', { look: decl.look, ic: decl.ic, assigns });
+    check('9b. it dresses on a kind change: ctxDress(el, look) under `el._btKind !== use.kind`, once',
+      calls.length === 1 && calls[0] === 'el._btKind !== use.kind => ctxDress(el, look)', calls);
+    const pic = (decl.PIC_CLASS || []).join(), dress = (decl.PIC_DRESS || []).join();
+    check('9c. the picture alone: no chisel class, no ground, no border, a touch box of CTX_TOUCH',
+      pic.includes('bt-ctx-btn') && !pic.includes('chisel') && /minWidth: CTX_TOUCH \+ 'px'/.test(dress) && /background: 'none'/.test(dress) && /border: '0'/.test(dress), { pic, dress });
+    check('9d. the pill\'s <img>: TALK_PILL_URL, CTX_TALK_W x CTX_TALK_H, under the name CTX_TALK_PIC',
+      objs.some((o) => o.includes("'data-ctx-icon': CTX_TALK_PIC") && o.includes('src: TALK_PILL_URL') && o.includes('width: CTX_TALK_W') && o.includes('height: CTX_TALK_H')), objs);
+    const cs = read('src/ui/panels/controlSkin.jsx'), cp = read('src/rendering/controlsPreload.js');
+    check('9e. its address the generated data address (controlSkin TALK_PILL_URL from data/talkPill.js), warmed on the loading screen (controlsPreload)',
+      /import \{ TALK_PILL_DATA \} from '\.\.\/\.\.\/data\/talkPill\.js'/.test(cs) && /export const TALK_PILL_URL = TALK_PILL_DATA;/.test(cs) && /urls\.push\(TALK_PILL_URL\);/.test(cp));
   }
 }
 

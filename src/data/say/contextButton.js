@@ -12,4 +12,7 @@ export const SAY = Object.freeze({
   'contextButton.wait': 'WAIT',
   'contextButton.go': 'GO',
   'contextButton.label': 'Do this here',
+  /* v2.3.6552: TALK draws the owner's pill and no word (card CT part 19):
+     its name for a screen reader, never drawn */
+  'contextButton.talkLabel': 'Talk',
 });

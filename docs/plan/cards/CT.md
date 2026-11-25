@@ -145,7 +145,9 @@ the switch table.
   harvest button (S._btnHarvest), its tap the harvest's start, and during the
   work the same button wears the beat and takes the strokes (the gesture's
   anchor); TALK under a townsperson within 120 px with no fight, its tap
-  talking as a tap on him does. `?ctxbuttons=0` gives the old Attack. A tap
+  talking as a tap on him does; TALK wears the owner's pill, the picture
+  alone, no word and no plate (part 19, tag 6552: *"Your talk button is
+  intrusive use the left icon I attached here instead"*). `?ctxbuttons=0` gives the old Attack. A tap
   on the world's right half still opens a door and talks to a townsperson.
 - **PvP is not this card.** In a duel, a spar or No man's land the scheme
   must not break: say in PR 3's words what it does there today. Ask before

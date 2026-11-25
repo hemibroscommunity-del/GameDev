@@ -138,6 +138,36 @@ export function ctxPick(S, o) {
   return best;
 }
 
+/* ═══ v2.3.6552: WHAT THE BUTTON WEARS (card CT part 19) ═══
+ * The owner, 2026-11-25, with a picture: "Your talk button is intrusive use
+ * the left icon I attached here instead (ignore the right one)."  TALK is the
+ * owner's pill (a dark slate pill, a gold rim, a cream speech bubble with
+ * three dots; tools/ui/cut-talk-pill.mjs, src/data/talkPill.js): the
+ * picture IS the button, no brass plate behind it, no word drawn (its name,
+ * "Talk", for a screen reader only).  CHOP, MINE, FISH, COOK and the beats
+ * keep the brass word button with the skill's picture, as part 17 made them.
+ * The pick (ctxPick) is unchanged: its word stays TALK for the probe; only
+ * what is DRAWN changes, here, and the panel (ContextButton.jsx) writes it. */
+/** TALK's picture as drawn (CSS px: the file's 132 x 91 at 3 device pixels a
+ *  point), and the touch box round it (invisible: past 44 points). */
+export const CTX_TALK_W = 44;
+export const CTX_TALK_H = 30;
+export const CTX_TOUCH = 48;
+/** The picture a TALK button wears (the panel's data-ctx-icon). */
+export const CTX_TALK_PIC = 'talk';
+
+/**
+ * What a pick is drawn as: { plate: the brass word button (true) or the
+ * picture alone (false), word: the word drawn ('' for none), pic: the
+ * picture shown ('talk', a skill, or 'none'), label: the element's
+ * accessible name }.  Null for no pick.
+ */
+export function ctxLook(pick) {
+  if (!pick) return null;
+  if (pick.kind === 'talk') return { plate: false, word: '', pic: CTX_TALK_PIC, label: say(SAY, 'contextButton.talkLabel') };
+  return { plate: true, word: pick.word, pic: pick.skill || 'none', label: say(SAY, 'contextButton.label') };
+}
+
 /** Below a thing's feet, how far the button's centre sits (CSS px). */
 export const CTX_BELOW_CSS = 34;
 /** A townsperson's feet stand this far under his place (world px; the same

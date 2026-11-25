@@ -28,7 +28,7 @@
  * nothing to fetch; since v2.3.3279 they are the owner's pictures, warmed
  * here with their grey copies.)
  */
-import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS, WPN_PILL_ICONS } from '../ui/panels/controlSkin.jsx';
+import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS, WPN_PILL_ICONS, TALK_PILL_URL } from '../ui/panels/controlSkin.jsx';
 import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
@@ -73,6 +73,10 @@ export function controlsPreloadUrls() {
      middle of play (17 KB decoded).  The owner's other picks sit in windows
      you open, which load their pictures as they open, as every window does */
   urls.push(OWNER_ICON.tradeHandshake.src);
+  /* v2.3.6552: the owner's TALK pill (ContextButton.jsx): a data address in
+     the script (nothing fetched), decoded here so its first showing under a
+     townsperson paints at once */
+  urls.push(TALK_PILL_URL);
   return [...new Set(urls)];
 }
 
