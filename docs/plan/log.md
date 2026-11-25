@@ -8,6 +8,8 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 64 | 5.4b | listed at 64: CT's #2345 (the join: lands #2342, the right side's buttons, and #2344, the button under things; the body faces its lock) | the owner's play (part 9 item 7); the debts: `docs/plan/debts.md` CT (64), PH (64) |
+| 64 | 5.4b, (no box) | merged before 64 (main 53a5257d): sitting 63's whole list (#2341 with #2340; #2343) | as at 63 |
 | 63 | 5.4b | listed at 63: CT's #2340 (free arrows, Attack's press moves nothing), #2341 (tap and hold) | `legacy` empty; the owner's play (part 9 item 7); the debts: `docs/plan/debts.md` CT (63) |
 | 63 | 4.4, 4.5, 5.4b, (no box) | merged before 63 (main afc215c6): sitting 62's whole list | as at 62 |
 | 62 | 4.4, 4.5 | listed at 62: BK's #2326, #2335 (61's hold mended) | (the debts: `docs/plan/debts.md` BK) |
