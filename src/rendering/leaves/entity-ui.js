@@ -357,12 +357,15 @@ export function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
    sheet (Texture.EMPTY is the blank a piece was made with before its sheet
    was cut: the owner's "holes", 2026-11-25). */
 export function resBarBoxes(d) {
+  /* a piece's two corners carried to the stage (every piece is anchored at
+     (0, 0), so its own space runs from 0 to its picture's size) */
   const box = (q) => {
     if (!q || q.destroyed) return null;
-    const b = q.getBounds();
     const t = q.texture;
-    return { x: b.x, y: b.y, w: b.width, h: b.height, visible: !!q.visible,
-      pic: !!(t && t !== Texture.EMPTY && t.source && !t.source.destroyed && t.frame && t.frame.width > 1) };
+    const o = (t && t.orig) || { width: 0, height: 0 };
+    const a = q.toGlobal({ x: 0, y: 0 }), z = q.toGlobal({ x: o.width, y: o.height });
+    return { x: Math.min(a.x, z.x), y: Math.min(a.y, z.y), w: Math.abs(z.x - a.x), h: Math.abs(z.y - a.y), visible: !!q.visible,
+      pic: !!(t && t !== Texture.EMPTY && t.source && !t.source.destroyed && o.width > 1) };
   };
   const one = (sp) => {
     if (!sp || sp.destroyed) return null;
