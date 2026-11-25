@@ -208,6 +208,9 @@ async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Bro');
+  /* v2.3.6600 (card BRO): on the pages (the computer player B) the door is on Progress; the card ignores it */
+  await P.page.waitForTimeout(300);
+  await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); });
   await P.page.waitForSelector('[data-bro-row="achievements"]', { timeout: 8000 });
   await clickRow(P, '[data-bro-row="achievements"]');
   return P.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
