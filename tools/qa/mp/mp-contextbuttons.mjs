@@ -132,9 +132,14 @@ const WHY = (P) => H.readState(P, (S) => {
     axe: ((S.rpg || {}).inventory || {}).woodcutting_axe || 0, lock: !!S.lockedTarget, swim: !!(S._wheelSwim && S._wheelSwim.on),
     mons: (S.monsters || []).filter((m) => m && m.alive && Math.hypot(m.x - p.x, m.y - p.y) < 260).length };
 });
+/* v2.3.6550 (the orchestrator, from mp-twobuttons' sitting): one room, so each
+   pass takes a pine no earlier pass used -- a felled or still-worked one
+   cascades red */
+const SPENT = new Set();
 async function byTree(P) {
-  const trees = await H.readState(P, (S) => (S.gatherNodes || []).filter((n) => n && n.nodeType === 'tree' && n.alive !== false)
-    .map((n) => ({ id: n.id, x: n.x, y: n.y, d: Math.hypot(n.x - S.player.x, n.y - S.player.y) })).sort((a, b) => a.d - b.d).slice(0, 5));
+  const all = await H.readState(P, (S) => (S.gatherNodes || []).filter((n) => n && n.nodeType === 'tree' && n.alive !== false)
+    .map((n) => ({ id: n.id, x: n.x, y: n.y, d: Math.hypot(n.x - S.player.x, n.y - S.player.y) })).sort((a, b) => a.d - b.d));
+  const trees = (all || []).filter((t) => !SPENT.has(t.id)).slice(0, 5);
   const tried = [];
   for (const t of trees || []) {
     await H.hopTo(P, Math.round(t.x), Math.round(t.y + 120), { tries: 60 });
@@ -142,12 +147,12 @@ async function byTree(P) {
     for (const sp of (await SPOTS(P, t.id)).slice(0, 3)) {
       await H.hopTo(P, Math.round(sp.x), Math.round(sp.y), { tries: 6 });
       const v = await H.waitFor(P, (S) => (S._btnHarvest && S._nearNode ? S._nearNode.id : null), (x) => x === t.id, { timeout: 3000, label: 'in reach' }).catch(() => false);   /* the id compared here: `t` is not in the page */
-      if (v) return { t, tried };
+      if (v) { SPENT.add(t.id); return { t, tried }; }
       tried.push({ tree: t.id, sp: [Math.round(sp.x), Math.round(sp.y)], why: await WHY(P) });
     }
     if (tried.length >= 6) break;
   }
-  return { t: null, tried: tried.slice(0, 4), trees: (trees || []).length };
+  return { t: null, tried: tried.slice(0, 4), trees: trees.length };
 }
 
 const rdCentre = (P) => P.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-base'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
