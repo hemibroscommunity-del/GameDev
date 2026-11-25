@@ -92,6 +92,16 @@ stays with that PR until it lands, and is marked (held).
 
 ## CT
 
+- `tools/qa/mp/mp-contextbuttons.mjs:292-298` steps 4 and 5 (sitting 65's
+  tail, the stack 3d0846c8 and the pill 2825d8e0 alike: red once in two
+  runs, the press on the disc, HARVEST, `_btnHarvest` true, no chop): the
+  TEST's. It presses Attack after a fixed 600 ms wall-clock wait from
+  `byTree`'s hop (step 3, the same path, learned to wait 2000 ms on this
+  box) and gives the chop 5000 ms of wall clock; the press's road
+  (`BroTown.jsx` ~11664, `contextButton.js` `ctxTap`) is main's since
+  v2.3.6550 and has no other gate. Wait for the hop to settle on the
+  renderer's clock (TRAPS §200), and on no `S._extraction` say why (the
+  extraction's refusal) before the red (65 tail; v2.3.6278).
 - `tools/qa/mp/mp-twobuttons.mjs:836` step 7 (sitting 65, #2350 at
   0446337b): red at 68 degrees, its own bar 70 (`p7Away.off`): where the
   monsters stood, not the sight; the step asks the angle and the sight in
