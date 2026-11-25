@@ -105,18 +105,49 @@ async function player(browser, wsPort, webPort, name, viewport, query, errs) {
   return { P, ok: true, myId, touch };
 }
 
-/* beside the nearest pine, in reach (the game's own test, S._btnHarvest) */
+/* beside the nearest pine, in reach: spots the game's own reach test offers
+   (BroTown nodeReachDist on the _gameFns bridge, asked with the player put
+   there and put back in one evaluate: mp-tiertrees' reachMap), dry at the
+   boots, nearest first; then the game's own word (S._btnHarvest) */
+const SPOTS = (P, id) => P.page.evaluate((nid) => {
+  const S = window._gameState.current, F = window._gameFns;
+  const n = (S.gatherNodes || []).find((g) => g && g.id === nid);
+  if (!n || !F || !F.nodeReachDist) return [];
+  const T = window.__btWorldTrial, g0 = window.__btPlayerGround ? window.__btPlayerGround() : null;
+  const P0 = { x: S.player.x, y: S.player.y }, fdy = g0 ? g0.y - P0.y : 52;
+  const dry = (x, y) => !(T && T.ground) || [[0, 0], [-9, 0], [9, 0], [0, -6], [0, 6]].every(([ox, oy]) => { const c = T.ground(x + ox, y + fdy + oy); return !!c && !c.water; });
+  const out = [];
+  try {
+    for (let dy = -80; dy <= 80; dy += 8) for (let dx = -80; dx <= 80; dx += 8) {
+      S.player.x = n.x + dx; S.player.y = n.y + dy;
+      if (F.nodeReachDist(n) != null && dry(n.x + dx, n.y + dy)) out.push({ x: n.x + dx, y: n.y + dy, d: Math.hypot(dx, dy) });
+    }
+  } finally { S.player.x = P0.x; S.player.y = P0.y; }
+  out.sort((a, b) => Math.abs(a.d - 40) - Math.abs(b.d - 40));
+  return out.slice(0, 6);
+}, id);
+const WHY = (P) => H.readState(P, (S) => {
+  const p = S.player;
+  return { at: [Math.round(p.x), Math.round(p.y)], btn: !!S._btnHarvest, near: S._nearNode ? S._nearNode.id : null, prox: S._proxNode ? S._proxNode.id : null,
+    axe: ((S.rpg || {}).inventory || {}).woodcutting_axe || 0, lock: !!S.lockedTarget, swim: !!(S._wheelSwim && S._wheelSwim.on),
+    mons: (S.monsters || []).filter((m) => m && m.alive && Math.hypot(m.x - p.x, m.y - p.y) < 260).length };
+});
 async function byTree(P) {
   const trees = await H.readState(P, (S) => (S.gatherNodes || []).filter((n) => n && n.nodeType === 'tree' && n.alive !== false)
-    .map((n) => ({ id: n.id, x: n.x, y: n.y, d: Math.hypot(n.x - S.player.x, n.y - S.player.y) })).sort((a, b) => a.d - b.d).slice(0, 4));
+    .map((n) => ({ id: n.id, x: n.x, y: n.y, d: Math.hypot(n.x - S.player.x, n.y - S.player.y) })).sort((a, b) => a.d - b.d).slice(0, 5));
+  const tried = [];
   for (const t of trees || []) {
-    for (const [dx, dy] of [[34, 0], [-34, 0], [24, 14], [-24, 14], [0, 20]]) {
-      await H.hopTo(P, Math.round(t.x + dx), Math.round(t.y + dy), { tries: 6 });
-      const v = await H.waitFor(P, (S) => !!S._btnHarvest && !!S._nearNode && S._nearNode.id === t.id && !(S._wheelSwim && S._wheelSwim.on), (x) => x === true, { timeout: 3000, label: 'in reach' }).catch(() => false);
-      if (v) return t;
+    await H.hopTo(P, Math.round(t.x), Math.round(t.y + 120), { tries: 60 });
+    await P.page.waitForTimeout(600);
+    for (const sp of (await SPOTS(P, t.id)).slice(0, 3)) {
+      await H.hopTo(P, Math.round(sp.x), Math.round(sp.y), { tries: 6 });
+      const v = await H.waitFor(P, (S) => !!S._btnHarvest && !!S._nearNode && S._nearNode.id === t.id, (x) => x === true, { timeout: 3000, label: 'in reach' }).catch(() => false);
+      if (v) return { t, tried };
+      tried.push({ tree: t.id, sp: [Math.round(sp.x), Math.round(sp.y)], why: await WHY(P) });
     }
+    if (tried.length >= 6) break;
   }
-  return null;
+  return { t: null, tried: tried.slice(0, 4), trees: (trees || []).length };
 }
 
 const rdCentre = (P) => P.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-base'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
@@ -154,8 +185,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.leaveNpc(P);
 
       /* 2. A TREE */
-      const t = await byTree(P);
-      rec.ok('2. beside a pine, in its reach, the axe held (guard)', !!t, t);
+      const bt = await byTree(P), t = bt.t;
+      rec.ok('2. beside a pine, in its reach, the axe held (guard)', !!t, bt);
       if (t) {
         await P.page.waitForTimeout(600);
         const L2 = await LOOK(P);
@@ -197,8 +228,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const B = await player(browser, wsPort, webPort, 'Sidectx', SIDEWAYS, 'manual=5', errs);
     players.push(B.P);
     if (B.ok) {
-      const t = await byTree(B.P);
-      rec.ok('3. sideways: beside a pine (guard)', !!t, t);
+      const bt = await byTree(B.P), t = bt.t;
+      rec.ok('3. sideways: beside a pine (guard)', !!t, bt);
       if (t) {
         await B.P.page.waitForTimeout(600);
         const L = await LOOK(B.P);
@@ -216,8 +247,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       players.push(C.P);
       if (!C.ok) { rec.ok(`${label}: in the Wheel (guard)`, false); continue; }
       const m = await C.P.page.evaluate(() => window.__btManual && window.__btManual.mode());
-      const t = await byTree(C.P);
-      rec.ok(`${label}: mode ${m}, beside a pine (guard)`, m === mode && !!t, { m, t });
+      const bt = await byTree(C.P), t = bt.t;
+      rec.ok(`${label}: mode ${m}, beside a pine (guard)`, m === mode && !!t, { m, bt });
       if (!t) continue;
       await C.P.page.waitForTimeout(600);
       const L = await LOOK(C.P);
