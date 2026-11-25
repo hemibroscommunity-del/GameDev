@@ -1,16 +1,18 @@
 # BroTown — UI Architecture & Redesign Handoff
 
-> **How the parts of this document rank (added in the repository, v2.3.6402; not the owner's words).** Parts 1 to 12 are the owner's baseline (through question 35), word for word. Part 14 is the owner's addendum of the same day (questions 36 to 72), word for word. Where the two differ, **the addendum wins**. Part 13, the decision log, says in one dated line each which line of the baseline the addendum settles or changes; **a later line of the log wins over both**. Three kinds of thing are kept apart everywhere: what the owner CONFIRMED (a requirement), what the addendum calls PLANNED gameplay (not in the game; never built for a screen), and what is still OPEN (a question, never a guess). What the game does today is in `UI_ARCHITECTURE_V2_AUDIT.md`; the phases and the open questions are in `UI_ARCHITECTURE_V2_PLAN.md`.
+> **How the parts of this document rank (added in the repository, v2.3.6402; brought up to the third document, v2.3.6403; not the owner's words).** This is ONE document made of the owner's three of 2026-11-25. Parts 1 to 12 are the baseline (through question 35), word for word. Part 14 is the addendum of the same day (questions 36 to 72), word for word. Part 15 is the FINAL architecture addendum (questions 73 to 85), word for word. Where they differ, **the later document wins**: part 15 over part 14, part 14 over the baseline. Part 13, the decision log, says in one dated line each which line of an earlier part a later one settles or changes; **a later line of the log wins over all three**. Three kinds of thing are kept apart everywhere: what the owner CONFIRMED (a requirement), what the addendum calls PLANNED gameplay (not in the game; never built for a screen), and what is still OPEN (a question, never a guess). What the game does today is in `UI_ARCHITECTURE_V2_AUDIT.md`; the phases and the open questions are in `UI_ARCHITECTURE_V2_PLAN.md`.
 
-> **This document keeps growing, and nothing in it is lost.** The owner, 2026-11-25, with the addendum: *"Maintain a comprehensive, persistent specification that we can continue updating without losing any prior decisions"*; *"Do not begin implementation or final visual redesign yet. We are still completing the architectural design process."* So the NEXT addendum (question 73 on) is added the same way: its own new part at the end, word for word, its headings one level down; one dated line in part 13 for each line of an earlier part it settles or changes; and the table below brought up to date. No earlier part is ever edited.
+> **This document keeps growing, and nothing in it is lost.** The owner, 2026-11-25, with the addendum: *"Maintain a comprehensive, persistent specification that we can continue updating without losing any prior decisions"*; *"Do not begin implementation or final visual redesign yet. We are still completing the architectural design process."* The third document came the same evening (*"Here's more to the plan (this completed architecture)"*) and is part 15: it closes the foundational architecture at question 85. What the owner sends NEXT (the visual language, then mockups at the real dashboard's size: part 15 §7) is added the same way: its own new part at the end, word for word, its headings one level down; one dated line in part 13 for each line of an earlier part it settles or changes; and the table below brought up to date. No earlier part is ever edited.
 
-## 0. The status of every decision (the repository's index, v2.3.6402; not the owner's words)
+## 0. The status of every decision (the repository's index, v2.3.6402; brought up to question 85, v2.3.6403; not the owner's words)
 
-A finder, true to parts 1 to 12 and part 14 and no more: where the two documents and this table differ, the documents hold. **Approved architecture** is the owner's decision. **Planned gameplay** is what the owner says is NOT in the game yet: no screen's work builds it. **Open** is the owner's still to decide. The design's checkpoint: question 72 answered; it resumes at question 73. What the game does today is not in this table: it is the audit's.
+**The foundational architecture is complete by the owner's decision of 2026-11-25 (questions 1 to 85; part 15 §7). What follows is the visual language, then pixel-true mockups inside the real dashboard's size, then building in phases after the owner's approval. Nothing is built yet.**
+
+A finder, true to parts 1 to 12, part 14 and part 15 and no more: where the three documents and this table differ, the documents hold. **Approved architecture** is the owner's decision. **Planned gameplay** is what the owner says is NOT in the game yet: no screen's work builds it. **Open** is the owner's still to decide. The design's checkpoint: question 85 answered; the architecture's questions are closed, and the details each row lists as OPEN stay open (15 §7). "15 §3" is the final addendum's own section 3. What the game does today is not in this table: it is the audit's.
 
 | Area | APPROVED ARCHITECTURE (where) | PLANNED GAMEPLAY | OPEN |
 |---|---|---|---|
-| The mandate | Clarity first, by the child's unassisted task; the band's height fixed; phone first; destinations with a word and a picture; summary first, detail by a tap; a labelled Back, no second tab bar; an invisible modular grid (part 1; question 35) | none | every view's exact measures (part 11; 14 §8) |
+| The mandate | Clarity first, by the child's unassisted task; the band's height fixed; phone first; destinations with a word and a picture; summary first, detail by a tap; a labelled Back, no second tab bar; an invisible modular grid (part 1; question 35); restated by 15 §1 (nothing primary found only by scrolling); and the closing principle, **consistency in interaction, creativity in presentation**: one shared framework of pieces, with a distinctive interior where the subject earns one, never separately themed applications (15 §6; question 85) | none | every view's exact measures (part 11; 14 §8; 15 §7: "actual dimensions") |
 | Navigation | Two workspaces, Gear and Menu, each remembered; one contextual header; Back is the real journey and restores the place left; Close hides and resets nothing; a shortcut on the world opens the same destination; a Menu shortcut on deep screens, to the directory's root (part 2; 14 §2.1) | none | the directory's labels, order, Map's and Settings' places; a quick Gear affordance; the closed band's controls (part 11; 14 §8) |
 | Whose it is, zones, scrolling, empty and locked | Another player's things are named as theirs, yours are not; fixed zones in order, an empty one gives its room back; nothing primary behind a scroll, collections sorted then scrolled, the inventory scrolls; a destination keeps its place when empty or locked and says why (14 §2.1; questions 46, 48) | none | the fallback for a collection too large |
 | The drill-down's motion | A container expands into the next screen and contracts on the way back; never a slide; only the band's content moves (14 §2.2; question 47) | none | the duration; the no-origin fallback and reduced motion are proposals |
@@ -28,13 +30,21 @@ A finder, true to parts 1 to 12 and part 14 and no more: where the two documents
 | Gear | Two panels, bag and worn; the quick look replaces the opposite panel; one full item inspector; nine slots; the automatic comparison (part 4) | none | the silhouette's geometry, the grid's size, where the bars live |
 | Quests | Active quests first as rows; the journey first; the future hidden; Story and Rewards apart (part 5; kept as the deliberate exception by 14 §3.3) | none | none named |
 | Highscores | Categories that mirror Bro's; a plain standings list, one metric; your row pinned only when out of view; a tap opens the player (part 6) | none | the categories; a combined life-skill board |
-| Codex | A complete encyclopedia by type of thing, not gated by discovery; one inspector a type, whatever the way in (part 7) | none | the supported categories, filters, search |
+| Codex | A complete encyclopedia by type of thing, not gated by discovery; one inspector a type, whatever the way in (part 7); a collection is illustrated cards, the picture leading, with a little essential information that depends on the type, never a dense database list (15 §2; question 73); a thing's page is a large showcase of the real animated picture with subject doors that say what they hold and open into their own views, the same page from the Codex and from the world (question 74); a monster's loot is plain rows: the item's picture, its name, its rarity and its exact chance together, a row opening the one item page, and the way back from an item to its sources where the data allows (question 75) | furnishings as a kind of entry ("when the feature exists") | the supported categories and each one's list; where search sits and what it searches; the showcase's proportions; the loot engine's real meaning of a chance (15 §2: single item, tier, conditional rolls, modifiers) |
+| Shops | A larger shop opens on categories of goods, a small merchant goes straight to the goods; a two-panel workspace that reuses Gear's grid and quick look: the goods stay in their place, the other panel shows the picked item, its price, the comparison where it means something, and Buy; selling uses the real carried bag; the currency and the balance always shown (15 §3; question 76) | none ("No new merchant inventory or services are mandated") | categories, quantities, stock, the exact buy and sell steps: by what the game does |
+| The bank | Stays the storage. The carried bag and the bank shown together, each labelled, each scrolling inside its own panel, with the real room and how full where there is a limit; filters by category, stack counts, the picked item's look, clear Deposit and Withdraw (question 77) | storage at the farm ("if farm storage is introduced later ... not approved gameplay work here") | bulk deposit and moving part of a stack ("illustrative possibilities": verify, and never sweep up something protected or worn) |
+| Trading with a player | Two screens. FIRST the offer is built: your bag beside both players' offers, whose is whose always clear. THEN the review: You Give against You Receive, counts and gold, gold in the transformation form (now, after, the signed change), the other player's acceptance shown and a distinct last confirm. Both confirm the SAME final offer; any change resets both; held by the server, not the screen; never "complete" before the server says so (question 78) | none ("no unsupported trade system") | where today's trade differs from the safeguards: a gap named for review, never a quiet weakening |
+| Crafting | Recipes as illustrated collections with their requirements; a two-panel workspace (recipes on one side; on the other the product, the materials, have against need, how many, Craft); an expanded view that shows materials becoming the product; a change of quantity works the materials out again; no extra confirmation for a routine craft; one framework for every craft the game supports; the server decides costs, results and whether you may (question 79) | farmhouse furnishings ("planned content, not an implementation instruction") | none named |
+| A townsperson | A living profile: the real animated figure, the name, the role, a short line of talk where there is one; clearly labelled doors for the services THAT townsperson gives, larger when there are only one or two, never empty filler; it shares the Codex's showcase piece; the Codex's entry only informs, the services need the meeting in the world, by the trigger the game already has (15 §4; question 80) | none | none named (the wireframes' names and lines were placeholders) |
 | Social | Its own destination; a living network: you in the middle, Friends, Clan, Party, Nearby in fixed places, no Guild circle; a circle opens its gallery, a player opens the inspection; a bottom bar of social actions on another player (part 8; 14 §5; questions 62 to 65) | no new party, messaging, moderation or clan mechanic is authorised | presence and sampling; the supported actions; privacy; the performance budget |
 | Homestead | Its own destination, apart from Life Skills; a miniature of the REAL property; the farmhouse in three views; another player's property read-only through their profile (part 8; 14 §6; questions 66 to 70) | buying more farmland; building a customised farmhouse; furnishing it; visiting another's property (and pets on the farm, above). Storage stays at the bank | the land's grid, rules and prices; construction; access and permissions |
 | World Map | Two views of one world, Geography and Connections, with a labelled switch; world, then region, then the region's own map with what it holds (14 §7; questions 71, 72) | none (no fast travel, route finding or tracking is to be added) | the real topology and what may be seen; how each category opens; zoom controls; the Map's place in the directory |
-| Settings | A candidate destination (part 2) | none | its layout |
-| The visual system | Deferred by the owner until the architecture is reviewed (parts 1, 11; 14 §8) | none | all of it |
-| How to carry it out | Not decided: part 9's sequence is the assistant's proposal, and the acceptance tests of part 10 and 14 §9 are proposed, not run. The owner, 2026-11-25: no implementation begins yet | none | when the design is complete |
+| Settings | A destination (part 2), and the named exception to destinations-first: the controls a player changes most sit on its first page, ready to use (the examples: music volume, sound-effects volume, graphics quality, "if supported"); the rest are labelled categories under them with their own screens; a safe, reversible setting applies at once; an account action that cannot be undone is confirmed (15 §4; question 81) | none ("do not invent controls or hardware capabilities") | which controls are the quick ones: by what the game has |
+| Feedback | Four strengths, matched to what happened: routine (the piece updates, a brief local sign), noteworthy (a passing notice in context), milestone (stronger animation and sound), exceptional (a memorable arcade reveal). Everyday actions never feel like a celebration; nothing gets in the way of a fight; a big reveal waits for a safe moment or for the player to open it; sound and motion preferences respected; no success shown before the server confirms (15 §5; question 82) | none | which of the game's events is which strength ("during implementation") |
+| An action you cannot take | It stays in its usual place, visibly disabled, with a short reason beside it; no separate checklist, no hunt through progression for why; several reasons are given briefly; never colour alone; the server still checks (question 83) | none | none named |
+| Loading, pending, connection | A loading collection shows what it has and placeholders, never a false "empty" or "all here"; a change being made marks the control that was pressed and holds back only repeats and conflicts; a failure says why and offers a safe retry, never claiming nothing was spent unless the server's state says so; a lost connection says so, keeps the place and allows no change it cannot make; an unknown outcome is shown as unresolved, and checked before a retry; only what is affected is locked (question 84) | none | the exact protocol ("depends on the repository audit") |
+| The visual system | Deferred by the owner until the architecture was reviewed (parts 1, 11; 14 §8); it is now THE NEXT PHASE (15 §7): the visual language first (materials, palette, typography, borders and bevels, interaction states, icons, animation and feedback), then pixel-true mockups of representative screens inside the real dashboard's size. The owner's lean so far: a polished arcade look, clearly raised controls, restrained ornament, recessed surfaces for information, modular alignment. No art is final until the direction is explicitly approved | none | all of it |
+| How to carry it out | Not decided: part 9's sequence is the assistant's proposal, and the acceptance tests of part 10 and 14 §9 are proposed, not run. The owner, 2026-11-25: no implementation begins yet. By 15 §7, before any building: the repository audited (the audit file beside this one, its three halves), every approved destination mapped to what the game supports, conflicts and gaps surfaced rather than mechanics invented; then reusable pieces in phases AFTER the owner's approval | none | the owner's approval of the visual direction and of the phases |
 
 **Decision baseline:** November 25, 2026 · Architecture / wireframe phase
 
@@ -357,6 +367,30 @@ The owner, 2026-11-25, about 22:00 UTC, with the addendum: *"Here's an update fo
 
 The repository's reading of the addendum against the code (the audit's second half) and what it does to the phases and to the owner's questions (the plan) are not decisions: they stay in those two files until the owner says yes.
 
+### The final addendum of 2026-11-25 (questions 73 to 85; part 15 below)
+
+The owner, 2026-11-25, about 23:00 UTC, with the third document: *"Here's more to the plan (this completed architecture)"*; and their standing words for these updates: *"Merge these newly confirmed decisions into the existing architecture specification in the repository. Preserve all earlier decisions unless explicitly superseded by this update. Distinguish approved UI architecture from planned gameplay mechanics and unresolved implementation details. Do not begin implementation or final visual redesign yet."* It is the owner's own document, later than parts 1 to 12 and part 14, so each line below is a decision by the rule above. "15 §3" means the final addendum's own section 3, inside part 15. The earlier parts' words stay above as they were written: these lines say what now holds. (v2.3.6403)
+
+- **2026-11-25, 15 §7 (where the design stands). REPLACES** the line above for 14 §8 ("question 72 is answered; the design resumes at question 73"): *"Foundational architecture questions Q1–85 are complete by owner decision. This does not mean production design or implementation is complete."* It **CHANGES** part 11's "Visual system: ... Do not design these before the architecture review" and 14 §8's last open item: the visual language is now the NEXT step (materials, palette, typography, borders and bevels, interaction states, icons, animation and feedback), then pixel-true mockups of representative screens inside the existing dashboard's size; no art is final until the direction is explicitly approved; reusable pieces are built in phases only AFTER the owner's approval. Still open by its own last sentence: the effective-health formula, the rules that classify a specialisation (14 §4.2's two labels), some lists of entities and categories, and the Homestead's future mechanics.
+- **2026-11-25, 15 §1 (the guardrails). CONFIRMS** part 1 (the band's fixed height, the play view, the child's unassisted task as the test of clarity), part 2 and 14 §2 (Gear and Menu, the contextual Back, Menu and Close, the expanding drill-down, global to granular, predictable zones, explicit labels, actions apart from destinations), and **restates** 14 §2.1's scrolling rule as a guardrail: primary navigation, important facts and primary actions are never found only by scrolling; a collection may scroll inside its bounds. Every name, picture, quantity, price, rarity, probability and merchant service in a wireframe is an example unless the game's own data says so; the addendum records choices about screens, not new mechanics; no combat formula changes, the bank's storage does not move, no Homestead feature is built early.
+- **2026-11-25, Q73 (C), 15 §2 (the Codex's collections). SETTLES** the FORM of part 7's collections and, as to form, part 11's "final Codex ... category lists": illustrated cards, the picture leading, with a little essential information that depends on the kind of thing (a monster's level and element or habitat; a weapon's rarity and requirement; a resource's gathering requirement; a townsperson's occupation and place; a pet's species and rarity), each only "where supported"; never a dense database list. It **CONFIRMS** part 7's "complete encyclopedia, not ... discovery-gated" ("as previously approved"). Not a fixed requirement: where search sits and what it searches.
+- **2026-11-25, Q74 (A+C), 15 §2 (an entity's page). SHARPENS** part 7's three steps ("Contextual header and identity ... Essential summary ... Clearly labeled deeper destinations") and its "One reusable entity inspection implementation per type": the page is a large showcase (the real animated picture, name, short description, the essentials) with subject doors that each say what they hold and open into their own view (a monster's: Combat, Loot, Abilities, Habitat; the table in part 15 gives each kind's, "use only supported data"); the same page from the Codex and from the world, Back by the real journey. A townsperson's Codex entry informs; the services need the meeting in the world. Not fixed: the proportions (the example's left, right and below must fit the band, and no number is shown twice without need).
+- **2026-11-25, Q75 (A), 15 §2 (a monster's loot). SETTLES** how part 7's "a monster can emphasize stats, loot and habitat" shows loot: plain rows, each with the item's picture, its explicit name, its rarity and its exact drop chance together; a row opens the one item page (part 4's shared inspector); no dice-roll numbers, no probability bars, no extra step by rarity, no gallery or featured rare page; the way back from an item to its real sources and their places where the data allows (part 7's "A loot item can link to item details", turned round). The numbers follow the loot engine's own meaning (an item's chance apart from a tier's, conditional rolls, modifiers); no example percentage is given to a real item, a very small chance is never rounded to zero, and drops are not shown as excluding each other unless the engine works so.
+- **2026-11-25, Q76 (D+C), 15 §3 (shops). NEW** (no line of parts 1 to 12 or 14 designs a shop); it reuses part 4's Gear (the source panel stays where it is, the opposite panel becomes the picked item's summary) and 14 §3.1's comparison: a larger shop opens on categories, a smaller merchant skips them; the goods' grid stays, the other panel shows the picked item, its price, the comparison where it means something, and Buy; selling uses the real carried bag; the currency and the balance are always shown. No new merchant stock or service is mandated; categories, quantities, stock and the exact steps are the game's.
+- **2026-11-25, Q77 (C), 15 §3 (the bank). NEW**, and **CONFIRMS** 14 §6.1's "Current storage is at the bank": the bag and the bank are shown together, each labelled, each scrolling in its own panel, with the real room and how full where there is a limit; the bank's contents filter by category, show stack counts, and a picked item shows its look with clear Deposit and Withdraw. Bulk deposit and moving part of a stack were examples: to be checked against the game, and never to sweep up something protected or worn. The same pieces may serve farm storage if that ever exists; that is not approved work.
+- **2026-11-25, Q78 (B first, C second), 15 §3 (trading with a player). NEW**: the FIRST screen builds the offer (your bag beside both players' offers, whose is whose always clear), the SECOND reviews the exchange (You Give against You Receive, counts, gold in 14 §3.1's transformation form, the other player's acceptance, a distinct last confirm). Both players confirm the same final offer; any change resets both acceptances; this is held by the server, not only drawn. To be checked in the audit, as the owner's own list: a revision of the offer, ownership, quantities and balances validated, stale confirmations refused, doubled submissions prevented, both sides settled in one safe transaction, and no "complete" before the server's word. Where today's trade differs, the gap is named for review, never weakened quietly, and no new trade system is built.
+- **2026-11-25, Q79 (B+C+D), 15 §3 (crafting). NEW**; it applies 14 §2.3's rule (the routine happens at once, the consequential is confirmed): recipes as illustrated collections with their requirements and whether you can make them; a two-panel workspace (recipes on one side; the product, the materials, have against need, how many, and Craft on the other); an expanded view showing materials becoming the product; a change of quantity works the materials out again from the real recipe; what is missing is said plainly; no extra confirmation for a routine craft. One framework for the crafts the game supports; farmhouse furnishings are planned content; the server stays the authority.
+- **2026-11-25, Q80 (C+D), 15 §4 (a townsperson). SHARPENS** part 7's "an NPC services and location" and **adds** the meeting itself: the real animated figure, the name, the role, a short line of talk where there is one, and clearly labelled doors for the services that townsperson really gives, larger when there are one or two, never empty filler. It shares the Codex's showcase piece; the game's existing way of meeting a townsperson is kept, and the world's controls stay clear.
+- **2026-11-25, Q81 (B), 15 §4 (Settings). SETTLES** part 11's "Detailed layout of ... Settings" and 14 §8's "Settings layout", as a **named EXCEPTION** to part 1's "Use destinations first": the controls a player changes most are on Settings' first page, ready to use; the others are labelled categories below with their own screens; a safe, reversible setting applies at once; a destructive or consequential account action follows 14 §2.3's confirmation rule. Which controls exist is the game's: none is invented.
+- **2026-11-25, Q82 (D), 15 §5 (feedback). EXTENDS** 14 §2.3 ("routine reversible operations can execute immediately with feedback"; the notifications' one route, which stands: "Maintain previously agreed notification-center behavior"): four strengths of feedback, matched to what happened, routine, noteworthy, milestone and exceptional. Everyday actions are never celebrations; a fight is never obstructed; an intrusive reveal waits for a safe moment or for the player to open it; sound and motion preferences are respected; success is not shown before the server confirms a change. Which event is which strength is decided when it is built.
+- **2026-11-25, Q83 (A), 15 §5 (an action you cannot take). SHARPENS** 14 §2.1's empty and locked states (which stand) for an ACTION: it stays in its usual place, visibly disabled, with a short reason beside it; no separate list of requirements, no hunt through progression; several reasons are given briefly; never by colour alone. A recipe's own list of materials is a different thing and stays. The screen's check never replaces the server's.
+- **2026-11-25, Q84 (D), 15 §5 (loading, pending, connection). NEW** (14 §9's last task only said "Test empty/loading/error states"): a loading collection shows what it has and placeholders; a change being made marks the control pressed and holds back repeats and conflicts; a failure says why and offers a safe retry, never claiming that nothing was spent unless the server's state says so; a lost connection says so, keeps the place and allows no change it cannot make; a critical transaction locks only what it touches; success shows after the server confirms; an unknown outcome is shown as unresolved and is checked before any retry; no full overlay unless it is truly needed.
+- **2026-11-25, Q85 (B), 15 §6 (the closing principle). NAMES** what part 7 ("Shared primitives and navigation conventions; not a forced identical layout") and 14 §2.1 ("Specialized workspaces such as Gear may depart from the generic layout") already did: **consistency in interaction, creativity in presentation.** Shared by the whole game: the navigation frame, Back, Menu and Close, the zones, labels, touch targets, materials and type (their look still to come), the expanding drill-down, the item and entity pages, the comparison, the progression pieces, the handling of states and permissions, accessibility, performance, the fixed height. Distinctive interiors where the subject earns one: Combat, Social, Homestead (its future gameplay gated), the Codex, the Map, and the two-panel workspaces of Gear, Bank, Shops, Crafting and Trading. One design system, never separately themed applications; pieces and data are reused, never a second copy of an inspection or a calculation.
+
+**Named by the final addendum as NOT decided** (so not lines of this log): where search sits and what it searches; the showcase's proportions; a shop's categories, quantities and stock; bulk deposit and part-stack transfer; which event gets which strength of feedback; the exact protocol of the pending and reconnecting states; every material, colour, font and measure ("visual definitions still pending"); the effective-health formula, the specialisation rules, some lists of entities and categories, and the Homestead's mechanics; and every sample name, price, rarity and probability in a wireframe.
+
+The repository's reading of the final addendum against the code (the audit's third half) and what it does to the phases (the plan) are not decisions: they stay in those two files until the owner says yes.
+
 ## 14. Addendum of 2026-11-25: decisions Q36 to Q72
 
 Everything under this heading is the owner's second document of 2026-11-25, word for word (v2.3.6402). Only its headings were moved down so that it sits inside this part: its own title and its sections 1 to 10 are the third-level headings below, and "14 §5.2" in the log, the audit and the plan means its section 5.2. Where it says "see section 6" it means its own section 6. Its section 10 is the writing tool's suggested prompt to a reader, kept as written; the owner's words and each phase's card are what a session works from.
@@ -605,3 +639,177 @@ At the existing portrait mobile dashboard height, without explanatory instructio
 ### 10. Copy-ready prompt to Claude Code
 
 > Read this addendum together with the previously supplied BroTown UI Architecture Handoff (through Q35). Merge only the new or superseding decisions into the existing repository architecture specification; do not replace the earlier baseline or restart the redesign. Update resolved open items and preserve remaining questions. Distinguish confirmed owner decisions, illustrative examples, implementation proposals and planned gameplay mechanics. Audit the actual repo before mapping these requirements to components, data, routes and existing permissions. Preserve the fixed mobile dashboard height, existing gameplay behavior, authoritative combat calculations and allocation preview. In particular, do not implement future Homestead mechanics or move bank storage as part of the UI redesign. Report any conflicts and unresolved technical decisions. Save the updated architecture spec and decision log; do not begin final art polish or large-scale implementation solely because this addendum was provided. The current decision checkpoint is Q72 completed.
+
+## 15. Final architecture addendum of 2026-11-25: decisions Q73 to Q85
+
+Everything under this heading is the owner's third document of 2026-11-25, word for word (v2.3.6403), sent with the words *"Here's more to the plan (this completed architecture)"*. Only its headings were moved down so that it sits inside this part: its own title and its sections 1 to 7 are the third-level headings below, each question a fourth-level one, and "15 §3" in the log, the audit and the plan means its section 3. Where it says "previous baselines" it means parts 1 to 12 and part 14 above. Its section 7 closes the foundational architecture; it starts no building.
+
+### BroTown — UI Architecture Handoff: Final Architecture Addendum
+
+**Date:** November 25, 2026  
+**Previous baselines:** `BroTown_UI_Architecture_Handoff.md` (Q1–35); `BroTown_UI_Architecture_Handoff_Update_Q36-Q72.md` (Q36–72)  
+**Scope:** Q73–85 inclusive; closes the foundational architecture phase  
+**Audience:** Claude Code / BroTown repository implementation agent
+
+### 1. Merge instructions and guardrails
+
+Merge this incremental addendum into the existing repository UI architecture specification, preserving all previous decisions unless explicitly superseded. If no canonical specification exists, suggested location: `docs/design/UI_ARCHITECTURE_V2.md`. This is not an instruction to start implementation. The owner has completed foundational architecture choices; visual language, production layouts, assets and implementation validation come next.
+
+Preserve the fixed mobile dashboard height, gameplay viewport, established Gear/Menu workspace behavior, contextual Back/Menu/Close, expansion/contraction drill-down, global-to-granular disclosure, predictable spatial zones, explicit labels, and separate actions vs destinations. Primary navigation, important facts and primary actions must not require scrolling to discover. Bounded collection scrolling is allowed. Test clarity against the owner's benchmark: give a child a task and see whether they can find the correct destination/action without additional instructions.
+
+All names, artwork, quantities, prices, rarities, probabilities, merchant services and other example data from the wireframes are illustrative unless verified against existing game data. This addendum records UI choices, not new game mechanics. Do not invent unsupported functionality, change combat formulas, move bank storage, or implement future Homestead features prematurely. The live repository and exact production dashboard dimensions have not been audited for this addendum.
+
+### 2. Codex (Q73–75)
+
+#### Q73 — Illustrated collections with essential information (C)
+
+Use illustrated entity cards, with artwork as the dominant visual and a small amount of essential information that depends on the entity type. Keep the Codex complete rather than discovery-locked, as previously approved. Region filtering and subject categorization remain part of the prior architecture. Avoid a dense database-style directory as the general collection layout.
+
+Examples of glanceable information, where supported:
+- Monsters: level and element or habitat.
+- Weapons/equipment: rarity and equipment requirement.
+- Resources: gathering requirement.
+- NPCs: occupation and location.
+- Furnishings: crafting requirement (when the feature exists).
+- Pets: species and rarity.
+
+Use real entity sprites, explicit names, and accessible tap targets. Large collections use the agreed categorization and bounded collection scrolling policy. Search was shown in wireframes; exact search placement and supported search fields are implementation details, not a new fixed requirement.
+
+#### Q74 — Illustrated entity showcase plus subject destinations (A + C)
+
+Use a reusable entity inspection framework that combines an illustrated encyclopedia with a large visual showcase and informative subject destinations. In the monster example, the actual animated monster sprite, name, short description, level/element and essential combat stats are visible on the first screen. Subject destinations summarize their own contents and expand into dedicated detail views. The example layout places the showcase on the left, destinations on the right, and essential statistics below; the exact proportions must fit the fixed dashboard and should not duplicate a metric unnecessarily.
+
+Possible subject destinations (use only supported data):
+
+| Entity | Subjects |
+|---|---|
+| Monster | Combat, Loot, Abilities, Habitat |
+| Equipment | Attributes, Requirements, Acquisition |
+| Resource | Gathering, Uses, Locations |
+| NPC | Services, Quests, Location |
+| Furniture | Materials, Crafting, Acquisition |
+| Pet | Attributes, Abilities, Acquisition |
+
+The same entity should use the same canonical inspection screen across the Codex and contextual entry points. Preserve ownership/permission differences and contextual Back. A Codex NPC entry provides information; actual merchant services require the appropriate interaction context.
+
+#### Q75 — Traditional loot directory (A)
+
+Use a straightforward row-based loot table rather than a gallery, rarity-tier submenu or featured rare-drop landing page. Show item artwork, explicit item name, rarity and exact drop probability together. Selecting an item opens universal item inspection. No dice-roll numbers, probability progress bars or unnecessary drill-down by rarity. Allow reverse acquisition navigation (item → actual sources → location) where the game data supports it, consistent with earlier crosslink architecture.
+
+Use the actual loot engine's semantics: distinguish individual-item probability from rarity-tier probability, conditional rolls and modifiers if present. Do not assign illustrative percentages to actual items, round very small positive probabilities to zero, or imply mutually exclusive drops unless the engine works that way.
+
+### 3. Commerce and crafting (Q76–79)
+
+#### Q76 — Categorized storefront and dual-panel shop (D + C)
+
+Larger shops begin with clear merchandise categories; smaller merchants may bypass the category directory when unnecessary. The shop workspace reuses the inventory-grid and quick-inspection architecture established for Gear.
+
+Conceptual states:
+```
+[ Merchant / Shop                         Gold balance ]
+[ Merchandise category grid ]       [ Carried inventory ]
+                ↓ select merchandise
+[ Merchandise grid remains ]        [ Item quick inspection ]
+                                     [ Price / comparison ]
+                                     [ Purchase ]
+```
+
+Use actual merchant offerings. Keep source-panel position stable and show the selected item, price, and relevant comparison where meaningful. Reuse universal item inspection for deeper detail. Buying/selling actions should be explicit, and selling uses the actual carried inventory. Display applicable currency and balance clearly. Categories, quantities, stock policies, transaction mechanics and exact buy/sell transitions depend on the existing implementation. No new merchant inventory or services are mandated.
+
+#### Q77 — Bank: dual inventory with intelligent organization (C)
+
+The bank remains the current storage system. Show carried inventory and bank storage simultaneously, with clear separate labels and actual capacity/occupancy if applicable. Both item grids may scroll independently inside their allocated panels. Bank contents support category filtering, stack quantities, selected-item inspection and clear Deposit/Withdraw directions. Reuse universal item inspection and the inventory-grid framework.
+
+Bulk deposit and stack quantity transfer were illustrative possibilities; verify existing support and avoid accidentally including protected or equipped items. Never infer new storage capacities or move storage into Homestead. The same component architecture may be reused if farm storage is introduced later, but that is not approved gameplay work here.
+
+#### Q78 — Player trading: build offer, then review exchange (B first, C second)
+
+The first screen is the offer-building workspace, NOT the final review. Show the player's inventory alongside both players' offers. Clearly distinguish whose items and currency are in each offer. Allow meaningful item inspection through the shared components.
+
+The second screen explicitly presents **You Give** versus **You Receive**, item quantities and actual currency transfers. Where gold is exchanged, use the existing transformation comparison style: current balance → resulting balance, signed change. Clearly show the counterparty's acceptance state and a distinct final confirmation action.
+
+Both players must confirm the same final offer. Any offer modification invalidates/reset both acceptances. These requirements must be enforced server-side, not merely represented visually. Implementation safeguards to validate during audit: use offer revision/version checks, validate ownership, quantities and available balances, reject stale confirmations, prevent duplicate submissions, reconcile both inventories and currency atomically or via the existing safe transaction mechanism. Do not claim a trade is complete before authoritative confirmation. If existing trading mechanics differ, identify the gap for review rather than silently weakening safeguards or introducing an unsupported trade system.
+
+#### Q79 — Illustrated recipes, crafting workspace and material transformation (B + C + D)
+
+Recipe browsing uses illustrated item collections with explicit requirements and availability where known. Selecting a recipe opens a reusable dual-panel workspace: browse recipes on one side, see selected output, required materials, available quantities, crafting quantity and action on the other.
+
+The expanded recipe view explains a visual transformation:
+```
+[ Materials and quantities ]  →  [ Crafted product and quantity ]
+[ Quantity adjustment ]         [ Craft ]
+```
+
+Quantity changes recalculate required materials based on actual recipes. Distinguish available from required quantities and show missing requirements plainly. Do not force an additional confirmation for every routine crafting action; D is an expanded inspection view when useful. Follow earlier rules for consequential or irreversible actions and actual mechanics. Reuse across supported woodworking, blacksmithing, cooking and other crafting systems; future farmhouse furnishings are planned content, not an implementation instruction. Server remains authoritative for costs, outputs, capacity and eligibility.
+
+### 4. NPCs and settings (Q80–81)
+
+#### Q80 — Living NPC profile with contextual services (C + D)
+
+Use an actual animated NPC sprite/identity showcase, name, role and a concise contextual dialogue line where available. Clearly labeled service destinations are adapted to the NPC's supported services. An NPC with only one or two services should have larger, understandable destination controls rather than empty filler slots. Examples include Shop, Crafting, Bank, Quests and Dialogue where actually provided.
+
+The layout shares the Codex identity/showcase component; remote Codex inspection is informational, while physical NPC interaction enables actual services. Use the existing contextual NPC interaction trigger and keep in-world gameplay controls unobstructed. The example NPC names and quotes were placeholders.
+
+#### Q81 — Quick settings first (B)
+
+Settings is an intentional exception to destination-first navigation: players commonly open it to change a known preference quickly. Expose frequently used adjustable controls directly on the landing screen (examples: music volume, sound effects volume and graphics quality, if supported). Other settings remain clearly labeled categories below, with deeper dedicated screens. Apply safe reversible settings immediately; destructive or consequential account actions follow the earlier confirmation rules. Actual available settings and defaults must be audited; do not invent controls or hardware capabilities.
+
+### 5. Cross-cutting interaction states (Q82–84)
+
+#### Q82 — Graduated feedback (D)
+
+Match feedback intensity to event significance:
+
+| Level | Example | Presentation |
+|---|---|---|
+| Routine | Equip item | Immediate component update and brief local acknowledgement |
+| Noteworthy | Quest objective completed | Temporary contextual notification |
+| Milestone | Skill level increased | Enhanced animation and sound |
+| Exceptional | Godly item obtained | Memorable arcade-style reward reveal |
+
+Examples are illustrative; map actual game events to appropriate feedback classes during implementation. Avoid making everyday actions feel like major celebrations. Do not obstruct active combat. Defer intrusive reward reveals until a safe context or player-initiated notification inspection. Maintain previously agreed notification-center behavior. Respect user sound/motion preferences, avoid excessive effects, and do not signal success until confirmed when a server mutation is involved.
+
+#### Q83 — Disabled action with immediately visible reason (A)
+
+When requirements are not met, retain the relevant action in its predictable location in a visibly disabled state, with a short adjacent explanation. Example: `Equip Sword` disabled; `Sword level 18 — requires level 25.` Do not introduce a separate requirements checklist or force a player to drill into progression to find out why an action is unavailable. This is distinct from a complex recipe's already-required material list. If multiple reasons apply, give concise actionable reasons without obscuring the normal layout. Never rely on color alone. Preserve prior accessible empty/locked destination behavior and actual permissions. UI eligibility is not a substitute for authoritative server checks.
+
+#### Q84 — Contextual loading, transaction and connection states (D)
+
+- Loading collections: show available information and progressive placeholders without falsely depicting an empty or fully loaded collection.
+- Purchasing/crafting/other mutation: local pending indicator on the affected control, with relevant repeated/conflicting actions temporarily unavailable.
+- Failure: concise explanation and safe retry when appropriate. Do not assert no currency was deducted unless authoritative state establishes this.
+- Connection interrupted: clear reconnecting/offline notice; retain safe context and prevent unsupported mutations.
+- Critical transaction pending: lock only affected actions wherever safe; prevent duplicate submission.
+- Success: update affected components after authoritative server confirmation.
+
+If the response is lost or transaction outcome is uncertain, show an unresolved/reconciling state rather than falsely reporting success or failure. Verify transaction status before retrying a potentially completed action. Preserve navigation where safe; do not block unrelated dashboard areas with a full overlay unless actually necessary. These are UI and integrity requirements; exact protocol/implementation depends on the repository audit.
+
+### 6. Final architectural principle (Q85 — B)
+
+**Consistency in interaction; creativity in presentation.**
+
+The owner approved a shared component framework with distinctive personalities for individual gameplay systems. Do not make every menu an identical grid, nor create incompatible subsystem-specific visual languages.
+
+Shared across the entire game:
+- Navigation framing, contextual Back/Menu/Close, predictable zones, labels, touch-target conventions.
+- Materials, typography, proportions, bevel/interaction treatment, reusable panel and action components (visual definitions still pending).
+- Expansion/contraction drill-down, item and entity inspection, transformation comparison, progression components, state handling and permissions.
+- Accessibility, performance, fixed dashboard height and clarity benchmark.
+
+Distinctive interiors are explicitly encouraged where the subject warrants them:
+- Combat: prominent performance statistics and branching calculations.
+- Social: living relationship circles containing real player sprites.
+- Homestead: actual estate miniature and farmhouse views (future gameplay gated).
+- Codex: illustrated collections and large entity showcases.
+- Map: geographic and simplified connectivity views with region intelligence.
+- Gear, Bank, Shops, Crafting and Trading: purpose-built dual-panel workspaces.
+
+These are variations within one design system, not separately themed applications. Reuse components and data sources instead of maintaining duplicated inspection or calculation screens.
+
+### 7. Status and next phase
+
+Foundational architecture questions Q1–85 are complete by owner decision. This does not mean production design or implementation is complete. Merge all three handoffs into one canonical, versioned specification. Keep a traceable decision log and mark any example or unresolved technical detail as such.
+
+Next: establish the actual visual language (materials, palette, typography, borders/bevels, interaction states, iconography, animation and feedback), then validate pixel-accurate representative mockups within the existing mobile dashboard dimensions. The owner has previously favored a polished arcade aesthetic, clearly raised interactive elements, restrained ornamentation, recessed information surfaces and modular alignment. Do not finalize art assets until the visual direction is explicitly approved.
+
+Before implementation: audit the current repo, existing components, actual dimensions, available data, existing gameplay features and server integrity requirements; map every approved destination to supported functionality; surface conflicts and gaps rather than silently inventing mechanics. Build reusable components in phases after owner approval; test navigation, permissions, transaction outcomes, responsiveness, mobile performance and accessibility. The exact EHP formula, specialization classification rules, some entity/category inventories and future Homestead mechanics remain open as described in prior handoffs.
