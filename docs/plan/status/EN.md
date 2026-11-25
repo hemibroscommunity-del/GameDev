@@ -13,10 +13,10 @@ state: working
   (`entity-ui.js _drawResourceBar`). The bars sat on the display, not its
   `_uiLayer`, so the sun's shadow walked them as body: marked
   `_castsNoShadow` and skipped (`lightfx/casters.js walkDisplay`).
-  `mp-resbars` (new): red on main's code (the frame without pictures, 300 to
-  440 of 440 gutter pixels the ground's, the sun casting 12 pieces for the
-  figure with the bars up against 2), green on this branch at res 1, 1.5, 2
-  and 3 in both sprite programs, rows of 5 and 8, on the test box.
+  `mp-resbars` (new): red on main's code at res 1.5 and 3 (20 of 29: no
+  frame pictures, 235 to 760 gutter pixels the ground's, 12 or 18 shadow
+  pieces against 2), green on this branch at res 1, 1.5, 2 and 3 in both
+  sprite programs, rows of 5 and 8, on the test box. Precheck passes.
   Earlier PRs of card EN (6200 to 6205, 6207): merged.
 
 ## Next
