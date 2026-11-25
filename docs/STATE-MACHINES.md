@@ -220,7 +220,9 @@ so nothing waits on them any more.
   in full (`refusejoined`, v2.3.4921).
 
 **Waiting on the owner:**
-- the shield questions 1-4 (`docs/OWNER-LIST-2026-10-26.md` §10): showing
+- the shield questions 2-3 (`docs/OWNER-LIST-2026-10-26.md` §10; 1 and 4
+  answered by the owner's 2026-11-25 report and built, v2.3.6554:
+  `docs/specs/guard-door.md`): showing
   the 3 s guard break on the phone, the guard coming back by itself, a daze
   or freeze stopping a raise on the server, the cooldown number. #1530 left
   them alone;

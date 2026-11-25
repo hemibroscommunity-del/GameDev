@@ -206,7 +206,8 @@ const after1 = { npc: 'Blacksmith Bro', title: QUEST_CHAINS.smith_1.title, meet:
     /tourOffer\(sim, S\)/.test(model) && /getNpcQuest\(sim, q\.npc\)/.test(model) && /\[qid\]: QUEST_STATUS\.turnedIn/.test(model));
   check('the lands\' ways are read from the world at run time, never written in (CLAUDE.md: no Wheel coordinate in code)',
     /z\.lands/.test(model) && !/\b1\d{4}\b|\b2\d{4}\b/.test(model));
-  const list = read('../../src/ui/mobile/dash/QuestsPanel.jsx');
+  /* v2.3.6620 (card QP): the pills, Done, Daily and the path switch moved to questParts.jsx, shared with the pages */
+  const list = read('../../src/ui/mobile/dash/QuestsPanel.jsx') + read('../../src/ui/mobile/dash/questParts.jsx');
   /* v2.3.4394: the Quests page is a list of pills beside the quest that is open */
   check('the Quests page: a list of pills (Active with data-quest-row and its track mark, Available, Done, Daily) beside the open quest, drawn `brief` with Track; Done with the points and +AP',
     /data-journal-ap=/.test(list) && /<QuestJournalPage page=\{page\} brief track=/.test(list) && /'data-quest-row': r\.id/.test(list)

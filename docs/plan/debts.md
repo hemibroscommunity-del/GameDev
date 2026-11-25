@@ -52,6 +52,12 @@ stays with that PR until it lands, and is marked (held).
 
 ## PH
 
+- `mp-heldsweep` (stand, town, ride; v2.3.6277, sitting 65) red again on
+  this box, on `main` 096d7000 alone (`other: R > J` 22.1 ms x2, ride) and
+  on the rehearsal's tree 94b52d3c (`other: wrapped` 26.8 ms x3, town; `other:
+  step2` 21.8 ms, ride; `R > J` 19.1 ms x3, town), none a name in a file the
+  three PRs moved (`wrapped` is `src/debug/perfTracker.js`'s): main's own,
+  as at 64 (65).
 - The governor at a mild heat (main's own, the PH stack improves it):
   the suite's model at 60 Hz, heat 1.4 (tau 180 s), seeds 11-16, makes
   75-88 rate changes in the second half hour on `main` 598cfd38, 47-64 on
@@ -86,6 +92,13 @@ stays with that PR until it lands, and is marked (held).
 
 ## CT
 
+- `tools/qa/mp/mp-twobuttons.mjs:836` step 7 (sitting 65, #2350 at
+  0446337b): red at 68 degrees, its own bar 70 (`p7Away.off`): where the
+  monsters stood, not the sight; the step asks the angle and the sight in
+  one line, so a bad turn reads as a sight fault. Pick the turn by the
+  angle, or say which half failed (65). 2b, 2c, 6a and 3h red on `main`
+  096d7000 (104/13/2) and on the head (99/18/2) alike: the tap read as
+  auto, as at 64 (65).
 - `src/ui/BroTown.jsx` ~5365 (#2293): a later write to `dx`/`dy` (`var _h =
   heldDirection(S)`, a `K['w']` line, `S._stickVec`), `_playerDead =
   false;` before the stick, the clock through a field
@@ -247,6 +260,16 @@ stays with that PR until it lands, and is marked (held).
   `fx.resume(d.gap, d.carried)` (`thawCarried.js:123`) and a throw that
   skips noting the same beat's gap (:121/124) are green (61).
 
+## BRO
+
+- `mp-brocard` 55/59 red the same four on `main` 096d7000 and on #2349's
+  b0b912ab (the open one lit, a gold border; a tablet's two columns at 480
+  px; the row's words stacked beside their pictures; CLOSE first in its
+  row, "OPEN"): the test plays `?bropages=0`, main's own path (65).
+- `mp-deskkeys` 8f (a double click on a snowman lunges and ends locked on
+  it) red on `main` and on the head alike: waits for the owner's verdict
+  (65).
+
 ## Found (no card's debt)
 
 - The Deploy worker on c2da80bf failed 14:57 on `login-keys` 12g ("...that
@@ -254,3 +277,6 @@ stays with that PR until it lands, and is marked (held).
   green in Server CI on the same commit and 60 of 60 under load on the
   orchestrator's box: the test's `tick()` gates or the worker's join
   against a Forget, not told apart (the orchestrator, 61).
+- `node tools/dev/state-census.mjs --check` is red on `main` 096d7000
+  (`docs/plan/census/state.md` not what the code says: 913 files then,
+  1098 now); precheck does not run it (65).

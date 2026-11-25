@@ -41,7 +41,10 @@ const PHONE = { width: 390, height: 844 };
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Journal', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });
+  /* v2.3.6620 (card QP): the Quests tab is in pages now (mp-questpages plays them); this plays the old
+     page, the list beside the quest, behind its switch `?questpages=0`: what it checked before, it checks
+     there still (the switch's off-ramp kept whole) */
+  const P = await H.newPlayer(browser, { name: 'Journal', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'questpages=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 300)));
   const stopAlive = H.keepAlive(P);

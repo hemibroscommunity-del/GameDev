@@ -1,7 +1,7 @@
 card: LB
-branch: claude/plan-lb-4-done (the status, done, on main)
-prs: #1771 (5500), #1783 (5501), #1798 (5502): all merged
-state: done
+branch: claude/plan-lb-2-ranks
+prs: #1771 (5500), #1783 (5501), #1798 (5502): merged; part 2 (5503): draft PR
+state: ready
 
 ## Done
 
@@ -12,26 +12,26 @@ state: done
   podium, table, no pages); sittings 10 and 11 mended.
 - #1798 (5502, merged): Overall and the Power rating (Overall's columns
   only), the Stats group (`caps.statboards`), the caps' rows.
+- Part 2 (5503): the Ranks page in the owner's 2026-11-25 style
+  (`RanksPage.jsx`, rules `src/game/ranksPage.js`, suite `ranks-page`,
+  phone test `mp-ranksstyle`); `?rankstyle=0` the page before.
 
 ## Next
 
-- Nothing: the card is done.
+- Nothing: the PR waits for the gatekeeper.
 
 ## Found
 
-- The sheet is already see-through: its "gradient" is colour under alpha 0
-  (565,671 pixels), so the cut needs no key at all (the spec, part 2).
-- A second mockup came after the card (2651b21fc): committed with the first.
-- Today's rank trophies (`public/icons/ui/rank-<n>.webp`, the owner's
-  2026-11-09 sheet, `tools/ui/cut-rank-trophies.py`) are what the card's
-  medals 1-3 replace in PR 2.
+- The band is 191 px upright (390 x 844; 187 at 375 x 667) and 82 px on
+  its side (`sheetGeometry panelInnerHeight`): the card's "five rows
+  upright, three sideways" cannot fit with the band kept. Built: three
+  upright, two sideways (the PR says why).
+- The worker sends a board's top 50 only: a player past 50th reads
+  "Rank #—" (a follow-up for the worker: your own rank with the rows).
+  The fish board keeps its kinds inside `FishBoard.jsx` (not this card's):
+  no pinned row there.
 
 ## Needs
 
-- Answered (2026-11-14): the owner's "Yes" to the pieces; the layout is the
-  second mockup's; PW's fields (`powerIndex {power, melee, bow, magic, v}`,
-  `caps.power` the version); the stat boards held, none built.
-- #1783 held at the gatekeeper's sitting 10 (whole names at 375 px, the
-  podium's value, two "Lv"; lows): mended (mp-boardslook 18/18, mp-boards
-  37/37, the 375 px picture in the PR). `CAP_GATES`'
-  `power` row is PR 3's (#1783 reads no cap).
+- The owner: a taller band for the Ranks page (the mockup's five rows),
+  or today's band as built.
