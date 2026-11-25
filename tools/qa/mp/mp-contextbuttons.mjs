@@ -141,7 +141,7 @@ async function byTree(P) {
     await P.page.waitForTimeout(600);
     for (const sp of (await SPOTS(P, t.id)).slice(0, 3)) {
       await H.hopTo(P, Math.round(sp.x), Math.round(sp.y), { tries: 6 });
-      const v = await H.waitFor(P, (S) => !!S._btnHarvest && !!S._nearNode && S._nearNode.id === t.id, (x) => x === true, { timeout: 3000, label: 'in reach' }).catch(() => false);
+      const v = await H.waitFor(P, (S) => (S._btnHarvest && S._nearNode ? S._nearNode.id : null), (x) => x === t.id, { timeout: 3000, label: 'in reach' }).catch(() => false);   /* the id compared here: `t` is not in the page */
       if (v) return { t, tried };
       tried.push({ tree: t.id, sp: [Math.round(sp.x), Math.round(sp.y)], why: await WHY(P) });
     }
