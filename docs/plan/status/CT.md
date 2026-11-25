@@ -1,6 +1,6 @@
 card: CT
-branch: claude/plan-ct-10-buttons (part 16: the right side's buttons, stacked on claude/plan-ct-9-hold)
-prs: #2342 (6549, draft on main), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
+branch: claude/plan-ct-12-join (part 18: #2342 and #2344 joined, on main)
+prs: part 18 (6551 if job 2, the join, draft on main), #2344 (6550, done: in the join), #2342 (6549, done: in the join), part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
 state: working
 
 ## Done
@@ -11,13 +11,16 @@ state: working
   the sword's dash), the right thumb's arc (thumbArc.js), the flip's cause
   (each button's own 550 line, no hold). 4 switches.
 - Part 15 (6548): tap and hold (latch idle/active/auto, `?holdauto=0`).
+- Part 17 (6550, done: #2344): mode 5's Attack always attacks; ONE button under
+  the nearest thing (CHOP/MINE/FISH/COOK on S._btnHarvest, the beat on it in
+  the work, TALK within 120 px). `?ctxbuttons=0`. contextButton.js (35
+  mutants, none left), ContextButton.jsx, mp-contextbuttons. No server file.
+- Part 18: #2342 + #2344 joined once (6 conflicts, both sides kept).
 
 ## Next
 - #2342 (6549): the helper's clean mp-twobuttons run; the owner plays the arc.
 - Sitting 63's (2): a tap's lock does not turn the body between swings
   (targeting.js engagedStance, src 'auto'): left for a next part.
-- Part 17 (6550, beside: claude/plan-ct-11-context): node and townsfolk
-  buttons; whichever reports second merges the other once.
 
 ## Found
 - Part 15's run (before the lift's mend, stopped at 88 PASS): a 150 ms tap
@@ -31,6 +34,9 @@ state: working
   no limit in mode 5; sight.test 8 pins it).
 - Part 16's probe (430x775, 775x430 @3x): the band 257 / 48 px; the
   weapon pill sits left of Attack upright; Ride and the minimap on the right.
+- Part 17's own runs: TALK, CHOP, the swing, the beats, `ctxbuttons=0` green
+  upright; mode 4's disc press started no chop (pre-existing? the helper's
+  run says what was under the finger).
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR

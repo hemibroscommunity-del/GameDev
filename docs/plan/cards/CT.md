@@ -134,9 +134,19 @@ the switch table.
   *"The bow only looses when the line is on something"* holds for the
   lock's arrows (the line is on the lock); a press with nothing sighted
   looses its arrow free (item 8, above): it hits what it meets and starts
-  the fight as any arrow does. Near a node the Attack button is the harvest button,
-  as the disc is today. A tap on the world's right half still opens a door
-  and talks to a townsperson.
+  the fight as any arrow does. **Attack always stays Attack** (part 17, tag
+  6550; the owner, 2026-11-24: *"I'm also thinking contextual buttons like
+  mining fishing or interacting with npc should appear below the item
+  instead of having a dual purpose attack button. Attack button always stays
+  attack"*): near a node it keeps its word and sword and a press swings
+  (during a harvest too: the harvest goes on); ONE button stands under the
+  one nearest thing (game/contextButton.js, panels/ContextButton.jsx): CHOP,
+  MINE, FISH or COOK under a node exactly when Attack used to become the
+  harvest button (S._btnHarvest), its tap the harvest's start, and during the
+  work the same button wears the beat and takes the strokes (the gesture's
+  anchor); TALK under a townsperson within 120 px with no fight, its tap
+  talking as a tap on him does. `?ctxbuttons=0` gives the old Attack. A tap
+  on the world's right half still opens a door and talks to a townsperson.
 - **PvP is not this card.** In a duel, a spar or No man's land the scheme
   must not break: say in PR 3's words what it does there today. Ask before
   changing any rule of a fight between players.

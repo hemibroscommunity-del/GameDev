@@ -85,6 +85,7 @@ const FORMS = {
   'conndoor': '0',
   'create': '1',
   'crowd': '*',
+  'ctxbuttons': '0',
   'dbltap': '0',
   'deathbig': '*',
   'deathkind': '*',
