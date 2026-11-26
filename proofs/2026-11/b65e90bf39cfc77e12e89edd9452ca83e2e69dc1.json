@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b65e90bf39cfc77e12e89edd9452ca83e2e69dc1",
+  "tree": "1a54dccf2035cd7474fd5aa8f6b8679a70b35327",
+  "committedAt": "2026-11-25T18:34:24-08:00",
+  "subject": "Merge pull request #2368 from hemibroscommunity-del/claude/plan-ui2-5-kit",
+  "files": 8678,
+  "bytes": 971415330,
+  "listingSha256": "2d33a7ecfc036f4cac2979903b66a6fd9957a11cdd62ba118af1973a5a8f1eb1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
