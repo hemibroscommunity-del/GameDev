@@ -18,6 +18,9 @@ state: ready
   stamped query. Guard keep-sfx takes families (LEFT list). NO `_headers`
   block: 10 hand requests are pinned by server tests' text, and the HUD
   bars' address is built in entityRenderer.js (LOAD's).
+- PR 3b's mend (sitting 70's hold): main merged; UI2's two addresses
+  stamped (UiKitPage's kit cells, GearPanels' empty-slot ghost, its hand
+  `?v=2.3.4199` gone); keep-sfx whole green, its plant red.
 
 ## Next
 
