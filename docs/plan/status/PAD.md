@@ -1,6 +1,6 @@
 card: PAD
-branch: claude/plan-pad-9-rimsprint (on part 8's branch, 897f7444)
-prs: #2354, #2363, part 6 (merged); #2387 part 8 (6643); part 9 (6644, draft)
+branch: claude/plan-pad-10-steel (on part 9's claude/plan-pad-9-rimsprint)
+prs: #2354, #2363, part 6 (merged); #2387 part 8 (6643); #2393 part 9 (6644, draft); part 10 (6645, draft)
 state: ready
 
 ## Done
@@ -14,6 +14,13 @@ state: ready
 - 6644 part 9 (the owner: "remove sprint button"): on a touch screen the
   usual stick past its rim sprints (stickZones.js rimSprintLive,
   stickAnalog), no Sprint button; `?rimsprint=0` the button back.
+- 6645 part 10 (the owner: "swap out the control color with this one. I
+  don't like the gold"): every public/ui/pad picture cut off the owner's
+  steel sheet (assets/icons-source/owner-2026-11-26-pad4/, layout.json;
+  tools/art/cut-pad.mjs), same names and sizes; the icons and the dimmed
+  Attack made from its faces; the lit well keeps the sheet's gold ring.
+  Re-measured: padSkin CUT_R 400 -> 420, TIER_BAND 70 -> 75 (and
+  pad-skin.test's five measures): the PR DEPLOYS the worker.
 
 ## Found
 - CHARGE: drawn in the top-left (mobility) well whenever the game shows it
@@ -34,5 +41,8 @@ state: ready
 - Nothing: message the orchestrator, stop.
 
 ## Needs
-- The gatekeeper's sitting for parts 8 and 9 (part 9 DEPLOYS the worker:
-  it touches server/test/stick-zones.test.mjs).
+- The gatekeeper's sitting for parts 8, 9 and 10 (part 9 DEPLOYS the
+  worker: it touches server/test/stick-zones.test.mjs; part 10 too:
+  server/test/pad-skin.test.mjs).
+- The owner: which gold beside the controller goes next (part 10's PR lists
+  it, with pictures).
