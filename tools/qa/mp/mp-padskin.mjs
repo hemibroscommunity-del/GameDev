@@ -84,6 +84,7 @@ const overlap = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.5 && Math.ab
 export async function run({ browser, wsPort, webPort, rec }) {
   const players = [];
   const errs = [];
+  const keeps = [];
   const shots = process.env.PAD_SHOTS || null;
   try {
     /* PAD_ONLY=rider: the rider's page alone (5b/5c), for a quick look */
@@ -354,6 +355,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padspec' : 'Padspecs', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole&tapms=4000' });
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ' specials: ' + String((e && e.message) || e).slice(0, 200)));
+      /* v2.3.6642: a real keystroke every 20 s.  The page hangs itself up after two minutes without
+         real input (wsClient idleLogout, v2.3.1913); this page waits that long for the shield, the
+         hop and the fight on the slow box, and sideways the first tap was then only "I'm back"
+         (v2.3.3034): the worker had no player, nothing heard Whirlwind (stamina null, no answer). */
+      keeps.push(H.keepAlive(P));
       await H.enterWorld(P);
       const inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
       const me = inW ? await H.readState(P, (S) => S.myId) : null;
@@ -426,6 +432,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
          (a raised guard spends stamina a tick, so Whirlwind first, the guard
          down, then Bash with it up) */
       const press = async (k, id) => {
+        /* v2.3.6642: a press waits for the page's link to read 'connected' AND the worker to hold
+           the player (a stamina to read) before it tops the stamina up: a page that has gone idle
+           (see the keystroke above) has no player there, and its detail says so */
+        const ready = async () => {
+          const t = Date.now(); let st = null, v = null;
+          while (Date.now() - t < 45000) {
+            st = await H.readState(P, (S) => ({ link: S._realtimeStatus || null, dead: !!(S.player && S.player.dead), id: S.myId })).catch(() => null);
+            v = await srvStamina(wsPort, me);
+            if (st && st.link === 'connected' && !st.dead && v != null) break;
+            await P.page.waitForTimeout(500);
+          }
+          return { st, v, waited: Date.now() - t };
+        };
+        const rd = await ready();
         await H.devOp(wsPort, 'vitals', me, { stamina: 100 }).catch(() => null);
         await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 90, { timeout: 15000, label: 'stamina full' }).catch(() => null);
         const s0 = await srvStamina(wsPort, me);
@@ -433,13 +453,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const t0 = await P.page.evaluate(() => Date.now());   /* a refusal after the tap (the page's field is read, never written) */
         const L9 = await LOOK8();
         if (L9.c[k]) await tapAt(P, L9.c[k].box, id);
-        await P.page.waitForTimeout(1500);
-        const s1 = await srvStamina(wsPort, me);
+        const sent0 = Date.now();
+        /* the worker's answer: its stamina spent (the press pays at once, and a guard-down pool
+           fills again within a second on this box, so the lowest reading since the tap counts), or
+           its refusal of that cast (ability_rejected: it heard it).  Up to 8 s of the renderer's
+           clock, never a 60 fps window (TRAPS section 200). */
+        let s1 = null, nope = null, heard = null, low = s0;
+        while (Date.now() - sent0 < 8000) {
+          s1 = await srvStamina(wsPort, me);
+          if (s1 != null && (low == null || s1 < low)) low = s1;
+          nope = await H.readState(P, (S) => S._lastAbilityReject || null);
+          heard = (s0 != null && low != null && low < s0 - 5) ? 'spent' : (nope && nope.kind === k && nope.at >= t0 ? 'refused: ' + nope.reason : null);
+          if (heard && Date.now() - sent0 > 1500) break;
+          await P.page.waitForTimeout(150);
+        }
         const sent = await P.page.evaluate(() => window.__padSent.slice());
-        /* the worker's answer: its stamina spent, or its refusal of that cast (ability_rejected: it heard it) */
-        const nope = await H.readState(P, (S) => S._lastAbilityReject || null);
-        const heard = (s0 != null && s1 != null && s1 < s0 - 5) ? 'spent' : (nope && nope.kind === k && nope.at >= t0 ? 'refused: ' + nope.reason : null);
-        return { shown: !!L9.c[k], sent, s0, s1, heard };
+        return { shown: !!L9.c[k], sent, s0, s1, low, heard, ready: rd };
       };
       const pw = await press('whirl', 23);
       rec.ok(`8e. ${label}: a tap on Whirlwind sends the old button's request (${pw.sent.join(',')}) and the worker answers it (${pw.heard}; stamina ${pw.s0} -> ${pw.s1})`,
@@ -495,6 +524,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.ctx.close().catch(() => {});
     }
   } finally {
+    for (const stop of keeps) { try { stop(); } catch (e) { /* the page's own end */ } }
     for (const P of players) await P.ctx.close().catch(() => {});
   }
   rec.ok('7. no page errors', errs.length === 0, errs.slice(0, 5));

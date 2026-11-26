@@ -22,16 +22,17 @@ state: ready
 - The bow and staff have no extra special of their own: Whirlwind is the
   sword's alone; Shield Bash is the RAISED SHIELD's with any weapon (a bow
   with its guard up shows Bash, as the old layout did).
-- Special hides while the guard is up (today's rule), so with Bash shown
-  Special's well is empty.
-- Sideways (844 x 390) the tier's top meets the minimap's foot (its
-  "Lv 1-5" line half under it): flagged, the owner's call.
-- mp-padskin: 53/55 on the full run (the 2 reds my step 8's own: a test
-  bug, mended); step 8 upright 7/8 after (8f the test's, mended); the
-  final full run is a helper's (PR body).
+- Special hides while the guard is up, so with Bash shown its well is empty.
+- Sideways the tier meets the minimap: the owner's call.
+- Part 6's last red (8e sideways, stamina null, no answer) was the TEST's:
+  that page sat 2+ minutes with no real input, so the idle logout (v2.3.1913)
+  hung it up and the first tap was only "I'm back" (v2.3.3034). Mended in
+  mp-padskin only (`H.keepAlive`, wait for link and player, 8 s fast poll).
+- mp-padskin: the full run's last red was 8e sideways (above); the final
+  full run is a helper's (PR body).
 
 ## Next
-- Nothing: one message to the orchestrator, then stop.
+- Nothing: message the orchestrator, stop.
 
 ## Needs
 - The gatekeeper's sitting for #2363 with #2354, then this.  The owner's
