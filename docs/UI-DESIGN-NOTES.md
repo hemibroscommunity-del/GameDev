@@ -2373,3 +2373,22 @@ Screens: dash-gear-panels, dash-gear-look-bag, dash-gear-look-worn
 **Tried before:** the three panels with the middle card (v2.3.4151 to v2.3.6687), kept under `?ui2=0`.
 
 Sources: src/game/workspace.js, compare.js, equipProject.js, itemInspect.js (itemSummary), src/data/say/compare.js, gearPanels.js, src/ui/mobile/dash/GearPanels.jsx, gearPanels.css, gearTabBus.js (`ws`), GearFilterMenu.jsx, gearBag.js, src/ui/kit/TwoPanel.jsx, ItemGrid.jsx; tools/guards/compare.test.mjs, workspace.test.mjs; tools/qa/mp/mp-ui2gear.mjs.
+
+## Bro's Equipment, a showcase; the roads into the one item page (v2.3.6689, card UI2-gear PR 3)
+Screens: ui2-bro-equipment
+
+**What it is for:** looking at what you wear, under Bro, without the bag; managing it stays Gear's (the card's reading 8: *"Bro's Equipment door opens a SHOWCASE (the figure and the nine worn cells in the same body shape, no bag; each cell opens the one item page; 'Manage Gear' for yourself, nothing to press for another player)"*). And one item page from every place an item is looked at (the owner, 2026-11-25, the master specification's part 8: *"The same entity should use the same canonical inspection screen across the Codex and contextual entry points."*).
+
+**Decisions, and why:**
+- **A page of Bro's own** (`broEquip`): the header reads [‹ Bro] Equipment [Menu] [✕]. Upright: your figure (the portrait Gear's old middle column drew, southwest, still) with **Manage Gear** under it, and beside it the nine worn cells in Gear's body shape. Sideways (a short page): the figure, the cells in one row of three groups, and the button, in one line.
+- **The same body, by one table.** Gear's Equipped panel and the showcase lay their cells out by `GEAR_BODY` (src/game/gearShowcase.js), and draw each cell with Gear's own `WornCell`, so the two shapes and the cells' pictures cannot drift apart.
+- **A cell opens the one item page**, by the same source Gear's worn cell hands over (`{ R, cell }`), so the same item reads the same facts from Gear and from Bro. Back returns to the showcase. An empty cell, or one the page has nothing for (the Gem cell: the gems are on the weapon's own page), presses nothing.
+- **Manage Gear** is Gear's own road (today's `openGear`): the two panels.
+- **Another player's showcase** (nothing opens one yet: step 9): no Manage Gear, their name instead, no figure (the figure is drawn from YOUR wardrobe, so a figure under their name would be a lie), their cells read-only on the item page ("Diego's", no actions).
+- **The player card's equipment row** opens the one item page too: your slot by Gear's own cell (the weapon: the hand you hold), with its actions; another player's slot read-only, with what their card knows of it (its picture and name; no number is invented), the kind "Weapon" where their card does not say which. The card closes so the page is seen, as its other doors do.
+
+**What the real size could not hold:** the figure is cropped to its middle (about 44% of its square) beside the body; at 375 x 667 it is smaller than at 390 x 844. Sideways the figure is the page's height, about 80 px.
+
+**Not moved here:** the old item sheet (`ItemTooltip.jsx`) is not mounted anywhere since the bag surface left (`InventorySurface`, GameApp's note), so it has no road to move; the Codex's drop card is the Codex card's (UI2-codex); a shop's goods wait for the shop's own step (8).
+
+Sources: src/game/gearShowcase.js, src/data/say/gearShowcase.js, src/ui/mobile/sheet/GearShowcase.jsx, BroCard.jsx (door 'equip'), src/game/broHub.js (broEquip), src/game/dashDests.js, src/ui/mobile/dash/GearPanels.jsx (EquippedBody, WornCell's `tap`), itemPageOpen.js (the showcase, profile and peer sources), src/ui/panels/PlayerProfilePanel.jsx, InspectPlayerPanel.jsx; tools/guards/gear-showcase.test.mjs; tools/qa/mp/mp-ui2gear.mjs.
