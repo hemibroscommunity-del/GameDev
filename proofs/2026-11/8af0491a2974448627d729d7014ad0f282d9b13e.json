@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8af0491a2974448627d729d7014ad0f282d9b13e",
+  "tree": "135653da89ae18f39bada67612b976d84fba75c5",
+  "committedAt": "2026-11-26T12:00:38-08:00",
+  "subject": "Merge pull request #2387 from hemibroscommunity-del/claude/plan-pad-8-nojump",
+  "files": 8877,
+  "bytes": 999656242,
+  "listingSha256": "cb706e02b0ec9546de959cf91c8ad7f24604e629dd2e50b6a5da0a8b369245c8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

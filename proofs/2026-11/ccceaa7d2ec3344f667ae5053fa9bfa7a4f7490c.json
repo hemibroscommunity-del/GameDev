@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ccceaa7d2ec3344f667ae5053fa9bfa7a4f7490c",
+  "tree": "a4b6654d7c927c1ca5c1b83d3d7abd2a2d5ee127",
+  "committedAt": "2026-11-26T12:00:52-08:00",
+  "subject": "Merge pull request #2386 from hemibroscommunity-del/claude/plan-load-1-readout",
+  "files": 8880,
+  "bytes": 999683985,
+  "listingSha256": "c40aeab3512ff8e351ef3bbb5e181c344263e810298c55610bdf5479a25ae959",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

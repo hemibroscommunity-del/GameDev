@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ecdf342893f52d092f34809be2f407c5387131a9",
+  "tree": "cf2dd98c45a30f4368e15fa4264a786ce1dc5237",
+  "committedAt": "2026-11-26T12:00:24-08:00",
+  "subject": "Merge pull request #2389 from hemibroscommunity-del/claude/plan-keep-3-sfx",
+  "files": 8876,
+  "bytes": 999650448,
+  "listingSha256": "098d01834701d33fa2d9abaa3d738e1fb083688bb718a03d7636edb34e38d76d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

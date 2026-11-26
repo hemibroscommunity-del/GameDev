@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5375c3b62fafb49605b3eec8e90f26770b5f0d90",
+  "tree": "9917fa8729da9f3ac59c3e71ddb3f2d7925348bb",
+  "committedAt": "2026-11-26T12:00:06-08:00",
+  "subject": "Merge pull request #2388 from hemibroscommunity-del/claude/plan-keep-2-plugin",
+  "files": 8873,
+  "bytes": 999625858,
+  "listingSha256": "f7a55f1d6a9dfb0d0abc8314d64d7b847d263a6a24eca930d536e7136fb00f53",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
