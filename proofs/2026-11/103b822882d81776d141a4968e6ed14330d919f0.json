@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "103b822882d81776d141a4968e6ed14330d919f0",
+  "tree": "05c693a3284b531daf98b62c11eaed00f4044b31",
+  "committedAt": "2026-11-26T07:02:54-08:00",
+  "subject": "Merge pull request #2354 from hemibroscommunity-del/claude/plan-pad-1-controller",
+  "files": 8719,
+  "bytes": 984804513,
+  "listingSha256": "71f445621c2a3b8a3ef3e9afc54475acc8fc98e8781a88abd87454ee0d36f65b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
