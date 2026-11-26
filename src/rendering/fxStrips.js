@@ -108,6 +108,11 @@ export const BLOCK_BARS = {
   mana:    { frames: [], url: '/icons/ui/blocks-mp.webp?v=2.3.2300' },
 };
 
+/* v2.3.6646: QA's probe (mp-padskin 8g): the stamina strip this page asked
+   for (its file is read off the page's thread, in no resource list), and
+   whether it was cut */
+if (typeof window !== 'undefined' && window.__btProbe) window.__btBlockBars = () => ({ stamina: BLOCK_BARS.stamina.url, cut: !!BLOCK_BARS.stamina.parts });
+
 export const STUN_SPIN_MS = 700;
 export const WHIRL_FX_MS = 520;
 /* v2.3.2824: the painted spiral's outer radius in its 256px cell (frames 3-4,
