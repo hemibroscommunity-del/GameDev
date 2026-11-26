@@ -32,9 +32,9 @@
  *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, townacross, fight, fightreal, landwalk; the two skateboard scenes and `fightreal`, a fight the blows land in, only when named)
  *   BT_QA_CPU_THROTTLE=4 ...       # a slower phone
  *   BT_QA_PROFILE=budget-android   # a slow machine whole: its throttle, its line, its lane (tools/qa/profiles.mjs; v2.3.5861)
- *   BT_PF_ALLOC=1 ...              # v2.3.6700: + WHO MAKES THE GARBAGE (below)
+ *   BT_PF_ALLOC=1 ...              # v2.3.6720: + WHO MAKES THE GARBAGE (below)
  *
- * v2.3.6700 (card RT, the performance red team): WHO MAKES THE GARBAGE.  The
+ * v2.3.6720 (card RT, the performance red team): WHO MAKES THE GARBAGE.  The
  * held budget lists the browser's garbage collector as a family nobody owns
  * (held-budget.mjs `gc`: 8 to 45 ms at a time, "make less of it per frame"),
  * and nothing ranked WHO makes it.  With BT_PF_ALLOC=1 each scene gets one
@@ -45,9 +45,9 @@
  * allocated (own) and by who called it (with callees).  Bytes are V8's; a
  * phone's Safari packs objects differently, so read it as a RANKING too.
  *
- *   BT_PF_REACT=1 ...              # v2.3.6700: + WHO REDRAWS (below)
+ *   BT_PF_REACT=1 ...              # v2.3.6720: + WHO REDRAWS (below)
  *
- * v2.3.6700: WHO REDRAWS.  A component that draws itself again when nothing
+ * v2.3.6720: WHO REDRAWS.  A component that draws itself again when nothing
  * it shows has changed is work nobody sees (a timer's `force`, a new object
  * set on every message).  With BT_PF_REACT=1 each scene gets a window of its
  * own (BT_PF_REACT_MS, default 6 s) that counts React's commits and, in each,
@@ -55,7 +55,7 @@
  * its own DevTools hook, which a production build calls too): renders a
  * second by component.  Names need the unminified build (QA_DIST=dist-prof).
  *
- *   BT_PF_DPR=0.5 ...              # v2.3.6700: a phone's frame RATE on this box: a
+ *   BT_PF_DPR=0.5 ...              # v2.3.6720: a phone's frame RATE on this box: a
  *                                  # quarter of the pixels a side, so the software
  *                                  # chip keeps up and "a frame" is 20 to 60 ms of
  *                                  # game, not 500 (at dpr 3 this box draws 2 a
@@ -68,7 +68,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { SourceMap } from 'node:module';
-import { REACT_HOOK, censusArm, censusRead } from './idle-census.mjs';   /* v2.3.6700: who redraws (the idle census's counter) */
+import { REACT_HOOK, censusArm, censusRead } from './idle-census.mjs';   /* v2.3.6720: who redraws (the idle census's counter) */
 export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
@@ -78,9 +78,9 @@ const PROFILE = process.env.BT_PF_PROFILE !== '0';
 const QUERY = process.env.BT_PF_QUERY || '';
 const WANT = (process.env.BT_PF_SCENES || 'town,townwalk,fight,landwalk').split(',').map((s) => s.trim()).filter(Boolean);
 const TOP = Number(process.env.BT_PF_TOP || 45);
-const ALLOC = process.env.BT_PF_ALLOC === '1';   /* v2.3.6700: who makes the garbage */
+const ALLOC = process.env.BT_PF_ALLOC === '1';   /* v2.3.6720: who makes the garbage */
 const ALLOC_MS = Number(process.env.BT_PF_ALLOC_MS || 6000);
-const REACT = process.env.BT_PF_REACT === '1';   /* v2.3.6700: who redraws */
+const REACT = process.env.BT_PF_REACT === '1';   /* v2.3.6720: who redraws */
 const REACT_MS = Number(process.env.BT_PF_REACT_MS || 6000);
 /* the page's device pixel ratio: 3 is an iPhone's own pixels; 1 lets this
    box's software drawing keep up, for a profile with more frames in it */
@@ -175,7 +175,7 @@ function aggregate(profile, maps) {
   return { ms: +all.toFixed(1), js: +js.toFixed(1), native: +native.toFixed(1), gc: +gc.toFixed(1), self: top(self, TOP), total: top(total, TOP), files: top(files, 30) };
 }
 
-/* v2.3.6700: an allocation sampling profile (CDP HeapProfiler.stopSampling's tree: every node its call frame and
+/* v2.3.6720: an allocation sampling profile (CDP HeapProfiler.stopSampling's tree: every node its call frame and
    `selfSize`, the bytes the sampler puts on it) -> bytes by the function that allocated, and by each function with
    all it called.  Names through the same source maps as the CPU profile's. */
 function aggregateAlloc(head, maps) {
@@ -509,7 +509,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
      scenario (harness.mjs, "every scenario plays at noon") and a player has */
   const amb = /(^|&)ambience(&|$)/.test(q0 || '');
   const query = (q0 || '').split('&').filter((t) => t && t !== 'ambience').join('&');
-  /* v2.3.6700: the init script as text, so the ambience and the redraw counter's hook can ride together */
+  /* v2.3.6720: the init script as text, so the ambience and the redraw counter's hook can ride together */
   const initSrc = [amb ? 'window.__btAmbienceOff = false;' : '', REACT ? `(${REACT_HOOK.toString()})();` : ''].filter(Boolean).join('\n');
   const P = await H.newPlayer(browser, { name: 'frame', wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query,
     init: initSrc || null });
@@ -618,7 +618,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
           return m;
         }), v]);
       }
-      /* v2.3.6700: who makes the garbage, in a window of its own (BT_PF_ALLOC=1) */
+      /* v2.3.6720: who makes the garbage, in a window of its own (BT_PF_ALLOC=1) */
       let alloc = null;
       if (ALLOC) {
         await cdp.send('HeapProfiler.enable').catch(() => {});
@@ -642,7 +642,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
           }
         }
       }
-      /* v2.3.6700: who redraws, in a window of its own (BT_PF_REACT=1) */
+      /* v2.3.6720: who redraws, in a window of its own (BT_PF_REACT=1) */
       let react = null;
       if (REACT) {
         const armed = await P.page.evaluate(censusArm);
@@ -764,7 +764,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
       await P.page.waitForTimeout(3000);
       if (WANT.includes('fight')) await scene('Flame Fields, fighting', drivers.fight);
       if (WANT.includes('fightreal')) {
-        /* v2.3.6700: a fight the monsters' blows LAND in (only when named).  Every other scene is played unhurt
+        /* v2.3.6720: a fight the monsters' blows LAND in (only when named).  Every other scene is played unhurt
            (`god`, above), so the worker never sends this phone its health: the messages a real fight brings --
            `player_state` at every blow and every regen pass, the blow's own event -- and what they make the page
            do are not in those scenes at all.  Kept alive by a refill every 2.5 s (one more `player_state` each:

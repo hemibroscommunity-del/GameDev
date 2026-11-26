@@ -1,4 +1,4 @@
-/* ═══ v2.3.6700: A POLLED VIEW DRAWS AGAIN ONLY ON A CHANGE (card PRT, the performance red team) ═══
+/* ═══ v2.3.6720: A POLLED VIEW DRAWS AGAIN ONLY ON A CHANGE (card PRT, the performance red team) ═══
  *
  * src/game/drawOnChange.js: a control that shows the game's state looks at it
  * on a clock and tells React to draw it again.  The rule: draw only when the

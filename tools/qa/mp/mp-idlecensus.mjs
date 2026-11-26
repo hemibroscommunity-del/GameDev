@@ -1,4 +1,4 @@
-/* ═══ v2.3.6700: mp-idlecensus -- WHAT THE PAGE DOES WHEN NOTHING HAPPENS (card PRT) ═══
+/* ═══ v2.3.6720: mp-idlecensus -- WHAT THE PAGE DOES WHEN NOTHING HAPPENS (card PRT) ═══
  *
  * The owner, 2026-11-26: "Pretend you're a red team but mission is
  * performance enhancements."  The first thing the red team's counters found

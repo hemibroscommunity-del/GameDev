@@ -1,4 +1,4 @@
-# The idle census: what the page does when nothing happens (v2.3.6700, card PRT)
+# The idle census: what the page does when nothing happens (v2.3.6720, card PRT)
 
 The owner, 2026-11-26: *"Pretend you're a red team but mission is performance
 enhancements."*

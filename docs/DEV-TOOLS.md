@@ -105,7 +105,7 @@ Notes for anyone extending it:
   (`docs/plan/census/O2-profiles.md`), never a raised line.
   `tools/guards/qa-profiles.test.mjs` holds the table.
 
-- **What a frame costs, and what an idle page does** (card PRT, v2.3.6700):
+- **What a frame costs, and what an idle page does** (card PRT, v2.3.6720):
   `QA_DIST=dist-prof BT_PF_DPR=0.5 BT_PF_ALLOC=1 BT_PF_REACT=1 node
   tools/qa/mp/run.mjs phoneframe` adds two windows to each scene: who makes
   the garbage (KB a frame and KB a second, by function) and who draws again

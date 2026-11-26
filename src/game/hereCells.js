@@ -1,4 +1,4 @@
-/* ═══ v2.3.6700: THE LAST FEW CELLS' ANSWERS (card PRT, the performance red team) ═══
+/* ═══ v2.3.6720: THE LAST FEW CELLS' ANSWERS (card PRT, the performance red team) ═══
  *
  * "What is under my feet?" (game/wheelTrial.js wheelHere) is the ground
  * worker's to answer, and the page kept ONE answer: the last cell asked.  A

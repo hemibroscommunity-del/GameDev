@@ -1,11 +1,11 @@
 card: PRT
 branch: claude/determined-cray-dz4dpu
-prs: one draft PR from this branch (6700), opened by the session that wrote the card
+prs: one draft PR from this branch (6720), opened by the session that wrote the card
 state: ready
 
 ## Done
 
-- PR 1 (6700): the idle census (`tools/qa/mp/idle-census.mjs`,
+- PR 1 (6720): the idle census (`tools/qa/mp/idle-census.mjs`,
   `mp-idlecensus.mjs`), `mp-phoneframe` + `BT_PF_ALLOC`, `BT_PF_REACT`,
   `fightreal`; the last four cells' answers (`game/hereCells.js`,
   `?herecells=0`); the Element Burst button drawn only on a change

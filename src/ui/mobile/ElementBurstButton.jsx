@@ -4,10 +4,10 @@ import { ctlLandscape } from './bandSideways.js';   /* v2.3.4152: a phone on its
 import { PROG3, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { elementBurst } from '@/game/playerActions.js';
-import { Skin, NovaIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.6700: readyFlash, its store shared with the look */
+import { Skin, NovaIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.6720: readyFlash, its store shared with the look */
 import { uiBusyBus } from './uiBusyBus.js'; /* v2.3.3513: stand aside while a window is open */
-import { drawStore, drawNow } from '@/game/drawOnChange.js';   /* v2.3.6700: drawn again only on a change (card PRT) */
-import { sw } from '@/game/switches.js';   /* v2.3.6700: `?burstidle=0` */
+import { drawStore, drawNow } from '@/game/drawOnChange.js';   /* v2.3.6720: drawn again only on a change (card PRT) */
+import { sw } from '@/game/switches.js';   /* v2.3.6720: `?burstidle=0` */
 
 /* ═══ v2.3.1734: ELEMENT BURST BUTTON (COMBAT-OVERHAUL-PLAN PR 6) ═══
  *
@@ -74,7 +74,7 @@ const SIZE = 46;
 /* (v2.3.3018: FADE_MS, the 180ms opacity fade between ready and not, went
    with the fade -- the skin's states change colour, not opacity.) */
 
-/* ═══ v2.3.6700: WHAT THE BUTTON WOULD DRAW, READ ONCE (card PRT) ═══
+/* ═══ v2.3.6720: WHAT THE BUTTON WOULD DRAW, READ ONCE (card PRT) ═══
    The look on every animation frame (below) and the render read the game's
    state the same way, here: whether the button shows at all, the weapon's
    element, the refusal that dims it (`mana`), the cooldown.  `key` is all of
@@ -118,7 +118,7 @@ export const ElementBurstButton = () => {
   const [busy, setBusy] = useState(() => uiBusyBus.busy);
   useEffect(() => uiBusyBus.subscribe(setBusy), []);
 
-  /* ═══ v2.3.6700: IT LOOKS EVERY FRAME, AND DRAWS ONLY ON A CHANGE (card PRT) ═══
+  /* ═══ v2.3.6720: IT LOOKS EVERY FRAME, AND DRAWS ONLY ON A CHANGE (card PRT) ═══
      This drew the component again on every animation frame for the whole
      session -- a render and a commit 60 times a second (120 on a fast
      screen), and on a character with no enchanted weapon each one drew
@@ -161,13 +161,13 @@ export const ElementBurstButton = () => {
     };
   }, []);
 
-  const S = stateRef.current;   /* v2.3.6700: as the last look read it (a frame old at most; none before the first look) */
+  const S = stateRef.current;   /* v2.3.6720: as the last look read it (a frame old at most; none before the first look) */
   const now = Date.now();
   /* v2.3.3018: the glow swells once when the cooldown's arc closes.
-     v2.3.6700: the same bookkeeping as useReadyFlash, in the store the look
+     v2.3.6720: the same bookkeeping as useReadyFlash, in the store the look
      shares (above), so the look sees the flash start and end. */
   const flash = readyFlash(flashRef.current, 'one', burstCooling(S, now), now);
-  /* v2.3.6700: what to draw, read the way the look reads it (burstView) */
+  /* v2.3.6720: what to draw, read the way the look reads it (burstView) */
   const view = burstView(S, now);
   if (!view.shown || busy) return null;
 
@@ -211,7 +211,7 @@ export const ElementBurstButton = () => {
     e.preventDefault();
     e.stopPropagation();
     pressOn(e);   /* v2.3.3018: the sheet's Pressed */
-    /* v2.3.6700: read at the press, not at the last draw (the button is no
+    /* v2.3.6720: read at the press, not at the last draw (the button is no
        longer drawn again every frame, so the draw's `ready` can be a moment
        old): the state the last look read, a frame old at most */
     const S1 = stateRef.current;
@@ -279,6 +279,6 @@ export const ElementBurstButton = () => {
     </div>
   );
 };
-/* v2.3.6700: its name kept in a minified build, for the idle census's count of who draws again
+/* v2.3.6720: its name kept in a minified build, for the idle census's count of who draws again
    (tools/qa/mp/idle-census.mjs: IDLE_LINES.burstRendersPerFrame) */
 ElementBurstButton.displayName = 'ElementBurstButton';

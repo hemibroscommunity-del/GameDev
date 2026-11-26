@@ -35,7 +35,7 @@ import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: whic
 import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
 import { fillOrder } from './zoneGate.js';   /* v2.3.4400: the gate's pieces, nearest the arrival first */
 import { sw, swHas, pageAddress } from './switches.js';   /* v2.3.5310: the page's one reader (card T); v2.3.5311 its address */
-import { hereCells, hereFor } from './hereCells.js';   /* v2.3.6700: the last few cells' answers (card PRT) */
+import { hereCells, hereFor } from './hereCells.js';   /* v2.3.6720: the last few cells' answers (card PRT) */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -61,7 +61,7 @@ const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, 
 const _filling = new Map();    /* v2.3.4094: "i,j" -> the zone gate's piece still being laid (wheelWarm) */
 let _here = null;              /* the swatch under your feet: { q, x, y } */
 let _hereAsked = null;
-/* v2.3.6700 (card PRT): the last few cells' answers, so two places a fraction
+/* v2.3.6720 (card PRT): the last few cells' answers, so two places a fraction
    of a pixel apart in two cells are not a message to the worker on every
    frame (game/hereCells.js has the story).  `?herecells=0`: one answer, as
    before. */
@@ -414,7 +414,7 @@ function onMessage(m, resolveInit, rejectInit) {
     /* v2.3.2966: with the region and tier there, and in words (the map) */
     if (m.q != null) {
       _here = { q: m.q, x: m.id.x, y: m.id.y, region: m.reg || null, tier: m.tier || 0, words: m.words || null };
-      _hereKept.put(_here);   /* v2.3.6700 */
+      _hereKept.put(_here);   /* v2.3.6720 */
     }
     return;
   }
@@ -563,7 +563,7 @@ export function wheelHere(x, y) {
   if (!_w || !info) return null;
   const cell = info.worldW / info.walk.cols;
   const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
-  /* v2.3.6700 (card PRT): this cell's answer if it is the last one or one of
+  /* v2.3.6720 (card PRT): this cell's answer if it is the last one or one of
      the few kept (game/hereCells.js: the renderer asks about two places a
      fraction of a pixel apart in one frame, and where they are in two cells
      -- the arrival point is such a place -- one kept answer was a question
@@ -644,7 +644,7 @@ export function wheelStop() {
   _under.clear();
   _here = null;
   _hereAsked = null;
-  _hereKept.clear();   /* v2.3.6700: another worker, another Wheel: its answers go with it */
+  _hereKept.clear();   /* v2.3.6720: another worker, another Wheel: its answers go with it */
   _failP = null; _retryAt = 0; _retryWait = 0;   /* v2.3.4370: the next way in starts afresh */
 }
 

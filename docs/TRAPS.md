@@ -10417,7 +10417,7 @@ went: if it moved, the test goes the new way, as another test that already
 does (`mp-achievements` opens Achievements through Bro). A door that is truly
 gone with no new way is the owner's question (TRAPS §305), not a fix.
 
-## 343. "Keep the last answer: the player is only ever in one place" (v2.3.6700)
+## 343. "Keep the last answer: the player is only ever in one place" (v2.3.6720)
 
 **The plausible move.** A question whose answer depends on where the player
 stands (which land, which cell, which piece of ground) is asked every frame

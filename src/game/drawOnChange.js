@@ -1,4 +1,4 @@
-/* ═══ v2.3.6700: A POLLED VIEW DRAWS AGAIN ONLY WHEN WHAT IT SHOWS HAS CHANGED (card PRT) ═══
+/* ═══ v2.3.6720: A POLLED VIEW DRAWS AGAIN ONLY WHEN WHAT IT SHOWS HAS CHANGED (card PRT) ═══
  *
  * The game's state is not React's: it lives in one plain object the loop
  * writes (window._gameState), so a control that shows some of it has to LOOK

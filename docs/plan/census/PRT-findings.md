@@ -1,4 +1,4 @@
-# The performance red team's findings (card PRT, tag 6700, 2026-11-26)
+# The performance red team's findings (card PRT, tag 6720, 2026-11-26)
 
 The owner, 2026-11-26: *"Pretend you're a red team but mission is performance
 enhancements. Go"*. One session on the top model attacked the game the way a
