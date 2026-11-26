@@ -9,7 +9,7 @@
  *
  * Reads pairs out of tools/qa/mp/out/ (written by the mp-* scenarios with
  * BT_SHOT_TAG=before and BT_SHOT_TAG=after) and writes one labelled plate per
- * pair into docs/triage-2026-09-14/lane-a/.
+ * pair into docs/archive/triage-2026-09-14/lane-a/.
  *
  * Chromium because it is the only image codec in this sandbox -- no PIL, no
  * sharp (CLAUDE.md).  Same pattern as tools/fix_bow_eye.mjs: a tiny local
@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const IN = `${ROOT}/tools/qa/mp/out`;
-const OUT = `${ROOT}/docs/triage-2026-09-14/lane-a`;
+const OUT = `${ROOT}/docs/archive/triage-2026-09-14/lane-a`;
 const CHROME = process.env.QA_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 /* [output name, left file, left label, right file, right label] */
@@ -86,7 +86,7 @@ chrome.kill(); server.close();
 await mkdir(OUT, { recursive: true });
 for (const p of result.plates) {
   await writeFile(`${OUT}/${p.name}.png`, Buffer.from(p.png, 'base64'));
-  console.log('wrote', `docs/triage-2026-09-14/lane-a/${p.name}.png`, `(${p.w}x${p.h})`);
+  console.log('wrote', `docs/archive/triage-2026-09-14/lane-a/${p.name}.png`, `(${p.w}x${p.h})`);
 }
 process.exit(0);
 

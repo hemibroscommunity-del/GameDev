@@ -9,6 +9,7 @@ state: ready
 
 - v2.3.6682, step 2 PR 2 (branch claude/plan-ui2-7b-grow, base claude/plan-ui2-7-frame): the growing motion (`src/game/dashGrow.js`, `dash/DashGrowBox.jsx`, `dash/dashGrow.css`, `dash/dashGrowSwitch.js`; `?dashgrow=0` and reduced motion give none; its switch row); leftover A, the handle hides and keeps both workspaces (dashNav's `fold`, BandGrip.jsx); leftover B, the words and arrows that named a moved button (`src/data/say/dashGuide.js`: the guide arrow, the coach's reward, points and Login Key lessons, the controls tour's two rings). dash-nav.test 78 checks (P14, P15, M1 to M5 planted, each red); mp-ui2frame's steps 12a-g and 13.
 
+- v2.3.6697, card UI2-grip (the owner's request of 2026-11-26; branch claude/plan-ui2-grip): the band's pull handle gone (the owner, 2026-11-26), `?bandgrip=1` the way back; the fold's hook `data-dash-fold` worn by the row's own control (the frame's Gear and Close; CLOSE under ?ui2=0), so no finder moved; the coach's "Tap the handle" only with the handle; `tools/guards/band-grip.test.mjs` (G1 to G6 planted, each red); `mp-bandgrip` (32 of 32 on the test box); UI-DESIGN-NOTES' band section.
 - v2.3.6689, step 5 PR 3 (card UI2-gear; branch claude/plan-ui2-9c-equipment, base main): Bro's Equipment door opens a showcase (`sheet/GearShowcase.jsx`, page `broEquip`: the figure, the nine worn cells by Gear's one body table `src/game/gearShowcase.js GEAR_BODY`, no bag, Manage Gear for yourself only); each cell and the player card's equipment row open the one item page (`itemPageOpen.js`: showcase, profile and another player's read-only sources); `tools/guards/gear-showcase.test.mjs` (S1-S10 planted, each red); `mp-ui2gear` steps 8c, 9c, 11-14 (33 of 33 on the test box, the final code, by a helper); `ui2-bro-equipment` in states.mjs and the notes.
 - v2.3.6689, the mend (sitting 70's gatekeeper held #2391: 2b to 2d read the wiring as text): `tools/guards/gear-showcase.test.mjs` 2b to 2e read the showcase's tap, `openCardItem`, `openItemPage`, `itemPageInput` and the item page off Babel's tree, an ALLOW list holding `owner` to where the actions are offered (plants W1 to W7 red; S2 and S4 also refuse an owner's source carrying a bag entry); mp-ui2bro 2c reads the showcase.
 
@@ -16,6 +17,7 @@ state: ready
 - Nothing on UI2-gear: its three PRs are up.  The Codex's road into the item page is UI2-codex's: it enters `openItemPage({ from: 'codex', ... })` (dash/itemPageOpen.js), place 'codex'.
 
 ## Found
+- mp-pointstips step 6 expects "Tap Bro." but the frame's points lesson says "Tap Menu, then Bro." (main's own red); mp-questguide's pins and mp-dmgsize's mark sizes red on main too.
 - (mended in PR 2) the guide arrow's "Tap Bro" on the Menu button; ControlsTutorial's rings; the handle that reset Gear's pages.
 - The points' flight (src/game/questFly.js QUEST_FLY_TARGETS.points) lands on the Menu button under the frame (it wears [data-nav="hero"]): the road to Bro, left as it is (server/test/points-fly.test pins the list; a file there deploys the worker).
 
