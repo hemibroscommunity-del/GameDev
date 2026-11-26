@@ -2238,3 +2238,21 @@ Not a screen: it is drawn in the world, on the sword (spec: `docs/specs/sword-fe
 **Please don't suggest:** a gauge, bar or ring for readiness anywhere on the screen (four were turned down: on the attack disc, round the bro, over either joystick); hit-pause, a combo counter, a charge attack, tap-to-lock (the owner's do-not-re-propose list).
 
 Sources: src/game/weaponFeel.js, src/game/swordFeel.js, src/rendering/systems/weaponFeelFx.js, src/data/weaponFeelSound.js, tools/qa/mp/mp-swordfeel.mjs
+
+## The new dashboard kit (v2.3.6680, card UI2)
+Screens: ui2-kit
+
+**What it is for:** The one kit every screen of the new dashboard is built from (the owner, 2026-11-25: "Establish a centralized UI design system before migrating individual menus"), and a page to SEE it at the phone's real size: `?uikit=1`. Not a screen a player meets yet; the live Bro tab is unchanged.
+
+**Decisions, and why:**
+- **One source of numbers.** `src/game/ui2Tokens.js` holds every colour, size, radius, depth, the shine and the motion; the kit's style sheet (`src/ui/kit/ui2.css`) carries them in a block written from it, held equal by `tools/guards/ui2-tokens.test.mjs`. A change of the look is a change in that one file. Everything is under `.ui2`, so nothing that exists today changes.
+- **The slate: the game's own, turned toward the benchmark's blue.** The game's eight colours (band-top `#26383E`, sheet, raised, well, deep, brass, highlight, ivory text) turned 12 to 15 degrees toward blue and a little deeper, at the same lightness; brass and the ivory text to the digit. The benchmark (reference 01) is the feel; its thick gold rim and heavy text shadows are not copied: the rim is 2 px, the shadows 1 px.
+- **Raised and recessed never read alike, shine or no shine.** A control you press is raised (a broad top-lit gradient, a light top edge, a bevel and a drop shadow); information is sunk (a dark gradient and an inner shadow, no drop shadow). The gloss is one token (`--ui2-shine`, `?ui2shine=0` puts it out) and the difference holds without it.
+- **Selected is pushed IN, not tinted.** Its light inverts (darker at the top), its shadow goes inside, its gloss goes; the footprint is the same. Pressed is momentary: a pixel down, a shorter shadow.
+- **Five light action faces, ONE dark label.** Gold routine, green accept, blue guidance, red destructive only, silver dismiss; the label `#141D22` on all five, worked out at 5.4 to 1 or better on every stop of every face, pressed and glossed included (the suite). Red is lighter than the game's danger red so its pressed stops pass.
+- **The game's grades** on the rarity slot: Normal, Rare (`#5B99DE`), Elite (`#E8893A`, a lighter metallic top edge), Godly (the game's five-colour prism, still: no loop); the stars are the non-colour cue, the grade's word goes to a screen reader. The suite holds them to `dash/common.js`.
+- **The serif: Merriweather** (400 and 700, SIL OFL, Google Fonts like the game's other fonts): drawn for screens, a large x-height that holds at 11 px, lining and tabular figures (`font-variant-numeric`). Turned down: Cinzel (capitals only: no sentence reads in it) and EB Garamond (hairline serifs and old-style figures that blur at 11 px on a phone). It loads behind the kit page's own "Loading the kit", only where `.ui2` draws. Raleway, asked for by the page and used by nothing, is no longer asked for.
+- **Sizes at 390 x 844:** the band 390 x 243, its header row 52, the page under it 191 (175 inside the kit's own pads); a Bro tile 119 x 84 with 46 px art; header controls 44 tall; the least text 11 px (a count badge 10).
+- **What the real size cannot hold:** sideways (the page is 66 px tall at 844 x 390) the Character sample drops Clan and Guild and folds the portrait to 56 px; the four summaries need the upright page's second row.
+
+Sources: src/game/ui2Tokens.js, src/ui/kit/ (ui2.css, the pieces, UiKitPage.jsx, sampleData.js), tools/guards/ui2-tokens.test.mjs, tools/qa/mp/mp-uikit.mjs, docs/shots/ui2-kit-*.png.

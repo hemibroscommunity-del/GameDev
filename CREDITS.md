@@ -24,6 +24,7 @@ this repository.
 | Font | License |
 |---|---|
 | Baloo 2 | SIL Open Font License 1.1 |
+| Merriweather (400 and 700; the new dashboard kit's serif, used only inside `.ui2`: v2.3.6680) | SIL Open Font License 1.1 |
 | Press Start 2P | SIL Open Font License 1.1 |
 | Source Sans 3 | SIL Open Font License 1.1 |
 

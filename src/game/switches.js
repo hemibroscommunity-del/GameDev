@@ -315,6 +315,8 @@ const FORMS = {
   'trial': '',
   'trialhud': '',
   'turnzone': '*',
+  'ui2shine': '0',
+  'uikit': '1',
   'uploadicons': '0',
   'veildoor': '0',
   'warmonce': '0',
