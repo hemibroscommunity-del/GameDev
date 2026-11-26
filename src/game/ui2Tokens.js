@@ -36,44 +36,72 @@
  * prismatic"): Normal, Rare, Elite, Godly.  Never "common" or "epic".  The
  * non-colour cue is the game's own: stars, one for Normal up to four.
  *
+ * v2.3.6780 (card UI3-kit, the owner's suggestions of 2026-11-26,
+ * docs/design/UI_FEEDBACK_2026-11-26.md part 6): *"I would keep the navy and
+ * gold aesthetic ... The dashboard's muted blue-gray background is what makes
+ * it feel somewhat disconnected"*, and their six: dashboard base #14232F,
+ * navigation #223D53, recessed panels #0E1D29, subtle borders #4B6275,
+ * primary text #F1F0E9, gold accents #EAC474.  Each is HERE to the digit:
+ * the base is the page and the frame's middle stop, navigation the raised
+ * face's middle, recessed the well's; the stops around each are this card's
+ * (a step lighter above, a step darker below, the same hue), every one
+ * holding ivory, muted and gold at 4.5 to 1 (suite 2).  Their border colour
+ * is a LINE, not a surface (`UI2_LINE`: as a surface muted and gold words
+ * would read 3.7 and 3.8 to 1 on it), and it replaces the four hand-written
+ * edges of the style sheet.  Part 4: *"reduce the button bevels and
+ * shadows"*: the bevel 2 to 1, the drop shadow .42 to .30, the soft drop
+ * .28 to .16 (a token now, as the bevel's shade).  `UI2_WAS` keeps
+ * yesterday's values, so `?ui2look=0` (src/ui/kit/shine.js) gives the
+ * owner the look before this card on their own phone, to compare.
+ *
  * NO IMPORTS: node tests it (tools/guards/ui2-tokens.test.mjs), and the kit
  * imports it. */
 
 /* ── the dark surfaces: every one carries ivory and muted text at 4.5 to 1 ── */
 export const UI2_SURFACE = Object.freeze({
-  /* the dashboard's frame: a shallow brushed slate, top to bottom */
-  frameTop: '#223D53',
-  frameMid: '#1C3549',
-  frameBottom: '#172C3E',
-  /* the page under the header (game: sheet #1E2E34) */
-  page: '#193145',
-  /* a raised control: a broad gradient, lighter at the top (game: raised #293B41, raised-high #32454C) */
-  raisedTop: '#294765',
-  raisedMid: '#27425D',
-  raisedBottom: '#1F374E',
+  /* the dashboard's frame: a shallow brushed slate, top to bottom (v2.3.6780: its middle the owner's base #14232F) */
+  frameTop: '#1A2E3D',
+  frameMid: '#14232F',
+  frameBottom: '#0F1C26',
+  /* the page under the header (game: sheet #1E2E34; v2.3.6780: the owner's "Dashboard base" #14232F) */
+  page: '#14232F',
+  /* a raised control: a broad gradient, lighter at the top (game: raised #293B41, raised-high #32454C;
+     v2.3.6780: its middle the owner's "Navigation" #223D53) */
+  raisedTop: '#294963',
+  raisedMid: '#223D53',
+  raisedBottom: '#1B3243',
   /* the same control SELECTED: pushed in, its light inverted (darker at the top) */
-  sunkTop: '#122334',
-  sunkBottom: '#1B3349',
-  /* a recessed group, track or socket (game: well #111E23, well-soft #16262C, well-deep #0B161B) */
-  well: '#102336',
-  wellSoft: '#152B3F',
-  wellDeep: '#0A1724',
+  sunkTop: '#0A1620',
+  sunkBottom: '#132636',
+  /* a recessed group, track or socket (game: well #111E23, well-soft #16262C, well-deep #0B161B;
+     v2.3.6780: the well the owner's "Recessed panels" #0E1D29) */
+  well: '#0E1D29',
+  wellSoft: '#132533',
+  wellDeep: '#09141D',
 });
 
 /* ── the rim and the gold (the game's brass, to the digit) ── */
 export const UI2_BRASS = Object.freeze({
   brass: '#D8AA58',
-  highlight: '#EAC675',
+  highlight: '#EAC474',   /* v2.3.6780: the owner's "Gold accents" (was the game's #EAC675) */
   deep: '#8C6530',
+});
+
+/* ── v2.3.6780: the LINE (the owner's "Subtle borders" #4B6275): an edge, never a surface, so it is
+   not in UI2_SURFACE (suite 2 reads every surface under words).  `faint` is the same line sunk 55%
+   toward the well, for a control that cannot be used (the old edge there was a tenth as strong). ── */
+export const UI2_LINE = Object.freeze({
+  line: '#4B6275',
+  faint: '#293C4B',
 });
 
 /* ── the text ── */
 export const UI2_TEXT = Object.freeze({
-  ivory: '#F4F0E7',      /* ordinary words and values on the dark (game: text) */
+  ivory: '#F1F0E9',      /* ordinary words and values on the dark (game: text #F4F0E7; v2.3.6780: the owner's "Primary text") */
   muted: '#BCC8CC',      /* a label beside a value (game: text-secondary, turned with the slate) */
   disabled: '#6F8087',   /* a control that cannot be used (its REASON is muted, never this) */
   onAction: '#141D22',   /* the ONE dark label on all five action faces (game: text-on-accent #172126, a shade darker) */
-  gold: '#EAC675',       /* a level's number, the one warm word on a line */
+  gold: '#EAC474',       /* a level's number, the one warm word on a line (v2.3.6780: the owner's "Gold accents"; "gold for progression and important numbers") */
 });
 
 /* ── the five action colours: light metallic faces (top, middle, bottom; pressed the same) ── */
@@ -119,7 +147,7 @@ export const UI2_SIZE = Object.freeze({
   header: 44,       /* the header's controls; the row they stand in is 48 or 52 (sheetGeometry) */
   rim: 2,           /* the frame's gold rim: thin and restrained */
   edge: 1,          /* a control's light edge */
-  bevel: 2,         /* the depth of a raised face's lower edge */
+  bevel: 1,         /* the depth of a raised face's lower edge (v2.3.6780: 2 to 1, "reduce the button bevels and shadows") */
   sink: 3,          /* the depth a SELECTED control is pushed in */
   focus: 2,         /* the keyboard's focus ring */
   bar: 10,          /* a progress track's height */
@@ -139,6 +167,7 @@ export const UI2_TYPE = Object.freeze({
   small: 11,    /* the floor for words */
   body: 12,
   label: 13,
+  nav: 13,      /* v2.3.6780: every navigation button's word, one size (a tile's label, a header control): "use the same typography across all navigation buttons" */
   value: 15,
   title: 17,
   big: 24,
@@ -151,7 +180,9 @@ export const UI2_LIGHT = Object.freeze({
   shine: 0.5,          /* the strength of the gloss on a raised face; ?ui2shine=0 sets it to 0 */
   gloss: 0.12,         /* the gloss's white at its top, at full shine: what a label sits on is the face mixed toward white by shine x gloss (the suite's worst case) */
   edgeLight: 0.16,     /* the light top edge of a raised face (white, this strong) */
-  shadow: 0.42,        /* the drop shadow under a raised face (black, this strong) */
+  shadow: 0.3,         /* the drop shadow under a raised face (black, this strong; v2.3.6780: .42 to .30) */
+  drop: 0.16,          /* v2.3.6780: the soft drop around a raised face or an action (was a hand-written .28) */
+  bevelShade: 0.18,    /* v2.3.6780: the shade of a raised face's lower bevel (was a hand-written .26) */
   sinkShadow: 0.55,    /* the inner shadow of a pushed-in or recessed face */
   brush: 0.035,        /* the frame's brushed lines (white, this strong): fine and low */
 });
@@ -169,6 +200,8 @@ export function ui2Vars() {
   const put = (name, value) => out.push(['--ui2-' + name, String(value)]);
   for (const k of Object.keys(UI2_SURFACE)) put(kebab(k), UI2_SURFACE[k]);
   for (const k of Object.keys(UI2_BRASS)) put('brass-' + kebab(k), UI2_BRASS[k]);
+  put('line', UI2_LINE.line);   /* v2.3.6780 */
+  put('line-faint', UI2_LINE.faint);
   for (const k of Object.keys(UI2_TEXT)) put('text-' + kebab(k), UI2_TEXT[k]);
   for (const n of UI2_ACTION_NAMES) {
     const a = UI2_ACTIONS[n];
@@ -192,6 +225,40 @@ export function ui2Vars() {
   return out;
 }
 
+/* ══ v2.3.6780: YESTERDAY'S LOOK, for `?ui2look=0` (the owner compares on their phone) ══
+ * Every custom property whose value this card changed, or which it made (the line, the soft drop,
+ * the bevel's shade), at its value on main 7ec316e9 (or, for a new one, the value the sheet wrote by
+ * hand there).  The suite rebuilds yesterday's whole block from today's with these over it, less
+ * the properties born since (`UI2_BORN`), and holds it to main's, to the byte: a token changed and
+ * left out is red. */
+export const UI2_WAS = Object.freeze({
+  '--ui2-frame-top': '#223D53',
+  '--ui2-frame-mid': '#1C3549',
+  '--ui2-frame-bottom': '#172C3E',
+  '--ui2-page': '#193145',
+  '--ui2-raised-top': '#294765',
+  '--ui2-raised-mid': '#27425D',
+  '--ui2-raised-bottom': '#1F374E',
+  '--ui2-sunk-top': '#122334',
+  '--ui2-sunk-bottom': '#1B3349',
+  '--ui2-well': '#102336',
+  '--ui2-well-soft': '#152B3F',
+  '--ui2-well-deep': '#0A1724',
+  '--ui2-brass-highlight': '#EAC675',
+  '--ui2-line': 'rgba(150, 195, 230, 0.24)',
+  '--ui2-line-faint': 'rgba(150, 195, 230, 0.1)',
+  '--ui2-text-ivory': '#F4F0E7',
+  '--ui2-text-gold': '#EAC675',
+  '--ui2-size-bevel': '2px',
+  '--ui2-shadow': '0.42',
+  '--ui2-drop': '0.28',
+  '--ui2-bevel-shade': '0.26',
+});
+
+/** The custom properties made since main 7ec316e9 (v2.3.6780), so yesterday's block leaves them out
+ *  (the navigation size is new and the same 13 the tiles read then, so it needs no `UI2_WAS` row). */
+export const UI2_BORN = Object.freeze(['--ui2-line', '--ui2-line-faint', '--ui2-fs-nav', '--ui2-drop', '--ui2-bevel-shade']);
+
 export const UI2_BLOCK_START = '/* @@ui2-tokens: made by `node tools/guards/ui2-tokens.test.mjs --write` from src/game/ui2Tokens.js. Do not edit. */';
 export const UI2_BLOCK_END = '/* @@ui2-tokens-end */';
 
@@ -202,6 +269,10 @@ export function ui2Css() {
   for (const [n, v] of ui2Vars()) L.push(`  ${n}: ${v};`);
   L.push('}');
   L.push('.ui2.ui2-noshine { --ui2-shine: 0; }');
+  /* v2.3.6780: `?ui2look=0` (`.ui2-was`): yesterday's values over today's, every one that changed */
+  L.push('.ui2.ui2-was {');
+  for (const n of Object.keys(UI2_WAS)) L.push(`  ${n}: ${UI2_WAS[n]};`);
+  L.push('}');
   L.push('@media (prefers-reduced-motion: reduce) {');
   L.push('  .ui2 { --ui2-motion-press: 0ms; --ui2-motion-state: 0ms; --ui2-motion-loop: 0ms; }');
   L.push('}');
