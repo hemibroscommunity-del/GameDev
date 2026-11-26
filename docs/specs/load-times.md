@@ -54,8 +54,47 @@ Here the world's own load (13 s, most of it after the pictures were ready) is
 what the loading screen waits on last. Whether a phone waits on the same thing
 is what the owner's screenshot answers.
 
+## What the screen waited for, and why it lifted (v2.3.6760, card LOAD part 1)
+
+The owner's phone (2026-11-26) read: pictures ready 11.9 s into the loading
+screen, the world 13.1 s into it, and the screen up 21.3 s: exactly
+`IntroVideo.jsx`'s 20 s limit (`hardCap`) plus its 1 s fade. The screen lifted
+because the limit fired, not because loading finished. What it still waited for
+is the end of `preloadPlayerAssets()` (`pixiRenderer.js`): after the loads, the
+worn armour's masked body frames (`prewarmMaskedBodyFrames`), the spare sets
+(`prewarmAltWornSets`), the uploads. The readout now says so, in the same lines
+in the same order every time (a step not reached reads `--`):
+
+    The loading screen was up 21.3 s
+    Why it lifted: ready                      (or: its 20 s limit)
+    The bro's own steps (s since the page began):
+      18.5 s  The bro's pictures and sheets were loaded     (loads)
+      19.0 s  The armour's body frames were baked           (masks)
+         --   The spare armour sets were baked              (alt)
+         --   The baked frames were sent to the graphics chip   (upload)
+         --   The gear sheets were sent to the graphics chip    (gear)
+         --   The bro was ready                             (done)
+    Armour frames ready when it lifted: 10 of 177      (or: none worn, or --)
+
+- The steps are `_preStep`'s (`pixiRenderer.js`), noted through `markLoad` as
+  `bro-<step>`, once a page, the same moment `window.__btPreloadSteps` has.
+- "Why it lifted" is `markLift(limit, capMs)` (`loadTimes.js`), called from
+  `IntroVideo.jsx` `maybeFinish` at the moment the screen begins to lift:
+  "its 20 s limit" when the bro's own preload (`waitFor`) had not settled by
+  itself at that moment, "ready" when it had. It is only ever read to NAME the
+  reason; nothing it records decides when the screen lifts.
+- The armour's frames are `window.__btMaskedCoverage()` read at that same
+  moment (`want` 0 reads "none worn"). QA reads it all as
+  `window.__btLoadTimes()` (`bro`, `lift`).
+- No behaviour changes: the limit, the fade and the waits are as they were.
+  Marks and words only.
+
 ## Tests
 
 `node tools/qa/mp/run.mjs loadtimes`: every step noted in a load's order, each
 picture group timed and none longer than the loading screen, the panel showing
-the steps (its numbers the page's own), no page errors.
+the steps (its numbers the page's own), no page errors. v2.3.6760: and the new
+lines exist and are in order (the why, the bro's six steps, the armour).
+`node tools/qa/mp/run.mjs loadlift` (card LOAD part 1): a character in the
+copper torso and greaves logging in for the FIRST time in a fresh browser reads
+"its 20 s limit" with the armour's frames part-baked; a bare one reads "ready".

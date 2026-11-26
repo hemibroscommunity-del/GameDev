@@ -103,14 +103,16 @@ const STEPS = [
   { key: 'dashboard', shape: 'rect',
     /* v2.3.4172: by the button's id, not its word (it is "Gear" now;
        TRAPS §29: a renamed label is a selector that silently finds nothing) */
-    sels: ['[data-tut="coach-gear"]', '.bt-navrail [data-nav="dashboard"]'],
+    /* v2.3.6682 (card UI2-frame PR 2): under the new frame, the control that leads to Gear (its button, or the Menu root's "‹ Gear") */
+    sels: ['[data-tut="coach-gear"]', '.bt-navrail [data-nav="dashboard"]', '[data-dash-ctl][data-nav="dashboard"]'],
     get label() { return say(SAY, 'controlsTutorial.bagLabel'); }, get body() { return say(SAY, 'controlsTutorial.bagBody'); } },
   /* v2.3.1287: Chat left the toolbar — the composer opens by tapping
      your own character; the step teaches that instead. */
   /* v2.3.1803: same fault, worse — [data-tut="dash-more"] was its ONLY
      anchor, so this step has never had a fallback to fall back to. */
   { key: 'toolbar', shape: 'rect',
-    sels: ['.bt-navrail [aria-label="More"]', '[data-tut="dash-more"]'],
+    /* v2.3.6682 (card UI2-frame PR 2): under the new frame, the Menu button (More's fifteen are the Menu now) */
+    sels: ['.bt-navrail [aria-label="More"]', '[data-tut="dash-more"]', '[data-dash-ctl="menu"]'],
     get label() { return say(SAY, 'controlsTutorial.toolbarLabel'); }, get body() { return say(SAY, 'controlsTutorial.toolbarBody'); } },
   { key: 'dodge', shape: null, sels: null,
     get label() { return say(SAY, 'controlsTutorial.dodgeLabel'); }, get body() { return say(SAY, 'controlsTutorial.dodgeBody'); } },

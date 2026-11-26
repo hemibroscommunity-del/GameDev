@@ -208,6 +208,7 @@ export const SYSTEMS = Object.freeze({
     files: [
       f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
       f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
+      f('src/game', 'hereCells'),   /* v2.3.6720: the last few cells' answers to "what is under my feet" (card PRT) */
     ],
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],
@@ -271,7 +272,7 @@ export const SYSTEMS = Object.freeze({
   },
   'page-thread': {
     what: 'the page\'s one thread: the frame\'s pace and clock, what holds the page',
-    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame')],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
+    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame'), f('src/game', 'drawOnChange') /* v2.3.6720: a polled view drawn again only on a change (card PRT) */],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
     words: ['frame', 'held', 'pacer', 'thread', 'jank', 'smooth'],
     traps: ['page-thread'],
     doors: [{ name: 'beforeDraw', file: 'src/game/framePacer.js', what: 'a read that waits for the graphics chip runs at the top of a frame' }],
@@ -315,7 +316,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|broHub|screenZones|pending|combatHub|progression|metricTree') /* v2.3.6686: a headline number as a tree (card UI2-combat PR 2) */ /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6685: Combat's hub and its pools, a skill's progress (card UI2-combat) */ /* v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|dashGrow|broHub|screenZones|pending|combatHub|progression|metricTree') /* v2.3.6686: a headline number as a tree (card UI2-combat PR 2) */ /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6685: Combat's hub and its pools, a skill's progress (card UI2-combat) */ /* v2.3.6682: + the page's growing motion (card UI2-frame PR 2); v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */, f('src/game', 'compare|equipProject|workspace') /* v2.3.6688: Gear's comparison, its projection, the two-panel workspace (card UI2-gear PR 2) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

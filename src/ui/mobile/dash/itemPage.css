@@ -82,3 +82,5 @@
   .ui2 .u2-item-line { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .ui2 .u2-item-acts { flex: 0 1 auto; max-width: 40%; }
 }
+/* v2.3.6688 (the mends): a "?" piece's "Rare or better" (itemInspect's hidden line), in the rare blue, as today's card */
+.ui2 .u2-item-line.is-hidden { color: var(--ui2-grade-rare); font-weight: 700; }

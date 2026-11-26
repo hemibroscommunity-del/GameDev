@@ -26,6 +26,8 @@ export const SAY = Object.freeze({
   'itemInspect.whyLevel': 'Level {have}, requires {req}',
   'itemInspect.whyStat': '{label} {have}, requires {req}',
   'itemInspect.whyNotNow': 'Not possible right now',
+  /* v2.3.6688 (the mends): a "?" piece's line, today's card's words (game/revealBag.js revealCardFor's info) */
+  'itemInspect.hiddenLine': 'Rare or better',
   'itemInspect.readOnly': 'Look only: it is not yours',
   'itemInspect.gone': 'This item is no longer here.',
   'itemInspect.detailsAria': 'Details of {name}',

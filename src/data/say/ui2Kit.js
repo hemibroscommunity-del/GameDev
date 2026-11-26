@@ -7,6 +7,7 @@ export const SAY = Object.freeze({
   'ui2Kit.waiting': '{n} waiting',
   'ui2Kit.new': 'new',
   'ui2Kit.empty': 'Empty',
+  'ui2Kit.hidden': 'not revealed yet',   /* v2.3.6688 (the mends): a "?" piece's slot, to a screen reader */
   'ui2Kit.loading': 'Loading…',
   /* v2.3.6683 (card UI2-bro): a screen's empty state, its one confirmation, its pending marks */
   'ui2Kit.locked': 'Locked',

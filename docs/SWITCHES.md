@@ -707,7 +707,9 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?afterpaint` | page | switch | v2.3.6244 | 2026-11-18 | =0 | logic |  | no | The door prompt is placed inside React's commit, as before (card HB: the coach's and the band's measures too, as their PRs land). |
 | `?bandbeat` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | The band's 200 ms redraw runs in one piece, as before. |
 | `?bropages` | page | switch | v2.3.6600 | 2026-11-25 | =0 | logic |  | no | The Bro tab is the one card of before (you, the stats, the doors; it scrolls), not the three pages. |
+| `?burstidle` | page | switch | v2.3.6720 | 2026-11-26 | =0 | logic |  | no | The Element Burst button is drawn again on every animation frame, as before, not only when what it shows has changed (ElementBurstButton.jsx; game/drawOnChange.js). |
 | `?create` | page | lever | v2.3.1861 |  | =1 | none |  | no | Goes straight to the character creator. |
+| `?dashgrow` | page | switch | v2.3.6682 | 2026-11-26 | =0 | logic |  | no | A dashboard page is simply there when it opens and when Back is pressed: it does not grow out of the tile tapped, nor shrink back into it (src/game/dashGrow.js, dash/DashGrowBox.jsx; the phone's reduced-motion setting does the same; card UI2-frame PR 2). |
 | `?guest` | page | lever | v2.3.1116 |  | =1 | none |  | no | This tab plays as a fresh guest with its own id. |
 | `?jumpicon` | page | value | v2.3.3721 |  | a glyph's name | logic |  | no | Picks the jump button's glyph. |
 | `?login` | page | lever | v2.3.1839 |  | =1 | none |  | no | Shows the login door. |
@@ -787,6 +789,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?halloween` | page | lever | v2.3.3395 |  | =1, =0, on or off | none |  | no | Forces the Halloween season on or off. |
 | `?healms` | page | lever | v2.3.3230 |  | a number of ms | none |  | no | A test's own time for a building's hits to be forgotten. |
 | `heaplean` | both | switch | v2.3.3717 | 2026-10-28 | off_heaplean: true; ?heaplean=0, off, false | memory |  | no | The map's leftovers are kept, not let go. |
+| `?herecells` | page | switch | v2.3.6720 | 2026-11-26 | =0 | logic |  | no | The ground under your feet keeps one answer, as before, not the last four cells' (wheelTrial.js wheelHere): standing where two cells meet is a question to the ground worker on every frame again. |
 | `?mappin` | page | switch | v2.3.3879 | 2026-10-29 | =0 | logic |  | no | No pins on the world map. |
 | `?nmlask` | page | switch | v2.3.3253 | 2026-10-14 | =0 | logic |  | no | No man's land never asks before a fight. |
 | `?nmlaskms` | page | lever | v2.3.3253 |  | a number of ms (1 to 60 s) | none |  | no | A test's own length for No man's land's question. |
