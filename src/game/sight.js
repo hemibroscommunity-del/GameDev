@@ -8,8 +8,27 @@
  *
  * Mode 5 of manualCombat.js only.  A monster is SIGHTED when it is alive,
  * within the weapon's target range, and within the faced cone (CONE_DEG each
- * side of the drawn facing).  Of several, the one nearest the facing's line
- * (the least angle off it) wins, then the nearest.
+ * side of the drawn facing).  Of several, the NEAREST wins (v2.3.6556 below;
+ * `?nearpick=0` the least angle off the facing's line, then the nearest).
+ *
+ * v2.3.6556 (card CT part 23): THE NEAREST THREAT FIRST.  The owner,
+ * 2026-11-25, with the bow in `?manual=5`: "I'm having some trouble with
+ * archery locking on monsters that aren't the monsters closest to the bro.
+ * Like monsters off screen I may have shot accidentally while shooting
+ * around but the monster closest to me looks like the only threat and it's
+ * locking somewhere else."  So, of the monsters in the cone and the range:
+ *   1. the nearest wins; the angle only breaks a near-tie (a distance within
+ *      NEAR_TIE, 15%, of the nearest's: the one nearer the facing's line);
+ *   2. IN VIEW FIRST: a monster outside the view (the world's rectangle the
+ *      page draws, handed in as numbers by the caller: latch.js sightView,
+ *      S.camera and S._viewW/_viewH; nothing here measures the page) is
+ *      picked only when no monster in view is in the cone and the range;
+ *   3. NO FLICKER: the one already sighted keeps it against a newcomer
+ *      unless the newcomer is at least 20% nearer (KEEP_NEARER 0.8), or the
+ *      kept one has left the view and the newcomer is in it.  (The kept
+ *      one's x1.25 and 55 degrees stay.)
+ * The latch's own (a lock out of view lets go to one in view) is latch.js
+ * latchAway.  No view handed in: everything counts as in view.
  *
  * THE RANGES (sightRange), one table:
  *   a sword   today's ring (targeting.js perimeterPx: TARGET_PERIMETER_PX
@@ -50,6 +69,11 @@ export const SIGHT = Object.freeze({
   STAFF_SLACK_PX: 250,
   /* the buttons stay this long after the last sighting */
   HOLD_MS: 400,
+  /* v2.3.6556: the nearest wins; within this share of its distance the angle
+     breaks the tie */
+  NEAR_TIE: 0.15,
+  /* v2.3.6556: a newcomer takes the kept one's sight only this near (20% nearer) */
+  KEEP_NEARER: 0.8,
 });
 
 export const SIGHT_PHASES = Object.freeze(['none', 'sighted']);
@@ -73,26 +97,74 @@ export function angleOff(a, b) {
   return Math.abs(d);
 }
 
+/** v2.3.6556: is (x, y) inside the view `view` ({ x, y, w, h }, world px:
+ *  the camera's top-left and the size it draws)?  No view, or one that is not
+ *  numbers, counts everything in view (the old rule's answer). */
+export function inSightView(view, x, y) {
+  if (!view || !(view.w > 0) || !(view.h > 0) || !isFinite(view.x) || !isFinite(view.y)) return true;
+  return x >= view.x && x <= view.x + view.w && y >= view.y && y <= view.y + view.h;
+}
+
+/* v2.3.6556: one monster's fit, for both passes: its distance, or -1 when it
+   is not in sight (dead, nowhere, out of the range or the cone); its angle
+   off the facing in _off.  Module scratch: no garbage a frame. */
+let _off = 0;
+function fitOf(m, me, face, range, kept, cone, hold) {
+  if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0) || !isFinite(m.x) || !isFinite(m.y)) return -1;   /* v2.3.6542: a monster at 0 hp is dying, not in sight (targeting.js monLive's test) */
+  const dx = m.x - me.x, dy = m.y - me.y;
+  const d = Math.hypot(dx, dy);
+  _off = d > 0 ? angleOff(Math.atan2(dy, dx), face) : 0;
+  if (d > (kept ? range.out : range.in)) return -1;
+  if (_off > (kept ? hold : cone)) return -1;
+  return d;
+}
+
 /** Pick the monster in sight.  `me` {x, y}; `face` the drawn facing,
  *  radians; `mons` [{ id, x, y, alive }]; `range` sightRange's; `cur` the id
- *  sighted now (or null).  Returns { id, d, off } or null. */
+ *  sighted now (or null); v2.3.6556: `view` the view's world rectangle
+ *  ({ x, y, w, h }, or null: all in view) and `old` exactly true for the
+ *  rule before (`?nearpick=0`: the least angle, then the nearest, no view).
+ *  Returns { id, d, off } or null. */
 const _PICK = { id: null, d: 0, off: 0 };   /* v2.3.6542: ONE object, reused: the pick runs every frame once wired (the gatekeeper's sitting 56: no garbage a frame).  Read it before the next call. */
-export function sightPick(me, face, mons, range, cur) {
+function picked(id, d, off) { _PICK.id = id; _PICK.d = d; _PICK.off = off; return _PICK; }
+export function sightPick(me, face, mons, range, cur, view, old) {
   if (!me || typeof face !== 'number' || !isFinite(face) || !Array.isArray(mons) || !range) return null;
   const cone = (SIGHT.CONE_DEG * Math.PI) / 180;
   const hold = (SIGHT.CONE_HOLD_DEG * Math.PI) / 180;
-  let best = null;
-  for (const m of mons) {
-    if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0) || !isFinite(m.x) || !isFinite(m.y)) continue;   /* v2.3.6542: a monster at 0 hp is dying, not in sight (targeting.js monLive's test) */
-    const dx = m.x - me.x, dy = m.y - me.y;
-    const d = Math.hypot(dx, dy);
-    const off = d > 0 ? angleOff(Math.atan2(dy, dx), face) : 0;
-    const kept = cur != null && m.id === cur;
-    if (d > (kept ? range.out : range.in)) continue;
-    if (off > (kept ? hold : cone)) continue;
-    if (!best || off < best.off - 1e-9 || (Math.abs(off - best.off) <= 1e-9 && d < best.d)) { best = _PICK; best.id = m.id; best.d = d; best.off = off; }
+  if (old === true) {
+    let best = null;
+    for (const m of mons) {
+      const kept = cur != null && !!m && m.id === cur;
+      const d = fitOf(m, me, face, range, kept, cone, hold);
+      if (d < 0) continue;
+      if (!best || _off < best.off - 1e-9 || (Math.abs(_off - best.off) <= 1e-9 && d < best.d)) best = picked(m.id, d, _off);
+    }
+    return best;
   }
-  return best;
+  /* v2.3.6556: pass 1, the nearest newcomer in view and out of it, and the kept one */
+  let dIn = Infinity, dOut = Infinity, kd = -1, koff = 0, kin = false, kid = null;
+  for (const m of mons) {
+    const kept = cur != null && !!m && m.id === cur;
+    const d = fitOf(m, me, face, range, kept, cone, hold);
+    if (d < 0) continue;
+    const v = inSightView(view, m.x, m.y);
+    if (kept) { kd = d; koff = _off; kin = v; kid = m.id; }
+    else if (v) { if (d < dIn) dIn = d; }
+    else if (d < dOut) dOut = d;
+  }
+  /* pass 2: of the newcomers in the first tier (in view, else out of it)
+     within NEAR_TIE of its nearest, the least angle off, then the nearest */
+  const tierIn = dIn < Infinity;
+  const lim = (tierIn ? dIn : dOut) * (1 + SIGHT.NEAR_TIE);
+  let found = false, bid = null, bd = 0, boff = 0;
+  if (lim < Infinity) for (const m of mons) {
+    const d = fitOf(m, me, face, range, false, cone, hold);   /* the kept one too, as a newcomer: if it wins here, the keep below returns it all the same */
+    if (d < 0 || d > lim || inSightView(view, m.x, m.y) !== tierIn) continue;
+    if (!found || _off < boff - 1e-9 || (Math.abs(_off - boff) <= 1e-9 && d < bd)) { found = true; bid = m.id; bd = d; boff = _off; }
+  }
+  /* the kept one against the newcomer (reading 3) */
+  if (kd >= 0 && !(found && ((tierIn && !kin) || (tierIn === kin && bd <= kd * SIGHT.KEEP_NEARER)))) return picked(kid, kd, koff);
+  return found ? picked(bid, bd, boff) : null;
 }
 
 /* v2.3.6542: the eight facings the renderer draws (render.js SECTORS, its

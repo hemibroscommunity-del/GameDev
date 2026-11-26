@@ -1956,4 +1956,24 @@ export const STATES = [
     },
     after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
   },
+  /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
+     ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
+  {
+    id: 'ui2-kit', group: 'The new dashboard (in build)', title: 'The new dashboard kit (?uikit=1)',
+    about: 'Not a screen a player meets yet: the new dashboard\'s kit on a page of its own, each piece in every state and two samples (the Bro landing, the Character page with your real data), each inside a box the size of the band on this screen.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.set('uikit', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      const up = await P.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 60000 }).then(() => true, () => false);
+      if (!up) return 'the kit\'s page did not come up';
+      await wait(P, 800);
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.delete('uikit');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    },
+  },
 ];

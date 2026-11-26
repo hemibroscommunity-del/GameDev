@@ -35,6 +35,8 @@ export const PACKETS = [
   /* v2.3.6600 (card BRO): the three pages; dash-bro-bow (Combat on the bow) left out of the packet, nine at most */
   { slug: 'dashboard-bro', title: 'Dashboard: Bro (its three pages, Points, Equipment, Life Skills, Achievements)',
     screens: ['guide-arrow', 'dash-bro', 'dash-bro-combat', 'dash-bro-progress', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
+  /* v2.3.6680: the new dashboard's kit (card UI2), beside the Bro tab it will replace */
+  { slug: 'ui2-kit', title: 'The new dashboard kit (?uikit=1: its pieces and two samples)', screens: ['ui2-kit'] },
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   /* v2.3.4172: the rare fish's weigh-in card and Ranks' Biggest fish

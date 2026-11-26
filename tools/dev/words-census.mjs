@@ -76,6 +76,7 @@ const DEV_FILES = [
   /^src\/game\/ownerSwitches\.js$/,
   /^src\/data\/soundStudio\.js$/,
   /^src\/ui\/mobile\/mock[A-Z]\w*\.js$/,
+  /^src\/ui\/kit\/(UiKitPage\.jsx|sampleData\.js)$/,   // v2.3.6680: the kit's own page (?uikit=1) and its samples' reader: a developer's page (card UI2)
   /^server\/src\/wire\//,       // the wire table: its notes are for coders
   /^server\/src\/(devtools|admin)\.js$/,   // the Test panel's levers and the admin routes
 ];
