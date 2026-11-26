@@ -47,6 +47,8 @@ import { harvestCoachWanted, gestureWanted, killedAny } from '../game/deskTeachS
 import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a loading screen is up */
 import { onAfterFrame, framesRunning, onDevicePx } from './afterFrame.js';   /* v2.3.4360: the Mayor's arrow follows him every frame */
 import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
+import { SAY as GUIDE } from '../data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
+import { say } from '../game/say.js';
 import { beforeDraw } from '../game/framePacer.js';   /* v2.3.6286: the tick at the top of the game's frame (card HB2 PR 7) */
 import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6286: `?afterpaint` */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
@@ -173,6 +175,12 @@ export function guideTargets(id, rpg, shown) {
     /* v2.3.4172: inside the Points window (over the Bro card) there is
        nowhere left to go: no arrow (the coach's words say what the rows are) */
     if (shown('[data-bro-popup="Build"]')) return [];
+    /* v2.3.6682 (card UI2-frame PR 2): under the new frame Bro is a tile on the
+       Menu's root ([data-dest="hero"]) and the old hook [data-nav="hero"] is
+       worn by the Menu button ([data-dash-ctl="menu"]): the tile first, then
+       the Menu, each with its own words; asked only while the frame is drawn
+       (a [data-dash-ctl] on screen), so under ?ui2=0 the list is today's */
+    if (shown('[data-dash-ctl]')) return ['[data-section="Build"]', '[data-dest="hero"]', '[data-dash-ctl="menu"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
   }
   if (id === 'forge') {
@@ -214,6 +222,8 @@ export function guideWords(id, sel, computer) {
   else if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
+  else if (/data-dest="hero"/.test(sel)) s = say(GUIDE, 'dashGuide.arrowBro');   /* v2.3.6682: Bro's tile on the Menu's root */
+  else if (/data-dash-ctl="menu"/.test(sel)) s = say(GUIDE, 'dashGuide.arrowMenuBro');   /* v2.3.6682: the Menu button, the road to Bro */
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
   else if (/data-section="Build"/.test(sel)) s = 'Tap Points';   /* v2.3.4172: the Bro card's Points row */
   return deskWords(s, computer);

@@ -21,3 +21,5 @@ export { Ui2Zones } from './Zones.jsx';
 export { Ui2Actions } from './ActionRow.jsx';
 export { Ui2Empty } from './EmptyState.jsx';
 export { Ui2Confirm } from './Confirm.jsx';
+export { Ui2TwoPanel } from './TwoPanel.jsx';   /* v2.3.6688: two panels side by side (card UI2-gear PR 2) */
+export { Ui2ItemGrid, Ui2ItemCell } from './ItemGrid.jsx';   /* v2.3.6688: the one grid of item cells */
