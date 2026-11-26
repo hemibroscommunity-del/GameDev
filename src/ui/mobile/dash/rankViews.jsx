@@ -47,7 +47,8 @@ function RankRowView({ r, words, Medal, Face, onRow, i }) {
   const inner = (
     <>
       <span className="u2-rk-place">{Medal ? <Medal rank={r.rank} gone={r.gone} w={32} /> : r.rank}</span>
-      <span className="u2-rk-face">{Face ? <Face src={r.face} name={r.name} gone={r.gone} px={28} /> : null}</span>
+      {/* a deleted character's face without the bust's own 9 px DELETED stamp (under the 11 px floor): the row says "Deleted character" */}
+      <span className="u2-rk-face">{Face ? <Face src={r.face} name={r.name} gone={false} px={28} /> : null}</span>
       <span className="u2-rk-who">
         <span className="u2-rk-name">{r.name}</span>
         {r.mine ? <span className="u2-rk-you" data-rank-you="">{words.you}</span> : null}

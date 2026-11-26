@@ -29,7 +29,7 @@
   display: grid; grid-template-columns: 34px 30px minmax(0, 1fr) auto; align-items: center; column-gap: var(--ui2-space-m);
 }
 .ui2 .u2-rk-heads {
-  flex: 0 0 auto; height: 16px; padding: 0 var(--ui2-space-l);
+  flex: 0 0 auto; height: 18px; line-height: 18px; overflow: hidden; padding: 0 var(--ui2-space-l);
   font-size: var(--ui2-fs-small); font-weight: 700; letter-spacing: 0.04em; color: var(--ui2-text-muted);
 }
 .ui2 .u2-rk-heads .u2-rk-place { text-align: center; }

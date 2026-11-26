@@ -341,6 +341,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const [name, vp] of sizes) {
       await A.page.setViewportSize(vp);
       await A.page.waitForTimeout(1500);
+      /* the frame folds the dashboard when the phone turns (its own rule): open the board again */
+      if (!(await A.page.$('[data-rank-board="woodcutting"]'))) {
+        await H.dashOpen(A, 'leaderboard').catch(() => {});
+        await A.page.waitForSelector('[data-ranks-ui2], [data-rank-board]', { timeout: 8000 }).catch(() => {});
+        if (await A.page.$('[data-ranks-ui2="landing"]')) await tap(A, '[data-ranks-ui2="landing"] [data-rank-tile="life"]').catch(() => {});
+        await A.page.waitForTimeout(600);
+        if (await A.page.$('[data-ranks-ui2="group"]')) await tap(A, '[data-rank-tile="woodcutting"]').catch(() => {});
+        await A.page.waitForSelector('[data-rank-board="woodcutting"] [data-rank-row]', { timeout: 10000 }).catch(() => {});
+        await A.page.waitForTimeout(800);
+      }
       const f = await fits(A);
       const Lx = await look(A);
       at.push({ name, small: f.small, tiny: f.tiny, out: f.out, rows: Lx.rows.filter((r) => r.box.b <= (Lx.boardBox ? Lx.boardBox.b : 0) + 1 && r.box.t >= (Lx.boardBox ? Lx.boardBox.t : 0) - 1).length });
