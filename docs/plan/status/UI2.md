@@ -1,6 +1,6 @@
 card: UI2
-branch: claude/plan-ui2-9-gear (step 5 PR 1, stacked on claude/plan-ui2-7-frame)
-prs: the kit's draft PR #2368 (ready); the frame's #2369 (stacked on it; ready); the item page's draft PR (UI2-gear 6687, stacked on #2369; ready)
+branch: claude/plan-ui2-9b-panels (step 5 PR 2, stacked on claude/plan-ui2-9-gear, PR 1's)
+prs: the kit's draft PR #2368 (ready); the frame's #2369 (stacked on it; ready); the item page's #2373 (UI2-gear 6687, stacked on #2369; ready); the two panels' draft PR (UI2-gear 6688, stacked on #2373; ready)
 state: ready
 
 ## Done
@@ -9,15 +9,20 @@ state: ready
 
 - v2.3.6687, step 5 PR 1 (card UI2-gear, the one item page): `src/game/itemInspect.js` (the model: identity by the game's grades, whose and where, the facts, the one action list narrowed by context, an off action kept with its reason), `dash/ItemPage.jsx` + `itemPage.css` (the frame's page `item` on Gear's stack), `dash/itemPageOpen.js` (opener, bus, runner), `dash/gearCells.js` (Gear's cell reader moved out: GearTab 1,231 -> 1,199 lines), Gear's card head the door under the frame, `tools/guards/item-inspect.test.mjs` (10 dodges planted, each red), `mp-ui2gear`, states.mjs `dash-item-page`, UI-DESIGN-NOTES "The one item page", `docs/shots/ui2-gear-item-*.png`.
 
+- v2.3.6688, step 5 PR 2 (card UI2-gear, the two panels): under the frame Gear is `dash/GearPanels.jsx` (+ `gearPanels.css`): Inventory left, Equipped right in a body's shape (weapons | Cape, Chest, Legs on the figure's line | Shield, Amulet, Gem; sideways one row of three groups), no middle column, no bars; the quick look in the panel OPPOSITE the source, the pick in the kit's selected state, the way back with the bag's scroll; the summary `itemSummary` of the page's model with the comparison; its Details the one item page. Rules: `src/game/compare.js` (the transformation form), `equipProject.js` (you now and you if equipped, the Bro pages' readers), `workspace.js` (one state, one transition; gearTabBus.ws moves only by wsStep); the kit's `TwoPanel.jsx`, `ItemGrid.jsx` (fixture plate `workspace`; mp-uikit counts nine plates). Moved out of GearTab: `GearFilterMenu.jsx`, `gearBag.js`; PR 1's door in the old card removed (unreachable under the frame). GearTab 1,202 -> 1,118 lines; ItemDetailPopup 1,978 (untouched). Suites `tools/guards/compare.test.mjs` (12 dodges), `workspace.test.mjs` (7 dodges), mutation-run by hand. `mp-ui2gear` rewritten. states.mjs `dash-gear-panels`, `dash-gear-look-bag`, `dash-gear-look-worn`; UI-DESIGN-NOTES "Gear's two panels". Equip's pending mark: today's behaviour (step 3's `pending.js` not on main).
+
 ## Next
 - PR 2 (6682), the growing motion: a fresh session's (the card's line). Entries already carry `from` (a tile's cell).
-- UI2-gear PR 2 (6688: the two panels, the quick looks, the comparison) and PR 3 (6689): fresh sessions'.
+- UI2-gear PR 3 (6689: Bro's Equipment showcase, the other item screens onto the one page): a fresh session's, once step 3 (UI2-bro) is on main.
 
 ## Found
 - UI2-gear: the ChatGPT packets (tools/qa/ui-review/packets.mjs) hold none of the `dash-frame-*` screens nor `dash-item-page` (--check-notes lists them); packets are outside the card.
 - The guide arrow's words for `[data-nav="hero"]` say "Tap Bro: points to spend" (src/ui/guideArrow.js:217); under the frame that hook is worn by the Menu button (Bro's tile on the Menu's root). Its words are outside this card.
 - ControlsTutorial.jsx:106 aims at `.bt-navrail [data-nav="dashboard"]` (only under ?ui2=0); its first selector `[data-tut="coach-gear"]` still finds Gear's tile.
 - BandGrip's handle, tapped on an open page, calls toBar() then folds: under the frame that is Gear's root then closed, so Gear's own page stack is reset by the handle (the Menu's is kept). BandGrip.jsx is not this card's.
+
+- UI2-gear PR 2: an amulet's attack speed changes your Attack time, but the comparison covers weapons, Chest, Legs and the shield only; an amulet, a cape and a gem show their own facts. Mixed-purpose pieces are the specification's open question.
+- UI2-gear PR 2: the frame's states.mjs row `dash-frame-gear` still says "over today's Gear" (the frame's row, not changed here).
 
 ## Needs
 - Nothing.  Answered by the orchestrator (part 20, 00:38 UTC 11-26, "go"): the Social and Settings hubs, and Journey in the Settings hub for this step only ("moves under Bro at step 3").
