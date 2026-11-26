@@ -1906,6 +1906,7 @@ Screens: pad-controller
 - **Jump becomes the shield in a fight** (the owner's words): the big left button is Block, wearing the shield, exactly when the Block button shows today (ShieldButton blockLive, one rule); Jump moves to the middle well, small, so nothing is lost (where Jump goes was chosen for the owner by the orchestrator). Out of a fight the middle well is empty.
 - **The shield is a tap**: it already was (v2.3.2242, game/shieldToggle.js: a tap raises it, a tap lowers it, the guard door its one writer); Attack lowers it (playerActions.js), as do a break, the stamina, death, riding and the rest, unchanged. A guard still up when the fight's rule ends keeps Block shown (shieldButtonLive), so it can always be lowered; then the big button is Jump again.
 - **States in CSS, no filter**: pressed (the face 0.96 for 100 ms), cooldown (a dark sector over the face inside its ring, never the rim), unavailable (the face dimmed; the sword's own dim face), active (a quiet ring, opacity only), a control hidden right now its EMPTY WELL (action_socket). No number on a cooldown (the game has none).
+- **Whirlwind and Shield Bash in a tier over the right lobe** (v2.3.6642, part 6; the gatekeeper: "Whirlwind and Shield Bash in their old places beside the new Special socket"): the housing as drawn has no free place for a 44 px box (the rail is the three weapon wells end to end, the lobe's top row is full, the stick fills its lobe), so while either shows the right lobe is drawn about 42 px taller (the same `housing.png`, the steep band of its left wall stretched: no new picture) and the two sit in that row: Whirlwind over Special, Shield Bash over the mobility well (over the shield, the big well, whenever Bash shows: the guard is up). Each the top row's size, its box 44, its face the old button's own (the tornado, the bash). Who shows is the old buttons' one rule (abilityStatus: Whirlwind the sword's in a fight, Bash the raised shield's with any weapon); the tier's height and both places are fixed, so nothing moves as one comes or goes, and when neither shows the tier is not drawn (`padSkin.js specialLayout`).
 - **The art law**: the owner's eighteen pieces kept byte for byte (assets/icons-source/owner-2026-11-25-pad3/); tools/art/cut-pad.mjs takes each to 2 px a CSS px at its biggest, 128 colours, 174 kB in all, warmed on the loading screen. Part 1's sheets and pieces are gone.
 
 **Tried before, and changed:**
@@ -1918,7 +1919,8 @@ Screens: pad-controller
 - Baking states into more pictures where the style sheet can draw them.
 
 **Still open:**
-- Buttons with no well (Sprint, Whirlwind, Shield Bash, Quick eat, the trap, Element Burst, the TALK/CHOP button) keep their old places and looks; the owner's call where they go.
+- Buttons with no well (Sprint, Quick eat, the trap, Element Burst, the TALK/CHOP button) keep their old places and looks; the owner's call where they go.
+- The tier (part 6) is the orchestrator's choice for the owner: the other ways were the two floating over the shell in their old places, or new art. The owner may prefer the tier always drawn for a sword (empty wells out of a fight) to a lobe that grows in a fight.
 - A phone narrower than about 390 px draws the top row's art a little smaller (above).
 - The mockup's tab row with icons, the top bar and the minimap (out of this card).
 

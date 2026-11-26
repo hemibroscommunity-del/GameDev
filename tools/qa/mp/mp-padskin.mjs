@@ -71,6 +71,14 @@ const LOOK = (P) => P.page.evaluate(([sel, face]) => {
 const WELL = (L, k) => { const w = L.pad.wells[k]; return { x: L.shell.l + w.x, y: L.bandTop - w.y, d: w.d }; };
 const SAFE_R = 2937;   /* zones.js wheel.safeR, the town's safe ground (mp-skateboard's); the centre is wheelGeom's */
 const near = (a, b, tol) => !!a && !!b && Math.abs(a.x - b.x) <= tol && Math.abs(a.y - b.y) <= tol;
+/* v2.3.6642: a real touch's tap (CDP), and the worker's own stamina */
+const tapAt = async (P, b, id) => {
+  const cdp = P.__cdp || (P.__cdp = await P.page.context().newCDPSession(P.page));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: b.x, y: b.y, id }] });
+  await P.page.waitForTimeout(70);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+};
+const srvStamina = async (wsPort, id) => { const v = await H.serverPlayer(wsPort, id).catch(() => null); return v && typeof v.stamina === 'number' ? Math.round(v.stamina) : null; };
 const overlap = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.5 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 0.5;
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -79,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const shots = process.env.PAD_SHOTS || null;
   try {
     /* PAD_ONLY=rider: the rider's page alone (5b/5c), for a quick look */
-    for (const [label, viewport] of (process.env.PAD_ONLY === 'rider' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
+    for (const [label, viewport] of (process.env.PAD_ONLY ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
       /* ── 0: today's look, on a page with the switch thrown ── */
       const O = await H.newPlayer(browser, { name: label === 'upright' ? 'Padoff' : 'Padoffs', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'padskin=0' });
       players.push(O);
@@ -263,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        written, the body's (S._facingAngle, what a still bro is drawn by: the
        sight takes the DRAWN facing, sight.js drawnFace), held while the well
        is read: a board's stick would roll the rider off the safe ground. ── */
-    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
+    for (const [label, viewport] of (process.env.PAD_ONLY && process.env.PAD_ONLY !== 'rider' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
       const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padride' : 'Padrides', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'manual=5&wheelwhole&tapms=4000' });
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ' rider: ' + String((e && e.message) || e).slice(0, 200)));
@@ -322,6 +330,168 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`5c. ${label}: turned away, the sighting gone, still riding: the board's button back in the mobility well (the way off), Charge gone`,
         outS.gone && outS.at.riding && outS.skate && outS.inWell && !outS.charge, outS);
       await P.page.evaluate(() => clearInterval(window.__padFace));
+      await P.ctx.close().catch(() => {});
+    }
+
+    /* ── 8 (v2.3.6642, card PAD part 6): WHIRLWIND AND SHIELD BASH in the
+       right lobe's tier (padSkin.js specialLayout).  A sword and a shield, in
+       a fight (today's held combat: the lock at 220 px brings Whirlwind), the
+       guard raised by a tap (Bash comes with it):
+         8a. both shown, each face in its tier well (1.5 px), inside the
+             tier's housing, the shell's bottom on the band as before;
+         8b. every touch box on the page 44 px at least and none over
+             another (the socketed ones, the two, Sprint, Quick eat, Burst,
+             the trap, the board, Charge);
+         8c. with the tier drawn every socketed control shown is in its
+             well (nothing moved for it);
+         8d. a tap on Shield Bash sends the old button's request (`ability`,
+             bash) and the WORKER answers it (its stamina spent, or its
+             refusal named); 8e the same for Whirlwind;
+         8f. the bow in hand, the guard down: neither drawn, no tier, and
+             every socketed control in its well.
+       PAD_ONLY=specials: this alone. ── */
+    for (const [label, viewport] of (process.env.PAD_ONLY && process.env.PAD_ONLY !== 'specials' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padspec' : 'Padspecs', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole&tapms=4000' });
+      players.push(P);
+      P.page.on('pageerror', (e) => errs.push(label + ' specials: ' + String((e && e.message) || e).slice(0, 200)));
+      await H.enterWorld(P);
+      const inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
+      const me = inW ? await H.readState(P, (S) => S.myId) : null;
+      if (me) await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
+      const eqS = me ? await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) })) : null;
+      if (me) await H.devOp(wsPort, 'kit', me, { what: 'shield' }).catch(() => null);
+      let shieldOn = false;
+      for (let k = 0; k < 60 && !shieldOn && me; k++) {
+        shieldOn = await P.page.evaluate(() => {
+          const S = window._gameState && window._gameState.current, R = S && S.rpg;
+          if (!R) return false;
+          if (R.shield) return true;
+          if (!Array.isArray(R.shieldStash) || !R.shieldStash.length) return false;
+          const sh = R.shieldStash.shift();
+          R.shield = sh;
+          if (S.channel && S._serverCaps && S._serverCaps.shieldwear) {
+            const payload = (typeof sh.gid === 'string' && sh.gid) ? { gid: sh.gid } : { sig: [sh.name || '', sh.gearBase || '', sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|') };
+            try { S.channel.send({ type: 'shield_wear', payload }); } catch (e) { /* the next change reports it */ }
+          }
+          return true;
+        });
+        if (!shieldOn) await P.page.waitForTimeout(250);
+      }
+      await H.foldBand(P).catch(() => null);
+      await P.page.waitForTimeout(1500);
+      rec.ok(`8. ${label}: the sword in hand and a shield worn (guard)`, !!inW && !!(eqS && eqS.ok) && shieldOn, { inW, eqS, shieldOn });
+      if (!inW || !shieldOn) continue;
+      /* the requests the page sends, kept (the old button's is `ability`) */
+      await P.page.evaluate(() => {
+        const S = window._gameState.current; window.__padSent = [];
+        const ch = S.channel; if (!ch || ch.__padSpy) return;
+        const send = ch.send.bind(ch); ch.__padSpy = true;
+        ch.send = (m) => { try { if (m && m.type === 'ability') window.__padSent.push(String(m.payload && m.payload.kind)); } catch (e) { /* kept */ } return send(m); };
+      });
+      const mon = await H.readState(P, (S) => {
+        const p = S.player; let best = null;
+        for (const m of S.monsters || []) {
+          if (!m || m.dead || !(m.hp > 0)) continue;
+          const d = Math.hypot(m.x - p.x, m.y - p.y);
+          if (!best || d < best.d) best = { id: m.id, x: m.x, y: m.y, d: Math.round(d) };
+        }
+        return best;
+      });
+      if (!mon) { rec.ok(`8. ${label}: a live monster known (guard)`, false); continue; }
+      await H.hopTo(P, Math.round(mon.x - 130), Math.round(mon.y), { tries: 260 }).catch(() => null);
+      const fight = await P.page.waitForFunction(() => !!document.querySelector('[data-shield]') && !!document.querySelector('[data-ability="whirl"]'), null, { timeout: 20000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(600);
+      const SPEC = Object.assign({}, SEL, { whirl: '[data-ability="whirl"]', bash: '[data-ability="bash"]', sprint: '[data-sprint]', eat: '[data-quickeat]', burst: '.bt-burst-btn', trap: '[data-trap-round]' });
+      const SFACE = Object.assign({}, FACE, { whirl: '[data-ability-face]', bash: '[data-ability-face]', sprint: null, eat: null, burst: null, trap: null });
+      const LOOK8 = () => P.page.evaluate(([sel, face]) => {
+        const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, l: r.left, r: r.right, t: r.top, b: r.bottom }; };
+        const vis = (el) => { if (!el) return false; let e = el; while (e && e !== document.body) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false; e = e.parentElement; } return true; };
+        const cs = getComputedStyle(document.documentElement);
+        const band = parseFloat(cs.getPropertyValue('--sheet-h')) || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+        const out = { bandTop: window.innerHeight - band, pad: window.__btPad || null, c: {} };
+        out.shell = rect(document.querySelector('[data-padhousing="shell"]'));
+        const t = document.querySelector('[data-padhousing="tier"]');
+        out.tier = t && vis(t) ? rect(t) : null;
+        for (const k of Object.keys(sel)) {
+          const el = document.querySelector(sel[k]);
+          if (!el || !vis(el)) { out.c[k] = null; continue; }
+          const f = face[k] ? el.querySelector(face[k]) : el;
+          out.c[k] = { box: rect(el), face: rect(f) };
+        }
+        return out;
+      }, [SPEC, SFACE]);
+      const D = await LOOK8();   /* the guard down: Whirlwind alone */
+      const up = () => H.readState(P, (S) => !!S._shieldUp);
+      /* the presses: the worker's stamina full first, then the button's tap
+         (a raised guard spends stamina a tick, so Whirlwind first, the guard
+         down, then Bash with it up) */
+      const press = async (k, id) => {
+        await H.devOp(wsPort, 'vitals', me, { stamina: 100 }).catch(() => null);
+        await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 90, { timeout: 15000, label: 'stamina full' }).catch(() => null);
+        const s0 = await srvStamina(wsPort, me);
+        await P.page.evaluate(() => { window.__padSent = []; });
+        const t0 = await P.page.evaluate(() => Date.now());   /* a refusal after the tap (the page's field is read, never written) */
+        const L9 = await LOOK8();
+        if (L9.c[k]) await tapAt(P, L9.c[k].box, id);
+        await P.page.waitForTimeout(1500);
+        const s1 = await srvStamina(wsPort, me);
+        const sent = await P.page.evaluate(() => window.__padSent.slice());
+        /* the worker's answer: its stamina spent, or its refusal of that cast (ability_rejected: it heard it) */
+        const nope = await H.readState(P, (S) => S._lastAbilityReject || null);
+        const heard = (s0 != null && s1 != null && s1 < s0 - 5) ? 'spent' : (nope && nope.kind === k && nope.at >= t0 ? 'refused: ' + nope.reason : null);
+        return { shown: !!L9.c[k], sent, s0, s1, heard };
+      };
+      const pw = await press('whirl', 23);
+      rec.ok(`8e. ${label}: a tap on Whirlwind sends the old button's request (${pw.sent.join(',')}) and the worker answers it (${pw.heard}; stamina ${pw.s0} -> ${pw.s1})`,
+        pw.shown && pw.sent.includes('whirl') && !!pw.heard, pw);
+      const D2 = await LOOK8();
+      if (D2.c.block) await tapAt(P, D2.c.block.box, 21);
+      const raised = await P.page.waitForFunction(() => !!document.querySelector('[data-ability="bash"]'), null, { timeout: 8000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(600);
+      const G = await LOOK8();
+      if (shots) await P.page.screenshot({ path: shots + '/pad6-specials-' + label + '.png' });
+      const T = G.pad && G.pad.tier, L8 = G.pad && G.pad.layout;
+      const tw = (k) => (T && T.wells[k] && G.shell ? { x: G.shell.l + T.wells[k].x, y: G.bandTop - T.wells[k].y } : null);
+      const inTier = (k) => !!G.c[k] && !!G.tier && G.c[k].face.l >= G.tier.l - 0.5 && G.c[k].face.r <= G.tier.r + 0.5 && G.c[k].face.t >= G.tier.t - 0.5;
+      rec.ok(`8a. ${label}: in a fight with the guard up (${fight}, ${raised}, ${await up()}) Whirlwind and Shield Bash in the tier's wells (Whirlwind over Special, Bash over the mobility well), inside its housing, the shell on the band`,
+        fight && raised && !!G.c.whirl && !!G.c.bash && near(G.c.whirl.face, tw('whirl'), 1.5) && near(G.c.bash.face, tw('bash'), 1.5)
+        && inTier('whirl') && inTier('bash') && !!G.tier && Math.abs(G.tier.b - G.bandTop) <= 0.5 && Math.abs(G.shell.b - G.bandTop) <= 0.5
+        && !!L8 && Math.abs(G.c.whirl.face.x - (G.shell.l + L8.wells.special.x)) <= 1.5 && Math.abs(G.c.bash.face.x - (G.shell.l + L8.wells.mobility.x)) <= 1.5,
+        { whirl: G.c.whirl && G.c.whirl.face, bash: G.c.bash && G.c.bash.face, at: [tw('whirl'), tw('bash')], tier: G.tier, rise: T && T.rise });
+      const boxes = Object.keys(G.c).filter((k) => G.c[k] && G.c[k].box && k !== 'stick').map((k) => [k, G.c[k].box]);
+      const small8 = boxes.filter(([k, b]) => b.w < 44 - 0.5 || b.h < 44 - 0.5).map(([k, b]) => [k, b.w, b.h]);
+      const over8 = [];
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) if (overlap(boxes[i][1], boxes[j][1])) over8.push([boxes[i][0], boxes[j][0]]);
+      rec.ok(`8b. ${label}: every touch box shown 44 px at least, none over another (${boxes.map((b) => b[0]).join(' ')})`, small8.length === 0 && over8.length === 0, { small8, over8 });
+      /* a control shown both times in the same place (Special hides while
+         the guard is up, today's rule: a control the game hides is not a
+         control moved) */
+      const moved = (A, B) => ['attack', 'block', 'jump', 'special', 'skate', 'charge', 'w1', 'w2', 'w3'].filter((k) => A.c[k] && B.c[k] && !near(A.c[k].face, B.c[k].face, 0.5));
+      /* with the tier drawn every socketed control shown is in its well, where part 4 measured it */
+      const WELLS8 = { attack: 'attack', block: 'big', jump: 'mid', special: 'special', skate: 'mobility', charge: 'mobility', w1: 'w1', w2: 'w2', w3: 'w3' };
+      const GW = { pad: G.pad && G.pad.layout, shell: G.shell, bandTop: G.bandTop };   /* WELL's shape (the probe holds { layout, tier }) */
+      const off8 = GW.pad && G.shell ? Object.keys(WELLS8).filter((k) => G.c[k] && !near(G.c[k].face, WELL(GW, WELLS8[k]), 1.5)) : ['no layout'];
+      rec.ok(`8c. ${label}: with the tier drawn every socketed control is in its well (${Object.keys(WELLS8).filter((k) => G.c[k]).join(' ')}; off: ${off8.join(' ') || 'none'})`,
+        !!G.tier && off8.length === 0 && !!G.c.attack && !!G.c.block, off8);
+      const pb = await press('bash', 22);
+      rec.ok(`8d. ${label}: a tap on Shield Bash sends the old button's request (${pb.sent.join(',')}) and the worker answers it (${pb.heard}; stamina ${pb.s0} -> ${pb.s1})`,
+        pb.shown && pb.sent.includes('bash') && !!pb.heard, pb);
+      /* the bow, the guard down */
+      if (await up()) { const B0 = await LOOK8(); if (B0.c.block) await tapAt(P, B0.c.block.box, 24); await P.page.waitForTimeout(800); }
+      const B1 = await LOOK8();
+      if (B1.c.w2) await tapAt(P, B1.c.w2.box, 25);
+      const bow = await H.waitFor(P, (S) => S.rpg && S.rpg.activeSlot, (v) => v === 'ranged', { timeout: 8000, label: 'bow in hand' }).catch(() => null);
+      await P.page.waitForTimeout(1200);
+      const W = await LOOK8();
+      const bowUp = await up();
+      /* every socketed control shown in its well (Jump the big well once
+         the fight's Block is gone: the bow locks nothing, today's rule) */
+      const WW = { pad: W.pad && W.pad.layout, shell: W.shell, bandTop: W.bandTop };
+      const wellOfW = (k) => (k === 'jump' ? (W.c.block ? 'mid' : 'big') : WELLS8[k]);
+      const offW = WW.pad && W.shell ? Object.keys(WELLS8).filter((k) => W.c[k] && !near(W.c[k].face, WELL(WW, wellOfW(k)), 1.5)) : ['no layout'];
+      rec.ok(`8f. ${label}: the bow in hand, the guard down (${bowUp}): neither drawn, no tier, every socketed control in its well (off: ${offW.join(' ') || 'none'})`,
+        bow === 'ranged' && !bowUp && !W.c.whirl && !W.c.bash && !W.tier && !(W.pad && W.pad.tier) && offW.length === 0,
+        { bow, whirl: !!W.c.whirl, bash: !!W.c.bash, tier: W.tier, offW });
       await P.ctx.close().catch(() => {});
     }
   } finally {

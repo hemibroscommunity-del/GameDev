@@ -1,40 +1,39 @@
 card: PAD
-branch: claude/plan-pad-3-housing (stacked on claude/plan-pad-1-controller)
-prs: #2354 (draft, tag 6640, part 1: lands only with part 3); #2363 (ready, tag 6641, parts 3 and 4)
+branch: claude/plan-pad-6-specials (stacked on claude/plan-pad-3-housing)
+prs: #2354 (draft, tag 6640, part 1: lands only with part 3); #2363 (tag 6641, parts 3-5); part 6 (tag 6642, draft, base #2363's branch)
 state: ready
 
 ## Done
-- 6640 part 1: the controls as a controller (`?padskin=0` today's look);
-  the owner on their iPhone: "too large", not joined to the dashboard.
-- 6641 part 3 (`cards/PAD-part3.md`): ONE shell on the band, every control
-  in a well (131 px tall at 430, never larger), weapon wells for the pill,
-  Block the big well in a fight, the owner's 18 pieces (174 kB, 128 colours).
-- 6641 part 4: the wells' tap (`tapms`); the shell at the WORLD's width
-  (sideways 752 between bars), redrawn when it moves; a risen box's art in
-  its well; never on a computer; Block's mouse press after a touch the same
-  press; the stick's ring at the drawn base.
-- 6641 part 5 (the gatekeeper's sitting 67 HELD #2363 with #2354): the
-  board's poll keys on the controller's pick too (RideButton.jsx: Charge
-  comes with a sighting while the ride's key holds still, so the board
-  stayed drawn over Charge, or a rider had no way off after it);
-  mp-padskin 5b/5c ride into a sighting and out (a `manual=5` page: Charge
-  is the two buttons'; red on the old line).  Block's stamp at touchend too
-  (padSkin.js pressGate: held past 800 ms it toggled twice); 11a-11f.
+- 6640 part 1: the controls as a controller (`?padskin=0` today's look).
+- 6641 parts 3-5: ONE shell on the band, every control in a well, Block
+  the big well in a fight, the shield a tap; the shell at the world's
+  width; the board's poll keys on the controller's pick; Block's stamp.
+- 6642 part 6: Whirlwind and Shield Bash in a TIER over the right lobe
+  (padSkin.js specialLayout): the housing as drawn has no free 44 px
+  place, so while either shows the right lobe is drawn ~42 px taller (the
+  same housing.png, its steep wall band stretched: no new picture);
+  Whirlwind over Special, Bash over the mobility well, the old buttons'
+  own faces at the top row's size, boxes 44.  Who shows: the old rule
+  (AbilityButtons' list, abilityStatus), told to the shell (padTier.js).
+  Sprint (no well) stands 4 px over the tier always (clearOfTier: its old
+  place sat 10 px into it upright).  pad-skin.test 3c/3f-3q; mp-padskin 8.
 
 ## Found
-- The shield was ALREADY a tap (v2.3.2242, shieldToggle.js): no new module,
-  no `?tapshield=0`.  The fight's end does not lower a raised guard.
-- Under 390 px the top row's art shrinks (0.8 at least), boxes stay 44.
-- No well: Sprint, Whirlwind, Shield Bash, Quick eat, trap, Burst, TALK/CHOP.
-- Attack's box is 65 px at 430 (was 84: no room beside the big well).
-- mp-twobuttons 2b, 2c, 6a, 3h, 7d: main's (debts.md 63-65: the tap read
-  as auto on this box, the sideways pass's dying target).  3i sideways: not
-  on that list, reads Block's hiding after the same cascade; not the
-  controller's lines.
+- The bow and staff have no extra special of their own: Whirlwind is the
+  sword's alone; Shield Bash is the RAISED SHIELD's with any weapon (a bow
+  with its guard up shows Bash, as the old layout did).
+- Special hides while the guard is up (today's rule), so with Bash shown
+  Special's well is empty.
+- Sideways (844 x 390) the tier's top meets the minimap's foot (its
+  "Lv 1-5" line half under it): flagged, the owner's call.
+- mp-padskin: 53/55 on the full run (the 2 reds my step 8's own: a test
+  bug, mended); step 8 upright 7/8 after (8f the test's, mended); the
+  final full run is a helper's (PR body).
 
 ## Next
-- Nothing: one message to the orchestrator, then stop.  Whirlwind and
-  Shield Bash beside the Special socket: a later part, a new branch.
+- Nothing: one message to the orchestrator, then stop.
 
 ## Needs
-- The gatekeeper's sitting for #2363 with #2354.  The owner's iPhone.
+- The gatekeeper's sitting for #2363 with #2354, then this.  The owner's
+  iPhone: the tier is the orchestrator's choice (other ways: floating in
+  the old places, new art; or the tier always drawn for a sword).
