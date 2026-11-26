@@ -6,9 +6,9 @@ export const SAY = Object.freeze({
   /* the guide arrow (src/ui/guideArrow.js): its points lesson */
   'dashGuide.arrowBro': 'Tap Bro: points to spend',
   'dashGuide.arrowMenuBro': 'Tap Menu, then Bro: points to spend',
-  /* the quest coach's points lesson (src/game/pointsTips.js pointsTipWords) */
-  'dashGuide.pointsBro': 'You have {pts} to spend. Tap Bro.',
-  'dashGuide.pointsMenu': 'You have {pts} to spend. Tap Menu, then Bro.',
+  /* the quest coach's points lesson (src/ui/mobile/QuestCoach.jsx; the count is pointsTips.js pointsWaiting's) */
+  'dashGuide.pointsBro': { one: 'You have 1 point to spend. Tap Bro.', other: 'You have {n} points to spend. Tap Bro.' },
+  'dashGuide.pointsMenu': { one: 'You have 1 point to spend. Tap Menu, then Bro.', other: 'You have {n} points to spend. Tap Menu, then Bro.' },
   /* the coach's "your reward" after the first hand-in (src/ui/mobile/QuestCoach.jsx) */
   'dashGuide.rewardGear': 'Mayor Bro paid you in gear. Tap Gear to find it.',
   /* the coach's "save your Login Key" (QuestCoach.jsx): Account is under Settings in the Menu */

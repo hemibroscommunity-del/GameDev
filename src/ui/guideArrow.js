@@ -48,6 +48,7 @@ import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a l
 import { onAfterFrame, framesRunning, onDevicePx } from './afterFrame.js';   /* v2.3.4360: the Mayor's arrow follows him every frame */
 import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 import { SAY as GUIDE } from '../data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
+import { say } from '../game/say.js';
 import { beforeDraw } from '../game/framePacer.js';   /* v2.3.6286: the tick at the top of the game's frame (card HB2 PR 7) */
 import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6286: `?afterpaint` */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
@@ -221,8 +222,8 @@ export function guideWords(id, sel, computer) {
   else if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
-  else if (/data-dest="hero"/.test(sel)) s = GUIDE['dashGuide.arrowBro'];   /* v2.3.6682: Bro's tile on the Menu's root */
-  else if (/data-dash-ctl="menu"/.test(sel)) s = GUIDE['dashGuide.arrowMenuBro'];   /* v2.3.6682: the Menu button, the road to Bro */
+  else if (/data-dest="hero"/.test(sel)) s = say(GUIDE, 'dashGuide.arrowBro');   /* v2.3.6682: Bro's tile on the Menu's root */
+  else if (/data-dash-ctl="menu"/.test(sel)) s = say(GUIDE, 'dashGuide.arrowMenuBro');   /* v2.3.6682: the Menu button, the road to Bro */
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
   else if (/data-section="Build"/.test(sel)) s = 'Tap Points';   /* v2.3.4172: the Bro card's Points row */
   return deskWords(s, computer);
