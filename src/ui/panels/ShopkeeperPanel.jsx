@@ -82,6 +82,23 @@ function prettyKey(k) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/* v2.3.6800 (card SHOP): the Pine Shield Diego sells back (server shop.js
+   SHIELD_KEY): its row's key, and the bag's shield picture at the bag's own
+   cache-bust (InventoryPanel.jsx ITEMS_V) */
+const SHIELD_ROW_KEY = 'pine_shield';
+const SHIELD_ROW_ICON = '/icons/items/shield.webp?v=2.3.4222';
+/* Show his shield row?  Only against a worker that says `shieldshop`, and
+   only to a player who owns no shield, worn or spare: a replacement, never a
+   second.  The worker's quote says the rest (a player no quest gave one). */
+function shieldRowShown() {
+  try {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S._serverCaps || !S._serverCaps.shieldshop) return false;
+    const R = S.rpg || {};
+    return !R.shield && !(Array.isArray(R.shieldStash) && R.shieldStash.length > 0);
+  } catch (e) { return false; }
+}
+
 const send = (type, payload) => {
   try {
     const S = window._gameState && window._gameState.current;
@@ -107,7 +124,8 @@ function ShelfSlot({ itemKey, count, price, selected, onTap, size }) {
       </div>
     );
   }
-  const thumb = thumbFor(itemKey);
+  /* v2.3.6800: the Pine Shield's row wears the bag's own shield picture (InventoryPanel's stashShield, the v2.3.1774 icon): no new art */
+  const thumb = itemKey === SHIELD_ROW_KEY ? SHIELD_ROW_ICON : thumbFor(itemKey);
   return (
     <div style={{ width: size, flex: 'none' }}>
       <button
@@ -280,14 +298,16 @@ export function ShopkeeperPanel() {
      v2.3.3316: nor his TOOLS -- the axe, rod and pickaxe he sells back to a
      player the quest gave one (server shop.js TOOL_SHELF), since a death in
      No man's land takes them. */
-  const shelf = shopBus.stock.filter((i) => i.staple || i.tool || i.qty > 0);
+  /* v2.3.6800: and the Pine Shield, to a player who owns none (shieldRowShown) */
+  const shieldShown = shieldRowShown();
+  const shelf = shopBus.stock.filter((i) => (i.shield ? shieldShown : (i.staple || i.tool || i.qty > 0)));
   const broHas = (k) => (shopBus.quoteFor(k) || {}).qty || 0;
   const youHave = (k) => Math.floor(inv[k] || 0);
 
   const selEntry = selKey ? shopBus.quoteFor(selKey) : null;
   const selStaple = !!(selEntry && selEntry.staple && selSide === 'bro');
   /* v2.3.3316: a tool is one at a time too: a replacement, never a second */
-  const selTool = !!(selEntry && selEntry.tool && selSide === 'bro');
+  const selTool = !!(selEntry && (selEntry.tool || selEntry.shield) && selSide === 'bro');   /* v2.3.6800: the shield is bought as a tool is */
   /* A staple is always exactly one: what you buy is an effect, and only one
      effect runs at a time. */
   const selMax = selKey

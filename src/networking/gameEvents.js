@@ -515,6 +515,19 @@ export function processGameEvent(type, payload, S, deps) {
               } catch (_pe) { /* ignore */ }
             } else if (_sr.ok && _sr.kind === 'shop_buy') {
               shopBus.setNote(`Bought ${_sr.bought} for ${_sr.cost} coins.`, true);
+              /* v2.3.6800 (card SHOP): Diego's Pine Shield lands in the worker's
+                 copy of the bag (shop.js, the stashes' door); the phone's
+                 copy catches up here, as the auction house's gear credit
+                 does (kind 'gear' below).  Only against a worker that says
+                 `shieldshop`, never twice (the same id is already held). */
+              if (_sr.shield && typeof _sr.shield === 'object' && S && S.rpg && S._serverCaps && S._serverCaps.shieldshop) {
+                if (!Array.isArray(S.rpg.shieldStash)) S.rpg.shieldStash = [];
+                const _gid = typeof _sr.shield.gid === 'string' && _sr.shield.gid ? _sr.shield.gid : null;
+                if (!(_gid && (S.rpg.shieldStash.some((p) => p && p.gid === _gid) || (S.rpg.shield && S.rpg.shield.gid === _gid)))) {
+                  S.rpg.shieldStash.push(_sr.shield);
+                  try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (_le) { /* the next join adopts it */ }
+                }
+              }
               /* v2.3.3343: a purchase is heard as a sale always was -- coins
                  handed over and the thing into the bag, on the worker's ok
                  (selling rang since v2.3.2606; buying was silent) */

@@ -792,7 +792,11 @@ export const WIRE_OUT = [
   { name: 'shop_result', dir: 'out', at: 'index.js _onMessage; phone: gameEvents processGameEvent',
     wayIn: 'socket', envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'],
     reqId: 'none', trust: {},
-    absent: 'default: no body shows a refusal; default: a missing count or price is drawn as undefined',
+    /* v2.3.6800 (card SHOP): a buy of Diego's Pine Shield carries `shield`,
+       the piece put in the bag (its gid included: the phone adds it to its
+       copy of the bag once, only with caps.shieldshop), and a refusal of it
+       `why` ('have', 'quest', 'off', 'coins'); docs/specs/shop-shield.md */
+    absent: 'default: no body shows a refusal; default: a missing count or price is drawn as undefined; default: no `shield` adds nothing to the bag',
     bad: ['clamped'], answer: 'none' },
   /* why: the comment on shop_state's row (one comment of the old list, v2.3.5181) */
   { name: 'shop_quoted', dir: 'out', at: 'index.js _onMessage; phone: gameEvents processGameEvent',

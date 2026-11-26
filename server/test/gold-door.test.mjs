@@ -78,6 +78,7 @@ const EXPECT = {
   clan_create:         (c, n) => c - n,                                   // ps.coins -= CLANS.CREATE_COST
   arena_entry:         (c, n) => c - n,                                   // ps.coins -= ARENA.ENTRY_FEE
   shop_tool:           (c, n) => Math.floor(Number(c) || 0) - n,          // purse = Math.floor(Number(ps.coins) || 0); ps.coins = purse - cost
+  shop_shield:         (c, n) => Math.floor(Number(c) || 0) - n,          // v2.3.6800: the shield's, as the tool's
   shop_staple:         (c, n) => Math.floor(Number(c) || 0) - n,          // (the same)
   shop_pile:           (c, n) => Math.floor(Number(c) || 0) - n,          // (the same)
   shop_sell:           (c, n) => Math.max(0, Math.floor(Number(c) || 0) + n),   // ps.coins = Math.max(0, Math.floor(Number(ps.coins) || 0) + paid)
