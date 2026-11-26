@@ -1566,15 +1566,16 @@ export const STATES = [
      the sight line drawn and Block and the specials come.  Put back on
      today's combat after. */
   /* v2.3.6640 (card PAD; game/padSkin.js, panels/PadHousings.jsx): the touch
-     controls as one game controller, the owner's mockup of 2026-11-25 */
+     controls as one game controller, the owner's mockup of 2026-11-25;
+     v2.3.6641 (part 3): one shell seated on the band */
   {
-    id: 'pad-controller', group: 'Fighting', title: 'The controller: the stick and the buttons in their housings',
-    about: 'The touch controls as one built-in game controller (the owner\'s mockup, 2026-11-25): a left housing holds the stick (its socket empty until a thumb walks), a right housing holds Attack (big, low), Jump beside it and a row of three above (the skateboard or Charge, Block, Special), each in a fixed socket, both docked to the band\'s top edge with the middle open. A control the game hides leaves its socket empty. `?padskin=0` gives the old look.',
+    id: 'pad-controller', group: 'Fighting', title: 'The controller: one shell on the band, every control in its well',
+    about: 'The touch controls as one housing seated on the dashboard (the owner\'s redesign, 2026-11-25): the stick\'s lobe at the left, three weapon wells on the rail, the right lobe with a row of three small wells (the skateboard or Charge, the middle well, Special) over the big left button (Jump; the shield in a fight, Jump then the middle well) and Attack. A control the game hides leaves its well empty. `?padskin=0` gives the old look.',
     views: ['portrait', 'landscape'],
     settle: 1200,
     run: async ({ P }) => {
       await wait(P, 600);
-      const ok = await evalIn(P, () => !!document.querySelector('[data-padhousing="R"]') && !!document.querySelector('.bt-pad'));
+      const ok = await evalIn(P, () => !!document.querySelector('[data-padhousing="shell"]') && !!document.querySelector('.bt-pad'));
       return ok ? undefined : 'no controller drawn';
     },
   },

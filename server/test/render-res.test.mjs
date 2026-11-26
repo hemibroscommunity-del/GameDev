@@ -356,6 +356,30 @@ let worldViewport;
   globalThis.document = hadDoc;
 }
 
+/* ── 8 (v2.3.6641, card PAD part 4): the world's width as told, and who hears it move ── */
+{
+  const { canvasCssW, watchCanvasCssW } = RR;
+  page(3, '', 0, 0, PHONE(844, 390));
+  const heard = [];
+  const off = watchCanvasCssW((w) => heard.push(w));
+  const before = canvasCssW();
+  noteCanvasCss(752, 342);             /* sideways, the band folded: the world between two bars */
+  noteCanvasCss(752, 300);             /* the height alone moved: the width did not */
+  noteCanvasCss(528, 240);             /* the band open: narrower */
+  const now = canvasCssW();
+  off();
+  noteCanvasCss(752, 342);             /* no longer watching */
+  check('8a. the width as resize() told it (0 before), never measured', before === 0 && now === 528 && canvasCssW() === 752, { before, now });
+  check('8b. a watcher hears each change of the WIDTH once, not of the height alone, and nothing once it stops', JSON.stringify(heard) === '[752,528]', heard);
+  const boom = watchCanvasCssW(() => { throw new Error('a watcher\'s own'); });
+  const late = [];
+  const off2 = watchCanvasCssW((w) => late.push(w));
+  let threw = false;
+  try { noteCanvasCss(600, 300); } catch (e) { threw = true; }
+  boom(); off2();
+  check('8c. a watcher that throws stops neither the size nor the next watcher', !threw && canvasCssW() === 600 && late[0] === 600, { threw, late });
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
 console.log('all render-res checks passed');

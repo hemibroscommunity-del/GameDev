@@ -1,34 +1,40 @@
 card: PAD
-branch: claude/plan-pad-1-controller
-prs: #2354 (draft, tag 6640)
+branch: claude/plan-pad-3-housing (stacked on claude/plan-pad-1-controller)
+prs: #2354 (draft, tag 6640, part 1: lands only with part 3); #2363 (ready, tag 6641, parts 3 and 4)
 state: ready
 
 ## Done
-- tag 6640 part 1: the touch controls as a controller (`?padskin=0` today's
-  look): the art (tools/art/cut-pad.mjs, 18 pieces, 192 kB, 96 colours), the
-  rules (src/game/padSkin.js; server/test/pad-skin.test.mjs, 176 checks, 119
-  of 133 mutants killed, the 14 left equivalent: the PR body), the housings,
-  the five buttons and the stick in their sockets, mp-padskin, UI notes.
-- tag 6640 part 2: mp-padskin 5b (sideways, held Attack) was not a bug in
-  behaviour: nothing sits over the disc's centre sideways (screenshot), the
-  step waited a fixed 1.5 s for the resolver to raise the disc; it now waits
-  for the disc to take touches and reads the held attack by the clock.
-  mp-twobuttons reads the controller where it is on (3f each control on its
-  socket and no two boxes over each other; 6a/6b the painted face, no plain
-  sword or crosshair; 3e Attack on its socket), the old reading under
-  `&padskin=0` (`TWO_Q='&padskin=0'` runs it so); 3i skips a hop that ends
-  swimming (3d's skip).
-- Phone runs on this box: mp-padskin 31/31 (twice); mp-twobuttons 101/117
-  under the controller, 102/117 with `&padskin=0`: every red under the
-  controller is main's (2b, 2c, 6a, 3h: debts.md CT 64-65) but 3i
-  (placement: mended as a skip). mp-membudget 12/12 on part 1's box, head
-  96f0ebf3, no line raised.
+- 6640 part 1: the controls as a controller (`?padskin=0` today's look);
+  the owner on their iPhone: "too large", not joined to the dashboard.
+- 6641 part 3 (`cards/PAD-part3.md`): ONE shell on the band, every control
+  in a well (131 px tall at 430, never larger), weapon wells for the pill,
+  Block the big well in a fight, the owner's 18 pieces (174 kB, 128 colours).
+- 6641 part 4: the wells' tap (`tapms`); the shell at the WORLD's width
+  (sideways 752 between bars), redrawn when it moves; a risen box's art in
+  its well; never on a computer; Block's mouse press after a touch the same
+  press; the stick's ring at the drawn base.
+- 6641 part 5 (the gatekeeper's sitting 67 HELD #2363 with #2354): the
+  board's poll keys on the controller's pick too (RideButton.jsx: Charge
+  comes with a sighting while the ride's key holds still, so the board
+  stayed drawn over Charge, or a rider had no way off after it);
+  mp-padskin 5b/5c ride into a sighting and out (a `manual=5` page: Charge
+  is the two buttons'; red on the old line).  Block's stamp at touchend too
+  (padSkin.js pressGate: held past 800 ms it toggled twice); 11a-11f.
 
 ## Found
-- No left-handed setting exists in the game (card reading 8): the layout
-  mirrors (tested), nothing turns it on.
-- mp-twobuttons 6a reads red wherever 2b's tap goes to `auto` (the face
-  is right; the latch reads 'auto' for 'lock'): main's, with 2b.
+- The shield was ALREADY a tap (v2.3.2242, shieldToggle.js): no new module,
+  no `?tapshield=0`.  The fight's end does not lower a raised guard.
+- Under 390 px the top row's art shrinks (0.8 at least), boxes stay 44.
+- No well: Sprint, Whirlwind, Shield Bash, Quick eat, trap, Burst, TALK/CHOP.
+- Attack's box is 65 px at 430 (was 84: no room beside the big well).
+- mp-twobuttons 2b, 2c, 6a, 3h, 7d: main's (debts.md 63-65: the tap read
+  as auto on this box, the sideways pass's dying target).  3i sideways: not
+  on that list, reads Block's hiding after the same cascade; not the
+  controller's lines.
+
+## Next
+- Nothing: one message to the orchestrator, then stop.  Whirlwind and
+  Shield Bash beside the Special socket: a later part, a new branch.
 
 ## Needs
-- The gatekeeper's sitting (docs/plan/status/Z.md).
+- The gatekeeper's sitting for #2363 with #2354.  The owner's iPhone.

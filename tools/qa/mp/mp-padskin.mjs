@@ -1,31 +1,37 @@
-/* ═══ v2.3.6640: THE CONTROLLER, PLAYED ON A PHONE (card PAD; `?padskin=0` today's look) ═══
+/* ═══ v2.3.6641: THE CONTROLLER, ONE SHELL, PLAYED ON A PHONE (card PAD part 3; `?padskin=0` today's look) ═══
  *
- * The owner, 2026-11-25: "Also want a redesign of the controls area to be
- * more like a controller."  In the Wheel (BroTown), the default controls (the
- * held combat), 430 x 775 upright and 775 x 430 sideways at 3x, real touches
- * (CDP):
+ * The owner, 2026-11-25: "The controller is too large and doesn't connect in
+ * a seamless way to the dashboard. ... Make the jump button turn into the
+ * shield button while in combat. Tapping attack button or shield button
+ * again lowers it".  In the Wheel (BroTown), 430 x 775 upright and 844 x 390
+ * sideways at 2x, real touches (CDP):
  *
- *   1. THE HOUSINGS: two, each flush to its side and docked to the band's
- *      top edge (their foot on it), the middle between them open; the
- *      controller's numbers on the page (window.__btPad) are the ones they
- *      were drawn from;
- *   2. EACH SHOWN CONTROL IN ITS SOCKET: Jump, the skateboard (the context
- *      socket) and Attack, each centred on its socket (2 px), its face the
- *      socket's size, its box `touch-action` as before; the stick's well on
- *      its socket;
- *   3. AN EMPTY SOCKET: a socket whose control is hidden (Block, Special in
- *      town) shows the housing and nothing else, and a touch there reaches
- *      the world (the R zone), not a control;
- *   4. NO BOX SMALLER: with `&padskin=0` (a second page, the same screen)
- *      each control's box is no bigger than here; that page draws no housing
- *      and no painted face (today's look);
- *   5. A PRESS DOES WHAT IT DID: the stick (a drag on the left half) walks;
- *      holding Attack in its socket attacks while held and letting go stops
- *      it (mp-heldcombat's 2, on the controller); after the walk, a weapon
- *      in hand and the press, the controls are where they were.  (A control
- *      that comes in a fight lands in its own socket and moves no other: the
- *      places are the screen's alone, server/test/pad-skin.test 4.)
- *   6. no page errors.
+ *   0. `&padskin=0` is today's look: no shell, no painted face, the pill;
+ *   1. THE SHELL: one, as wide as the play column, its bottom edge ON the
+ *      band's top edge (0 px) with the band open and folded, its height the
+ *      layout's both times;
+ *   2. EVERY SHOWN CONTROL IN ITS WELL (1.5 px): Jump the big well, Attack,
+ *      Skate the mobility well, the three weapon wells, the stick's base;
+ *      every face inside the shell; the mobility well never shows two;
+ *   3. TOUCH BOXES at least 44 px, none over another;
+ *   4. AN EMPTY WELL takes no touch: the middle and Special wells in town
+ *      reach the world (the R zone);
+ *   5. THE WEAPON WELLS select as the pill did: a tap on the bow's well puts
+ *      the bow in hand and lights that well, the sword's puts it back;
+ *   5b. v2.3.6641 (the gatekeeper's sitting 67), on a page of the two
+ *      buttons (`manual=5`): ON THE BOARD with the sword near the safe
+ *      ground's edge, turned to a monster: sighted, Charge in
+ *      the mobility well and the board's face NOT drawn over it;
+ *   5c. ...turned away, the sighting gone, still riding: the board's
+ *      button back in the mobility well (the way off), Charge gone;
+ *   6. IN A FIGHT (a shield worn, a monster near): the big well is Block,
+ *      wearing the shield, and Jump is the middle well; a TAP raises the
+ *      guard and it stays up with no finger on it; a second tap lowers it; a
+ *      tap on Attack lowers it; OUT of the fight (back in town) the big well
+ *      is Jump again;
+ *   7. no page errors.
+ *   PAD_SHOTS=<dir>: the pictures of the PR (town, the fight with the shield
+ *   up, the band folded, sideways).
  *
  *   node tools/qa/mp/run.mjs padskin
  */
@@ -33,44 +39,49 @@ import * as H from './harness.mjs';
 export const lane = 'full';
 
 const UPRIGHT = { width: 430, height: 775 };
-const SIDEWAYS = { width: 775, height: 430 };
-const SEL = { jump: '[data-jump]', skate: '[data-ride]', attack: '.bt-rjoy-base', block: '[data-shield]', special: '[data-special]', charge: '[data-charge]' };
+const SIDEWAYS = { width: 844, height: 390 };   /* v2.3.6641 (part 4): an iPhone's sideways, where the one band's bars narrow the world (it was 775 x 430, which has none) */
+const SEL = {
+  jump: '[data-jump]', skate: '[data-ride]', attack: '.bt-rjoy-base', block: '[data-shield]', special: '[data-special]', charge: '[data-charge]',
+  w1: '[data-pad-well="w1"]', w2: '[data-pad-well="w2"]', w3: '[data-pad-well="w3"]', stick: '[data-well-pic="stick"]',
+};
+const FACE = { jump: '.bt-pad-face', skate: '.bt-pad-face', attack: '.bt-pad-face', block: '.bt-pad-face', special: '.bt-pad-face', charge: '.bt-pad-face', w1: 'img', w2: 'img', w3: 'img', stick: null };
 
-/* the page as the test reads it: the housings, each control's box and face,
-   the stick's well, the band's top */
-const LOOK = (P) => P.page.evaluate((sel) => {
+/* the page as the test reads it: the shell, each control's box and face, the band's top */
+const LOOK = (P) => P.page.evaluate(([sel, face]) => {
   const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, l: r.left, r: r.right, t: r.top, b: r.bottom }; };
   const vis = (el) => { if (!el) return false; let e = el; while (e && e !== document.body) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false; e = e.parentElement; } return true; };
+  const cs = getComputedStyle(document.documentElement);
+  const band = parseFloat(cs.getPropertyValue('--sheet-h')) || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
   const out = { vw: window.innerWidth, vh: window.innerHeight, pad: window.__btPad ? window.__btPad.layout : null, c: {} };
-  out.hl = rect(document.querySelector('[data-padhousing="L"]'));
-  out.hr = rect(document.querySelector('[data-padhousing="R"]'));
-  const band = getComputedStyle(document.documentElement).getPropertyValue('--sheet-h') || getComputedStyle(document.documentElement).getPropertyValue('--dash-h');
-  out.bandTop = window.innerHeight - parseFloat(band);
+  out.shell = rect(document.querySelector('[data-padhousing="shell"]'));
+  out.shellShown = vis(document.querySelector('[data-padhousing="shell"]'));
+  out.bandTop = window.innerHeight - band;
+  out.pill = !!document.querySelector('[data-weapon-pill]:not([data-pad])');
   for (const k of Object.keys(sel)) {
     const el = document.querySelector(sel[k]);
-    if (!el) { out.c[k] = null; continue; }
-    const face = el.querySelector('.bt-pad-face');
-    out.c[k] = { box: rect(el), face: rect(face), shown: vis(el), ta: getComputedStyle(el).touchAction, painted: !!face };
+    if (!el || !vis(el)) { out.c[k] = null; continue; }
+    const f = face[k] ? el.querySelector(face[k]) : el;
+    out.c[k] = { box: rect(el), face: rect(f), pic: el.querySelector('img[data-pic]') ? el.querySelector('img[data-pic]').getAttribute('data-pic') : null };
   }
-  out.well = rect(document.querySelector('.bt-joystick-base'));
   out.faces = document.querySelectorAll('.bt-pad').length;
   return out;
-}, SEL);
+}, [SEL, FACE]);
 
-/* a socket's centre on the page, from the right housing's box and the layout */
-const SOCKET = (L, k) => {
-  const s = L.pad.sockets[k];
-  return { x: L.hr.r - s.x, y: L.hr.b - s.y, d: s.d };
-};
+/* a well's centre on the page: x from the column's left (the shell's), y up from the band */
+const WELL = (L, k) => { const w = L.pad.wells[k]; return { x: L.shell.l + w.x, y: L.bandTop - w.y, d: w.d }; };
+const SAFE_R = 2937;   /* zones.js wheel.safeR, the town's safe ground (mp-skateboard's); the centre is wheelGeom's */
 const near = (a, b, tol) => !!a && !!b && Math.abs(a.x - b.x) <= tol && Math.abs(a.y - b.y) <= tol;
+const overlap = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.5 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 0.5;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const players = [];
   const errs = [];
+  const shots = process.env.PAD_SHOTS || null;
   try {
-    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
-      /* ── 4 first: today's boxes, on a page with the switch thrown ── */
-      const O = await H.newPlayer(browser, { name: label === 'upright' ? 'Padoff' : 'Padoffs', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'padskin=0' });
+    /* PAD_ONLY=rider: the rider's page alone (5b/5c), for a quick look */
+    for (const [label, viewport] of (process.env.PAD_ONLY === 'rider' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
+      /* ── 0: today's look, on a page with the switch thrown ── */
+      const O = await H.newPlayer(browser, { name: label === 'upright' ? 'Padoff' : 'Padoffs', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'padskin=0' });
       players.push(O);
       O.page.on('pageerror', (e) => errs.push(label + ' off: ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(O);
@@ -78,96 +89,243 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${label}: the page with \`&padskin=0\` is in the Wheel (guard)`, !!inO, inO);
       await O.page.waitForTimeout(2500);
       const off = await LOOK(O);
-      rec.ok(`4a. ${label}: \`&padskin=0\` is today's look: no housing, no painted face`, !off.hl && !off.hr && off.faces === 0, { hl: off.hl, faces: off.faces });
+      rec.ok(`0. ${label}: \`&padskin=0\` is today's look: no shell, no painted face, the weapon pill`, !off.shell && off.faces === 0 && off.pill && !off.c.w1, { shell: off.shell, faces: off.faces, pill: off.pill });
       await O.ctx.close().catch(() => {});
 
-      /* ── the controller ── */
-      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padbro' : 'Padside', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'wheelwhole' });
+      /* ── the controller ── `tapms`: this box hands the page a touch's start
+         and end about a second apart (70 ms sent; part 4 measured 1036 ms
+         between the two events' stamps), past the weapon pill's 600 ms tap,
+         so the well's tap read as a hold and never swapped (5, qa.taps 0):
+         the window stretched as mp-weaponswap and mp-swaphint stretch it.
+         No player's tap is touched (WeaponPill tapMaxMs, tapJump.js). */
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padbro' : 'Padside', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole&tapms=4000' });
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ': ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(P);
       const inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
       rec.ok(`${label}: in the Wheel (guard)`, !!inW, inW);
       if (!inW) continue;
+      const me = await H.readState(P, (S) => S.myId);
+      /* the bow owned (armed the worker's way: harness armWorker, TRAPS 207),
+         the sword in hand (5 swaps between them) */
+      const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
+      const eqS = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));
+      rec.ok(`${label}: a bow owned and the sword in hand (guard)`, armed.includes('bow') && !!(eqS && eqS.ok), { armed, eqS });
+      await H.unfoldBand(P).catch(() => null);
       await P.page.waitForTimeout(2500);
-      const L = await LOOK(P);
-      if (label === 'upright' && process.env.PAD_SHOTS) await P.page.screenshot({ path: process.env.PAD_SHOTS + '/pad-upright.png' });
-      if (label === 'sideways' && process.env.PAD_SHOTS) await P.page.screenshot({ path: process.env.PAD_SHOTS + '/pad-sideways.png' });
+      const O1 = await LOOK(P);
 
       /* 1 */
-      rec.ok(`1a. ${label}: two housings, flush to their sides, their feet on the band's top (${L.bandTop} px)`,
-        !!L.hl && !!L.hr && !!L.pad && Math.abs(L.hl.l) <= 1 && Math.abs(L.hr.r - L.vw) <= 1
-        && Math.abs(L.hl.b - L.bandTop) <= 1 && Math.abs(L.hr.b - L.bandTop) <= 1, { hl: L.hl, hr: L.hr, bandTop: L.bandTop });
-      if (!L.hl || !L.hr || !L.pad) continue;
-      rec.ok(`1b. ${label}: the middle open (${Math.round(L.hr.l - L.hl.r)} px), the housings the layout's size`,
-        L.hr.l - L.hl.r >= 40 && Math.abs(L.hr.w - L.pad.right.w) <= 1 && Math.abs(L.hl.w - L.pad.left.w) <= 1, { pad: [L.pad.left, L.pad.right] });
+      rec.ok(`1a. ${label}: one shell, as wide as the column, its bottom on the band's top (${O1.shell && (O1.shell.b - O1.bandTop).toFixed(1)} px)`,
+        !!O1.shell && !!O1.pad && Math.abs(O1.shell.b - O1.bandTop) <= 0.5 && Math.abs(O1.shell.w - O1.pad.shell.w) <= 0.5 && Math.abs(O1.shell.h - O1.pad.shell.h) <= 0.5,
+        { shell: O1.shell, bandTop: O1.bandTop, pad: O1.pad && O1.pad.shell });
+      if (!O1.shell || !O1.pad) continue;
+      if (shots && label === 'upright') await P.page.screenshot({ path: shots + '/pad3-town.png' });
+      const folded = await H.foldBand(P).catch(() => null);
+      await P.page.waitForTimeout(800);
+      const F = await LOOK(P);
+      if (shots) await P.page.screenshot({ path: shots + '/pad3-' + (label === 'upright' ? 'folded' : 'sideways') + '.png' });
+      rec.ok(`1b. ${label}: the band folded (${folded && folded.now}), the shell still on its top edge (${F.shell && (F.shell.b - F.bandTop).toFixed(1)} px), the same height`,
+        !!F.shell && Math.abs(F.shell.b - F.bandTop) <= 0.5 && Math.abs(F.shell.h - O1.shell.h) <= 0.5 && F.bandTop !== O1.bandTop, { folded, F: F.shell, bandTop: [O1.bandTop, F.bandTop] });
+      /* upright the controls ride the band with the shell; sideways the open
+         band is a page over the world and every control (the shell too) steps
+         aside under it, as today (game.css html.bt-band-side-open) */
+      const KS = ['jump', 'attack', 'w1', 'w2', 'w3', 'stick'];
+      const near2 = label === 'upright'
+        ? KS.filter((k) => !F.c[k] || !O1.c[k] || Math.abs((F.c[k].face.y - F.bandTop) - (O1.c[k].face.y - O1.bandTop)) > 1)
+        : KS.filter((k) => !F.c[k] || O1.c[k] || O1.shellShown);
+      rec.ok(`1c. ${label}: ${label === 'upright' ? 'the controls ride the band with the shell' : 'the open band hides the shell and the controls, the folded one shows them'}`, near2.length === 0, near2);
+      /* the rest on the band as a player plays: upright open, sideways folded */
+      if (label === 'upright') { await H.unfoldBand(P).catch(() => null); await P.page.waitForTimeout(800); }
+      const L = label === 'upright' ? await LOOK(P) : F;
 
       /* 2 */
-      for (const [k, sock] of [['jump', 'jump'], ['skate', 'ctx'], ['attack', 'attack']]) {
-        const c = L.c[k], S0 = SOCKET(L, sock);
-        rec.ok(`2a. ${label}: ${k} in its socket (box ${c && Math.round(c.box.w)} px, face ${c && c.face && Math.round(c.face.w)} of ${S0.d})`,
-          !!c && near(c.box, S0, 2) && !!c.face && near(c.face, S0, 2) && Math.abs(c.face.w - S0.d) <= 1.5, { c, S0 });
-      }
-      const st = L.pad.stick, wellAt = { x: L.hl.l + st.x, y: L.hl.b - st.y };
-      rec.ok(`2b. ${label}: the stick's well on its socket (${L.well && Math.round(L.well.w)} px)`, near(L.well, wellAt, 2) && Math.abs(L.well.w - st.disc) <= 1.5, { well: L.well, wellAt, st });
-      rec.ok(`2c. ${label}: each control's touch-action as with the switch thrown`,
-        ['jump', 'skate', 'attack'].every((k) => L.c[k] && off.c[k] && L.c[k].ta === off.c[k].ta), ['jump', 'skate', 'attack'].map((k) => [k, L.c[k] && L.c[k].ta, off.c[k] && off.c[k].ta]));
+      const at = [['jump', 'big'], ['attack', 'attack'], ['w1', 'w1'], ['w2', 'w2'], ['w3', 'w3'], ['stick', 'stick']];
+      if (L.c.skate) at.push(['skate', 'mobility']);
+      const miss = at.filter(([k, w]) => { const c = L.c[k], W0 = WELL(L, w); return !c || !near(c.face, W0, 1.5) || (k !== 'stick' && k[0] !== 'w' && Math.abs(c.face.w - W0.d) > 1.5); })
+        .map(([k, w]) => [k, w, L.c[k] && L.c[k].face, WELL(L, w)]);
+      rec.ok(`2a. ${label}: every shown control in its well (Jump the big one; skate ${L.c.skate ? 'shown' : 'not offered'})`, miss.length === 0, miss);
+      const outside = Object.keys(L.c).filter((k) => L.c[k] && k !== 'stick' && (L.c[k].face.l < L.shell.l - 0.5 || L.c[k].face.r > L.shell.r + 0.5 || L.c[k].face.t < L.shell.t - 0.5 || L.c[k].face.b > L.shell.b + 0.5));
+      rec.ok(`2b. ${label}: every face inside the shell`, outside.length === 0, outside);
+      rec.ok(`2c. ${label}: the mobility well shows one control at most`, !(L.c.skate && L.c.charge));
+      rec.ok(`2d. ${label}: the weapon in hand's well lit, its icon in it`, !!L.c.w1 && L.c.w1.pic === 'slot-on', [L.c.w1 && L.c.w1.pic, L.c.w2 && L.c.w2.pic]);
 
       /* 3 */
-      const empty = await P.page.evaluate(([pts]) => pts.map(([k, x, y]) => {
+      const shown = Object.keys(L.c).filter((k) => L.c[k] && k !== 'stick');
+      const small = shown.filter((k) => L.c[k].box.w < 43.5 || L.c[k].box.h < 43.5).map((k) => [k, L.c[k].box.w]);
+      const over = [];
+      for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) if (overlap(L.c[shown[i]].box, L.c[shown[j]].box)) over.push([shown[i], shown[j]]);
+      rec.ok(`3. ${label}: every touch box 44 px or more, none over another`, small.length === 0 && over.length === 0, { small, over });
+
+      /* 4 */
+      const empty = await P.page.evaluate((pts) => pts.map(([k, x, y]) => {
         const el = document.elementFromPoint(x, y);
-        return { k, joyzone: el ? el.getAttribute('data-joyzone') : null, tag: el ? (el.className || el.tagName).toString().slice(0, 40) : null };
-      }), [[['block', SOCKET(L, 'block').x, SOCKET(L, 'block').y], ['special', SOCKET(L, 'special').x, SOCKET(L, 'special').y]]]);
-      rec.ok(`3. ${label}: Block's and Special's sockets empty in town, a touch there reaches the world`,
-        !L.c.block && !L.c.special && empty.every((e) => e.joyzone === 'R'), { empty, block: L.c.block, special: L.c.special });
+        return { k, joyzone: el ? el.getAttribute('data-joyzone') : null, tag: el ? String(el.className || el.tagName).slice(0, 40) : null };
+      }), [['mid', WELL(L, 'mid').x, WELL(L, 'mid').y], ['special', WELL(L, 'special').x, WELL(L, 'special').y]]);
+      rec.ok(`4. ${label}: the middle and Special wells empty in town, a touch there reaches the world`,
+        !L.c.block && !L.c.special && empty.every((e) => e.joyzone === 'R'), { empty });
 
-      /* 4b */
-      const small = ['jump', 'skate', 'attack'].filter((k) => !L.c[k] || !off.c[k] || L.c[k].box.w + 0.5 < off.c[k].box.w);
-      rec.ok(`4b. ${label}: no control's box smaller than with \`&padskin=0\``, small.length === 0,
-        ['jump', 'skate', 'attack'].map((k) => [k, L.c[k] && Math.round(L.c[k].box.w), off.c[k] && Math.round(off.c[k].box.w)]));
-
-      /* 5a: the stick walks */
+      /* 5 */
       const cdp = await P.ctx.newCDPSession(P.page);
       const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
-      const p0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-      const sx = Math.round(L.vw * 0.25), sy = Math.round(L.hl.t - 60);
-      await touch('touchStart', [{ x: sx, y: sy, id: 1 }]);
-      for (let i = 1; i <= 6; i++) { await touch('touchMove', [{ x: sx + i * 8, y: sy, id: 1 }]); await P.page.waitForTimeout(60); }
-      await P.page.waitForTimeout(1200);
-      await touch('touchEnd', [{ x: sx + 48, y: sy, id: 1 }]);
-      const p1 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-      rec.ok(`5a. ${label}: a drag on the left half walks (${Math.round(p1.x - p0.x)} px east)`, p1.x - p0.x > 20, { p0, p1 });
+      const tap = async (b, id) => { await touch('touchStart', [{ x: b.x, y: b.y, id }]); await P.page.waitForTimeout(70); await touch('touchEnd', [{ x: b.x, y: b.y, id }]); };
+      const under = await P.page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); return el ? String(el.getAttribute('data-pad-well') || el.className || el.tagName).slice(0, 50) : null; }, [L.c.w2.box.x, L.c.w2.box.y]);
+      await tap(L.c.w2.box, 3);
+      const bow = await H.waitFor(P, (S) => S.rpg && S.rpg.activeSlot, (v) => v === 'ranged', { timeout: 6000, label: 'bow in hand' }).catch(() => null);
+      await P.page.waitForTimeout(400);
+      const B = await LOOK(P);
+      await tap(L.c.w1.box, 4);
+      const sword = await H.waitFor(P, (S) => S.rpg && S.rpg.activeSlot, (v) => v === 'melee', { timeout: 6000, label: 'sword in hand' }).catch(() => null);
+      rec.ok(`5. ${label}: the bow's well puts the bow in hand and lights (${B.c.w2 && B.c.w2.pic}), the sword's puts it back`,
+        bow === 'ranged' && B.c.w2 && B.c.w2.pic === 'slot-on' && B.c.w1 && B.c.w1.pic === 'slot' && sword === 'melee',
+        { bow, sword, under, qa: await P.page.evaluate(() => { const q = window.__btWeaponPill; return q ? { taps: q.taps, last: q.last, notes: q.notes } : null; }),
+          held: await H.readState(P, (S) => S.rpg ? { r: !!S.rpg.rangedWeapon, slot: S.rpg.activeSlot } : null) });
 
-      /* 5b: Attack held attacks while held (the held combat: S.autoAttack), a weapon in hand */
-      const me = await H.readState(P, (S) => S.myId);
-      await H.devOp(wsPort, 'kit', me, { what: 'weapons' }).catch(() => null);
-      await P.page.waitForTimeout(1500);
-      /* v2.3.6640: the disc takes a touch only once BroTown's resolver raises
-         it (pointer-events auto, TouchControls v2.3.2246) after the kit; part
-         1's run read 5b red sideways once on a loaded box (unseen in the next
-         run): wait for the disc to be live, not for a fixed time */
-      await P.page.waitForFunction(() => { const b = document.querySelector('.bt-rjoy-base'); return !!b && getComputedStyle(b).pointerEvents === 'auto'; }, null, { timeout: 8000 }).catch(() => null);
-      const M = await LOOK(P);
-      const A = M.c.attack && M.c.attack.box;
-      let held = null, after = null;
-      let probe = null;
-      if (A && process.env.PAD_SHOTS) await P.page.screenshot({ path: process.env.PAD_SHOTS + '/pad-5b-' + label + '.png' });
-      if (A) probe = await P.page.evaluate(([x, y]) => { const out = []; for (const el of document.elementsFromPoint(x, y).slice(0, 6)) { const cs = getComputedStyle(el); out.push(((el.className && el.className.baseVal === undefined ? el.className : el.tagName) + '').slice(0, 50) + ' z' + cs.zIndex + ' pe' + cs.pointerEvents + ' op' + cs.opacity); } const b = document.querySelector('.bt-rjoy-base'); return { at: out, basePe: b && getComputedStyle(b).pointerEvents, zonePe: b && getComputedStyle(b.parentElement).pointerEvents, zoneOp: b && getComputedStyle(b.parentElement).opacity }; }, [A.x, A.y]);
-      if (A) {
-        await touch('touchStart', [{ x: A.x, y: A.y, id: 2 }]);
-        /* held: read until it holds (the renderer's clock on this box, TRAPS §200), at most 3 s */
-        for (let i = 0; i < 10 && held !== true; i++) { await P.page.waitForTimeout(300); held = await H.readState(P, (S) => !!S.autoAttack); }
-        await touch('touchEnd', [{ x: A.x, y: A.y, id: 2 }]);
-        for (let i = 0; i < 10 && after !== false; i++) { await P.page.waitForTimeout(300); after = await H.readState(P, (S) => !!S.autoAttack); }
+      /* 6: a fight, the band folded as in the owner's mockup.  The kit's
+         shield lands in the stash: worn the bag's way (mp-twobuttons 3's) */
+      await H.foldBand(P).catch(() => null);
+      await H.devOp(wsPort, 'kit', me, { what: 'shield' }).catch(() => null);
+      const wear = () => P.page.evaluate(() => {
+        const S = window._gameState && window._gameState.current, R = S && S.rpg;
+        if (!R) return false;
+        if (R.shield) return true;
+        if (!Array.isArray(R.shieldStash) || !R.shieldStash.length) return false;
+        const sh = R.shieldStash.shift();
+        R.shield = sh;
+        if (S.channel && S._serverCaps && S._serverCaps.shieldwear) {
+          const payload = (typeof sh.gid === 'string' && sh.gid) ? { gid: sh.gid } : { sig: [sh.name || '', sh.gearBase || '', sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|') };
+          try { S.channel.send({ type: 'shield_wear', payload }); } catch (e) { /* the next change reports it */ }
+        }
+        return true;
+      });
+      let shieldOn = false;
+      for (let k = 0; k < 60 && !shieldOn; k++) { shieldOn = await wear(); if (!shieldOn) await P.page.waitForTimeout(250); }
+      rec.ok(`6. ${label}: a shield in hand (guard)`, !!shieldOn);
+      const home = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+      const mon = await H.readState(P, (S) => {
+        const p = S.player; let best = null;
+        for (const m of S.monsters || []) {
+          if (!m || m.dead || !(m.hp > 0)) continue;
+          const d = Math.hypot(m.x - p.x, m.y - p.y);
+          if (!best || d < best.d) best = { id: m.id, x: m.x, y: m.y, d: Math.round(d) };
+        }
+        return best;
+      });
+      rec.ok(`6. ${label}: a live monster known (guard)`, !!mon, mon);
+      if (!mon) { await P.ctx.close().catch(() => {}); continue; }
+      await H.hopTo(P, Math.round(mon.x - 130), Math.round(mon.y), { tries: 260 }).catch(() => null);
+      const fight = await P.page.waitForFunction(() => !!document.querySelector('[data-shield]'), null, { timeout: 20000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(600);
+      const G = await LOOK(P);
+      rec.ok(`6a. ${label}: in a fight the big well is Block, wearing the shield, and Jump the middle well`,
+        fight && !!G.c.block && near(G.c.block.face, WELL(G, 'big'), 1.5) && !!G.c.jump && near(G.c.jump.face, WELL(G, 'mid'), 1.5)
+        && !!G.c.block.box && Math.abs(G.c.block.box.w - L.c.jump.box.w) <= 0.5,
+        { fight, block: G.c.block && G.c.block.face, jump: G.c.jump && G.c.jump.face, big: WELL(G, 'big'), mid: WELL(G, 'mid') });
+      const up = () => H.readState(P, (S) => !!S._shieldUp);
+      let u1 = null, u2 = null, u3 = null, u4 = null, u5 = null;
+      if (G.c.block) {
+        await tap(G.c.block.box, 5);
+        await P.page.waitForTimeout(1200);   /* no finger on it */
+        u1 = await up();
+        if (shots && label === 'upright') await P.page.screenshot({ path: shots + '/pad3-fight-shield-up.png' });
+        await tap(G.c.block.box, 6);
+        await P.page.waitForTimeout(600);
+        u2 = await up();
+        await tap(G.c.block.box, 7);
+        await P.page.waitForTimeout(600);
+        u3 = await up();
+        const A = (await LOOK(P)).c.attack;
+        if (A) { await tap(A.box, 8); await P.page.waitForTimeout(600); u4 = await up(); }
+        u5 = await H.readState(P, (S) => S._shieldDroppedWhy || null);
       }
-      rec.ok(`5b. ${label}: holding Attack in its socket attacks while held (${held}) and letting go stops it (${after})`, held === true && after === false, { A, held, after, probe });
-      /* 5c: after the walk, the kit and the press, nothing moved */
-      const moved = ['jump', 'skate', 'attack'].filter((k) => !M.c[k] || !L.c[k] || !near(M.c[k].box, L.c[k].box, 1));
-      rec.ok(`5c. ${label}: the controls stay in their sockets (after a walk, a weapon, a press)`, moved.length === 0, ['jump', 'skate', 'attack'].map((k) => [k, L.c[k] && L.c[k].box, M.c[k] && M.c[k].box]));
+      rec.ok(`6b. ${label}: a tap raises the guard and it stays up with no finger on it (${u1})`, u1 === true);
+      rec.ok(`6c. ${label}: a second tap lowers it (${u2})`, u1 === true && u2 === false);
+      rec.ok(`6d. ${label}: a tap on Attack lowers it (${u3} then ${u4}, why ${u5})`, u3 === true && u4 === false, { u5 });
+      await H.hopTo(P, home.x, home.y, { tries: 260 }).catch(() => null);
+      const calm = await P.page.waitForFunction(() => !document.querySelector('[data-shield]'), null, { timeout: 30000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(600);
+      const C = await LOOK(P);
+      rec.ok(`6e. ${label}: out of the fight the big well is Jump again`, calm && !!C.c.jump && near(C.c.jump.face, WELL(C, 'big'), 1.5) && !C.c.block, { calm, jump: C.c.jump && C.c.jump.face });
+      await P.ctx.close().catch(() => {});
+    }
+
+    /* ── 5b/5c (v2.3.6641, the gatekeeper's sitting 67): a rider with a
+       sword rides INTO a sighting and OUT of it.  The mobility well is the
+       board's or Charge's (padSkin.js ctxFor); the board's poll redrew only
+       when the ride's own key moved, so Charge's coming left the board drawn
+       over it, or a redraw during the sighting left no way off after it.
+       Charge is the two buttons' (`manual=5`; the page above plays today's
+       held combat, `manual=4`, which has none): a page of its own.  On the
+       board in town (a click: the button's mouse way; a touch here lasts
+       past its 600 ms tap), hopped out on the line to the monster nearest
+       the safe ground's edge, to 250 px from it (inside the sight's 440 and
+       the view), its back to it; turned TO it, then away.  The turn is
+       written, the body's (S._facingAngle, what a still bro is drawn by: the
+       sight takes the DRAWN facing, sight.js drawnFace), held while the well
+       is read: a board's stick would roll the rider off the safe ground. ── */
+    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padride' : 'Padrides', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'manual=5&wheelwhole&tapms=4000' });
+      players.push(P);
+      P.page.on('pageerror', (e) => errs.push(label + ' rider: ' + String((e && e.message) || e).slice(0, 200)));
+      await H.enterWorld(P);
+      const inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
+      const me = inW ? await H.readState(P, (S) => S.myId) : null;
+      if (me) await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);   /* the weapons owned, the worker's way (step 0's) */
+      const eqS = me ? await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) })) : null;
+      if (label === 'sideways') await H.foldBand(P).catch(() => null);   /* sideways the open band is a page over the controls */
+      await P.page.waitForTimeout(2000);
+      rec.ok(`5b. ${label} rider: in the Wheel with the two buttons, the sword in hand (guard)`, !!inW && !!(eqS && eqS.ok), { inW, eqS });
+      if (!inW || !(eqS && eqS.ok)) continue;
+      const G5 = await H.wheelGeom();
+      const K0 = await LOOK(P);
+      if (K0.c.skate) await P.page.mouse.click(K0.c.skate.box.x, K0.c.skate.box.y);
+      const rideOn = await H.waitFor(P, (S) => !!(S._ride && S._ride.on), (v) => v, { timeout: 8000, label: 'on the board' }).catch(() => null);
+      const pick5 = await P.page.evaluate(([cx, cy, R]) => {
+        const S = window._gameState.current; let best = null;
+        for (const m of S.monsters || []) {
+          if (!m || !m.alive) continue;
+          const d = Math.hypot(m.x - cx, m.y - cy) - R;
+          if (d > 0 && (!best || d < best.d)) best = { id: String(m.id), x: m.x, y: m.y, d: Math.round(d) };
+        }
+        return best;
+      }, [G5.cx, G5.cy, SAFE_R]);
+      rec.ok(`5b. ${label} rider: on the board in town (the board's button in the mobility well), a monster within 230 px of the safe ground's edge (${pick5 && pick5.d}; guard)`,
+        !!rideOn && !!K0.c.skate && near(K0.c.skate.face, WELL(K0, 'mobility'), 1.5) && !!pick5 && pick5.d <= 230, { rideOn, skate: K0.c.skate && K0.c.skate.face, pick5 });
+      if (!rideOn || !pick5 || pick5.d > 230) continue;
+      /* face the monster (`to` true) or turn the back on it, every 100 ms */
+      const turn5 = (to) => P.page.evaluate(([id, to]) => {
+        const S = window._gameState.current;
+        const face = () => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); if (m && S.player) S._facingAngle = Math.atan2(m.y - S.player.y, m.x - S.player.x) + (to ? 0 : Math.PI); };
+        face(); clearInterval(window.__padFace); window.__padFace = setInterval(face, 100);
+      }, [pick5.id, to]);
+      const where5 = () => P.page.evaluate((id) => {
+        const S = window._gameState.current, m = (S.monsters || []).find((x) => x && String(x.id) === id);
+        return { riding: !!(S._ride && S._ride.on), sight: S._sightPhase || 'none', thumb: S._thumbPhase || 'calm', d: m && S.player ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null };
+      }, pick5.id);
+      const a = Math.atan2(pick5.y - G5.cy, pick5.x - G5.cx);
+      await turn5(false);
+      await H.hopTo(P, Math.round(pick5.x - 250 * Math.cos(a)), Math.round(pick5.y - 250 * Math.sin(a)), { tries: 260 }).catch(() => null);
+      await P.page.waitForTimeout(1000);
+      await turn5(true);
+      const ch = await P.page.waitForFunction(() => !!document.querySelector('[data-charge]'), null, { timeout: 10000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(800);   /* several of the board's polls (120 ms) */
+      const I = await LOOK(P);
+      const inS = { ch, charge: !!I.c.charge, skate: !!I.c.skate, inWell: !!I.c.charge && near(I.c.charge.face, WELL(I, 'mobility'), 1.5), at: await where5() };
+      if (shots) await P.page.screenshot({ path: shots + '/pad3-rider-sighted-' + label + '.png' });
+      rec.ok(`5b. ${label}: a rider with a sword sighted (${inS.at.d} px): Charge in the mobility well, the board's face not drawn over it`,
+        inS.ch && inS.at.riding && inS.charge && inS.inWell && !inS.skate, inS);
+      await turn5(false);
+      const gone = await P.page.waitForFunction(() => !document.querySelector('[data-charge]'), null, { timeout: 15000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(800);
+      const Q = await LOOK(P);
+      const outS = { gone, charge: !!Q.c.charge, skate: !!Q.c.skate, inWell: !!Q.c.skate && near(Q.c.skate.face, WELL(Q, 'mobility'), 1.5), at: await where5() };
+      rec.ok(`5c. ${label}: turned away, the sighting gone, still riding: the board's button back in the mobility well (the way off), Charge gone`,
+        outS.gone && outS.at.riding && outS.skate && outS.inWell && !outS.charge, outS);
+      await P.page.evaluate(() => clearInterval(window.__padFace));
       await P.ctx.close().catch(() => {});
     }
   } finally {
     for (const P of players) await P.ctx.close().catch(() => {});
   }
-  rec.ok('6. no page errors', errs.length === 0, errs.slice(0, 5));
+  rec.ok('7. no page errors', errs.length === 0, errs.slice(0, 5));
 }
