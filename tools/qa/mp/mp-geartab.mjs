@@ -731,6 +731,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try {
       await H.enterWorld(P);
       await seed(P, wsPort, rec, 'new 390x844');
+      await H.unfoldBand(P).catch(() => null);
+      await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
+      await P.page.waitForTimeout(500);
       await H.dashOpen(P, 'dashboard');
       await P.page.waitForTimeout(1000);
       const n0 = await nlook(P);
@@ -764,6 +767,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try {
       await H.enterWorld(P);
       const id = await seed(P, wsPort, rec, 'new computer');
+      await H.unfoldBand(P).catch(() => null);
       await H.dashOpen(P, 'dashboard');
       await P.page.waitForTimeout(1200);
       const srvSlotOf = async (want) => {

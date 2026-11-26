@@ -108,6 +108,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.pastWelcome(P).catch(() => {});
       await P.page.addStyleTag({ content: '[data-coach-card], [data-coach-ring], .bt-quest-banner, .bt-quest-plate { visibility: hidden !important; }' }).catch(() => {});
       await P.page.waitForTimeout(1500);
+      await H.unfoldBand(P).catch(() => null);   /* the band folded at the start: mp-ui2gear unfolds it before the frame's Gear is asked for */
+      await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
+      await P.page.waitForTimeout(500);
       await H.dashOpen(P, 'dashboard');
       await P.page.waitForTimeout(800);
       const n0 = await nread(P);
