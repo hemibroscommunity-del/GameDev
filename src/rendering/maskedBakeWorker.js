@@ -660,8 +660,8 @@ async function keptJob(j) {
       try { out = fromKept(j, v); } catch (e) { out = null; }
       if (out) {
         keep.hits++;
+        keep.ms += performance.now() - t0;   /* the keep's own time: the key and the read (not QA's bake again) */
         if (keep.verify) { try { verifyKept(j, out); } catch (e) { keep.differ++; } }
-        keep.ms += performance.now() - t0;
         postReply(j, out);
         return;
       }
