@@ -203,9 +203,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const A = await P.page.evaluate(audit);
       /* v2.3.6688: nine plates, the workspace (two panels, the one grid of item cells: card UI2-gear PR 2) the ninth;
          v2.3.6780: thirteen (the zones, empty and confirm plates of v2.3.6683 had come since the nine), the
-         three weights (card UI3-kit) the thirteenth */
-      const sizeOk = A.frames === 13 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
-      rec.ok(`1a. ${s.tag}: thirteen boxes (v2.3.6780), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
+         three weights (card UI3-kit) the thirteenth; v2.3.6693: fifteen (card UI2-codex: the collection, the showcase) */
+      const sizeOk = A.frames === 15 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
+      rec.ok(`1a. ${s.tag}: fifteen boxes (v2.3.6693), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
       rec.ok(`1b. ${s.tag}: every piece inside its box and its page (${A.texts} runs of words read)`, A.overflow.length === 0, A.overflow.slice(0, 8));
       rec.ok(`1c. ${s.tag}: no text cut or run out of its box`, A.clipped.length === 0 && A.texts > 80, A.clipped.slice(0, 8));
       rec.ok(`2. ${s.tag}: every control in a box is at least 44 x 44 (${A.buttons} controls)`, A.small.length === 0 && A.buttons > 40, A.small.slice(0, 8));

@@ -42,6 +42,7 @@ import { getEquippedSlots, weaponDisplayName } from '../sheet/equipModel.js';
 import { getEquipReqLabel } from '../../../data/gameSystems.js';
 import { gemElementName } from '@/data/gems.js';
 import { SAY } from '@/data/say/itemInspect.js';
+import { SAY as SAY_CP } from '@/data/say/codexPages.js';   /* v2.3.6693: the Codex's road (card UI2-codex) */
 import { say } from '@/game/say.js';
 
 /* the page's one source: what was opened, and a number for each change (a
@@ -63,7 +64,9 @@ export const itemPageBus = {
  *    { from: 'gear', R, cell }    one of Gear's nine cells ('sword' ... 'amulet');
  *    v2.3.6689: { from: 'showcase' | 'profile', R, cell, owner? } a worn cell
  *    (another player's with `owner`); { from: 'profile', owner, peer } another
- *    player's slot as their card knows it (gearShowcase.js). */
+ *    player's slot as their card knows it (gearShowcase.js);
+ *    v2.3.6693: { from: 'codex', R, key, kind, monster, drop } a drop of a
+ *    monster's Loot (src/game/lootRows.js row: name, art, chance, graded). */
 export function openItemPage(src) {
   if (!src || !(src.R || src.peer)) return;
   _src = Object.freeze({ ...src });
@@ -178,10 +181,61 @@ function fromPeer(src) {
   };
 }
 
+/* ═══ v2.3.6693: THE CODEX'S ROAD (card UI2-codex, its reading 6) ═══
+   A drop in a monster's Loot opens THE SAME page Gear opens, read-only (the
+   place 'codex': itemInspect.js ITEM_PLACES.codex offers no action).  It is
+   no one's piece, so it has no instance's numbers (no stat row, no grade, no
+   gems): its identity is the item card's own (resolveItemCard: its name and
+   picture, for an item the bag holds; a weapon's name by the bag's own
+   reader, weaponDisplayName, so the Iron Great Sword reads the same from Gear
+   and from the Codex), the fact "Drops from <monster>: <its chance>", that a
+   gear piece rolls its grade as it drops, and the door Found from (every
+   monster that drops it: dash/codexPageOpen.js `codexFound`). */
+/* the pieces a monster drops, as the worker mints them (server/src/data.js
+   MONSTER_IRON_WEAPON_DROP's type and gearBase; MONSTER_ARMOR_DROPS' slots) */
+const CODEX_GEAR = Object.freeze({
+  iron_greatsword: Object.freeze({ kind: 'sword', wpn: Object.freeze({ type: 'greatsword', gearBase: 'iron' }) }),
+  iron_torso: Object.freeze({ kind: 'chest' }),
+  iron_greaves: Object.freeze({ kind: 'legs' }),
+});
+const codexGear = (key) => (Object.prototype.hasOwnProperty.call(CODEX_GEAR, key) ? CODEX_GEAR[key] : null);
+const codexCard = (key) => (key && key !== 'coins' && !codexGear(key) ? (safe(() => resolveItemCard({ kind: 'inventory', key, count: 0 }), null) || {}) : {});
+
+/** An item's name as its own page reads it (the Loot row says the same): a
+    weapon by the bag's own reader; anything else by the drop table's name
+    (the game's own label: the item card's fallback for a key it has no row
+    for spells the key, "Sky" for the Wind Shard). */
+export function codexItemName(drop) {
+  if (!drop) return '';
+  const g = codexGear(drop.key);
+  if (g && g.wpn) return weaponDisplayName(g.wpn);
+  return drop.name || codexCard(drop.key).name || '';
+}
+
+function fromCodex(src) {
+  const d = src.drop || {};
+  const g = codexGear(src.key);
+  const card = codexCard(src.key);
+  const rows = [{ k: say(SAY_CP, 'codexPages.dropsFrom', { name: String(src.monster || '') }), v: String(d.chance || '') }];
+  if (d.graded) rows.push({ k: say(SAY_CP, 'codexPages.grade'), v: say(SAY_CP, 'codexPages.gradeRolls') });
+  return {
+    target: null, card: {}, place: 'codex',
+    input: {
+      place: 'codex', kind: g ? g.kind : 'item',
+      name: codexItemName({ key: src.key, name: d.name }),
+      art: d.art || card.thumb || null, glyph: d.art ? null : (card.glyph || null),
+      quality: null, rolls: !!d.graded, rows, line: card.desc || d.desc || '',
+      actions: [],
+      doors: [{ id: 'codexFound', label: say(SAY_CP, 'codexPages.foundFrom') }],
+    },
+  };
+}
+
 /** What the page draws from, or null when the item is gone. */
 export function itemPageInput(src) {
   if (!src) return null;
   if (src.peer) return fromPeer(src);
+  if (src.from === 'codex') return src.key ? fromCodex(src) : null;
   if (!src.R) return null;
   if (src.entry) return fromEntry(src.R, src.entry);
   if (!src.cell) return null;

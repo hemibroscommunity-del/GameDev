@@ -840,10 +840,11 @@ export const STATES = [
       return 'the skill detail did not open';
     },
   },
-  dash('encyclopedia', 'Codex', 'The Monster Codex: a card for each kind of monster, opened by the first kill.'),
+  /* v2.3.6693 (card UI2-codex): the Codex under the new dashboard */
+  dash('encyclopedia', 'Codex', 'The Codex (v2.3.6693): the kinds in one row at the top (Monsters chosen; Items, Resources, Townsfolk, Lands with their honest "Not in the Codex yet", Pets with its door to the pet journal), and under them a card for each kind of monster, three across: its picture first and largest, its name, its element and land, your kills, NEW; one not met a shape, "???" and "Not met yet". Sideways the kinds a column at the left and the cards one row. `?ui2=0`: today\'s tabs and grid.'),
   {
     id: 'dash-codex-monster', group: 'Dashboard', title: 'Codex: a monster',
-    about: "One monster's codex page: header, drops table with the kill roll, info with its stage, locations.",
+    about: "A monster's showcase (v2.3.6693; the header its name, Back Codex): the monster large in its idle strip on the left, four doors on the right each with its summary (Combat: its special; Loot: its count of drops; Habitat: its land and levels; Story: its elder form), its essentials flat under them (levels, element, type, your kills, Strength By level). `?ui2=0`: today's page with its Drops, Info and Locations tabs.",
     run: async ({ P, wsPort, myId }) => {
       await H.devOp(wsPort, 'codex', myId, { all: true, n: 3 }).catch(() => {});
       await wait(P, 800);
@@ -2038,6 +2039,22 @@ export const STATES = [
     },
     after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
   },
+  /* v2.3.6693 (card UI2-codex): a monster's Loot, and a drop's one item page */
+  { id: 'dash-codex-loot', group: 'Dashboard', title: 'Codex: a monster\'s Loot', about: 'The Mummy\'s Loot door: one plain row a drop (its picture, its name, its type, ONE chance: the table\'s percent or Every kill, gold with its amount, a gear piece "rolls a grade"), each a flat door with its chevron; under them the roll\'s true words once ("One roll a kill: at most one of the drops with a chance") and the four grades with their shares. No dice, no roll range, no bar.',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'codex', myId, { all: true, n: 3 }).catch(() => {});
+      await wait(P, 800);
+      await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('encyclopedia'); b.go({ type: 'push', id: 'codexMonster', sel: 'mumling' }); b.go({ type: 'push', id: 'codexLoot', sel: 'mumling' }); });
+      await wait(P, 900);
+    } },
+  { id: 'dash-codex-item', group: 'Dashboard', title: 'Codex: a drop\'s item page', about: 'A drop of the Loot (the Iron Greatsword): THE SAME item page Gear opens, read-only ("In the Codex": no action), its facts "Drops from Mummy 0.2%" and that it rolls its grade as it drops, and its door Found from (every monster that drops it, with its land; one not met is "???").',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'codex', myId, { all: true, n: 3 }).catch(() => {});
+      await wait(P, 800);
+      await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('encyclopedia'); b.go({ type: 'push', id: 'codexMonster', sel: 'mumling' }); b.go({ type: 'push', id: 'codexLoot', sel: 'mumling' }); });
+      await wait(P, 900);
+      return tapSel(P, '[data-codex-loot] [data-cx-drop="irongreatsword"]');
+    } },
   /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
   {

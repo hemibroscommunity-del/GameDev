@@ -3,11 +3,12 @@ import { SAY } from '@/data/say/monsterCodex.js';   /* v2.3.6326: its words, in 
 import { say, sayPieces } from '@/game/say.js';   /* v2.3.6326: a plain row's "tap" reads "click" on a computer, as deskWords did here */
 import { COL, getState, QUALITY_COLOR, QUALITY_LABEL, QUALITY_PRISM, qualityInk } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
-import { CODEX_KINDS, CODEX_ENTRIES, CODEX_ELEMENTS, CODEX_OPEN_AT, CODEX_ROADS, codexFactsAt } from '@/data/monsterCodex.js';
+import { CODEX_KINDS, CODEX_ENTRIES, CODEX_ELEMENTS, CODEX_OPEN_AT, codexFactsAt } from '@/data/monsterCodex.js';
 import { codexCounts, codexFresh, codexSeen, codexLive } from '@/game/monsterCodex.js';
 import { landLook } from '@/data/wheelLands.js';
-import { ZONES } from '@/data/zones.js';
-import { landLevelsText, WHEEL_LAND_LEVELS, WHEEL_GATE_ROADS } from '@/data/wheelSignposts.js';
+import { landLevelsText } from '@/data/wheelSignposts.js';
+import { codexMet, codexLandName } from '@/game/codexView.js';   /* v2.3.6693: the game's rule, read in one place */
+import { levelsText, stageBands, wayThere } from '@/game/entityInspect.js';
 import { RARITY_TIERS } from '@/data/gameSystems.js';
 import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent, codexRollText, codexRollFreeFrom, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
@@ -58,28 +59,11 @@ import { deskWideActive } from '../../deskWide.js';   /* v2.3.3687: a computer's
  * the ~167 px a phone's sheet shows), the list again at the row, and the
  * monsters at the card, you came from. */
 
-function landName(home) {
-  return (ZONES[home] && ZONES[home].name) || home;
-}
-function oneLevels(levels) {
-  return levels[0] === levels[1] ? say(SAY, 'monsterCodex.levelsOne', { lo: levels[0] }) : say(SAY, 'monsterCodex.levelsRange', { lo: levels[0], hi: levels[1] });
-}
-/* the first stage's levels and the elder form's, from the Wheel's own range
-   (petStageOf: 20 levels a stage) */
-function stageBands() {
-  const [lo, hi] = WHEEL_LAND_LEVELS;
-  const cut = Math.min(hi, 20);
-  return { first: [lo, cut], elder: hi > cut ? [cut + 1, hi] : null };
-}
-/* how to get there from BroTown, by the signposts' own table */
-function wayThere(home) {
-  for (const gate of Object.keys(WHEEL_GATE_ROADS)) {
-    const [straight, fork] = WHEEL_GATE_ROADS[gate];
-    if (home === straight) return say(SAY, 'monsterCodex.wayStraight', { gate, road: CODEX_ROADS[home] });
-    if (home === fork) return say(SAY, 'monsterCodex.wayFork', { gate, road: CODEX_ROADS[straight], fork: CODEX_ROADS[home] });
-  }
-  return null;
-}
+/* v2.3.6693 (card UI2-codex): a land's name, its levels, the first pass and the way
+   there are src/game/entityInspect.js's (and codexView.js's) now, read by the new
+   dashboard's showcase too, so the two Codexes say one thing */
+const landName = codexLandName;
+const oneLevels = levelsText;
 
 /* the scrolling box a page sits in (EncyclopediaPanel's, common.js
    panelStyle), and putting something in its view: its top at the box's top
@@ -173,7 +157,7 @@ function Pill({ children, attr }) {
    ("N..." for "Not met yet"). */
 function Card({ kind, n, fresh, onOpen, wrap, big }) {
   const e = CODEX_ENTRIES[kind];
-  const known = n >= CODEX_OPEN_AT;
+  const known = codexMet(n);
   const look = landLook(e.home);
   const line = wrap ? { lineHeight: 1.15, overflowWrap: 'anywhere' }
     : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 };
@@ -722,7 +706,7 @@ function Page({ kind, S, onBack }) {
   /* a tap on a tab shows what it opened, at the top of the sheet -- just
      under the pinned tab bar (v2.3.3215) */
   useLayoutEffect(() => { if (tabTap && body.current) reveal(body.current, 'top', barInset(root.current)); }, [tabTap]);
-  const known = n >= CODEX_OPEN_AT;
+  const known = codexMet(n);
   const shared = killRollLive(S);   /* v2.3.3209: one roll a kill, each drop its own numbers */
   /* v2.3.3516: no raw gem off a kill where shards are cracked for them
      (caps.shardcrack, the gem plan's decision 1): no row, the shard lower */
@@ -789,7 +773,7 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
   const c = S._codex;
   if (open) return <Page kind={open} S={S} onBack={() => setOpen(null)} />;
   const rows = CODEX_KINDS.map((k) => ({ k, counts: codexCounts(S, k), fresh: codexFresh(S, k).length > 0 }));
-  const met = rows.filter((r) => r.counts[0] >= CODEX_OPEN_AT).length;
+  const met = rows.filter((r) => codexMet(r.counts[0])).length;
   const narrow = panelVw() < 300;
   const big = deskWideActive();   /* v2.3.3687: a computer's column (Card's note) */
   return (

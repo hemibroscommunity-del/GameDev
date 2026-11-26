@@ -28,6 +28,7 @@ import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
   Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass, Ui2TwoPanel, Ui2ItemGrid,
   Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm, Ui2Facts, Ui2Fact, ui2LookWas,
+  Ui2Collection, Ui2CollectionCard, Ui2Showcase,
 } from './index.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
 import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/sheet/sheetGeometry.js';
@@ -326,6 +327,32 @@ function EmptyPlate({ room }) {
     </div>
   );
 }
+/* v2.3.6693 (card UI2-codex): the collection and the showcase, with the kit's own pictures (no game state here) */
+const SAMPLE_SHELVES = [{ id: 'monsters', word: 'Monsters' }, { id: 'items', word: 'Items' }, { id: 'lands', word: 'Lands' }, { id: 'pets', word: 'Pets' }];
+function CollectionPlate({ room }) {
+  const [shelf, setShelf] = useState('monsters');
+  const pic = (src, dim) => <img src={src} alt="" draggable={false} style={{ width: 44, height: 44, objectFit: 'contain', opacity: dim ? 0.35 : 1 }} />;
+  return (
+    <Ui2Collection shelves={SAMPLE_SHELVES} shelf={shelf} onShelf={setShelf} side={room.wide} head={shelf === 'monsters' ? '2 of 3 met' : null}>
+      {shelf === 'monsters' ? (
+        <>
+          <Ui2CollectionCard art={pic(KIT_ART.pets)} name="Snowman" sub="Frost · Frost Ridge" line="3 defeated" mark="NEW" onClick={() => {}} />
+          <Ui2CollectionCard art={pic(KIT_ART.combat)} name="Fire Goblin" sub="Flame · Flame Fields" line="12 defeated" onClick={() => {}} />
+          <Ui2CollectionCard art={pic(KIT_ART.pets, true)} name="???" sub="Earth Forest" line="Not met yet" dim onClick={() => {}} />
+        </>
+      ) : <Ui2Empty title="Not in the Codex yet" why="Their pages are still being written." />}
+    </Ui2Collection>
+  );
+}
+function ShowcasePlate({ room }) {
+  const door = (id, label, summary) => ({ id, label, summary, onClick: () => {} });
+  return (
+    <Ui2Showcase short={room.wide}
+      figure={<img src={KIT_ART.pets} alt="" draggable={false} style={{ width: room.wide ? 56 : 84, height: room.wide ? 56 : 84, objectFit: 'contain' }} />}
+      doors={[door('combat', 'Combat', 'The Lunge'), door('loot', 'Loot', '8 drops'), door('habitat', 'Habitat', 'Flame Fields · Lv 1–40'), door('story', 'Story', 'Its tale, and the Cinder Goblin')]}
+      facts={[{ id: 'levels', k: 'Levels', v: 'Lv 1–40' }, { id: 'element', k: 'Element', v: 'Flame' }, { id: 'type', k: 'Type', v: 'Humanoid' }, { id: 'kills', k: 'Defeated', v: '12' }, { id: 'strength', k: 'Strength', v: 'By level' }]} />
+  );
+}
 function ConfirmPlate({ room }) {
   const drop = { id: 'drop', slot: 0, cost: 'irreversible', label: 'Drop', c: 'red' };
   const equip = { id: 'equip', slot: 0, cost: 'routine', label: 'Equip', c: 'gold' };
@@ -400,6 +427,9 @@ export function UiKitPage() {
         <Plate id="confirm" room={room} title="Confirm" caption="The one confirmation: only for the costly or irreversible; a routine action never asks; an outcome not confirmed yet"><ConfirmPlate room={room} /></Plate>
         <Plate id="slots" room={room} title="Items" caption="Rarity slots (Normal, Rare, Elite, Godly; selected; focused; empty), a count, a dot, still loading"><SlotsPlate room={room} /></Plate>
         <Plate id="workspace" room={room} title="Gear" caption="Two panels: the storage grid with a cell selected (pushed in) and empty cells; the summary in the opposite panel's place"><WorkspacePlate room={room} /></Plate>
+        {/* v2.3.6693 (card UI2-codex) */}
+        <Plate id="collection" room={room} title="Codex" caption="The collection: the kinds (raised doors, the chosen one pushed in), illustrated cards (the picture first; NEW; one not met greyed), a kind's honest empty line"><CollectionPlate room={room} /></Plate>
+        <Plate id="showcase" room={room} title="Fire Goblin" caption="The showcase: the entry large, four doors each with its summary, its essentials flat in one strip"><ShowcasePlate room={room} /></Plate>
       </div>
     </div>
   );
