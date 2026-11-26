@@ -3635,7 +3635,25 @@ export async function uploadGearTextures(renderer) {
 let _prewarmRenderer = null;
 export function registerPrewarmRenderer(renderer) { _prewarmRenderer = renderer; }
 
-export async function prewarmMaskedBodyFrames(opts) {
+/* ═══ v2.3.6761: THE SETS ONE EQUIP AWAY WAIT FOR THE WORN ONE ═══
+   With the worn set's bakes kept (src/game/bakeKeep.js), its pass is a
+   string of answers from the disk -- but the sets one equip away
+   (prewarmAltWornSets, kicked by _noteOwnedGear while the screen is still up)
+   share the worker's one queue, and a frame of theirs not kept yet is a whole
+   bake between two of the worn set's answers.  Measured on the test box
+   (mp-bakekeep, a second login in copper with an iron plate in the bag): 264
+   of the worn set's answers from the disk, 22 spare frames baked among them,
+   and `masks` 92.5 s after the loads.  So a spare set starts once the worn
+   pass has ended.  (docs/specs/worn-first.md tried this before the keep and
+   took it out: then the worn set's own bakes were the wait, and this box could
+   not show a gain.) */
+let _wornPass = null;
+export function prewarmMaskedBodyFrames(opts) {
+  const p = _prewarmWornPass(opts);
+  _wornPass = p.catch(() => { /* best-effort */ });
+  return p;
+}
+async function _prewarmWornPass(opts) {
   /* v2.3.2874: start the bake worker behind the loading screen even with no
      armour on, so the first equip does not pay its start-up */
   /* v2.3.6761: ...and tell it the keep's switch (`?bakekeep=0`) before its
@@ -3767,6 +3785,8 @@ export async function prewarmAltWornSets(opts) {
     /* grace period: let the join settle (zone load, first combat) first */
     await new Promise((r) => setTimeout(r, soon ? 300 : 5000));
     if (seq !== _altPrewarmSeq) return;
+    /* v2.3.6761: ...and the worn set's pass, if it is running (above) */
+    if (_wornPass) { await _wornPass; if (seq !== _altPrewarmSeq) return; }
   }
   /* v2.3.1118: prewarmed ONLY the actually-worn loadout -- the speculative
      3-family bake (~115MB of masked frames at the full 256 bake) pressured
