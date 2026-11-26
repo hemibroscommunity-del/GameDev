@@ -41,6 +41,22 @@ import { say } from '@/game/say.js';
    it, so a tap on the bow folded the band (mp-oneband's "a tap at its middle
    reaches it").  The tab still answers a finger on it, and the harness and
    the coach still find the fold by [data-dash-fold]. */
+/* ═══ v2.3.6682: UNDER THE NEW FRAME THE HANDLE HIDES, AND KEEPS BOTH WORKSPACES ═══
+   The owner, 2026-11-25: "Closing temporarily hides the dashboard without
+   resetting either workspace."  A tap that closed a page by "to the bar" and
+   then the fold was Gear's ROOT then closed under the frame (card UI2-frame):
+   Gear's own pages were reset by the handle, the Menu's kept.  So under the
+   frame (on; `?ui2=0` the way back) the handle is dashNav's 'fold', which is
+   Close when the band is up (both workspaces' pages, scroll and selection as
+   they were) and Gear as it was left when it is folded.  Under `?ui2=0`,
+   today's tap, untouched.  Held by tools/guards/dash-nav.test.mjs (1A, its
+   plant P14, and 5h: this file read off its syntax tree). */
+function foldTap(expanded) {
+  if (dashboardPanelBus.frameOn()) { dashboardPanelBus.go({ type: 'fold' }); return; }
+  if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
+  else dashMinBus.set(!dashMinBus.min);
+}
+
 export const GRIP_HIT_W = 64;
 export const GRIP_HIT_H = 20;
 const GRIP_IN_BAND = 4;   /* the part of the tap area inside the band: the nav row's top air */
@@ -59,14 +75,12 @@ export const BandGrip = ({ min, expanded }) => (
       swallowTapClick(e);
       /* no focus ring left on it (v2.3.3481's reason for the old chip) */
       try { e.currentTarget.blur(); } catch (_) { /* fine */ }
-      if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
-      else dashMinBus.set(!dashMinBus.min);
+      foldTap(expanded);
     }}
     /* a key (Enter, Space) makes a click with no pointer behind it */
     onClick={(e) => {
       if (e.detail !== 0) return;
-      if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
-      else dashMinBus.set(!dashMinBus.min);
+      foldTap(expanded);
     }}
     style={{
       position: 'absolute',
@@ -133,13 +147,11 @@ export const BandClose = ({ min, expanded, h }) => (
       e.stopPropagation();
       swallowTapClick(e);
       try { e.currentTarget.blur(); } catch (_) { /* fine */ }
-      if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
-      else dashMinBus.set(!dashMinBus.min);
+      foldTap(expanded);
     }}
     onClick={(e) => {
       if (e.detail !== 0) return;
-      if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
-      else dashMinBus.set(!dashMinBus.min);
+      foldTap(expanded);
     }}
     style={{
       flex: 'none',

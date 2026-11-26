@@ -195,15 +195,62 @@ export function inspectItem(input) {
     name: String(i.name || ''),
     art: i.art || null,
     glyph: i.glyph || null,
-    grade: g.grade,
+    /* v2.3.6688 (the mends): a "?" piece has no grade, no stars, no numbers and today's card's line ("Rare or
+       better", in the rare blue): the tests part found the page and the summary reading "In your bag" with a star
+       and the line lost behind the piece's rows (mp-revealbag 3).  Its name (the material and the kind, the same
+       after the reveal) stays, as on today's card (GearTab.jsx's "shows its card's name"). */
+    grade: hidden ? null : g.grade,
     gradeWord: hidden ? '' : g.word,
     stars: hidden ? 0 : g.stars,
     hidden,
     where: whereWords(place, i.owner),
     readOnly: P.readOnly,
     facts: Object.freeze(facts.slice(0, 6)),
-    line: i.line ? String(i.line) : '',
+    line: hidden ? say(SAY, 'itemInspect.hiddenLine') : (i.line ? String(i.line) : ''),
     doors: Object.freeze((Array.isArray(i.doors) ? i.doors : []).filter((d) => d && d.id && d.label)),
     actions: Object.freeze(actions),
+  });
+}
+
+/* ═══ v2.3.6688: THE QUICK LOOK'S SUMMARY: A SHORTER VIEW OF THE SAME MODEL (card UI2-gear PR 2) ═══
+ * The specification, part 5: "Quick inspection must provide immediately
+ * useful item-type-specific summary stats and a meaningful action, not just
+ * item name and a Details button."  The summary is cut FROM the page's
+ * model (inspectItem's answer), never built beside it, so the look, the
+ * page and (PR 3) the Codex say the same facts of one item:
+ *   an equippable piece in the bag   the comparison (src/game/compare.js
+ *       compareSet: one headline, at most two rows, the tradeoff, a
+ *       restricted item's reason) and the lead action (Equip, gold);
+ *   a worn piece   its own headline fact on you (a weapon's DPS, armour's
+ *       Damage cut, a shield's Block) and two more, and its lead action;
+ *   anything else (food, a drink, a material, a tool, a fish)   its own
+ *       facts (how many you hold, what it does: the card's line) and its
+ *       lead action (Eat, Drink, Open...).
+ * Details is always there (the page); no verdict, ever. */
+const HEAD_FACT = Object.freeze({ sword: 'DPS', bow: 'DPS', staff: 'DPS', chest: 'Damage cut', legs: 'Damage cut', shield: 'Block' });
+
+/** `model` inspectItem's answer; `kind` the item's kind; `cmp` compareSet's
+    answer (a bag piece that can be worn) or null. */
+export function itemSummary(model, kind, cmp) {
+  const m = model || inspectItem({});
+  const lead = m.actions.find((a) => a.lead) || null;
+  let head = null;
+  let facts = [];
+  const cmpOk = m.hidden ? null : (cmp || null);   /* v2.3.6688 (the mends): no comparison of a "?" piece: it would give its grade away */
+  if (!cmpOk && !m.hidden) {
+    const want = Object.prototype.hasOwnProperty.call(HEAD_FACT, kind) ? HEAD_FACT[kind] : null;
+    const h = want ? m.facts.find((f) => f.k === want) : null;
+    if (h) head = { k: h.k, v: h.v };
+    facts = m.facts.filter((f) => f !== h).slice(0, head ? 2 : 3);
+  }
+  return Object.freeze({
+    name: m.name, art: m.art, glyph: m.glyph, grade: m.grade, gradeWord: m.gradeWord, stars: m.stars,
+    hidden: m.hidden, where: m.where, title: m.title, readOnly: m.readOnly,
+    compare: cmpOk,
+    head,
+    facts: Object.freeze(facts),
+    line: m.line,
+    action: lead,
+    actions: m.actions,
   });
 }

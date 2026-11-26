@@ -374,8 +374,9 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
-- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, broHub, screenZones, pending, combatHub, progression, metricTree
+- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
 - **Files**: `src/game/`: itemInspect
+- **Files**: `src/game/`: compare, equipProject, workspace
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet
