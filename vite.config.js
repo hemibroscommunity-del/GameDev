@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 import { readFileSync, readdirSync } from 'fs';
 import { asciiOnly } from './tools/dev/ascii-only.mjs';
 import { stripHtmlComments } from './tools/dev/strip-html-comments.mjs';   /* v2.3.5820 */
+import { keepVersions } from './tools/assets/keepVersions.mjs';           /* v2.3.6741 */
 
 const safeExec = (cmd) => {
   try { return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
@@ -74,6 +75,16 @@ export default defineConfig({
   publicDir: '../public',
   plugins: [
     react(),
+    /* v2.3.6741 (card KEEP, PR 2): EVERY WRITTEN-OUT ADDRESS OF A SHIPPED
+       FILE GETS ITS VERSION, at build: '/ui/x.png' -> '/ui/x.png?v=<the
+       first 10 characters of the SHA-256 of its bytes>', a hand-kept `?v=`
+       replaced, in the scripts, the style sheets and index.html alike (so a
+       preload still matches its consumer, TRAPS §52).  Only a string that IS
+       an address, whole, found by the syntax tree; the rest is listed, never
+       guessed at (tools/assets/stamp.mjs says what and why).  So a changed
+       picture's address changes, and a folder can later be kept a year
+       (the card's rule 2, its PR 3).  Build only: `npm run dev` asks bare. */
+    ...keepVersions(),
     {
       /* Replace __BUILD_VERSION__ / __BUILD_SHA__ tokens in index.html
          so the loading-screen badge tracks the current build instead

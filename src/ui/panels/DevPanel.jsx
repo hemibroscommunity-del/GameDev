@@ -12,6 +12,29 @@ import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { loadTimes, loadTimesText } from '../../game/loadTimes.js';   /* v2.3.5019: the load timer */
+
+/* v2.3.6760: WHAT THE LOADING SCREEN WAITED FOR, AND WHY IT LIFTED.  The lines
+   the Loading times readout carries after "The loading screen was up", the same
+   in the same order every time (a step not reached reads --), so the owner's
+   pasted text compares line by line.  The numbers are game/loadTimes.js's; the
+   words are here, a developer-only file (the census's player-words count). */
+const BRO_STEP_WORDS = {
+  'bro-loads': "The bro's pictures and sheets were loaded",
+  'bro-masks': "The armour's body frames were baked",
+  'bro-alt': 'The spare armour sets were baked',
+  'bro-upload': 'The baked frames were sent to the graphics chip',
+  'bro-gear': 'The gear sheets were sent to the graphics chip',
+  'bro-done': 'The bro was ready',
+};
+export function loadTimesLines(L) {
+  const lf = L && L.lift;
+  const out = ['Why it lifted: ' + (!lf ? '--' : lf.limit ? 'its ' + (lf.capS || 20) + ' s limit' : 'ready')];
+  out.push("The bro's own steps (s since the page began):");
+  for (const st of ((L && L.bro) || [])) out.push((st.at == null ? '   --' : String(st.at.toFixed(1)).padStart(5) + ' s') + '  ' + (BRO_STEP_WORDS[st.key] || st.key));
+  out.push('Armour frames ready when it lifted: ' + (!lf || !lf.armour ? '--'
+    : lf.armour.want === 0 ? 'none worn' : lf.armour.have + ' of ' + lf.armour.want));
+  return out;
+}
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
 import { expoAddressFlags, expoAddressWords } from '../../game/expoAddress.js';   /* v2.3.4158: the expo's one-Wi-Fi switch */
@@ -922,7 +945,8 @@ export const DevPanel = ({ onClose }) => {
           close the game's tab, open it again, play in, then open this panel and take a screenshot.
         </div>
         {(() => {
-          const txt = loadTimesText(loadTimes());
+          const lt = loadTimes();
+          const txt = loadTimesText(lt, loadTimesLines(lt));
           return (
             <>
               <pre data-dev-load-times="" style={{ whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.45, margin: '0 0 7px', fontFamily: 'ui-monospace, Menlo, monospace', color: COL.text }}>{txt}</pre>
