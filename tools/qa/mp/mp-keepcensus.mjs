@@ -278,7 +278,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const url = q.url();
     const m = /^https?:\/\/([^/]+)/i.exec(url);
     if (!m) return;
-    const r = { url: url.slice(m[0].length) || '/', host: m[1], own: /^localhost(?::\d+)?$/.test(m[1]), stage };   /* the build's server and the worker's */
+    const r = { url: url.slice(m[0].length) || '/', host: m[1], own: /^(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(m[1]), stage };   /* the build's server and the worker's */
     reqs.push(r);
     byReq.set(q, r);
   });
