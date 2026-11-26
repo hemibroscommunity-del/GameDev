@@ -33,8 +33,26 @@
  *
  * NO IMPORTS: node tests it (tools/guards/bro-hub.test.mjs). */
 
-/* the six doors, in the specification's order (3 x 2: Character, Combat,
-   Equipment / Life Skills, Feats, Pets).  `word` a key of
+/* ═══ v2.3.6782: ONE PAGE FOR YOURSELF (card UI3-bro) ═══
+ * The owner, 2026-11-26 (docs/design/UI_FEEDBACK_2026-11-26.md part 2): "I
+ * don't think you need separate Bro and Character landing menus anymore.
+ * Moving the identity information into the persistent HUD eliminates much of
+ * the reason for having two screens. I'd turn the Bro menu into a unified
+ * character management dashboard."  And: "This eliminates the large redundant
+ * portrait, combat level banner, three weapon level buttons and separate
+ * oversized informational boxes."  So Bro (the page id `hero`) is six raised
+ * doors, Combat, Equipment, Life Skills, Feats, Pets, Journey, and under them
+ * ONE flat strip of what you have (broStrip: AP, Quests, Clan or Party,
+ * Guilds, your title), each entry a door where the game has a page.  Nothing
+ * on it repeats the HUD: no face, no name, no combat level, no weapon levels
+ * (Combat has the weapons).  Character stays ANOTHER player's page (Ranks'
+ * tap, step 9): broSelfPage below sends yours, and any id the table does not
+ * know, to the one Bro page.  A later card (UI2-feats) adds its rows here:
+ * each table is one row a door, in order. */
+
+/* the six doors, in the owner's order of 2026-11-26 (3 x 2: Combat,
+   Equipment, Life Skills / Feats, Pets, Journey; v2.3.6782: Character left
+   the grid, Journey came in from the passport).  `word` a key of
    src/data/say/dashFrame.js; `art` the picture the game's door has today (the
    card's facts: Combat has no door picture of its own, so the sword of the
    melee lane, `combat-melee.webp`: `panel-weapons.webp` is an anvil, which
@@ -42,16 +60,18 @@
    (BottomDashboard CAP_PAGES): without it the tile keeps its place, locked,
    and says why; `key` a computer's letter (deskKeys.js NAV_KEYS). */
 export const BRO_HUB_DOORS = Object.freeze([
-  Object.freeze({ id: 'character', word: 'dashFrame.character', art: '/icons/ui/panel-self.webp', opens: 'page:broCharacter' }),
   Object.freeze({ id: 'combat', word: 'dashFrame.combat', art: '/icons/ui/combat-melee.webp', opens: 'page:broCombat' }),
   Object.freeze({ id: 'equipment', word: 'dashFrame.equipment', art: '/icons/ui/panel-loadout.webp', opens: 'page:broEquip' }),   /* v2.3.6689: the showcase (sheet/GearShowcase.jsx) */
   Object.freeze({ id: 'skills', word: 'dashFrame.lifeSkills', art: '/icons/ui/nav-lifeskills.webp', opens: 'page:skills', key: 'L' }),
   Object.freeze({ id: 'feats', word: 'dashFrame.feats', art: '/icons/achievements/achievements.webp', opens: 'page:achievements', cap: 'achievements' }),
   Object.freeze({ id: 'pets', word: 'dashFrame.pets', art: '/icons/ui/pets-paw.webp', opens: 'page:pets', cap: 'petbook' }),
+  /* v2.3.6782: lifetime records (the PANELS page, no cap), the passport's door until today */
+  Object.freeze({ id: 'journey', word: 'dashFrame.journey', art: '/icons/ui/journey.webp', opens: 'page:journey' }),
 ]);
 
 /* the frame's own pages Character and Combat open (dashDests.js FRAME_PAGES); v2.3.6684: and
-   Titles, the passport's door (the title's Equip, with its pending mark) */
+   Titles, the passport's door (the title's Equip, with its pending mark).  v2.3.6782: broCharacter
+   stays a row, ANOTHER player's page (broSelfPage); Titles is the strip's title entry's */
 export const BRO_HUB_PAGES = Object.freeze({
   broCharacter: 'character', broCombat: 'combat', broTitles: 'titles',
   /* v2.3.6685 (card UI2-combat): a weapon's own page, under Combat's hub (src/game/combatHub.js COMBAT_PAGES) */
@@ -62,6 +82,21 @@ export const BRO_HUB_PAGES = Object.freeze({
   broEquip: 'equip',
   broTree0: 'tree', broTree1: 'tree', broTree2: 'tree', broTree3: 'tree', broTree4: 'tree', broTree5: 'tree', broTree6: 'tree',
 });
+
+/**
+ * v2.3.6782: which of Bro's pages a frame page id draws, for `who` (null: yours):
+ * BRO_HUB_PAGES's word, except that YOUR Character, and any id the table does
+ * not know (a stale stack, a later HUD's tap), is the one Bro page (null: the
+ * landing), never your old passport and never a blank.  Another player's
+ * Character is theirs ('character').
+ */
+export function broSelfPage(id, who) {
+  const k = String(id);
+  const door = Object.prototype.hasOwnProperty.call(BRO_HUB_PAGES, k) ? BRO_HUB_PAGES[k] : null;
+  if (!door) return null;
+  if (door === 'character' && who == null) return null;
+  return door;
+}
 
 /** Is this one of Bro's own frame pages (Character, Combat)? */
 export function isBroHubPage(id) {
@@ -127,15 +162,17 @@ export function broHubWhose(who) {
    The eight doors of today's Progress page (broPages.js BRO_DOORS) and the
    road each takes under the new frame (the card's reading 3).  A road:
      bro:<door>        one of the six tiles above;
-     bro:<door>/<what> inside that door's page (v2.3.6684: the passport's
-                       Titles door and its Clan line, PASSPORT_DOORS below);
+     bro:<door>/<what> inside that door's page;
+     bro:strip/<entry> an entry of the Bro page's strip (v2.3.6782: Titles
+                       and Clan, the passport's door and line until then;
+                       BRO_STRIP below);
      menu:<door>       a tile of the Menu (dashDests.js MENU_DESTS). */
 export const BRO_PROGRESS_ROADS = Object.freeze({
   skills: 'bro:skills',
-  titles: 'bro:character/titles',
+  titles: 'bro:strip/title',
   homestead: 'menu:homestead',
   pet: 'bro:pets',
-  clan: 'bro:character/clan',
+  clan: 'bro:strip/clan',
   points: 'bro:combat/points',
   achievements: 'bro:feats',
   equipment: 'bro:equipment',
@@ -268,6 +305,38 @@ export function broPassport(r, who) {
     summary: Object.freeze(summary),
     doors: Object.freeze(doors),
   });
+}
+
+/* ═══ v2.3.6782: THE STRIP, WHAT YOU HAVE (card UI3-bro) ═══
+ * The owner's mock-up, 2026-11-26: "AP 415 / Quests 0 / Clan: Party of 3 /
+ * Guilds: View ›", and part 3: "Supporting information ... Flat, aligned
+ * within shared containers. No individual heavy borders."  ONE flat row under
+ * the six tiles (the kit's facts, src/ui/kit/Facts.jsx), each entry its label
+ * and value and, where the game has a page, a door to it (PASSPORT_DOORS).
+ * Built FROM broPassport, the same readers, so your strip and another
+ * player's Character never disagree.  The fifth entry, your title, opens
+ * Titles until card UI2-feats takes Titles into Feats ("Titles could live
+ * within Feats") and removes it: delete its row here and its road above. */
+export const BRO_STRIP = Object.freeze(['ap', 'quests', 'clan', 'guilds', 'title']);
+
+/**
+ * The strip for `who` (null: yours), in BRO_STRIP's order.  Each entry:
+ *   { id, k, v | key (+ n), none, loading, opens }
+ * `k` the label's say key (src/data/say/charPage.js); `v` the game's value or
+ * `key` its honest words ("No clan", "No title equipped"); `loading` while
+ * the value is on its way (the kit's placeholder, never a 0); `opens` the
+ * door's page (null: a fact that opens nothing).  Another player's strip has
+ * the passport's other-player lines (Quests "Not shared") and no title door
+ * (Equip is the owner's alone).
+ */
+export function broStrip(r, who) {
+  const P = broPassport(r, who);
+  const by = Object.create(null);
+  for (const s of P.summary) by[s.id] = s;
+  const title = P.title
+    ? Object.freeze({ id: 'title', k: 'charPage.title', v: P.title.text, none: false, loading: false, opens: P.self ? PASSPORT_DOORS.titles : null })
+    : Object.freeze({ id: 'title', k: 'charPage.title', key: 'charPage.noTitle', none: true, loading: false, opens: P.self ? PASSPORT_DOORS.titles : null });
+  return Object.freeze(BRO_STRIP.map((id) => (id === 'title' ? title : by[id])).filter(Boolean));
 }
 
 /* the controls a title change holds while it is out (src/game/pending.js) */

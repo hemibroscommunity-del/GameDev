@@ -23,8 +23,9 @@ import { sw } from '@/game/switches.js';
 import { broPagesStart, broPageTo, broPagesLayout, broOpen } from '@/game/broPages.js';   /* v2.3.6600: the pages' rules */
 import { BroPages } from './BroPages.jsx';   /* v2.3.6600 (card BRO): the Bro tab in pages */
 import { BroLanding } from './BroLanding.jsx';   /* v2.3.6683 (card UI2-bro): six doors under the new frame */
-import { CharacterPage, TitlesPage, broCombatLevel } from './CharacterPage.jsx';   /* v2.3.6684: the passport, its Titles */
-import { BRO_HUB_PAGES } from '@/game/broHub.js';   /* v2.3.6684: Bro's own frame pages, by id */
+import { CharacterPage, TitlesPage, broCombatLevel, readPassport } from './CharacterPage.jsx';   /* v2.3.6684: the passport, its Titles; v2.3.6782: its reader feeds Bro's strip */
+import { broSelfPage } from '@/game/broHub.js';
+import { dashNavView } from '@/game/dashNav.js';   /* v2.3.6782: the frame's top entry, its `who` */   /* v2.3.6782: which of Bro's pages an id draws (yours: the one Bro page) */
 import { heroSectionBus } from './heroSectionBus.js';
 import { CombatHub } from './CombatHub.jsx';   /* v2.3.6685 (card UI2-combat): Combat's hub */
 import { WeaponPage } from './WeaponPage.jsx';   /* v2.3.6685: a weapon's page */
@@ -285,9 +286,14 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
      is broPages.js's word, acted on with today's own roads. */
   /* ═══ v2.3.6683 (card UI2-bro): BRO'S LANDING ═══
      Six doors and nothing else (sheet/BroLanding.jsx; the rules src/game/broHub.js). */
-  if (!door && dashboardPanelBus.frameOn()) {
-    return <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear} />;
-  }
+  /* v2.3.6782 (card UI3-bro): ONE page for yourself, the six and the strip (its readings the passport's
+     reader's, so the strip and another player's Character never disagree; another player's strip reads
+     only what their own entry carries) */
+  const landing = (
+    <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear}
+      read={who == null ? () => readPassport(S) : () => ((who && typeof who === 'object' && who.passport) || {})} />
+  );
+  if (!door && dashboardPanelBus.frameOn()) return landing;
   /* v2.3.6684 (card UI2-bro PR 2): the passport (CharacterPage.jsx).  v2.3.6685 (card UI2-combat): a weapon's
      door opens Combat's hub and that weapon's page over it, so Back goes to the hub ("Return to the Combat hub
      to switch") and then to the passport */
@@ -296,7 +302,8 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
   if (isWeapon(door)) return <WeaponPage S={S} cat={door} who={who == null ? null : who} />;
   if (door === 'shared') return <SharedPage S={S} who={who == null ? null : who} />;
   if (door === 'tree') return <StatTree S={S} page={page} />;
-  if (door === 'character') return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;
+  /* v2.3.6782: Character is ANOTHER player's page (Ranks' tap, step 9); yours is the one Bro page */
+  if (door === 'character') return who != null ? <CharacterPage S={S} who={who} onWeapon={onWeapon} /> : landing;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
   if (door === 'equip') return <GearShowcase S={S} who={who == null ? null : who} onManage={openGear} />;   /* v2.3.6689: Manage Gear, Gear's road */
 
@@ -478,14 +485,23 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
    broCharacter, broCombat), drawn by the frame with the points it already counts.  Points here
    opens the Bro page's own Points window (HeroExpanded's 'Build'), pushed over this page so the
    header's Back returns to it. */
-export function BroDoorPage({ id, points, who }) {
-  const door = BRO_HUB_PAGES[id] || 'character';   /* v2.3.6684: and Titles */
+export function BroDoorPage({ id, points, who: whoProp }) {
+  /* v2.3.6782 (card UI3-bro): whose page is the frame's stack entry's (dashNav.js keeps `who` on a push),
+     read here because the frame hands only the id: without it a push of another player's Character
+     drew yours */
+  let who = whoProp == null ? null : whoProp;
+  if (who == null) {
+    try { const t = dashNavView(dashboardPanelBus.nav()).top; if (t && t.id === String(id) && t.who != null) who = t.who; } catch (e) { who = null; }
+  }
+  /* v2.3.6684: and Titles.  v2.3.6782: your Character, or an id the table does not know, is the one Bro
+     page (null), never your old passport and never a blank (broHub.js broSelfPage) */
+  const door = broSelfPage(id, who);
   const onPoints = () => { heroSectionBus.request('Build'); dashboardPanelBus.push('hero'); };
   /* the Bro page remembers its last window (HeroExpanded's section): coming back here from the
      Points window, the Bro page under this one is asked to come back as its landing, not as Points */
   useEffect(() => { heroSectionBus.request('Card'); }, []);
   return (
-    <div data-bro-door-page={door} style={{ height: '100%', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div data-bro-door-page={door || 'bro'} style={{ height: '100%', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <BroCard door={door} page={id} who={who} points={points} onPoints={onPoints} />
     </div>
   );

@@ -701,8 +701,23 @@ Screens: hud-band, dash-*, more-*
 
 Sources: CLAUDE.md, docs/design/UI_MASTER_SPEC.md (card UI2-frame), src/game/dashNav.js, src/game/dashDests.js, src/ui/mobile/dash/DashHeader.jsx, src/ui/mobile/dash/MenuGrid.jsx, docs/LANTERN-SLATE-SPEC.md, docs/UI-BIBLE.md, docs/specs/dash-tabs.md, docs/specs/landscape-mode.md, docs/specs/monster-codex.md, docs/specs/desktop-keys.md, docs/specs/damage-number-size.md, docs/BACKLOG-TRIAGE-2026-09-14.md, src/ui/mobile/BottomDashboard.jsx, src/ui/mobile/dash/NavRail.jsx, src/ui/mobile/dash/BandGrip.jsx, src/ui/mobile/dash/DashColumns.jsx, src/ui/mobile/sheet/sheetGeometry.js, src/ui/mobile/sheet/IdentityStrip.jsx, src/ui/mobile/dashMinBus.js, src/ui/mobile/dashboardPanelBus.js, src/ui/mobile/QuestCoach.jsx, src/styles/game.css
 
+## Bro: one page (v2.3.6782, card UI3-bro)
+Screens: ui2-bro-landing, ui2-bro-character, ui2-bro-titles
+
+**What it is for:** managing your character from ONE page. The owner, 2026-11-26 (`docs/design/UI_FEEDBACK_2026-11-26.md` part 2): *"I don't think you need separate Bro and Character landing menus anymore. Moving the identity information into the persistent HUD eliminates much of the reason for having two screens. I'd turn the Bro menu into a unified character management dashboard."* Its mock-up: *"‹ Menu / Character / Combat / Equipment / Life Skills / Feats / Pets / Journey / AP 415 / Quests 0 / Clan: Party of 3 / Guilds: View ›"*; *"Titles could live within Feats. Weapon levels would live within Combat. Clan and guild management could link directly into Social."*; *"This eliminates the large redundant portrait, combat level banner, three weapon level buttons and separate oversized informational boxes."* Part 3: *"Supporting information ... Flat, aligned within shared containers. No individual heavy borders."* Their standing rule: *"keep my game content over the mockup stuff"*. This CHANGES the two sections below for yourself (they are kept as what was).
+
+**Decisions, and why (sheet/BroLanding.jsx, sheet/BroStrip.jsx; the rules src/game/broHub.js BRO_HUB_DOORS, broStrip, broSelfPage):**
+- **Six raised tiles, the destinations:** Combat, Equipment, Life Skills / Feats, Pets, Journey (three by two upright and on a computer, one row sideways). Character left the grid (the HUD has who you are); Journey (lifetime records, its own picture `journey.webp`) came in from the passport's door, and More's Journey road is Bro's now.
+- **ONE flat strip under them, what you have** (the kit's facts, `?uikit=1`'s third weight): AP, Quests done, Clan (or "Party of 3"), Guilds ("Skill guilds") and your title ("No title equipped" until you wear one). Each entry is its label over its value and a door to its page (Feats, Quests, Party, Guilds, Titles) with the kit's chevron, flat: no bevel, no border of its own, 44 px tall so a finger can take it. A long value takes two lines rather than smaller text. A value on its way is the pulsing placeholder, never a 0. The game's words stay over the mock-up's ("Quests done", "Skill guilds").
+- **The title entry is interim:** Titles opens from it until card UI2-feats takes Titles into Feats ("Titles could live within Feats") and removes it.
+- **Not drawn for yourself:** the portrait, the name, the combat level, the three weapon doors. Combat's hub has the weapon levels: the Bow level is two taps from Bro (Bro, Combat).
+- **The room (measured on the test box, mp-ui2bro):** the landing gave up its own 4 px pads; upright the strip is about 46 px and the six keep the rest (about 118 px at 390 x 844, 114 at 375 x 667, above the grid's one-row turn at 110), so the pictures shrink from 46 to about 30 px. Sideways the strip sits beside the six, as tall as they are; on the narrowest page (667 x 375) Quests, Clan, Guilds and the title are their pictures' doors (44 px, their words their labels for a screen reader); AP keeps its words.
+- **Character is ANOTHER player's page** (Ranks' tap, step 9): their face, name, levels and public lines, no Equip, no Journey. A push of Character for yourself, or of any page id Bro does not know, draws this one page, never your old passport and never a blank.
+
 ## Bro under the new dashboard: six doors (v2.3.6683, card UI2-bro)
 Screens: ui2-bro-landing
+
+*v2.3.6782: for yourself this is now "Bro: one page" above; kept as what was.*
 
 **What it is for:** Bro answers "who am I" and sends you to the detail by a named door. The owner, 2026-11-25, with the master specification: *"Bro landing: Six buttons only under contextual header. Character, Combat, Equipment / Life Skills, **Feats**, Pets. Remove the redundant player/tap banner."*; its part 4: *"Feats is the approved replacement for Accomplishments. No player portrait or tap banner above the Bro landing grid. For another player, identify the inspected owner in the header or a compact contextual label without adding a large banner. Place full identity on Character."*; and *"Newer Character reference sets the premium blue-metal feel; Bro should match."* Their standing rule: *"keep my game content over the mockup stuff"*. Under `?ui2=0` the section below (today's three pages) is Bro.
 
@@ -718,6 +733,8 @@ Screens: ui2-bro-landing
 
 ## Character, the passport, and its Titles (v2.3.6684, card UI2-bro PR 2)
 Screens: ui2-bro-character, ui2-bro-titles
+
+*v2.3.6782: the passport is now ANOTHER player's page; yours is "Bro: one page" above, and Titles opens from its strip.*
 
 **What it is for:** who you are, at a glance, and a named door to each detail. The owner, 2026-11-25: *"Character: RPG passport; large portrait and adjacent combat level, name/title, supporting summaries. Not a combat-stat dump."*; the master specification's 4.1: *"Prominent portrait, name, equipped title and combat level. Supporting content: Sword, Bow, Staff levels; clan and guild affiliations; achievement points; quest completion count; titles ... Link to the detailed destinations rather than duplicating all their content."* Reference 01 is the feel and the order of importance, not its thick gold rim, heavy shadows, every panel raised, or its numbers. Their standing rule: *"keep my game content over the mockup stuff"*. Under `?ui2=0` Character is today's three pages (the section below).
 
