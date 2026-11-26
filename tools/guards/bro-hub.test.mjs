@@ -125,7 +125,8 @@ for (const d of BRO_HUB_DOORS) {
 }
 check('1b. Character and Combat are the frame\'s own pages', Object.keys(BRO_HUB_PAGES).every((p) => Object.prototype.hasOwnProperty.call(FRAME_PAGES, p) && isBroHubPage(p)));
 check('1b. Character opens broCharacter, Combat broCombat', broHubOpen(BRO_HUB_DOORS[0].opens).page === 'broCharacter' && broHubOpen(BRO_HUB_DOORS[1].opens).page === 'broCombat');
-check('1b. Equipment opens the Gear workspace', broHubOpen(BRO_HUB_DOORS[2].opens).kind === 'gear');
+/* v2.3.6689 (card UI2-gear PR 3): Equipment opens its showcase (the figure and the worn cells; Manage Gear is Gear's road) */
+check('1b. Equipment opens its showcase, broEquip', broHubOpen(BRO_HUB_DOORS[2].opens).kind === 'page' && broHubOpen(BRO_HUB_DOORS[2].opens).page === 'broEquip');
 check('1b. an unknown word opens nothing', broHubOpen('nowhere') === null && broHubOpen('page:') === null);
 const g = menuGridShape(6, false), gs = menuGridShape(6, true);
 check('1b. the grid: three across and two down upright, one row of six sideways', g.cols === 3 && g.rows === 2 && gs.cols === 6 && gs.rows === 1);
