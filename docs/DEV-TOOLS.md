@@ -105,6 +105,16 @@ Notes for anyone extending it:
   (`docs/plan/census/O2-profiles.md`), never a raised line.
   `tools/guards/qa-profiles.test.mjs` holds the table.
 
+- **What a frame costs, and what an idle page does** (card PRT, v2.3.6720):
+  `QA_DIST=dist-prof BT_PF_DPR=0.5 BT_PF_ALLOC=1 BT_PF_REACT=1 node
+  tools/qa/mp/run.mjs phoneframe` adds two windows to each scene: who makes
+  the garbage (KB a frame and KB a second, by function) and who draws again
+  (React renders a second, by component). `BT_PF_SCENES=fightreal` is a
+  fight the blows land in. `BT_PF_DPR=0.5` (about 11 frames a second here)
+  or `0.2` (about 30) gives a phone's frame rate: at a phone's own pixels
+  this box draws 2 a second. `node tools/qa/mp/run.mjs idlecensus` counts
+  what a page standing still does (worker messages, commits, timers,
+  socket frames) against its lines: `docs/specs/idle-census.md`.
 - **CLAUDE.md says the sandbox blocks `npm install`. That is stale** —
   it succeeds for both the client and `server/`, which is the only
   reason any of this is possible.
