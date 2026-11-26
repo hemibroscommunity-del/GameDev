@@ -1,32 +1,36 @@
 card: CT
-branch: claude/plan-ct-23-nearpick (part 23 PR 1, tag 6556); claude/plan-ct-24-bowspecial (PR 2, tag 6557, stacked)
-prs: part 23 PR 1 (6556, draft, ready), part 23 PR 2 (6557, draft, ready, stacked on PR 1); before: #2346 (6552 + 6553), part 20 (6554, merged #2350), #2345 (6551), #2344 (6550), #2342 (6549), 6548, #2340 (6547), #2282, #2293, #2308, #2327, #2330, 6545-6546
+branch: claude/plan-ct-22-aimmarks (part 22: the frame and the caret, 6555)
+prs: part 22 (6555, draft: this branch), #2346 (6552 + 6553), part 20 (6554, merged #2350), #2345 (6551), #2344 (6550), #2342 (6549), part 15 (6548), #2340 (6547), #2282, #2293, #2308, #2327, #2330, items 6-7 (6545-6546)
 state: ready
 
 ## Done
-- PRs 1-5 (6540-6544), items 6-8 (6545-6547), parts 15-22 (6548-6554): on
-  main or in their PRs (git log; their specs).
-- Part 23 PR 1 (6556): the nearest threat first (sight.js sightPick, one
-  in view first; latch.js latchAway; `?nearpick=0`). 156 mutants, 11 left,
-  all equivalent; mp-nearpick 8/8 once on the test box. Its PR body.
-- Part 23 PR 2 (6557): the bow's special at once (game/bowSpecialNow.js:
-  the lock, else Attack's pick, fires now and the latch takes it; nothing
-  to take readies it; `?specialnow=0`). bow-special.test 44 drives the real
-  specialAttack: the five plants red; 29 mutants, 27 killed, 2 equivalent.
-  mp-bowspecial 16/16 once on the test box. Its PR body.
+- PRs 1-5 (6540-6544), items 6-8 (6545-6547), parts 15-21 (6548-6554):
+  on main or in their PRs (git log; their specs).
+- Part 22 (6555): in the two buttons (`?manual=5`, touch) the monster the
+  next Attack takes wears a YELLOW frame (four corner brackets, the drawn
+  box x 1.25, at least 48 CSS px, 2 px, 0.6 alpha), the locked one a RED
+  one from the press that locks it, never both; a brass caret 26 CSS px out
+  from the feet points the drawn facing, or at the lock. What shows is
+  src/game/aimMarks.js (asks latch.js sightNow, the press's own pick);
+  lockReticle.js AimFrame/AimCaret draw it once, then move/turn/tint it.
+  The chevrons are not drawn while the frame is on; `?targetframe=0` gives
+  them back, `?aimcaret=0` hides the caret. aim-marks.test: 71 checks; 75
+  mutants, 68 killed, 7 equivalent (the suite's header says which).
+  mp-aimmarks green on the test box (upright and sideways).
 
 ## Next
-- The card is done once PR 2 lands (both PRs stacked: PR 1 first).
+- The PR at the gate.
 
 ## Found
-- 3c/3d flip: the own rules' 550 perimeter, ended in part 16 (combatReach
-  no limit in mode 5; sight.test 8 pins it).
-- Part 20: a blocked blow breaking the guard on the regen's own tick is
-  refilled before the flush (tick.js: regen, then flush): the phone reads 7,
-  not 0, and keeps that break drawn (~1 in 30). A worker change: not built.
-- Part 20: mp-twobuttons on that branch: shield steps green; 2b, 2c, 6a
-  and 3h red, none in the files it touched.
+- The sight's pick (sight.js sightPick) takes the monster nearest the
+  facing LINE, not the nearest: mp-aimmarks' first run framed a frog 666 px
+  off, off the screen (bow range 675), over one 164 px away 6 degrees
+  further off the line. The press locks the same one. CT part 23 holds the
+  pick's rule.
+- In mode 5 the lock chip (effectsRenderer, v2.3.2295, the filled orange
+  triangle over S.lockedTarget) still stands over the latched monster, above
+  the red frame: the card did not name it; kept as it is.
 
 ## Needs
-- Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
-  1's mechanical rows; PR 2's frame-steps WANT; the ledgers' machine rows.
+- Asked of the orchestrator: should the lock chip go in mode 5 while the
+  red frame is up (one mark on the lock)? Today: kept.
