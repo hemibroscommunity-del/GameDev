@@ -463,7 +463,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           s1 = await srvStamina(wsPort, me);
           if (s1 != null && (low == null || s1 < low)) low = s1;
           nope = await H.readState(P, (S) => S._lastAbilityReject || null);
-          heard = (s0 != null && low != null && low < s0 - 5) ? 'spent' : (nope && nope.kind === k && nope.at >= t0 ? 'refused: ' + nope.reason : null);
+          heard = (s0 != null && low != null && low < s0 - 2) ? 'spent' : (nope && nope.kind === k && nope.at >= t0 ? 'refused: ' + nope.reason : null);
           if (heard && Date.now() - sent0 > 1500) break;
           await P.page.waitForTimeout(150);
         }
