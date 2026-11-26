@@ -208,6 +208,7 @@ export const SYSTEMS = Object.freeze({
     files: [
       f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
       f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
+      f('src/game', 'hereCells'),   /* v2.3.6720: the last few cells' answers to "what is under my feet" (card PRT) */
     ],
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],
@@ -271,7 +272,7 @@ export const SYSTEMS = Object.freeze({
   },
   'page-thread': {
     what: 'the page\'s one thread: the frame\'s pace and clock, what holds the page',
-    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame')],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
+    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame'), f('src/game', 'drawOnChange') /* v2.3.6720: a polled view drawn again only on a change (card PRT) */],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
     words: ['frame', 'held', 'pacer', 'thread', 'jank', 'smooth'],
     traps: ['page-thread'],
     doors: [{ name: 'beforeDraw', file: 'src/game/framePacer.js', what: 'a read that waits for the graphics chip runs at the top of a frame' }],
@@ -285,10 +286,11 @@ export const SYSTEMS = Object.freeze({
   },
   preload: {
     what: 'what loads behind the loading screen, and what loads later on purpose',
-    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels')],
+    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels'), f('src/game', 'assetUrl|assetTable') /* v2.3.6742: a file's address with its file's version (card KEEP PR 3) */],
     words: ['preload', 'loading', 'lazy', 'warm'],
     traps: ['preload'],
-    doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' }],
+    doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' },
+      { name: 'assetUrl', file: 'src/game/assetUrl.js', what: 'an address BUILT from parts gets its file\'s version, so its folder can be kept a year (v2.3.6742, card KEEP)' }],
   },
   art: {
     what: 'loading art in play: strips of 256 colours, the readers off the page\'s thread, bakes on workers',

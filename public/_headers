@@ -122,3 +122,13 @@
 # address, as the ground's worker does.
 /world/farm/*
   Cache-Control: public, max-age=31536000, immutable
+
+# v2.3.6742: the sounds (public/sfx/), card KEEP PR 3.  Every request the game
+# makes here carries its file's version (?v=, the first 10 characters of the
+# SHA-256 of its bytes: tools/assets/versions.mjs): the build writes it into
+# every written-out address, and src/game/assetUrl.js into a built one.  So a
+# changed sound is a new address and a year of immutable is safe.  Held by
+# tools/guards/keep-sfx.test.mjs (a bare or built address that skips the
+# version, and the census's count for this folder, which must be 0).
+/sfx/*
+  Cache-Control: public, max-age=31536000, immutable
