@@ -22,6 +22,19 @@
  *   7. reduced motion stops every loop (the pending ring, the loading sweep)
  *      and every move, which run without it.
  * The pictures (deviceScaleFactor 2) go to docs/shots/ui2-kit-*.png.
+ *
+ * v2.3.6780 (card UI3-kit; the owner, 2026-11-26: three weights, one palette):
+ *   8. the plate "Three weights" at 390 x 844, 375 x 667 and 844 x 390, and on
+ *      a computer (`wide: true`): the raised door has a drop shadow, the stat
+ *      and the facts none; the facts' rows have no border, background or
+ *      shadow of their own; the stat that opens is a button with a chevron,
+ *      the one that does not a div with none; every one that opens is 44 x 44;
+ *   9. the computed colours of the page, a tile, a well and a tile's edge are
+ *      the owner's (#14232F, #223D53, #0E1D29, the line #4B6275);
+ *  10. `?ui2look=0` gives yesterday's page #193145 and the old light-blue
+ *      edge, after a reload with no switch too (remembered), and `?ui2look=1`
+ *      the new again.
+ * Pictures: docs/shots/ui3-kit-weights.png, -weights-sideways, -was.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -91,6 +104,49 @@ export function looks() {
   };
 }
 
+/* v2.3.6780: the three weights, read in the page (8) */
+export function weights() {
+  const one = (sel) => document.querySelector(sel);
+  const shape = (el) => {
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    const parts = []; let d = 0; let buf = '';
+    for (const ch of cs.boxShadow) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && d === 0) { parts.push(buf); buf = ''; } else buf += ch; }
+    parts.push(buf);
+    const outer = cs.boxShadow !== 'none' && parts.some((x) => !/inset/.test(x));
+    return { tag: el.tagName, outer, shadow: cs.boxShadow, w: Math.round(r.width), h: Math.round(r.height), chev: !!el.querySelector('.u2-chev'),
+      border: ['Top', 'Right', 'Bottom', 'Left'].map((sd) => parseFloat(cs['border' + sd + 'Width']) || 0).reduce((a, b) => a + b, 0),
+      bg: cs.backgroundImage !== 'none' || !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor) };
+  };
+  const facts = Array.from(document.querySelectorAll('[data-u3-weight="facts"] .u2-fact')).map(shape);
+  return { raised: shape(one('[data-u3-weight="raised"]')), opens: shape(one('[data-u3-weight="stat-opens"]')), still: shape(one('[data-u3-weight="stat"]')),
+    pill: shape(one('[data-u3-weight="pill"]')), box: shape(one('[data-u3-weight="facts"]')), facts, door: shape(one('[data-u3-fact="quests"]')) };
+}
+function weightsOk(W) {
+  const bad = [];
+  if (!W.raised || !W.raised.outer) bad.push('the raised door has no drop shadow');
+  for (const k of ['opens', 'still', 'pill', 'box']) if (!W[k] || W[k].outer) bad.push(k + ' has a drop shadow (or is missing)');
+  if (W.facts.length !== 4) bad.push('facts rows ' + W.facts.length);
+  for (const f of W.facts) if (f.border > 0 || f.bg || f.shadow !== 'none') bad.push('a fact row has a face of its own: ' + JSON.stringify(f));
+  if (!(W.opens && W.opens.tag === 'BUTTON' && W.opens.chev)) bad.push('the stat that opens is not a button with a chevron');
+  if (!(W.still && W.still.tag === 'DIV' && !W.still.chev)) bad.push('the stat that does not open is not a div without a chevron');
+  if (!(W.door && W.door.tag === 'BUTTON' && W.door.chev)) bad.push('the fact that opens is not a button with a chevron');
+  for (const k of ['raised', 'opens', 'door']) if (W[k] && (W[k].w < 43.5 || W[k].h < 43.5)) bad.push(`${k} ${W[k].w}x${W[k].h} (under 44)`);
+  return bad;
+}
+/* v2.3.6780: the colours as the page computed them (9, 10) */
+export function colours() {
+  const page = document.querySelector('.u2-page');
+  const tile = document.querySelector('[data-u2-demo="Default"]');
+  const well = document.querySelector('.u2-group');
+  const root = document.querySelector('[data-u2-kit]');
+  const v = (n) => getComputedStyle(root).getPropertyValue(n).trim();
+  return { look: root && root.className, pageVar: v('--ui2-page'), pageBg: page && getComputedStyle(page).backgroundImage,
+    tileBg: tile && getComputedStyle(tile).backgroundImage, wellBg: well && getComputedStyle(well).backgroundImage,
+    edge: tile && getComputedStyle(tile).borderTopColor, line: v('--ui2-line'), probe: window.__btUiKit && window.__btUiKit.look };
+}
+
 async function shotPlates(P, file, ids) {
   const els = [];
   for (const id of ids) els.push(await P.page.$(`[data-u2-plate="${id}"]`));
@@ -141,12 +197,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1200);
       const k = await P.page.evaluate(() => window.__btUiKit);
       const A = await P.page.evaluate(audit);
-      /* v2.3.6688: nine plates, the workspace (two panels, the one grid of item cells: card UI2-gear PR 2) the ninth */
-      const sizeOk = A.frames === 9 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
-      rec.ok(`1a. ${s.tag}: eight boxes (v2.3.6681: + the headers), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
+      /* v2.3.6688: nine plates, the workspace (two panels, the one grid of item cells: card UI2-gear PR 2) the ninth;
+         v2.3.6780: thirteen (the zones, empty and confirm plates of v2.3.6683 had come since the nine), the
+         three weights (card UI3-kit) the thirteenth */
+      const sizeOk = A.frames === 13 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
+      rec.ok(`1a. ${s.tag}: thirteen boxes (v2.3.6780), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
       rec.ok(`1b. ${s.tag}: every piece inside its box and its page (${A.texts} runs of words read)`, A.overflow.length === 0, A.overflow.slice(0, 8));
       rec.ok(`1c. ${s.tag}: no text cut or run out of its box`, A.clipped.length === 0 && A.texts > 80, A.clipped.slice(0, 8));
       rec.ok(`2. ${s.tag}: every control in a box is at least 44 x 44 (${A.buttons} controls)`, A.small.length === 0 && A.buttons > 40, A.small.slice(0, 8));
+      const W = await P.page.evaluate(weights);
+      const wb = weightsOk(W);
+      rec.ok(`8. ${s.tag}: three weights: the raised door has a drop shadow, the stat and the facts none, no fact row with a face, a chevron only on what opens, each 44 x 44`, wb.length === 0, wb.length ? { bad: wb, W } : W.raised);
       if (s.tag === '390x844') {
         const L = await P.page.evaluate(looks);
         const ok3a = L.tile && L.tilePressed && (L.tilePressed.shadow !== L.tile.shadow) && (L.tilePressed.transform !== L.tile.transform);
@@ -180,10 +241,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
         ];
         await P.page.setViewportSize({ width: 390, height: 844 });
         rec.ok('the pictures at 390 x 844 (docs/shots/ui2-kit-bro, -character, -pieces)', shots.every(Boolean), shots);
+        /* v2.3.6780: the owner's colours, as computed (9); the weights' picture */
+        const C = await P.page.evaluate(colours);
+        const ok9 = /^#14232F$/i.test(C.pageVar) && /rgb\(20, 35, 47\)/.test(C.pageBg) && /rgb\(34, 61, 83\)/.test(C.tileBg) && /rgb\(14, 29, 41\)/.test(C.wellBg)
+          && C.edge === 'rgb(75, 98, 117)' && C.probe === 'new';
+        rec.ok('9. the page, a tile, a well and a tile\'s edge wear the owner\'s #14232F, #223D53, #0E1D29 and #4B6275', ok9, C);
+        const w1 = await shotPlates(P, 'ui3-kit-weights.png', ['weights', 'info']);
+        await P.page.setViewportSize({ width: 390, height: 844 });
+        rec.ok('the picture of the three weights (docs/shots/ui3-kit-weights)', w1, w1);
       }
       if (s.tag === '844x390') {
         const ok = await shotPlates(P, 'ui2-kit-sideways.png', ['bro', 'character']);
         rec.ok('the sideways picture (docs/shots/ui2-kit-sideways)', ok, ok);
+        await P.page.setViewportSize({ width: 844, height: 390 });
+        await P.page.waitForTimeout(600);
+        const ok2 = await shotPlates(P, 'ui3-kit-weights-sideways.png', ['weights']);
+        rec.ok('the sideways picture of the three weights (docs/shots/ui3-kit-weights-sideways)', ok2, ok2);
       }
     }
   } finally { await P.ctx.close().catch(() => {}); }
@@ -221,5 +294,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const still = await gloss();
     rec.ok(`7. reduced motion stops the loops (ring ${on.spin} -> ${still.spin}, sweep ${on.sweep} -> ${still.sweep}) and the moves (${on.move} -> ${still.move})`,
       on.spin === 'u2-turn' && on.sweep === 'u2-sweep' && still.spin === 'none' && still.sweep === 'none' && /^0s/.test(still.move) && !/^0s/.test(on.move), { on, still });
+    await Q.page.emulateMedia({ reducedMotion: 'no-preference' });
+    /* v2.3.6780: 10. ?ui2look=0, yesterday's look, remembered; ?ui2look=1 the new again */
+    const base = Q.page.url().replace(/&ui2shine=0/, '').replace(/&ui2look=[01]/, '');
+    const at = async (url) => { await Q.page.goto(url, { waitUntil: 'domcontentloaded' }); await up(); return Q.page.evaluate(colours); };
+    const old = await at(base + '&ui2look=0');
+    const kept = await at(base);
+    const shotWas = await Q.page.$('[data-u2-plate="weights"]').then((e) => (e ? e.screenshot({ path: path.join(SHOTS, 'ui3-kit-was.png') }).then(() => true, () => false) : false));
+    const back = await at(base + '&ui2look=1');
+    const isOld = (c) => /ui2-was/.test(c.look) && /^#193145$/i.test(c.pageVar) && c.edge === 'rgba(150, 195, 230, 0.24)' && /rgba\(150, 195, 230, 0\.24\)/.test(c.line) && c.probe === 'was';
+    const isNew = (c) => !/ui2-was/.test(c.look) && /^#14232F$/i.test(c.pageVar) && c.edge === 'rgb(75, 98, 117)' && c.probe === 'new';
+    rec.ok('10. ?ui2look=0 gives yesterday\'s page #193145 and the old light-blue edge, still after a reload with no switch (remembered); ?ui2look=1 the new again',
+      isOld(old) && isOld(kept) && isNew(back), { old, kept, back });
+    rec.ok('the picture of yesterday\'s look (docs/shots/ui3-kit-was)', shotWas, shotWas);
   } finally { await Q.ctx.close().catch(() => {}); }
+
+  /* v2.3.6780: 8 on a computer (the band's 480 px at most) */
+  const D = await H.newPlayer(browser, { name: 'Kitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'uikit=1' });
+  try {
+    const up = await D.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 30000 }).then(() => true, () => false);
+    const W = up ? await D.page.evaluate(weights) : null;
+    const wb = W ? weightsOk(W) : ['the kit\'s page did not come'];
+    rec.ok('8. a computer (1280 x 800, wide): the three weights as on a phone', wb.length === 0, wb.length ? { bad: wb, W } : W.raised);
+  } finally { await D.ctx.close().catch(() => {}); }
 }
