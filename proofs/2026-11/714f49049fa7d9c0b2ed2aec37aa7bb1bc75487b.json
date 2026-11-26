@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "714f49049fa7d9c0b2ed2aec37aa7bb1bc75487b",
+  "tree": "eac520e45eb58a6edbaaee95134a9ef1a8a2bdea",
+  "committedAt": "2026-11-26T07:35:57-08:00",
+  "subject": "Merge pull request #2370 from hemibroscommunity-del/claude/plan-ui2-8-bro",
+  "files": 8782,
+  "bytes": 991345765,
+  "listingSha256": "d129169a75b6bb58695fb8ce340d68fc02dfc7bc6e3b8a87843e7b6ea4489c3f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
