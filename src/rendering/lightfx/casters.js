@@ -67,7 +67,10 @@ function walkDisplay(node, out, skip) {
     /* v2.3.3459: and a box the figure's drawing leaves out -- a stencil mask
        clipping the hair (hairClip.js): its silhouette is shown, but only into
        the stencil, and casts nothing */
-    if (!k.visible || k === skip || k.includeInBuild === false) continue;
+    /* v2.3.6206: and a part of the HUD that is not the figure's: the mana
+       and energy bars (entityRenderer mkBlocks), whose soft dark patch the
+       owner saw on the ground beside them (2026-11-25) */
+    if (!k.visible || k === skip || k.includeInBuild === false || k._castsNoShadow === true) continue;
     if (k instanceof Sprite) out.push(k);
     if (k.children && k.children.length) walkDisplay(k, out, skip);
   }

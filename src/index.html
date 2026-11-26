@@ -61,10 +61,13 @@
      already on the URL, so the fallback face shows meanwhile), with the same
      sheet under <noscript>.  Preconnects open the two font origins during HTML
      parse instead of at first use. -->
+<!-- v2.3.6680 (card UI2): Merriweather 400 and 700, the new dashboard kit's serif (src/game/ui2Tokens.js
+     UI2_FONT; used only inside .ui2, so its files download only where the kit draws).  Raleway is no
+     longer asked for: nothing used it (the UI audit, "The fonts"). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Press+Start+2P&family=Raleway:wght@600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Press+Start+2P&family=Raleway:wght@600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Merriweather:wght@400;700&family=Press+Start+2P&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Merriweather:wght@400;700&family=Press+Start+2P&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap"></noscript>
 <!-- v2.3.717: welcome-theme art preloaded so the modal dresses with the
      first paint instead of popping in as CSS/JSX discover each image. -->
 <link rel="preload" as="image" href="/ui/welcome/bg.webp">

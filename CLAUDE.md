@@ -68,6 +68,11 @@ spec. Add a line here only for a new RULE every session must follow.
   - UI: `docs/UI-BIBLE.md`, `docs/LANTERN-SLATE-SPEC.md` (the visual system;
     supersedes UI-BIBLE part 2), `docs/UI-DESIGN-NOTES.md` (why each screen is
     as it is: read the section before changing a screen);
+  - the dashboard's rebuild: `docs/design/UI_MASTER_SPEC.md` (the owner's
+    baseline, 2026-11-25, building authorized), read with its notes
+    (`UI_MASTER_SPEC_NOTES.md`: where the game stands over it, what is the
+    owner's) and the build plan (`UI_ARCHITECTURE_V2_PLAN.md`);
+    `UI_ARCHITECTURE_V2.md` is the history and the decision log (v2.3.6405);
   - plans: `docs/GRAND-PLAN.md` (the order of the open work and its finish
     lines; a session of it works from its card in `docs/plan/cards/`;
     v2.3.5020),
