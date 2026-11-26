@@ -213,14 +213,17 @@ for (const r of real) check(r.name, r.ok, r.detail);
   const tiles = [...more.matchAll(/^\s*\{\s*id:\s*'([a-z]+)'/gm)].map((m) => m[1]);
   const roadless = tiles.filter((t) => !MORE_ROADS[t]);
   check(`2e every one of More's ${tiles.length} pages has its new road`, tiles.length === 15 && roadless.length === 0, `${tiles.join(',')} | without: ${roadless.join(',')}`);
-  const lost = Object.entries(MORE_ROADS).filter(([id, road]) => {
-    if (road === 'bro') return !['skills', 'achievements', 'pets'].includes(id);
-    if (road === 'bro:character') return id !== 'journey';   /* v2.3.6684 (card UI2-bro): Journey, the passport's door */
+  /* v2.3.6782 (card UI3-bro): Journey is a tile of the one Bro page (road 'bro'); the passport's road
+     'bro:character' is gone.  A function of the roads, so its plant runs the same check */
+  const lostOf = (roads) => Object.entries(roads).filter(([id, road]) => {
+    if (road === 'bro') return !['skills', 'achievements', 'pets', 'journey'].includes(id);
     if (road.startsWith('menu:')) return !MENU_DESTS.some((d) => d.id === road.slice(5));
     if (road.startsWith('hub:')) return !(DASH_HUBS[road.slice(4)] || []).some((d) => d.page === id);
     return true;
   });
+  const lost = lostOf(MORE_ROADS);
   check('2f ...and each road is real (a Menu door, a hub\'s tile, or Bro\'s own door)', lost.length === 0, lost.map((x) => x.join('=')).join(', '));
+  check('2f plant: Journey left at the passport\'s road (bro:character) turns 2f red', lostOf({ ...MORE_ROADS, journey: 'bro:character' }).length === 1);
   check('2g a hub is opened by its Menu door', Object.keys(DASH_HUBS).every((h) => MENU_DESTS.some((d) => d.page === h)));
   check('2h destOfPage finds a door by its page', destOfPage('quests').id === 'quests' && destOfPage('guild').id === 'guild' && destOfPage('nope') === null);
   const up = menuGridShape(8, false), side = menuGridShape(8, true);

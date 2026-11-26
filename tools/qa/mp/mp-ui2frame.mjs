@@ -169,7 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       hubs.push({ hub, doors: Hh.grid && Hh.grid.doors, seen });
     }
-    rec.ok('4d. the hubs: Social (Friends, Party, Guilds), Settings (Settings, Notifications, Account, Feedback, About; Journey left for the passport, v2.3.6684); each its page, Back saying the hub', hubs.every((h, i) => h.seen.every((x) => x.page === x.t && /(Social|Settings)/.test(x.back || '')) && h.doors.join(',') === [['social', 'clan', 'guild'], ['settings', 'notifications', 'account', 'feedback', 'about']][i].join(',')), hubs);
+    rec.ok('4d. the hubs: Social (Friends, Party, Guilds), Settings (Settings, Notifications, Account, Feedback, About; Journey left for a tile of Bro, v2.3.6782); each its page, Back saying the hub', hubs.every((h, i) => h.seen.every((x) => x.page === x.t && /(Social|Settings)/.test(x.back || '')) && h.doors.join(',') === [['social', 'clan', 'guild'], ['settings', 'notifications', 'account', 'feedback', 'about']][i].join(',')), hubs);
     /* 5. Close then Menu resumes the page and its scroll (Settings scrolls) */
     await H.dashMenuRoot(P);
     await tap(P, '[data-dash-grid="menu"] [data-dest="settings"]', 600);
