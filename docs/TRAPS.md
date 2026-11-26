@@ -3715,7 +3715,7 @@ through `window.__btDispatch` at a seeded threshold and prints two rows — a
 prog3 character (crossed, level unmoved, **nothing shown**) and a legacy one
 (crossed, level unmoved, banner reading `SKILL UP! / Melee Level 24`). The
 before, captured on `origin/main` in a worktree, is in
-`docs/triage-2026-09-17/level-up-followup.md`.
+`docs/archive/triage-2026-09-17/level-up-followup.md`.
 
 **Related:** §61 (both rows are about ABSENCE, which no single screenshot can
 assert); §81 (the whitelist that encodes the asks you have already had); §87 —
