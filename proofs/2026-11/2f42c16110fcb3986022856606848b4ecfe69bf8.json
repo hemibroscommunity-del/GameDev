@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2f42c16110fcb3986022856606848b4ecfe69bf8",
+  "tree": "9b8bbb01001392429a6d2f4524c723ead75770fc",
+  "committedAt": "2026-11-26T12:11:37-08:00",
+  "subject": "Merge pull request #2384 from hemibroscommunity-del/claude/determined-cray-dz4dpu",
+  "files": 8890,
+  "bytes": 999772542,
+  "listingSha256": "4fa3e21ff5b6aba848b6002eb43992009fcccad843da61e768ad632a3b0ca708",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
