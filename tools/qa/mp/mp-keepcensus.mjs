@@ -26,7 +26,8 @@
  * /assets/, the page, the server, a missing twin's 404) is counted apart.
  *
  * Requests from the page's workers are counted too: the context's own
- * request event (Playwright reports a dedicated worker's fetches there).  A
+ * request event (Playwright reports a dedicated worker's fetches there; the
+ * ground's pictures, which only the ground worker asks for, are in the list).  A
  * picture asked for twice in one page and handed back from the page's memory
  * is not a request, and is not counted (it costs nothing either way).
  *
@@ -138,15 +139,23 @@ async function fight(P, ms) {
 function tally(reqs, table, familyOf) {
   const blank = () => ({ n: 0, table: 0, hand: 0, bare: 0, files: new Set() });
   const byFolder = new Map(), byFamily = new Map(), none = new Map(), byStage = new Map();
-  const handKeys = new Map();
+  const handKeys = new Map(), elsewhere = new Map(), missing = new Map();
   for (const r of reqs) {
+    /* another site (the fonts, the catalogue): not the game's to keep */
+    if (!r.own) { elsewhere.set(r.host, (elsewhere.get(r.host) || 0) + 1); continue; }
     const c = classify(r.url, table);
     if (!c) continue;
     r.address = c.address; r.kind = c.kind;
     const st = byStage.get(r.stage) || Object.fromEntries([...KINDS, NONE].map((k) => [k, 0]));
     st[c.kind]++;
     byStage.set(r.stage, st);
-    if (c.kind === NONE) { const f = folderOf(c.address); none.set(f, (none.get(f) || 0) + 1); continue; }
+    if (c.kind === NONE) {
+      /* a file that does not ship, answered by the page's fallback (or a 404) */
+      const f = folderOf(c.address);
+      if (r.missing) { const d = c.address.replace(/[^/]+$/, '*'); missing.set(d, (missing.get(d) || 0) + 1); }
+      else none.set(f, (none.get(f) || 0) + 1);
+      continue;
+    }
     const f = folderOf(c.address);
     const e = byFolder.get(f) || blank();
     e.n++; e[c.kind]++; e.files.add(c.address);
@@ -163,7 +172,7 @@ function tally(reqs, table, familyOf) {
       handKeys.set(hk, (handKeys.get(hk) || 0) + 1);
     }
   }
-  return { byFolder, byFamily, none, byStage, handKeys };
+  return { byFolder, byFamily, none, byStage, handKeys, elsewhere, missing };
 }
 
 function markdown({ t, reqs, sha, when, swings, reach }) {
@@ -227,11 +236,31 @@ function markdown({ t, reqs, sha, when, swings, reach }) {
   L.push('');
   L.push('## Requests for no file of the table');
   L.push('');
-  L.push('The build\'s own scripts and styles (`/assets/`, already named by Vite with their hash and kept a year), the page, a missing twin\'s 404.');
+  L.push('The build\'s own scripts and styles (`/assets/`, already named by Vite with their hash and kept a year), the page, '
+    + 'the world\'s code under `/tools/` (the ground worker\'s modules), the server\'s `/api/`.');
   L.push('');
   L.push('| folder | requests |');
   L.push('|---|---:|');
   for (const [f, n] of [...t.none].sort((a, b) => b[1] - a[1])) L.push(`| \`${f}\` | ${n} |`);
+  L.push('');
+  L.push('### Asked for, and not shipped');
+  L.push('');
+  L.push('Requests for a file that is not in the build: the page\'s fallback (`index.html`) or a 404 answered. '
+    + 'A cost on every load, outside this card (its status file\'s Found).');
+  L.push('');
+  L.push('| folder | requests |');
+  L.push('|---|---:|');
+  for (const [d, n] of [...t.missing].sort((a, b) => b[1] - a[1])) L.push(`| \`${d}\` | ${n} |`);
+  if (!t.missing.size) L.push('| (none) | 0 |');
+  L.push('');
+  L.push('### Other sites');
+  L.push('');
+  L.push('Not the game\'s files, not this card\'s (this box reaches no outside site, so they fail here).');
+  L.push('');
+  L.push('| host | requests |');
+  L.push('|---|---:|');
+  for (const [h, n] of [...t.elsewhere].sort((a, b) => b[1] - a[1])) L.push(`| ${h} | ${n} |`);
+  if (!t.elsewhere.size) L.push('| (none) | 0 |');
   L.push('');
   L.push(`Every request: \`tools/qa/mp/out/keepcensus.json\` (not in the repository; ${reqs.length} rows).`);
   L.push('');
@@ -244,10 +273,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'keepcensus', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel' });
   let stage = 'load';
   const reqs = [];
+  const byReq = new Map();
   P.ctx.on('request', (q) => {
     const url = q.url();
-    if (!/^https?:/i.test(url)) return;
-    reqs.push({ url: url.replace(/^https?:\/\/[^/]+/, ''), stage, worker: !q.frame || (() => { try { return !q.frame(); } catch { return true; } })() });
+    const m = /^https?:\/\/([^/]+)/i.exec(url);
+    if (!m) return;
+    const r = { url: url.slice(m[0].length) || '/', host: m[1], own: /^localhost(?::\d+)?$/.test(m[1]), stage };   /* the build's server and the worker's */
+    reqs.push(r);
+    byReq.set(q, r);
+  });
+  /* a file that does not ship: harness.mjs serveDist answers it with index.html (as Pages does), or a 404 */
+  P.ctx.on('response', (res) => {
+    const r = byReq.get(res.request());
+    if (!r) return;
+    const type = String(res.headers()['content-type'] || '');
+    r.status = res.status();
+    r.missing = r.status === 404 || (/text\/html/.test(type) && !/^\/(?:index\.html)?(?:\?|$)/.test(r.url));
   });
   let stopAlive = false;
   try {
@@ -318,8 +359,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const t = tally(reqs, table, familyOf);
     const counted = [...t.byFolder.values()].reduce((s, e) => s + e.n, 0);
     rec.ok(`requests recorded (${reqs.length}; ${counted} for files of the table)`, counted > 0, { reqs: reqs.length });
-    const fromWorkers = reqs.filter((r) => r.worker && r.kind && r.kind !== NONE).length;
-    console.log(`    ${fromWorkers} of them from the page's workers`);
     console.log('\n    folder                requests  files  table   hand   bare');
     for (const [f, e] of [...t.byFolder].sort((a, b) => b[1].n - a[1].n)) {
       console.log(`    ${f.padEnd(20)} ${String(e.n).padStart(9)} ${String(e.files.size).padStart(6)} ${String(e.table).padStart(6)} ${String(e.hand).padStart(6)} ${String(e.bare).padStart(6)}`);
