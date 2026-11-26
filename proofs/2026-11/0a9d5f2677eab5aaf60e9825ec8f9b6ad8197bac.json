@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0a9d5f2677eab5aaf60e9825ec8f9b6ad8197bac",
+  "tree": "0837fc090270e6c3454319a56f5e533406459786",
+  "committedAt": "2026-11-26T08:19:11-08:00",
+  "subject": "Merge pull request #2371 from hemibroscommunity-del/claude/plan-ui2-7b-grow",
+  "files": 8864,
+  "bytes": 999523050,
+  "listingSha256": "4df4af172a42d877e19a7d64f148b2977800427923153975755f6ae310d99c7d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
