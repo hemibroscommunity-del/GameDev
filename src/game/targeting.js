@@ -34,7 +34,9 @@
  * NPC and player locks (a duel opponent) are never touched here -- those are
  * deliberate taps and mean something else.
  */
-import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
+import { TARGET_PERIMETER_PX, TARGET_HYST, GS_OUTER_RADIUS, meleeRangeMult, monsterBodyOffsetY, monsterMeleeHitRadius, bossSizeK } from '@/data/index.js';   /* v2.3.6820: + the sword's reach (lockPick's near rule) */
+import { lockPick, reachHas } from '@/game/lockPick.js';   /* v2.3.6820: the pick (card LOCK) */
+import { sw } from '@/game/switches.js';   /* v2.3.6820: `?locknear=0` */
 import { isIntangible } from '@/data/monsterVariants.js';
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing; v2.3.4361: + the dropped duel's word */
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
@@ -255,12 +257,29 @@ function tapOwned(S) {
   return !!lt && lt.src === 'tap';
 }
 
-/* How much nearer a rival has to be before the auto target switches to it.
-   Pure "nearest every frame" flip-flops between two monsters standing at
-   near-equal distance, and every flip moves the reticle, the body facing, the
-   shield angle and the next shot's aim -- a jitter the player reads as the
-   game being unable to make up its mind. 12% is enough to need a real step. */
-const AUTO_SWITCH_MARGIN = 0.88;
+/* How much nearer a rival has to be before the auto target switches to it:
+   v2.3.6820, game/lockPick.js's table (LOCK_PICK.FAR_STEP, the same 0.88),
+   now only OUTSIDE the sword's reach; inside it a rival takes the lock after a
+   short dwell on the clock (card LOCK).  The old note: "Pure 'nearest every
+   frame' flip-flops between two monsters standing at near-equal distance, and
+   every flip moves the reticle, the body facing, the shield angle and the next
+   shot's aim -- a jitter the player reads as the game being unable to make up
+   its mind. 12% is enough to need a real step." */
+const _HELD = { key: null, d2: 0, inReach: false };
+const _PUSH = { x: 0, y: 0 };
+const _PICK_IN = { cands: null, held: null, push: null, px: 0, py: 0, now: 0, mem: null, near: true };
+const _PICK_OUT = { take: null, why: 'none' };
+/* v2.3.6820: inside the sword's reach?  The swing's own sum, to the body
+   centre (the reticle's nearestInMeleeReach, effectsRenderer): GS_OUTER_RADIUS
+   x meleeRangeMult + the monster's hit radius x a boss's size; a clone or a
+   foe is a player's body (23 up, 24 round: the fodder's numbers, the
+   reticle's defaults).  The lunge's 48 is lockPick's (reachHas). */
+function candInReach(S, m, x, y, isPlayer) {
+  const sword = GS_OUTER_RADIUS * meleeRangeMult(S.rpg);
+  if (isPlayer || !m) return reachHas(S.player.x, S.player.y, x, y, 23, sword, 24);
+  const arch = m.arch || m.archetype || m.type, mk = bossSizeK(m);
+  return reachHas(S.player.x, S.player.y, x, y, (monsterBodyOffsetY(arch) || 23) * mk, sword, (monsterMeleeHitRadius(arch) || 24) * mk);
+}
 
 /* ═══ v2.3.2263: A TAP PICKS THE FIGHT; IT DOES NOT OWN IT FOREVER ═══
  * Owner: "the lock on targeting when attacking with melee isn't working the way
@@ -727,19 +746,36 @@ export function updateTargeting(S) {
     }
     return;
   }
-  const best = cands[0];
+  /* v2.3.6820: THE PICK IS game/lockPick.js's (card LOCK; the owner, 2026-11-26:
+     "it will lock on the wrong target.  I think it should go towards the
+     nearest enemy or at least let you switch to nearest enemy").  Here: the
+     candidates' reach, the held lock, the stick; there: who wears the lock.
+     `?locknear=0` is today's rule whole (the 12% step at every distance). */
+  const near = !sw('locknear');
+  const P = S.player;
+  if (near) for (let i = 0; i < cands.length; i++) cands[i].inReach = candInReach(S, cands[i].m, cands[i].x, cands[i].y, !!(cands[i].spar || cands[i].foe));
+  let held = null;
   if (cur && autoLockHolds(S, cur)) {
-    /* fall through to the switch test below */
-    if (cur.ref === best.m) return;                    /* already on it */
-    /* Only switch for a MEANINGFULLY nearer rival -- see AUTO_SWITCH_MARGIN. */
-    const curD2 = (() => {
-      const p = cur.type === 'monster' ? monPos(cur.ref) : clonePos(cur.ref);
-      if (!p) return Infinity;
-      const dx = p.x - S.player.x, dy = p.y - S.player.y;
-      return dx * dx + dy * dy;
-    })();
-    if (best.d2 > curD2 * AUTO_SWITCH_MARGIN * AUTO_SWITCH_MARGIN) return;
+    const p = cur.type === 'monster' ? monPos(cur.ref) : clonePos(cur.ref);
+    if (p) {
+      held = _HELD;
+      held.key = cur.id != null ? cur.id : (cur.ref && cur.ref.id);
+      const dx = p.x - P.x, dy = p.y - P.y;
+      held.d2 = dx * dx + dy * dy;
+      held.inReach = near && candInReach(S, cur.ref, p.x, p.y, cur.type !== 'monster');
+    }
   }
+  for (let i = 0; i < cands.length; i++) { const q = cands[i]; q.key = q.id != null ? q.id : q.m.id; }
+  _PUSH.x = S.stickX || 0; _PUSH.y = S.stickY || 0;
+  if (!S._lockPickMem) S._lockPickMem = { rival: null, since: 0 };
+  _PICK_IN.cands = cands; _PICK_IN.held = held; _PICK_IN.push = _PUSH;
+  _PICK_IN.px = P.x; _PICK_IN.py = P.y; _PICK_IN.now = Date.now();
+  _PICK_IN.mem = S._lockPickMem; _PICK_IN.near = near;
+  const pick = lockPick(_PICK_IN, _PICK_OUT);
+  _PICK_IN.cands = null; _PICK_IN.held = null;   /* hold no frame's monsters past the frame */
+  S._lockPickWhy = pick.why;   /* the QA probe (mp-locknear) and the census's word */
+  if (!pick.take) return;
+  const best = pick.take;
   /* Allocate only when the monster actually changes: this runs 60x a second
      and a fresh object every frame would churn the field every consumer of
      S.lockedTarget compares by reference. */
