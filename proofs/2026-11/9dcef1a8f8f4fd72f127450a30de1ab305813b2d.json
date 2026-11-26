@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9dcef1a8f8f4fd72f127450a30de1ab305813b2d",
+  "tree": "f5f4d55b180e12e52925ab6b6e4a9f164b8584de",
+  "committedAt": "2026-11-26T15:03:11-08:00",
+  "subject": "Merge pull request #2390 from hemibroscommunity-del/claude/plan-ui2-grip",
+  "files": 8900,
+  "bytes": 999764528,
+  "listingSha256": "d9eac9bdfa022bdf433471fa36e48c4d1f84c015d6cb17bb7410e12c887b95b5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

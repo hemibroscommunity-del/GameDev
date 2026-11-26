@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d3e336ed75e43f84191ac239db5ce506208c1cdd",
+  "tree": "67448f156df51b9561f3525f59e78cf93222a964",
+  "committedAt": "2026-11-26T15:02:39-08:00",
+  "subject": "Merge pull request #2382 from hemibroscommunity-del/claude/plan-td-3-unused",
+  "files": 8892,
+  "bytes": 999795017,
+  "listingSha256": "46a87c07cb9ccd9e0e86f69faacd24016626205badc2e621a48a38de4a13f4fe",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

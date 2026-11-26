@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7554095cc3ea8101282ce6de9072a512956cf7cc",
+  "tree": "26309e41bfd2a3fa87f7a6ca5cbd77516cea26bb",
+  "committedAt": "2026-11-26T15:02:25-08:00",
+  "subject": "Merge pull request #2381 from hemibroscommunity-del/claude/plan-td-2-lint",
+  "files": 8892,
+  "bytes": 999793123,
+  "listingSha256": "faeff75a42dd01b4374d13309a09cd8d833c3ae92826bc604ce402d30bee9e86",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

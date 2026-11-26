@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b1188a950141ef31f3095ce1cc22e6a54c9e3a8d",
+  "tree": "3e563c906cb26c283ababd9e4caf2319fc6ce206",
+  "committedAt": "2026-11-26T15:03:05-08:00",
+  "subject": "Merge pull request #2393 from hemibroscommunity-del/claude/plan-pad-9-rimsprint",
+  "files": 8896,
+  "bytes": 999834520,
+  "listingSha256": "784119f9db4a3961ddc94e6b1a2cf1b5f91d6c817b5d452c7922301911fa41c9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
