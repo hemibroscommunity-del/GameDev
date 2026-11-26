@@ -352,3 +352,9 @@ export function stickFrame(S, K, frozen, lootFrozen) {
   _IN.dx = dx; _IN.dy = dy;
   return _IN;
 }
+/** v2.3.6820 (card LOCK; the orchestrator's yes, 2026-11-26): this frame's
+ *  walk as stickFrame made it -- the stick, or the keys when the stick is at
+ *  rest, 0 when frozen -- for the lock's pick (targeting.js: the push chooses
+ *  between two monsters about as near), so it reads no S.stickX of its own
+ *  (stick-zones §8's closed list).  The one object, never copied. */
+export function walkNow() { return _IN; }

@@ -37,6 +37,7 @@
 import { TARGET_PERIMETER_PX, TARGET_HYST, GS_OUTER_RADIUS, meleeRangeMult, monsterBodyOffsetY, monsterMeleeHitRadius, bossSizeK } from '@/data/index.js';   /* v2.3.6820: + the sword's reach (lockPick's near rule) */
 import { lockPick, reachHas } from '@/game/lockPick.js';   /* v2.3.6820: the pick (card LOCK) */
 import { sw } from '@/game/switches.js';   /* v2.3.6820: `?locknear=0` */
+import { walkNow } from '@/game/stickZones.js';   /* v2.3.6820: the push, without a reader of S.stickX (stick-zones §8) */
 import { isIntangible } from '@/data/monsterVariants.js';
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing; v2.3.4361: + the dropped duel's word */
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
@@ -766,7 +767,7 @@ export function updateTargeting(S) {
     }
   }
   for (let i = 0; i < cands.length; i++) { const q = cands[i]; q.key = q.id != null ? q.id : q.m.id; }
-  _PUSH.x = S.stickX || 0; _PUSH.y = S.stickY || 0;
+  { const w = walkNow(); _PUSH.x = w.dx || 0; _PUSH.y = w.dy || 0; }   /* the walk is the push (stickZones.js walkNow: the stick, or the keys) */
   if (!S._lockPickMem) S._lockPickMem = { rival: null, since: 0, last: 0 };
   _PICK_IN.cands = cands; _PICK_IN.held = held; _PICK_IN.push = _PUSH;
   _PICK_IN.px = P.x; _PICK_IN.py = P.y; _PICK_IN.now = Date.now();
