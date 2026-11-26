@@ -193,7 +193,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   /* dpr 1: a quarter of the pixels, so the test machine (no GPU) draws more
      frames a second -- the game sends one move a frame */
-  const P = await H.newPlayer(browser, { name: 'Sprinter', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1 });
+  /* v2.3.6644 (card PAD part 9): this test is about the sprint BUTTON, which a touch screen's usual
+     controls no longer draw (the stick's rim sprints: mp-rimsprint); `?rimsprint=0` gives it back */
+  const P = await H.newPlayer(browser, { name: 'Sprinter', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query: 'rimsprint=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   await H.enterWorld(P);

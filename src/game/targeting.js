@@ -219,6 +219,7 @@ function autoLockHolds(S, lt) {
 }
 
 /* Does the locked monster still count?  Inside the hysteresis ring and alive. */
+// eslint-disable-next-line no-unused-vars -- lockHolds' test is the one autoLockHolds runs for either kind, and the note where the lock is cleared names it
 function lockHolds(S) {
   const lt = monsterLock(S);
   if (!lt) return false;

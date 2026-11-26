@@ -439,6 +439,71 @@ stays with that PR until it lands, and is marked (held).
   the module load order is identical over 964 modules. `czMX` stays under
   its disable line (its read can throw): the owner's call in TD's Needs.
 
+## KEEP (70: #2392 held)
+
+- HELD: `tools/guards/keep-sfx.test.mjs` 3-4 is RED on `main` eb90c6fd
+  with #2392 (fb1ccdd5) merged: `src/ui/kit/UiKitPage.jsx:131` builds
+  `/icons/items/` and `src/ui/mobile/dash/GearPanels.jsx:159` hand-keys
+  `/icons/bag/equip-` (`?v=2.3.4199`), both put on `main` by UI2's merges
+  after the branch's base. Mend: merge `main`, put both through `assetUrl`;
+  the head's own checks were green only because it was 45 behind.
+- The purpose review on fb1ccdd5 (the top model): the card's dodges C1 to
+  C4 RED; the `metalIconPath` mend correct (every metal and base names a
+  file that exists); the build's 1,253 `/icons` addresses none stale. STILL
+  GREEN, named at sitting 69 (KEEP (69)): a template on a folder with no
+  trailing slash (`SFX='/sfx'` read by a template `${SFX}/voice/${n}.mp3`, the
+  same for `/icons`) and a `.join` of parts. The next review holds the KEEP PR
+  that mends them to them.
+- Next jobs (new, `keep-sfx.test.mjs`): a hand key added to a call's result
+  (`metalIconPath(...)` with `${ITEMS_V}` after it in a template,
+  `gearIdIcon(id)+'?v=2.3.4222'`);
+  `assetUrl('/icons/ui/') + name` and `'/icons/ui/'.concat(name)` (judge the
+  whole address handed to the fetch); a `let`, object-held or
+  `Object.assign` folder; the door trusted by its name (a local stub
+  called `assetUrl` passes). The heap's rise 41.2 to 42.0-42.3 of 42.5 is
+  reported in the body, not explained.
+
+## UI2 (70: #2391 held)
+
+- HELD (#2391, aaebaafd): the card's own dodge "Equip offered on another
+  player's item" stays GREEN planted at the PR's own roads: `openItemPage`
+  dropping `owner` (`dash/itemPageOpen.js`), and the showcase's tap building
+  its own `{ R, cell }` with no owner (the guard's S2 at the call site);
+  `tools/guards/gear-showcase.test.mjs` 2b to 2d read the wiring as text.
+  Mend: read off the syntax tree that the showcase's tap and
+  `openCardItem` hand `openItemPage` exactly `showcaseItemSource` /
+  `profileItemSource`'s result and that `openItemPage` keeps `owner`. Also
+  `tools/qa/mp/mp-ui2bro.mjs:215` step 2c ("Equipment opens Gear") is left
+  red, against the card's "phone tests that open Gear keep working". The
+  game is right today (an owner's source is read-only twice over).
+- Its merge, rehearsed: with `main` merged in, two conflicts, both sides
+  kept, `main`'s first (`InspectPlayerPanel.jsx`'s imports: #2392's
+  `assetUrl` line, then its two; `docs/plan/status/UI2.md`: the head's two
+  lines the branch's, then each section `main`'s then the branch's). The
+  files outside its card are each a needed touch (one system).
+- Next jobs (`gear-showcase.test.mjs`): Manage Gear drawn for another player
+  (`sc.manage || who`); Gear's body shape changed by a spread at its use;
+  the bag grid through `import * as Kit`; another player's owner `''`
+  instead of `'?'`.
+- #2390 (the grip), listed: next jobs in `tools/guards/band-grip.test.mjs`:
+  check 2 reads the gate as text (`(bandGripOn() || true)` passes); check 6
+  knows only "Tap the handle" ("Tap the grip" passes). A word for the
+  owner: folded under the frame, the reward lesson rings Gear with "Open
+  the dashboard to find it." (`QuestCoach.jsx:807`).
+
+## PAD (70)
+
+- #2393, listed: next job: `server/test/stick-zones.test.mjs` checks that
+  `ControlsTutorial.jsx`'s move body asks `rimSprintLive()` (a hard-coded
+  `'controlsTutorial.moveBody'` stays green in every node suite). For the
+  owner: no "sprinting" glow on the usual stick (RimGlow is mode 5's).
+
+## LOCK (70: card LOCK's facts)
+
+- The owner, about 20:27 UTC 2026-11-26, asked by the orchestrator "should
+  tapping a monster lock onto it?": *"No tapping in monsters"*. A tap on a
+  monster never locks onto it (v2.3.5664).
+
 ## Found (no card's debt)
 
 - A merge that adds or changes a file in `server/test/` deploys the worker

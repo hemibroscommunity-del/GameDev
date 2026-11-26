@@ -2,7 +2,7 @@
  *
  * Mirrors the shirt/skin stores.  An equip is just an item id per slot (or
  * 'none').  The renderer stacks the matching gear sheet (gearSheets.js) above
- * the body.  See gear-layer-spec.md.
+ * the body.  See docs/archive/root/gear-layer-spec.md.
  */
 
 import { onShirtChange } from './traits/shirtCatalog.js';
