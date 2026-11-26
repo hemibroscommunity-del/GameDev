@@ -110,6 +110,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.pastWelcome(P).catch(() => {});
       await P.page.addStyleTag({ content: '[data-coach-card], [data-coach-ring], .bt-quest-banner, .bt-quest-plate { visibility: hidden !important; }' }).catch(() => {});
       await P.page.waitForTimeout(1500);
+      /* a worn sword: a new character's sword cell is EMPTY, and an empty cell has no summary (the pick is set, the mode stays management) -- the kit's weapons first, as mp-geartab's seed */
+      const myId = await H.readState(P, (S) => S.myId);
+      await H.devOp(wsPort, 'kit', myId, { what: 'weapons' }).catch(() => null);
+      await P.page.waitForTimeout(1500);
+      if (!(await H.readState(P, (S) => !!(S.rpg && S.rpg.weapon)))) { await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null); await P.page.waitForTimeout(1500); }
       await H.unfoldBand(P).catch(() => null);   /* the band folded at the start: mp-ui2gear unfolds it before the frame's Gear is asked for */
       await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
       await P.page.waitForTimeout(500);
