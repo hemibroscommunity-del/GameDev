@@ -218,6 +218,7 @@ The Wheel: zones and their doors, lands, dungeons, No Man's Land, the map, props
 
 - **Files**: `server/src/`: wheelzone, wheelnear, wheelfaces, wheeltables, wheeldungeon, dungeon, dungeonreward, zonejudge, nomansland, props, eventplace
 - **Files**: `src/game/`: wheelBreak, wheelDungeons, wheelHome, wheelNoticeboard, wheelSize, wheelTownDoors, wheelTrial, worldTrial, worldViewport, zoneGate, zoneMechanics, zoneTransitions, veilDoor, dungeonDoor, dungeonArt, dungeonClear, dungeonWaves, noMansLand, nmlAsk, nmlExplainOnce, mapPinPlaces, mapPins, pinSlots, buildingRooms, placeSafety, plateSafety, bodyPlace, timeOfDay, season, expoAddress, onePic, bannerReach
+- **Files**: `src/game/`: hereCells
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#world)
 - **Words**: `wheel`, `zone`, `land`, `dungeon`, `nomansland`, `nml`, `map`, `world`, `town`, `door`, `prop`
@@ -272,7 +273,7 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin
 - **Files**: `src/ui/`: tapDismiss, swallowTapClick
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
@@ -306,6 +307,7 @@ The page's one thread: the frame's pace and clock, what holds the page.
 
 - **Files**: `src/game/`: framePacer, frameClock, frameSteps, renderFrame, heapBurn, buildWatch
 - **Files**: `src/ui/`: afterFrame
+- **Files**: `src/game/`: drawOnChange
 - **Doors**: `beforeDraw` in `src/game/framePacer.js` (a read that waits for the graphics chip runs at the top of a frame)
 - **Switches**: [its rows in the switch table](SWITCHES.md#page-thread)
 - **Words**: `frame`, `held`, `pacer`, `thread`, `jank`, `smooth`
@@ -328,7 +330,8 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/rendering/tables/`: preload
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
-- **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen)
+- **Files**: `src/game/`: assetUrl, assetTable
+- **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
 - **Traps**: `preload`
@@ -362,7 +365,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
 - **Files**: `src/rendering/tables/`: render
-- **Files**: `src/game/`: poseHides
+- **Files**: `src/game/`: poseHides, cameraFollow
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)
@@ -374,7 +377,9 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
-- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens
+- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
+- **Files**: `src/game/`: itemInspect
+- **Files**: `src/game/`: compare, equipProject, workspace
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

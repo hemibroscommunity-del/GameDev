@@ -61,7 +61,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { dealt, before, placed });
 
   /* ── 2. the button ── */
-  await P.page.locator('[data-nav="hero"]').first().click({ timeout: 6000 }).catch(() => {});
+  await H.dashOpen(P, 'hero').catch(() => {});
   await P.page.waitForTimeout(900);
   await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first().click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(900);
@@ -80,7 +80,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!b0 && b0.state === 'idle' && /Reset points/.test(b0.text) && b0.h >= 44 && b0.inView, b0);
 
   /* ── 3. one tap arms it, and it goes back ── */
-  const tap = () => P.page.locator('[data-points-reset]').first().click({ timeout: 4000 }).catch((e) => String(e));
+  /* v2.3.6681 (card UI2-frame, part 3): a FINGER'S tap at the button's middle,
+     not Playwright's locator.click.  The button arms for 4 s; the click waits
+     for the browser to take each of its mouse events, and on the test box the
+     page is held by its own drawing (a software GPU: about 6 s of long tasks
+     in every 6.4, the frame's Close and ?ui2=0 alike, the dashboard open or
+     shut), so the click's events landed about 4 s after it began and the
+     second of "two taps" fell past the window and only armed it again
+     (measured: a trial click, no events at all, took 5.2 s on either face;
+     two touchscreen taps 250 ms apart reset every point).  The test's, not
+     the game's: a phone's tap is the touchscreen's, and the second goes as
+     soon as the page says armed. */
+  const tap = async () => {
+    const at = await P.page.evaluate(() => {
+      const b = document.querySelector('[data-points-reset]');
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    if (!at) return 'no button';
+    return P.page.touchscreen.tap(at.x, at.y).catch((e) => String(e));
+  };
+  const armedNow = () => H.waitFor(P, () => { const b = document.querySelector('[data-points-reset]'); return b && b.getAttribute('data-points-reset'); },
+    (v) => v === 'armed', { timeout: 3500, label: 'armed' }).catch(() => null);
   await tap();
   await P.page.waitForTimeout(250);
   const b1 = await btn();
@@ -93,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 4. two taps ── */
   await tap();
-  await P.page.waitForTimeout(250);
+  await armedNow();
   await tap();
   let after = null, words = [];
   for (let i = 0; i < 60; i++) {
@@ -116,7 +138,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (let i = 0; i < 20; i++) { one = await pts(); if (one && one.placed === 1) break; await P.page.waitForTimeout(300); }
   for (let i = 0; i < 10 && !(await btn()); i++) await P.page.waitForTimeout(300);
   await tap();
-  await P.page.waitForTimeout(250);
+  await armedNow();
   await tap();
   /* the words, as they come (a line over your bro is gone in about a second) */
   let refused = [];

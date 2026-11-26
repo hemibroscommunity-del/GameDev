@@ -1,17 +1,20 @@
 card: UI2
-branch: claude/plan-ui2-5-kit
-prs: the kit's draft PR (ready)
+branch: claude/plan-ui2-7b-grow
+prs: the kit's draft PR #2368 (ready); the frame's draft PR #2369 (stacked on it; ready); the growing motion's draft PR (stacked on #2369; ready)
 state: ready
 
 ## Done
-- v2.3.6680, the build's step 1: the tokens (`src/game/ui2Tokens.js`), the kit's style sheet with its block written from them (`src/ui/kit/ui2.css`), the pieces (`src/ui/kit/`), the page `?uikit=1` with the Bro landing and Character samples, `?ui2shine=0`, the suite `tools/guards/ui2-tokens.test.mjs` (all pass; 188 mutants of the token module, one survivor: `c <= 0.03928` as `<`, equivalent: no 8-bit colour lands on 0.03928), `mp-uikit` (23 PASS, 0 FAIL, on the test box; run twice, the second after the guards' fixes), pictures `docs/shots/ui2-kit-*.png`.
+- v2.3.6680, the build's step 1 (the kit; branch claude/plan-ui2-5-kit): the tokens, the pieces (`src/ui/kit/`), `?uikit=1`, `?ui2shine=0`, `tools/guards/ui2-tokens.test.mjs`, `mp-uikit`, `docs/shots/ui2-kit-*.png`.
+- v2.3.6681, step 2 PR 1 (the frame, ON; `?ui2=0` the way back, remembered as `bt_ui2`): `src/game/dashNav.js` (one state, one transition), `src/game/dashDests.js` (the Menu's eight doors, the Social and Settings hubs, More's fifteen roads), `dashboardPanelBus.js` a thin face over it, `dash/DashHeader.jsx`, `dash/MenuGrid.jsx` (and the Homestead's place), `dash/dashScroll.js` (a page's scroll kept, read at the frame's top), `ui2Frame.js` (the switch), the kit's header given its three roots and the Menu's mark (fixture plate "headers"), `deskKeys.js` (I, O, P...), `H.dashOpen(id)` / `H.dashMenuRoot`, the tests that pressed `[data-nav]` moved to it, `tools/guards/dash-nav.test.mjs` (13 dodges planted, each red), `mp-ui2frame` (25 of 25, twice, on the test box), precheck OK (613 suites), states.mjs's `dash-frame-*`, UI-DESIGN-NOTES "The dashboard" (the owner's 2026-11-25 words; the reversed decisions under "Tried before").
+
+- v2.3.6682, step 2 PR 2 (branch claude/plan-ui2-7b-grow, base claude/plan-ui2-7-frame): the growing motion (`src/game/dashGrow.js`, `dash/DashGrowBox.jsx`, `dash/dashGrow.css`, `dash/dashGrowSwitch.js`; `?dashgrow=0` and reduced motion give none; its switch row); leftover A, the handle hides and keeps both workspaces (dashNav's `fold`, BandGrip.jsx); leftover B, the words and arrows that named a moved button (`src/data/say/dashGuide.js`: the guide arrow, the coach's reward, points and Login Key lessons, the controls tour's two rings). dash-nav.test 78 checks (P14, P15, M1 to M5 planted, each red); mp-ui2frame's steps 12a-g and 13.
 
 ## Next
-- Nothing: the PR waits for the gatekeeper.
+- Nothing on this card: step 2 is done once the gatekeeper takes both PRs.
 
 ## Found
-- Part 1's (the audit's, 6401) four facts stand: `git show 06a11e09:docs/plan/status/UI2.md` (main's copy, merged here), and its documents in docs/design/.
-- `tools/qa/ui-review/capture.mjs --check-notes` already fails on main: 18 screens in no ChatGPT packet and two packets over 9 pictures (`tools/qa/ui-review/packets.mjs`); this PR adds its own screen to a packet of its own, so the count stays 18.
+- (mended in PR 2) the guide arrow's "Tap Bro" on the Menu button; ControlsTutorial's rings; the handle that reset Gear's pages.
+- The points' flight (src/game/questFly.js QUEST_FLY_TARGETS.points) lands on the Menu button under the frame (it wears [data-nav="hero"]): the road to Bro, left as it is (server/test/points-fly.test pins the list; a file there deploys the worker).
 
 ## Needs
-- The samples' real data is HANDED to the page by the QA harness (`window.__btUiKitHand(S)`): open-hand.test closes `window._gameState` to any new reader, and the fixture lies outside the game's tree. The live Bro screens (the next card) are handed the state by their parent, as BroCard is.
+- Nothing.  Answered by the orchestrator (part 20, 00:38 UTC 11-26, "go"): the Social and Settings hubs, and Journey in the Settings hub for this step only ("moves under Bro at step 3").

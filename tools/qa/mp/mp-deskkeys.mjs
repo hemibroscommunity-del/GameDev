@@ -92,7 +92,7 @@ export async function run(ctx) {
 }
 
 async function runKeys({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Deskkeys', wsPort, webPort, viewport: DESK, world: 'wheel' });
+  const P = await H.newPlayer(browser, { name: 'Deskkeys', wsPort, webPort, viewport: DESK, world: 'wheel', query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   try {
@@ -341,7 +341,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 7. A PHONE WEARS NONE OF IT ── */
-  const Q = await H.newPlayer(browser, { name: 'Deskkeysphone', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  const Q = await H.newPlayer(browser, { name: 'Deskkeysphone', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   try {
     await H.enterWorld(Q);
     await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),

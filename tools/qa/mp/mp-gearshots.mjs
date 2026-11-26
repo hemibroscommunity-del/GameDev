@@ -89,7 +89,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   {
     /* v2.3.4191: ?guidearrow=0 -- the one-time lesson arrow (the big yellow
        one at the Bro button) spent, so the card is what the picture shows */
-    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 }, query: 'guidearrow=0' });
+    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 }, query: 'guidearrow=0&ui2=0' });   /* v2.3.6688 (card UI2-gear, the tests part): these are today's Gear's pictures (the middle card, its "⋯"); the new Gear's are mp-ui2gear's docs/shots/ui2-gear-*.png */
     try {
       await H.enterWorld(P);
       await seed(P, wsPort);
@@ -176,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { name: 'oneband-desk', viewport: { width: 1280, height: 720 }, wide: true },
     { name: 'oneband-sideways', viewport: { width: 844, height: 390 }, touch: true },
   ]) {
-    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1&guidearrow=0' });
+    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1&guidearrow=0&ui2=0' });   /* v2.3.6688: today's Gear's pictures (see the phone's player above) */
     try {
       await H.enterWorld(P);
       await seed(P, wsPort);

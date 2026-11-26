@@ -199,7 +199,7 @@ const FIVE = ['dashboard', 'hero', 'quests', 'leaderboard', 'encyclopedia', 'mor
 const WORDS = { dashboard: 'Gear', hero: 'Bro', quests: 'Quests', leaderboard: 'Ranks', encyclopedia: 'Codex', more: 'More' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Cardbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel', query: 'bropages=0' });
+  const P = await H.newPlayer(browser, { name: 'Cardbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel', query: 'bropages=0&ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const errs = [];
   let stopP = () => {};
   P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
@@ -224,7 +224,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and the grip still on the band\'s edge ([data-dash-fold])', r1.grip === 'open', r1.grip);
 
     /* ── 2. the card ── */
-    await touch(P, '[data-nav="hero"]');
+    await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(1500);
     const b1 = await bus(P);
     rec.ok('the Bro button opens Bro', !!b1 && b1.mode === 'expanded' && b1.stack[0] === 'hero', b1);
@@ -337,7 +337,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const g1 = { bus: await bus(P), gear: await P.page.evaluate(() => { const g = document.querySelector('[data-gear-pane="inv"]'); return !!g && g.getBoundingClientRect().height > 0; }), popup: await popup(P) };
     rec.ok('Equipment opens the Gear tab (the band at rest, unfolded: your bag, your bro and your gear)',
       g1.bus.mode === 'bar' && g1.gear && !g1.popup, g1);
-    await touch(P, '[data-nav="hero"]');
+    await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(1200);
     rec.ok('...and the Bro button brings the card back', (await card(P)).there);
 
@@ -428,7 +428,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 8. a computer playing wide ── */
   let stopD = () => {};
-  const D = await H.newPlayer(browser, { name: 'Deskcard', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true, query: 'bropages=0' });
+  const D = await H.newPlayer(browser, { name: 'Deskcard', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true, query: 'bropages=0&ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   try {
     await H.enterWorld(D);
     stopD = H.keepAlive(D);

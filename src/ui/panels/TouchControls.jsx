@@ -7,6 +7,9 @@ import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { ChargeButton } from './ChargeButton.jsx'; /* v2.3.6549: card CT part 16 */
 import { Skin, RDISC_ICONS, AimReticle, WPN_PILL_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control; v2.3.6546: the plain sword, the two buttons' Attack */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
+import { padAnchor, padNow, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
+import { PadHousings } from './PadHousings.jsx';
+import { padArtUrl } from './controlSkin.jsx';
 import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
 import { turnRingRadius, rimSprintOn, rimSprinting } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call); v2.3.6545: the rim's sprint lights it */
 
@@ -164,6 +167,7 @@ export const RKNOB_TRAVEL = 0.6;
    The label is the "contextual" half: BroTown stamps rLabelRef's text
    (ATTACK today; HARVEST arrives with the life-skill PR). */
 export function TouchControls(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef,
     lZoneRef = props.lZoneRef,
     rZoneRef = props.rZoneRef,
@@ -184,10 +188,18 @@ export function TouchControls(props) {
     rWrapRef = props.rWrapRef,   /* v2.3.2246: the right button's corner box — ditto */
     isLandscape = props.isLandscape;
   var arcA = thumbAnchor('attack', isLandscape);   /* v2.3.6549: Attack where the right thumb rests, in the two buttons (game/thumbArc.js) */
-  var discW = arcA ? arcA.size : isLandscape ? RBTN.wLand : RBTN.w;
+  /* v2.3.6640: in the controller, Attack's socket (padSpot.js; today's box kept when bigger) */
+  arcA = padAnchor('attack', isLandscape, arcA || { size: isLandscape ? RBTN.wLand : RBTN.w, right: discRight(isLandscape), bottomPx: discBottom(isLandscape) });
+  var discW = arcA.size;
+  var padL = arcA.pad ? padNow(isLandscape) : null;   /* the stick's socket too */
+  /* v2.3.6641: the stick's well in the one shell (padSkin.js padLayout): its
+     base the well's size, the thumb the owner's (the shell draws both at
+     rest; this draws them over it while a thumb walks) */
+  var stick = padL && { x: padL.wells.stick.x, y: padL.wells.stick.y, d: Math.round(padL.wells.stick.d), disc: Math.round(padL.wells.stick.d), knob: Math.round(padL.thumb) };
   /* v2.3.3018: the picture on the attack disc -- about two thirds of the face
-     inside the ring, the mockup's sword. */
-  var rIcon = Math.round(discW * 0.6);   /* v2.3.3721: 58/64 on the 96/108 disc; 50/56 on the 84/94 one, the same share */
+     inside the ring, the mockup's sword.  v2.3.6640: of the socket's face in
+     the controller (a harvest's tool on the empty socket) */
+  var rIcon = Math.round((arcA.pad ? arcA.face : discW) * 0.6);   /* v2.3.3721: 58/64 on the 96/108 disc; 50/56 on the 84/94 one, the same share */
   return /*#__PURE__*/React.createElement(React.Fragment, null, React.createElement("div", {
     ref: lZoneRef,
     className: "bt-desktop-hide",
@@ -201,7 +213,8 @@ export function TouchControls(props) {
   }), /* v2.3.3006: the sprint button, right of the movement disc (SprintButton.jsx).
      Rendered here, with the stick it belongs to, after the zones it sits on:
      it swallows its own touches, so the walk and the roll beneath never see
-     a tap on it. */ React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3776: the skateboard's button, in Shield Bash's place while no fight is near (RideButton.jsx) */ React.createElement(RideButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3260: quick eat, over the movement disc (QuickEatButton.jsx) -- it swallows its own touches, so a bite never starts a walk */ React.createElement(QuickEatButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3017: the jump button, beneath the attack disc (JumpButton.jsx) -- on the R zone, whose touches it swallows, so a jump never swings */ React.createElement(JumpButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.6549: Charge, the sword's dash, in the two buttons (ChargeButton.jsx; card CT part 16) */ React.createElement(ChargeButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
+     a tap on it. */ /* v2.3.6640: the controller's two housings, under every control (PadHousings.jsx) */
+  padL ? React.createElement(PadHousings, { layout: padL }) : null, React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3776: the skateboard's button, in Shield Bash's place while no fight is near (RideButton.jsx) */ React.createElement(RideButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3260: quick eat, over the movement disc (QuickEatButton.jsx) -- it swallows its own touches, so a bite never starts a walk */ React.createElement(QuickEatButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3017: the jump button, beneath the attack disc (JumpButton.jsx) -- on the R zone, whose touches it swallows, so a jump never swings */ React.createElement(JumpButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.6549: Charge, the sword's dash, in the two buttons (ChargeButton.jsx; card CT part 16) */ React.createElement(ChargeButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
     ref: lWrapRef,
     'data-disc': 'L',
@@ -228,8 +241,8 @@ export function TouchControls(props) {
          so hiding it costs no input at all. */
       opacity: 0,
       position: 'fixed',
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + LBTN.bottom + 'px)', /* v2.3.1307: disc rides above the open sheet */
-      left: isLandscape ? LBTN.leftLand : LBTN.left,
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (stick ? stick.y - stick.d / 2 : LBTN.bottom) + 'px)', /* v2.3.1307: disc rides above the open sheet; v2.3.6640: in its housing's socket */
+      left: stick ? stick.x - stick.d / 2 : isLandscape ? LBTN.leftLand : LBTN.left,
       zIndex: 30,
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
          so this corner box must not intercept them. */
@@ -239,15 +252,19 @@ export function TouchControls(props) {
          0.5 base (and BroTown's 0.85 drag re-stamp) for a 31% effective
          rest opacity. Removed; the ladder lives in BroTown's handlers
          (rest .5, ENGAGED .92 stamped by the move handlers). */
-            width: isLandscape ? LBTN.wLand : LBTN.w,
-      height: isLandscape ? LBTN.wLand : LBTN.w
+            width: stick ? stick.d : isLandscape ? LBTN.wLand : LBTN.w,
+      height: stick ? stick.d : isLandscape ? LBTN.wLand : LBTN.w
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-base",
     ref: joystickRef,
+    /* v2.3.6640: in the controller the well is the owner's arrow disc (its
+       gold ring is the housing's: PadHousings) -- game.css [data-pad] */
+    'data-pad': stick ? '1' : undefined,
     style: {
-      width: isLandscape ? 90 : 75,
-      height: isLandscape ? 90 : 75,
+      width: stick ? stick.disc : isLandscape ? 90 : 75,
+      height: stick ? stick.disc : isLandscape ? 90 : 75,
+      backgroundImage: stick ? 'url(' + padArtUrl('stick-base') + ')' : undefined,
       /* v2.3.949: DOCKED -- position:absolute centres the base inside its
          left-corner zone container (always visible at 50% opacity).  It no
          longer follows the finger; the knob deflects as a relative drag from
@@ -282,7 +299,7 @@ export function TouchControls(props) {
      the body, past it the body walks (game/stickZones.js).  Static: drawn once with the disc, never per move. */
   twoButtonsLive() ? React.createElement('div', {
     'data-turnring': '', 'aria-hidden': 'true',
-    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
+    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape, stick ? stick.disc / 2 : 0), height: 2 * turnRingRadius(isLandscape, stick ? stick.disc / 2 : 0),   /* v2.3.6641: in the controller, its base's drawn radius (stickZones.js) */
       transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',
       boxSizing: 'border-box', pointerEvents: 'none' },
   }, rimSprintOn() ? React.createElement(RimGlow, { stateRef: stateRef }) : null) : null, /*#__PURE__*/React.createElement("div", {
@@ -312,13 +329,16 @@ export function TouchControls(props) {
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
     ref: knobRef,
+    'data-pad': stick ? '1' : undefined,
     style: {
       zIndex: 1,
       /* v2.3.100: the knob much larger relative to the outer ring (user
          request).  v2.3.3018: the mockup's grey thumb, drawn in game.css
-         (.bt-joystick-base > .bt-joystick-knob) instead of knob.webp. */
-      width: isLandscape ? 48 : 42,
-      height: isLandscape ? 48 : 42,
+         (.bt-joystick-base > .bt-joystick-knob) instead of knob.webp.
+         v2.3.6640: in the controller, the owner's knob picture */
+      width: stick ? stick.knob : isLandscape ? 48 : 42,
+      height: stick ? stick.knob : isLandscape ? 48 : 42,
+      backgroundImage: stick ? 'url(' + padArtUrl('stick-thumb') + ')' : undefined,
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -366,8 +386,8 @@ export function TouchControls(props) {
          a tap on empty screen should do. */
       opacity: 0,
       position: 'fixed',
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + (arcA ? arcA.bottomPx : discBottom(isLandscape)) + 'px)', /* v2.3.1307: disc rides above the open sheet; v2.3.3740: lower and righter upright (ShieldButton RBTN); v2.3.6549: the arc's */
-      right: arcA ? arcA.right : discRight(isLandscape),
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + arcA.bottomPx + 'px)', /* v2.3.1307: disc rides above the open sheet; v2.3.3740: lower and righter upright (ShieldButton RBTN); v2.3.6549: the arc's; v2.3.6640: the controller's socket */
+      right: arcA.right,
       zIndex: 30,
       /* v2.3.2242: the container is still pass-through; the DISC inside it
          is the touch target (see rJoyRef below). */
@@ -386,6 +406,7 @@ export function TouchControls(props) {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     'data-rbutton': '1',
+    'data-pad': arcA.pad ? '1' : undefined,   /* v2.3.6640: in the controller (game.css: the sword is the face's) */
     style: {
       /* v2.3.2242: "slightly larger" -- 75/90 -> 96/108, and it now fills
          its container rather than sitting inside a slightly bigger zone
@@ -444,7 +465,7 @@ export function TouchControls(props) {
     }
   }, /* v2.3.3018: the ring, the face (rBodyRef -- still the layer the resolver
      fades) and the glow, from the one skin every control wears. */
-  React.createElement(Skin, { size: discW, tone: 'ember', faceRef: rBodyRef, faceProps: { 'data-rbody': '1' } }),
+  React.createElement(Skin, { size: discW, tone: 'ember', faceRef: rBodyRef, faceProps: { 'data-rbody': '1' }, pad: arcA.pad ? 'attack' : null, face: arcA.face, dy: arcA.dy }),
   /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
        Owner: "Attack button sometimes covers monster (not sure best way to
        deal with it maybe 50% transparency during active combat?)"

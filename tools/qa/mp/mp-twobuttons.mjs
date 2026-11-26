@@ -241,8 +241,29 @@ const FACE_ICON = (P) => P.page.evaluate(() => {
   const on = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return getComputedStyle(el).display !== 'none' && r.width > 4 && r.height > 4; };
   const st = base && base.querySelector('.bt-rjoy-strike');
   return { latch: base ? base.getAttribute('data-latch') : null, ricon: base ? base.getAttribute('data-ricon') : null,
-    strike: on(st), aim: on(base && base.querySelector('.bt-rjoy-aim')), src: st ? st.getAttribute('src') : null };
+    strike: on(st), aim: on(base && base.querySelector('.bt-rjoy-aim')), src: st ? st.getAttribute('src') : null,
+    /* v2.3.6640 (card PAD): in the controller the disc wears the owner's painted face (its sword), never the plain sword or the crosshair */
+    pad: !!base && base.getAttribute('data-pad') === '1', face: on(base && base.querySelector('.bt-pad-face')) };
 });
+/* v2.3.6640 (card PAD): the controller's socket a control sits in, on the page (window.__btPad's layout; mp-padskin's WELL).
+   v2.3.6641 (part 3): one shell, its wells; in a fight (Block shown) Block is the big well and Jump the middle one (padSkin.js wellOf) */
+const PAD_SOCKETS = (P) => P.page.evaluate(() => {
+  const sh = document.querySelector('[data-padhousing="shell"]'), L = window.__btPad && window.__btPad.layout;
+  if (!sh || !L || !L.wells) return null;
+  const b = sh.getBoundingClientRect(), W = L.wells, fight = !!document.querySelector('[data-shield]');
+  const at = (w) => ({ x: b.left + w.x, y: b.bottom - w.y, d: w.d });
+  return { attack: at(W.attack), special: at(W.special), ctx: at(W.mobility), jump: at(fight ? W.mid : W.big), block: at(fight ? W.big : W.mid) };
+});
+
+/* v2.3.6641 (card PAD part 4): each control's ART (its face, the picture in its well) and its touch BOX, read apart: a box may be
+   larger than its art and, in the top row, rise off it (padSkin.js padLayout) */
+const PAD_FACES = (P, sels) => P.page.evaluate((qs) => { const o = {}; for (const [k, q] of qs) { const el = document.querySelector(q); if (!el) continue; const f = el.querySelector('.bt-pad-face') || el; const b = f.getBoundingClientRect(); o[k] = { x: b.left + b.width / 2, y: b.top + b.height / 2, d: Math.round(Math.min(b.width, b.height)) }; } return o; }, sels);
+const PAD_BOXES = (P, sels) => P.page.evaluate((qs) => {
+  const o = [], bad = [];
+  for (const [k, q] of qs) { const el = document.querySelector(q); if (!el) continue; const b = el.getBoundingClientRect(); o.push([k, b]); if (b.width < 43.5 || b.height < 43.5) bad.push(k + ' ' + Math.round(b.width) + 'x' + Math.round(b.height)); if (b.left < innerWidth / 2 - 1) bad.push(k + ' left half'); }
+  for (let i = 0; i < o.length; i++) for (let j = i + 1; j < o.length; j++) { const a = o[i][1], b = o[j][1]; if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) bad.push(o[i][0] + '/' + o[j][0] + ' boxes overlap'); }
+  return bad;
+}, sels);
 
 /* ═══ v2.3.6545: PART 5's helpers ═══ */
 /* the sprint as the phone and its button see it, the ring, the frame */
@@ -341,7 +362,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   try {
     const used = [];   /* v2.3.6549: the monsters a pass has picked (PICK's skip) */
     for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
-      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5&wheelwhole' });   /* v2.3.6542: wheelwhole: every Wheel monster in the arrival's list (server/src/wheelnear.js; mp-blockcost's), for part 2's real monster */
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5&wheelwhole' + (process.env.TWO_Q || '') });   /* v2.3.6542: wheelwhole: every Wheel monster in the arrival's list (server/src/wheelnear.js; mp-blockcost's), for part 2's real monster */
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ': ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(P);
@@ -599,8 +620,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!tp1.mid.ring && !!tp1.mid.ring.hold && !!tp1.ring && tp1.ring.hold == null, tp1);
       /* 6a (v2.3.6546): the latch wears the plain sword, raised and pressed in, never the crosshair */
       const i1 = await FACE_ICON(P);
-      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and locked by a tap (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
-        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'lock' && i1.strike && !i1.aim && i1.src, { i0, i1 });   /* v2.3.6548: a tap's lock is 'lock' (raised); lit is the hold's ('auto', below) */
+      rec.ok(`6a. ${label}: Attack wears the plain sword${i0.pad ? ' (the controller: its painted face, ' + i0.face + ')' : ''}, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and locked by a tap (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
+        i0.latch === 'off' && i1.latch === 'lock' && (i0.pad
+          /* v2.3.6640 (card PAD): in the controller the sword is the painted face's: the face drawn, neither the plain sword nor the crosshair */
+          ? i1.pad && i0.face && !i0.strike && !i0.aim && i1.face && !i1.strike && !i1.aim
+          : i0.strike && !i0.aim && i1.strike && !i1.aim && i1.src), { i0, i1 });   /* v2.3.6548: a tap's lock is 'lock' (raised); lit is the hold's ('auto', below) */
       const ln1 = await H.waitFor(P, () => (window.__btSightLine ? window.__btSightLine() : null), (v) => !!v && v.drawn && v.id === target, { timeout: 8000, label: 'the line on the lock' }).catch(() => null);
       rec.ok(`6e. ${label}: Attack pressed: the line drawn to the LOCKED monster (${ln1 && ln1.id}, ${ln1 && ln1.len} px)`, !!ln1, { ln1: ln1 || (await LINE(P)), target });
       /* 2c (v2.3.6547, card CT item 8; the owner, 2026-11-24: "I want to change the
@@ -1105,8 +1129,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* ── v2.3.6549 (card CT part 16): the spots, the reach, Charge, an unseen hit ── */
       const CIRCLES = (sels) => P.page.evaluate((qs) => { const o = {}; for (const [k, q] of qs) { const el = document.querySelector(q); if (!el) continue; const b = el.getBoundingClientRect(); o[k] = { x: b.left + b.width / 2, y: b.top + b.height / 2, d: Math.min(b.width, b.height), l: b.left, w: innerWidth }; } return o; }, sels);
       const SELS = [['attack', '.bt-rjoy-base'], ['jump', '[data-jump]'], ['block', '[data-shield]'], ['charge', '[data-charge]'], ['special', '[data-special]'], ['whirl', '[data-ability="whirl"]'], ['bash', '[data-ability="bash"]']];
-      const spotsOk = (c) => { const ks = Object.keys(c), bad = []; for (const k of ks) { if (c[k].d < 44) bad.push(k + ' ' + Math.round(c[k].d)); if (c[k].l < c[k].w / 2 - 1) bad.push(k + ' left half'); }
-        for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = c[ks[i]], b = c[ks[j]]; const air = Math.hypot(a.x - b.x, a.y - b.y) - a.d / 2 - b.d / 2; if (air < 8) bad.push(ks[i] + '/' + ks[j] + ' ' + Math.round(air)); } return bad; };
+      const spotsOk = (c, airMin = 8) => { const ks = Object.keys(c), bad = []; for (const k of ks) { if (c[k].d < 44) bad.push(k + ' ' + Math.round(c[k].d)); if (c[k].l < c[k].w / 2 - 1) bad.push(k + ' left half'); }
+        for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const a = c[ks[i]], b = c[ks[j]]; const air = Math.hypot(a.x - b.x, a.y - b.y) - a.d / 2 - b.d / 2; if (air < airMin) bad.push(ks[i] + '/' + ks[j] + ' ' + Math.round(air)); } return bad; };
       const sameSpot = (a, b) => !!a && !!b && Math.abs(a.l - b.l) <= 1 && Math.abs(a.t - b.t) <= 1 && a.w === b.w;
       /* 3f, 3g: hop beside it, on the line it stands on from the body (the walker is off now) */
       const onLine = (d) => P.page.evaluate((o) => { const S = window._gameState.current, m = (S.monsters || []).find((x) => x && String(x.id) === o.id); if (!m || !m.alive) return null; const a = Math.atan2(m.y - S.player.y, m.x - S.player.x); return { x: Math.round(m.x - Math.cos(a) * o.d), y: Math.round(m.y - Math.sin(a) * o.d) }; }, { id: mon3.id, d });
@@ -1120,8 +1144,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const c4 = await CIRCLES(SELS);
       rec.ok(`3g. ${label}: beside it, in the sword's reach: Special came, Charge went, Block stayed at its spot (${JSON.stringify(blockAt3b)} then ${JSON.stringify(blockAt3g)})`,
         !!inReach && q4.special && !q4.charge && q4.block && sameSpot(blockAt3b, blockAt3g), { q4, blockAt3b, blockAt3g });
-      const bad4 = spotsOk(c4);
-      rec.ok(`3f. ${label}: the arc's spots as drawn (${Object.keys(c4).join(', ')}): 44 px or more, 8 px or more of air, on the right half`, bad4.length === 0 && !!c4.attack && !!c4.jump && !!c4.block && !!c4.special, { bad4, c4 });
+      /* v2.3.6640 (card PAD): in the controller the spots are the housing's sockets, whose faces have 4 to 6 px of air (the owner's art): there each
+         control's centre is on its own socket (2 px) and no two touch boxes overlap (game/padSkin.js), 44 px or more, on the right half */
+      const sock4 = await PAD_SOCKETS(P);
+      /* v2.3.6641 (card PAD part 4): in the one shell a top-row box (44 px) rises off the big buttons' boxes while its 37 px art
+         stays in its well (padSkin.js padLayout), so a box's centre is not its well's: the ART is held to its well (2 px) and the
+         BOXES to their size, no two overlapping, on the right half (PAD_BOXES) */
+      const bad4 = sock4 ? await PAD_BOXES(P, SELS) : spotsOk(c4, 8);
+      if (sock4) { const f4 = await PAD_FACES(P, SELS); for (const [k, sk] of [['attack', 'attack'], ['jump', 'jump'], ['block', 'block'], ['special', 'special'], ['charge', 'ctx']]) if (c4[k] && (!f4[k] || Math.abs(f4[k].x - sock4[sk].x) > 2 || Math.abs(f4[k].y - sock4[sk].y) > 2)) bad4.push(k + ' art off its well ' + JSON.stringify(f4[k] || null) + ' ' + JSON.stringify(sock4[sk])); }
+      rec.ok(`3f. ${label}: the ${sock4 ? 'controller\'s sockets' : 'arc\'s spots'} as drawn (${Object.keys(c4).join(', ')}): 44 px or more, ${sock4 ? 'each on its socket, no two boxes over each other' : '8 px or more of air'}, on the right half`, bad4.length === 0 && !!c4.attack && !!c4.jump && !!c4.block && !!c4.special, { bad4, c4 });
       /* 3h: Charge -- out to 400 on its line, facing it (the line from the monster through the body: the drawn facing turns with the hop's walk) */
       await dryHop(400);
       await touch('touchStart', [c]);
@@ -1152,13 +1183,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const up = await H.waitFor(P, () => !!document.querySelector('[data-shield]'), (v) => v, { timeout: 3000, label: 'Block at the hit' }).catch(() => null);
       const q6 = await EDGE(P);
       const gone = await H.waitFor(P, () => ({ b: !!document.querySelector('[data-shield]'), t: Date.now() - window.__ctHurtAt }), (v) => !v.b, { timeout: 8000, label: 'Block gone' }).catch(() => null);
-      rec.ok(`3i. ${label}: nothing in sight, a monster's hit: Block came (${!!up}), Special did not (${q6.special}); gone ${gone ? gone.t : '?'} ms after the hit (3 s and a render)`,
+      /* v2.3.6640 (card PAD): the hop off can end in the water (dryHop's last try, on the water spoke: wm-tidal-*), where Block is not drawn
+         by design (3d's skip): a placement, not the rule -- read once under the controller, never with `&padskin=0`, its body swimming */
+      if (calm.swim && !up) rec.skip(`3i. ${label}: nothing in sight, a monster's hit: Block came`, `the hop off ended in the water (swim ${calm.swim}): Block is not drawn while swimming, by design`);
+      else rec.ok(`3i. ${label}: nothing in sight, a monster's hit: Block came (${!!up}), Special did not (${q6.special}); gone ${gone ? gone.t : '?'} ms after the hit (3 s and a render)`,
         calm.phase === 'none' && !calm.block && !!up && !q6.special && q6.thumb === 'threat' && !!gone && gone.t >= 2800 && gone.t <= 4500, { calm, q6, gone });
     }
 
     /* 2f: the mode off -- today's default, the held attack on the right half */
     {
-      const Q = await H.newPlayer(browser, { name: 'Fourbro', wsPort, webPort, viewport: UPRIGHT, touch: true, dpr: 3, world: 'wheel', query: 'manual=4' });
+      const Q = await H.newPlayer(browser, { name: 'Fourbro', wsPort, webPort, viewport: UPRIGHT, touch: true, dpr: 3, world: 'wheel', query: 'manual=4' + (process.env.TWO_Q || '') });
       players.push(Q);
       Q.page.on('pageerror', (e) => errs.push('mode 4: ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(Q);
@@ -1180,8 +1214,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`2f. the mode off (mode ${after && after.mode}): the right half is the held attack again (held: ${!!held}; lifted: ${after && after.auto}), no data-latch`,
           !!z && !!held && after && !after.auto && after.mode === 4 && after.look === null, { z, held, after });
         const iq = await FACE_ICON(Q);
-        rec.ok(`6b. the mode off: the disc wears the crosshair as today (${iq.aim}), no sword drawn on it (${iq.strike}, in the page: ${iq.src})`,
-          iq.aim && !iq.strike && !iq.src, iq);
+        rec.ok(`6b. the mode off: the disc wears ${iq.pad ? 'the controller\'s face (' + iq.face + ')' : 'the crosshair as today (' + iq.aim + ')'}, no sword drawn on it (${iq.strike}, in the page: ${iq.src})`,
+          iq.pad ? iq.face && !iq.aim && !iq.strike : iq.aim && !iq.strike && !iq.src, iq);   /* v2.3.6640 (card PAD): in the controller, its painted face and nothing over it */
         /* 3e (v2.3.6543): the mode off, nothing in sight: the resolver hides
            nothing (Block and Special by their own rules alone) and no sight
            line is drawn */
@@ -1192,8 +1226,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         /* v2.3.6549: and the right thumb's part touches nothing: no Charge, Attack at its old place (ShieldButton.jsx RBTN: upright 36 px in, 72 over the band, 84 across) */
         const off2 = await Q.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-zone'), dash = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 0; const b = el ? el.getBoundingClientRect() : null;
           return { charge: !!document.querySelector('[data-charge]'), probe: window.__btChargeBtn ? window.__btChargeBtn().shown : 'no probe', at: b ? { right: Math.round(innerWidth - b.right), bottom: Math.round(innerHeight - b.bottom - dash), w: Math.round(b.width) } : null, phase: (window._gameState.current || {})._thumbPhase || 'calm' }; });
-        rec.ok(`3e. the mode off: no Charge (${off2.charge}), Attack at its old place (${JSON.stringify(off2.at)}), the thumb's phase never written (${off2.phase})`,
-          !off2.charge && off2.probe !== true && !!off2.at && off2.at.right === 36 && Math.abs(off2.at.bottom - 72) <= 1 && off2.at.w === 84 && off2.phase === 'calm', off2);
+        /* v2.3.6641 (card PAD part 4): Attack's ART (its face) on its well, its box at least 44 and its art's size (the one shell's
+           Attack well is 65 px at 430: today's 84 px box no longer fits beside the big well, said in the PR) */
+        const qSock = await PAD_SOCKETS(Q), qDisc = qSock ? await Q.page.evaluate(() => { const z = document.querySelector('.bt-rjoy-base .bt-pad-face') || document.querySelector('.bt-rjoy-zone'); const b = z.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, d: Math.round(b.width) }; }) : null;
+        rec.ok(`3e. the mode off: no Charge (${off2.charge}), Attack at its old place${qSock ? ' (the controller: its socket)' : ''} (${JSON.stringify(off2.at)}), the thumb's phase never written (${off2.phase})`,
+          !off2.charge && off2.probe !== true && !!off2.at && off2.phase === 'calm' && (qSock
+            /* v2.3.6640 (card PAD): in the controller its old place is Attack's socket; v2.3.6641: its box 44 px or more and no smaller than its art */
+            ? !!qDisc && Math.abs(qDisc.x - qSock.attack.x) <= 2 && Math.abs(qDisc.y - qSock.attack.y) <= 2 && off2.at.w >= Math.max(44, qDisc.d - 1)
+            : off2.at.right === 36 && Math.abs(off2.at.bottom - 72) <= 1 && off2.at.w === 84), { off2, qSock: qSock && qSock.attack, qDisc });
 
         /* 5g (v2.3.6545): the mode off: the sprint button as today, and the
            left disc pushed far past its rim sprints nothing */
@@ -1274,7 +1314,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (DEAD 12%, TURN 30% of the disc's DRAWN radius): this checks the page
        keeps them, and prints them for the owner. */
     for (const [label, viewport, q] of [['upright', { width: 430, height: 775 }, 'manual=5'], ['sideways', { width: 775, height: 430 }, 'manual=5'], ['upright, ?turnzone=50', { width: 430, height: 775 }, 'manual=5&turnzone=50']]) {
-      const Z = await H.newPlayer(browser, { name: 'Zonebro' + players.length, wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: q });
+      const Z = await H.newPlayer(browser, { name: 'Zonebro' + players.length, wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: q + (process.env.TWO_Q || '') });
       players.push(Z);
       Z.page.on('pageerror', (e) => errs.push('6 ' + label + ': ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(Z);

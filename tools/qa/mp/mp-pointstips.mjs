@@ -133,7 +133,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
 
   /* ═══ A: in the Mayor's tutorial ═══ */
-  const A = await H.newPlayer(browser, { name: 'Leveler', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: SEED_DONE + SEED_FOLDED });
+  const A = await H.newPlayer(browser, { name: 'Leveler', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: SEED_DONE + SEED_FOLDED, query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const shot = (name) => A.page.screenshot({ path: join(OUT, `pointstips-${name}.png`) }).catch(() => {});
   await H.enterWorld(A);
   await A.page.waitForTimeout(1500);

@@ -18,7 +18,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
-  Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass,
+  Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass, Ui2TwoPanel, Ui2ItemGrid,
+  Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm,
 } from './index.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
 import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/sheet/sheetGeometry.js';
@@ -47,11 +48,11 @@ const row = (extra) => ({ display: 'flex', gap: G, alignItems: 'stretch', minWid
 const col = (extra) => ({ display: 'flex', flexDirection: 'column', gap: G, minWidth: 0, ...extra });
 const ACT_WORD = Object.freeze({ gold: 'Equip', green: 'Accept', blue: 'Travel', red: 'Delete', silver: 'Cancel' });
 
-function Plate({ id, caption, room, title = 'Bro', children }) {
+function Plate({ id, caption, room, title = 'Bro', head, children }) {
   return (
     <figure style={{ margin: '0 0 14px' }} data-u2-plate={id}>
       <figcaption style={{ font: `${UI2_TYPE.small}px/1.3 'Source Sans 3', sans-serif`, color: '#BCC8CC', margin: '0 0 4px 2px' }}>{caption}</figcaption>
-      <Ui2Frame w={room.w} h={room.h} headH={room.head} label={caption} head={<Ui2Header title={title} />}>
+      <Ui2Frame w={room.w} h={room.h} headH={room.head} label={caption} head={head || <Ui2Header title={title} />}>
         {children}
       </Ui2Frame>
     </figure>
@@ -119,6 +120,26 @@ function InfoPlate({ room }) {
     </div>
   );
   return <div style={room.wide ? row({ height: '100%' }) : col()}>{stats}{bars}{vals}</div>;
+}
+
+/* v2.3.6688: the two panels and the one grid of item cells (card UI2-gear PR 2): a look from the
+   left panel (a cell selected, pushed in), the summary in the right panel's place; default and empty cells */
+function WorkspacePlate({ room }) {
+  const art = '/icons/items/';
+  const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
+  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: art + pics[i], label: g }));
+  /* v2.3.6688 (the mends; mp-uikit 1b, 1c): the fixture holds what its panel shows without a scroll, so the kit's
+     audit reads every cell (a storage grid scrolls by intent in the game, which the audit would count as cut):
+     upright two rows of three; sideways (a 46 px panel) ONE row of 44 px cells, and the summary's one stat
+     without its group's label line. */
+  const s = room.wide ? UI2_SIZE.touch : Math.max(UI2_SIZE.touch, Math.min(52, Math.floor((room.cw / 2 - 3 * G) / 3)));
+  const cols = room.wide ? Math.max(4, Math.min(8, Math.floor((room.cw / 2 - 3 * G) / (s + 3)))) : 3;
+  const stat = <Ui2Stat k="Now → If equipped" v="7.5 → 9.4" />;
+  return (
+    <Ui2TwoPanel height={room.ch}
+      left={{ label: 'Inventory', kind: 'storage', children: <Ui2ItemGrid cells={cells} cols={cols} size={s} selectedKey="k1" fill={room.wide ? cols : 6} onPick={() => {}} /> }}
+      right={{ label: 'Summary', kind: 'summary', children: room.wide ? stat : <Ui2Group k="DPS">{stat}</Ui2Group> }} />
+  );
 }
 
 function SlotsPlate({ room }) {
@@ -204,7 +225,7 @@ function CharacterSample({ room, me }) {
   );
   const facts = [
     fact('Clan', none ? '—' : (me.clan || 'No clan'), none || !me.clan),
-    fact('Guild', 'No guilds', true),   /* the game has no guilds: the honest empty line */
+    fact('Guild', 'Skill guilds', false),   /* v2.3.6684: the ten skill guilds every player is in (the passport's line; no guild name invented) */
     fact('Feats', none ? '—' : me.ap.toLocaleString('en-US') + ' pts', none),
     fact('Quests', none ? '—' : me.quests + ' done', none),
   ];
@@ -229,6 +250,45 @@ function CharacterSample({ room, me }) {
         <div style={col({ flex: '1 1 0', gap: 4 })}>{W.map(weapon)}</div>
       </div>
       <div style={row({ flex: '0 0 52px' })}>{facts}</div>
+    </div>
+  );
+}
+
+/* ── v2.3.6683 (card UI2-bro): a screen's pieces ── */
+/* the zones: identity, summary and actions drawn, the doors' zone empty and its room given back;
+   the row of actions in fixed slots: Equip on, Sell off with its own rule's reason, slot 1 empty
+   (nobody moves over), Drop pending, Trade waiting with its outcome unknown */
+function ZonesPlate({ room }) {
+  const acts = [
+    { id: 'equip', slot: 0, cost: 'routine', label: 'Equip', c: 'gold', check: () => null, onPress: () => {} },
+    { id: 'sell', slot: 2, cost: 'costly', label: 'Sell', c: 'gold', check: () => 'Not at a shop' },
+    { id: 'drop', slot: 3, cost: 'irreversible', label: 'Drop', c: 'red', check: () => null },
+  ];
+  return (
+    <Ui2Zones
+      identity={<div style={row({ alignItems: 'center' })}><img src={KIT_ART.character} alt="" style={{ width: 40, height: 40 }} /><Ui2Group k="Identity" style={{ flex: 1 }}><Ui2Value v="A name, a title, a level" /></Ui2Group></div>}
+      summary={<Ui2Group k="Summary"><Ui2Value v="Facts that open nothing are recessed" /></Ui2Group>}
+      doors={[]}
+      actions={<Ui2Actions actions={acts} marks={{ drop: 'out' }} />} />
+  );
+}
+function EmptyPlate({ room }) {
+  return (
+    <div style={col({ height: '100%' })}>
+      <Ui2Empty kind="absent" art={KIT_ART.pets} title="No pet yet" why="You have no companion." how="Pets are found in the world." />
+      <Ui2Empty kind="locked" art={KIT_ART.pets} title="Pets" why="Not open on this server yet." />
+      <Ui2Empty kind="loading" rows={1} />
+    </div>
+  );
+}
+function ConfirmPlate({ room }) {
+  const drop = { id: 'drop', slot: 0, cost: 'irreversible', label: 'Drop', c: 'red' };
+  const equip = { id: 'equip', slot: 0, cost: 'routine', label: 'Equip', c: 'gold' };
+  return (
+    <div style={col({ justifyContent: 'center', height: '100%' })}>
+      <Ui2Confirm action={drop} words="Drop the Copper Sword? It cannot be undone." onYes={() => {}} onNo={() => {}} />
+      <Ui2Group k="A routine action (Equip)"><Ui2Value v={Ui2Confirm({ action: equip }) === null ? 'never asks: it goes at once' : 'asks (wrong)'} /></Ui2Group>
+      <Ui2Actions actions={[{ id: 'title', slot: 0, cost: 'routine', label: 'Equip title', c: 'gold', check: () => null }]} marks={{ title: 'unknown' }} />
     </div>
   );
 }
@@ -271,11 +331,24 @@ export function UiKitPage() {
       <div style={wrap}>
         <Plate id="bro" room={room} title="Bro" caption={'Sample: the Bro landing' + (me ? ' (your doors; a count where points wait)' : ' (no player handed to this page)')}><BroSample room={room} me={me} /></Plate>
         <Plate id="character" room={room} title="Character" caption={'Sample: the Character page' + (me ? ' (your real data)' : ' (no player handed to this page: honest empty lines)')}><CharacterSample room={room} me={me} /></Plate>
+        {/* v2.3.6681 (card UI2-frame): the header at the frame's two roots and a deep page */}
+        <Plate id="headers" room={room} caption="The header: Gear's root (Close, Gear, Menu ›), the Menu's root (‹ Gear, Menu, Close), a deep page (‹ Back, its title, Menu, Close)" head={<Ui2Header title="Gear" closeStart menuNext />}>
+          {/* v2.3.6688 (the mends): sideways the page is 74 px tall, two 44 px headers stood out of it (mp-uikit 1b at 844x390, red since this plate came, b38b302): side by side there */}
+          <div style={room.wide ? row({ alignItems: 'center', height: '100%' }) : col({ justifyContent: 'center', height: '100%' })}>
+            <div style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}><Ui2Header title="Menu" backLabel="Gear" onMenu={false} /></div>
+            <div style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}><Ui2Header title="Life Skills" backLabel="Bro" /></div>
+          </div>
+        </Plate>
         <Plate id="tiles" room={room} title="Tiles" caption="Destination tiles: default, pressed, selected (pushed in), focused, locked, a count, new, the rare warm light"><TilesPlate room={room} /></Plate>
         <Plate id="actions" room={room} title="Actions" caption="The five action colours, one dark label: default, then pressed"><ActionsPlate room={room} /></Plate>
         <Plate id="use" room={room} title="Actions" caption="An action with its price; disabled with its reason; pending; focused; dismiss"><ActionUsePlate room={room} /></Plate>
         <Plate id="info" room={room} title="Information" caption="Stat headlines (default, pressed, selected), progress, recessed information"><InfoPlate room={room} /></Plate>
+        {/* v2.3.6683 (card UI2-bro): a screen's pieces */}
+        <Plate id="zones" room={room} title="A screen" caption="Zones: identity, summary, actions (the empty doors' zone gives its room back); actions in fixed slots: on, off with its reason, an empty slot, pending"><ZonesPlate room={room} /></Plate>
+        <Plate id="empty" room={room} title="Empty states" caption="Empty states: absent (what, why, how), locked (why), loading (never a 0)"><EmptyPlate room={room} /></Plate>
+        <Plate id="confirm" room={room} title="Confirm" caption="The one confirmation: only for the costly or irreversible; a routine action never asks; an outcome not confirmed yet"><ConfirmPlate room={room} /></Plate>
         <Plate id="slots" room={room} title="Items" caption="Rarity slots (Normal, Rare, Elite, Godly; selected; focused; empty), a count, a dot, still loading"><SlotsPlate room={room} /></Plate>
+        <Plate id="workspace" room={room} title="Gear" caption="Two panels: the storage grid with a cell selected (pushed in) and empty cells; the summary in the opposite panel's place"><WorkspacePlate room={room} /></Plate>
       </div>
     </div>
   );

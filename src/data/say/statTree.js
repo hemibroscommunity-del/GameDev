@@ -1,0 +1,61 @@
+/* v2.3.6686: the stat tree, a headline number taken down to its reasons one
+   layer at a time (card UI2-combat, PR 2: src/ui/mobile/sheet/StatTree.jsx,
+   the rule src/game/metricTree.js; docs/specs/player-words.md).  A row's word
+   is its node's; the line under a layer's headline says, in words, how its
+   rows JOIN into it (a contribution is not always a sum).  Damage here is the
+   game's own count, which the screen shows divided by its display scale. */
+export const SAY = Object.freeze({
+  'statTree.dps': 'DPS',
+  'statTree.weaponDps': '{w} DPS',
+  'statTree.perSwing': 'Damage a swing',
+  'statTree.secs': 'Seconds a swing',
+  'statTree.scale': 'Display scale',
+  'statTree.avg': 'Average hit',
+  'statTree.critAdd': 'Crits add',
+  'statTree.least': 'Least hit',
+  'statTree.most': 'Most hit',
+  'statTree.hitBase': 'Hit base',
+  'statTree.weaponBase': 'Weapon base',
+  'statTree.levelDmg': 'Level damage',
+  'statTree.power': 'Power',
+  'statTree.tier': 'Tier',
+  'statTree.grade': 'Grade',
+  'statTree.spreadLow': 'Low spread',
+  'statTree.spreadHigh': 'High spread',
+  'statTree.flat': 'Flat damage',
+  'statTree.critChance': 'Crit chance',
+  'statTree.critHit': 'A critical hit',
+  'statTree.critMult': 'Crit multiplier',
+  'statTree.anchor': 'Crit floor',
+  'statTree.critFlat': 'Flat crit damage',
+  'statTree.swingBase': 'Base swing',
+  'statTree.speed': 'Attack speed',
+  'statTree.pace': 'Weapon pace',
+  'statTree.cast': 'Cast time',
+
+  /* how each layer's rows join into its headline */
+  'statTree.howDps': 'Damage a swing ÷ seconds a swing ÷ the display scale. The game counts damage {k} times finer than the screen shows it.',
+  'statTree.howPerSwing': 'Average hit + what crits add.',
+  'statTree.howAvg': 'Halfway between the least hit and the most hit.',
+  'statTree.howLeast': 'Hit base × low spread, to a whole number.',
+  'statTree.howLeastFlat': 'Hit base × low spread + flat damage, to a whole number.',
+  'statTree.howMost': 'Hit base × high spread, to a whole number.',
+  'statTree.howMostFlat': 'Hit base × high spread + flat damage, to a whole number.',
+  'statTree.howHitBase': '(Weapon base + level damage) × Power × tier × grade.',
+  'statTree.howCritAdd': 'Crit chance × (a critical hit − the average hit).',
+  'statTree.howCritHit': 'The greater of average hit × crit multiplier and most hit × crit floor.',
+  'statTree.howCritHitFlat': 'The greater of average hit × crit multiplier and most hit × crit floor, + flat crit damage.',
+  'statTree.howSecs': 'Base swing × attack speed × weapon pace, in seconds.',
+  'statTree.howSecsCast': 'Base swing × attack speed × weapon pace + cast time, in seconds.',
+
+  /* where a leaf comes from */
+  'statTree.fromRule': 'game rule',
+  'statTree.fromPoints': { one: '{n} {stat} point', other: '{n} {stat} points' },
+  'statTree.fromPointsOld': 'from your points',
+  'statTree.fromLevel': '{w} level {n}',
+  'statTree.fromItem': '{name}',
+  'statTree.noItem': 'no weapon',
+  'statTree.openAria': '{word} {v}: open what makes it',
+  'statTree.itemAria': '{word} {v}, from {name}: open the item',
+  'statTree.none': 'No {w} in hand: no DPS to explain.',
+});

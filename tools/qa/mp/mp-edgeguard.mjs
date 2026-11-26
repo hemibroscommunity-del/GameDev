@@ -184,7 +184,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     if (tile) await touch(Q, EDGE_X, tile.cy);
     await Q.page.waitForTimeout(900);
-    const card = await Q.page.evaluate(() => !!document.querySelector('[data-item-detail], .bt-item-detail, .bt-idp, [data-idp]')
+    /* v2.3.6688 (card UI2-gear, the tests part): a tapped bag piece's card is, under the frame, the SUMMARY ([data-gear-summary]); today's Gear's is its middle card in its item view */
+    const card = await Q.page.evaluate(() => !!document.querySelector('[data-item-detail], .bt-item-detail, .bt-idp, [data-idp], [data-gear-summary], [data-gear-pane="bro"][data-gear-view="item"]')
       || Array.from(document.querySelectorAll('button')).some((b) => /^(equip|use|eat|sell|drop)$/i.test((b.textContent || '').trim())));
     rec.ok('upright, the band\'s first bag tile touched at x 10 opens its card', !!tile && tile.left < EDGE_X && card, { tile, card });
   } finally {

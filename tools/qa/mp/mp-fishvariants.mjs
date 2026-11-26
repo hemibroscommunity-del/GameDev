@@ -107,6 +107,9 @@ async function nearestSpot(P) {
 
 /* the bag's tile for `key`, its card opened by a real tap */
 async function openCard(P, key) {
+  /* v2.3.6688 (card UI2-gear, the tests part): under the frame Gear's page left on its stack (the item page the last Inspect was pressed on) would hide the bag: go to Gear's root first (mp-ui2gear's toRest) */
+  await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); }).catch(() => {});
+  await P.page.waitForTimeout(400);
   await H.unfoldBand(P).catch(() => {});
   await P.page.waitForSelector(`[data-bag-key="i-${key}"]`, { timeout: 10000 });
   await tap(P, `[data-bag-key="i-${key}"]`);
@@ -121,6 +124,11 @@ async function openCard(P, key) {
 async function showInspect(P) {
   const face = await P.page.$('[data-fish-inspect]');
   if (face && await face.isVisible()) return true;
+  /* v2.3.6688 (card UI2-gear, the tests part): under the frame a bag tap opens the SUMMARY (the lead action and Details); Inspect is on the item page behind Details (itemActions.js's attrs, ItemPage.jsx).  The old card's "⋯" below is `?ui2=0`'s. */
+  if (await P.page.$('[data-gear-summary] [data-gear-details]')) {
+    await tap(P, '[data-gear-summary] [data-gear-details]').catch(() => {});
+    return P.page.waitForSelector('[data-fish-inspect]', { state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
+  }
   if (!(await P.page.$('[data-gear-act="more"]'))) return false;
   await tap(P, '[data-gear-act="more"]').catch(() => {});
   return P.page.waitForSelector('[data-gear-more-menu] [data-fish-inspect]', { state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);

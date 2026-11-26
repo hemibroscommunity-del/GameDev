@@ -291,7 +291,10 @@ spec. Add a line here only for a new RULE every session must follow.
   harvest, cook, move or hit path). Writes: `tools/qa/load/cost-audit.mjs`. A
   phone's frame: the Test panel's Speed test, `mp-phoneframe`. What holds the
   page: `mp-heldsweep` (after a change to a bake, a load in play, or a
-  timer's redraw; its own unminified build: `docs/specs/held-sweep.md`). A
+  timer's redraw; its own unminified build: `docs/specs/held-sweep.md`). What
+  runs when nothing happens: `mp-idlecensus` (after a change to a timer, a
+  control that looks at the game's state, or a worker's messages; two
+  minutes: `docs/specs/idle-census.md`; TRAPS §343). A
   computer's world on a slow line and a slowed page: `mp-desksmooth` (TRAPS
   §279).
 
@@ -443,6 +446,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | anything the memory check reads more of | the line raised, with the MB and why in the PR body (test: `mp-membudget`, every PR) |
 | a read of the page's layout | through the measure helper (`winVw`, `playVw`, `canvasBox`, `beforeDraw`, a ResizeObserver: `docs/specs/layout-reads.md`), never a new list row (test: `layout-reads`) |
 | a bake, a load in play, or a redraw on a timer | off the page's thread (the palette, offline, a worker; `startTransition`); `mp-heldsweep` within its budget (by hand: hours-long browser sweep) |
+| a control that looks at the game's state on a clock, or a question asked every frame | drawn only on a change (`src/game/drawOnChange.js`), a cache by the player's cell keeps a few cells (TRAPS §343); `mp-idlecensus` within its lines (by hand: a two-minute phone test) |
 | a server-only number a copier would value | a row in the hidden settings (`hidden.js` `HIDDEN_SPEC`) with a public placeholder (by hand: a copier's judgment) |
 
 ## 9. Where things are

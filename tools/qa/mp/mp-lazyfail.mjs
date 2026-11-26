@@ -47,27 +47,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the rare windows' code is lazy by default, none of it here on arrival (${lazy && lazy.named} windows; loaded: ${JSON.stringify(lazy && lazy.loaded)})`,
       !!lazy && lazy.on === true && lazy.loaded.length === 0 && lazy.named > 20, lazy);
 
-    const openMore = async (tile) => {
-      await H.unfoldBand(P).catch(() => {});
-      await P.page.evaluate(() => { const b = window.__broDashPanelBus; b.open('more'); });
-      const t = P.page.locator(`[data-more-tile="${tile}"]`).first();
-      await t.waitFor({ state: 'visible', timeout: 8000 });
-      await t.click({ force: true });
-    };
-    /* v2.3.5439 (card J2): Achievements left the More page in v2.3.4172 (the owner's More: a page under Bro now), so
-       its door is the Bro card's row, as mp-achievements opens it (no More tile: red on main each run) */
-    const openAchv = async () => {
-      await H.unfoldBand(P).catch(() => {});
-      await H.openDest(P, 'Bro');
-      /* v2.3.6600 (card BRO): the Bro tab is pages; this door is on Progress */ await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); }); await P.page.waitForTimeout(300);
-      const t = P.page.locator('[data-bro-row="achievements"]').first();
-      await t.waitFor({ state: 'visible', timeout: 8000 });
-      await t.click({ force: true });
-    };
+    /* v2.3.6686 (card UI2-bro, tests part): under the frame the Settings page is Menu, Settings (H.dashOpen) and
+       Achievements is Bro's Feats door (no More tile, no Bro card row): the taps a player takes */
+    const openSettings = async () => { await H.unfoldBand(P).catch(() => {}); await H.dashOpen(P, 'settings'); };
+    const openAchv = async () => { await H.unfoldBand(P).catch(() => {}); await H.dashOpen(P, 'achievements'); };
     const cantOpen = () => P.page.locator('[data-lazy-cantopen]').count();
 
     /* 2. a dropped connection: tried again, and in */
-    await openMore('settings');
+    await openSettings();
     const settingsIn = await H.waitFor(P, () => (window.__btLazyCode.loaded().indexOf('SettingsPanel') >= 0), (v) => v,
       { timeout: 12000, label: 'the Settings page\'s script' }).then(() => true).catch(() => false);
     rec.ok(`a dropped connection: the Settings page's script, refused once, came on its retry (${settingsAsked} asks) and the page opened without "Couldn't open this"`,

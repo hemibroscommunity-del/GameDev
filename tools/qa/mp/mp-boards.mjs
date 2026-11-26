@@ -116,7 +116,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `leaderboards-${name}.png`) }).catch(() => {});
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Ada', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: RANKSTYLE_OLD });
+  const A = await H.newPlayer(browser, { name: 'Ada', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: RANKSTYLE_OLD + '&ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   A.page.on('pageerror', (e) => errs.push(String((e && e.message) || e).slice(0, 200)));
   let stop = () => {};
   const bots = [];
