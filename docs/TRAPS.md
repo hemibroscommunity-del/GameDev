@@ -9269,6 +9269,14 @@ when it merges: say "this deploys" in its body. The deploy queue keeps only the
 newest waiting run (its `concurrency` group), so merge a batch together, in a
 quiet hour, and players are dropped once or twice, not twenty times.
 
+**Narrowed (v2.3.6700).** The deploy's filter now leaves out `server/test/**`
+and `server/README.md` (the owner's word, 2026-11-26): a merge whose only
+files under `server/` are tests deploys nothing, and its body may say so.
+Every other file under `server/` (`src/`, `wrangler.toml`, `package.json` and
+its lock) still deploys, and the rule above stands for those. The filter is a
+`!` pattern in the workflow's one `paths` list: GitHub refuses `paths` and
+`paths-ignore` together on one event.
+
 ## 278. "Clear the phone's copy at state_sync" (v2.3.4381)
 
 **The move.** A window the server owns (the trade window, a duel) can outlive
