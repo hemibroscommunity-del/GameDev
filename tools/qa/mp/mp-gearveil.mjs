@@ -90,7 +90,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       sum: !!document.querySelector('[data-gear-summary]'), veil: !!document.querySelector('[data-gear-veil]'), sel: g && g.state().sel };
   });
   for (const V of VIEWS) {
-    const P = await H.newPlayer(browser, { name: 'Pick' + V.id.slice(0, 4), wsPort, webPort, world: 'wheel', ...V.opts });
+    const P = await H.newPlayer(browser, { name: 'Pick' + V.id.slice(0, 4), wsPort, webPort, world: 'wheel', touch: !!V.opts.touch, wide: !!V.opts.wide, ...V.opts });
     const errors = [];
     P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
     /* the renderer's own clock is slow on this box: tap at the element's middle, then read the page's state before the next tap (TRAPS 200) */
