@@ -73,6 +73,7 @@ export const FRAME_PAGES = Object.freeze({
   /* v2.3.6686 (card UI2-combat PR 2): the Shared page under the hub; the stat tree's layers, one a
      depth (src/game/combatHub.js TREE_PAGES), each titled DPS: Back returns layer by layer */
   broShared: 'dashFrame.sharedAttributes',
+  broEquip: 'dashFrame.equipment',   /* v2.3.6689 (card UI2-gear PR 3): Bro's Equipment showcase; Back returns to Bro */
   broTree0: 'dashFrame.dps', broTree1: 'dashFrame.dps', broTree2: 'dashFrame.dps', broTree3: 'dashFrame.dps',
   broTree4: 'dashFrame.dps', broTree5: 'dashFrame.dps', broTree6: 'dashFrame.dps',
   /* v2.3.6691 (card UI2-quests): the Quests pages beside a quest's own (src/game/questPages.js

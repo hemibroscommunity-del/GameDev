@@ -34,9 +34,23 @@
  *   back in view); the item page fits (PR 1's checks);
  *   `?ui2=0`: today's Gear (three panels), no two panels.
  *
+ *   v2.3.6689 (PR 3): Bro's Equipment door, a SHOWCASE (sheet/GearShowcase.jsx):
+ *     11. Bro, Equipment: the figure, the nine worn cells in the body's shape,
+ *        no bag, no cell under 44 px, Manage Gear; the header "Equipment",
+ *        Back to Bro; the band's height as before;
+ *     12. the worn sword's cell: the one item page, its facts and actions
+ *        the SAME as from Gear's worn sword (the specification's eighth task:
+ *        "Open the same item via Gear ... verify consistent facts and
+ *        contextual actions"); Back: the showcase;
+ *     13. Manage Gear: Gear's two panels;
+ *     14. your own player card: a worn slot of its equipment row opens the
+ *        one item page, the card gone;
+ *     and at 375 x 667, sideways and on a computer the showcase fits.
+ *
  * Pictures (deviceScaleFactor 2): docs/shots/ui2-gear-manage.png,
- * -look-bag.png, -look-worn.png, -sideways.png, -computer.png, and PR 1's
- * -item-worn.png, -item-bag.png.
+ * -look-bag.png, -look-worn.png, -sideways.png, -computer.png, PR 1's
+ * -item-worn.png, -item-bag.png, and PR 3's -showcase.png,
+ * -showcase-sideways.png, -showcase-computer.png.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -169,6 +183,9 @@ async function swordPage(P, press) {
   await P.page.waitForTimeout(400);
   await press(P, '[data-gear-cell="sword"] [role="button"]');
   await press(P, '[data-gear-summary] [data-gear-details]', 900);
+  /* v2.3.6689: the page grows into place (dashGrow, `data-dash-grow` until its animation's end): read it after
+     (a read mid-growth measured the page at 144 x 57 on this box's few frames a second; TRAPS §200) */
+  await H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
   return read(P);
 }
 const fits = (s) => s.page && !s.scrolls && s.smallBtns.length === 0 && s.outBtns.length === 0 && s.small.length === 0 && s.cut.length === 0 && s.actsIn && s.idIn;
@@ -246,6 +263,55 @@ const spareSword = (P) => P.page.evaluate(() => {
   const i = (R.weaponStash || []).findIndex((w) => w && (w.type === 'greatsword' || w.type === 'sword'));
   return i >= 0 ? 'stashWeapon-' + i : null;
 });
+
+/* v2.3.6689: Bro's Equipment showcase, read in the page */
+function showRead() {
+  const band = document.querySelector('.bt-dashboard');
+  const B = band ? band.getBoundingClientRect() : null;
+  const sc = document.querySelector('[data-gear-showcase]');
+  const txt = (sel) => { const e = document.querySelector(sel); return e ? e.textContent.trim() : null; };
+  const out = { band: B ? [Math.round(B.width), Math.round(B.height)] : null, title: txt('[data-dash-frame] [data-u2="title"]'),
+    back: txt('[data-dash-frame] [data-dash-ctl="back"]'), there: !!sc, item: !!document.querySelector('[data-item-page]') };
+  if (!sc) return out;
+  const P = sc.getBoundingClientRect();
+  const inside = (r) => r.left >= P.left - 0.5 && r.right <= P.right + 0.5 && r.top >= P.top - 0.5 && r.bottom <= P.bottom + 0.5;
+  const cells = Array.from(sc.querySelectorAll('[data-gear-cell]')).map((c) => { const r = c.getBoundingClientRect(); return { id: c.getAttribute('data-gear-cell'), x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), in: inside(r) }; });
+  const fig = sc.querySelector('[data-gear-figure] canvas');
+  const fr = fig ? fig.parentElement.getBoundingClientRect() : null;
+  const m = sc.querySelector('[data-gear-manage]');
+  const mr = m ? m.getBoundingClientRect() : null;
+  const at = (id) => cells.find((c) => c.id === id) || null;
+  const col = (ids) => { const xs = ids.map((id) => (at(id) || {}).x); return xs.every((x) => x != null && Math.abs(x - xs[0]) < 2); };
+  return {
+    ...out, whose: sc.getAttribute('data-gear-showcase'), box: [Math.round(P.width), Math.round(P.height)], short: sc.getAttribute('data-gear-short') === '1',
+    cells, n: cells.length, small: cells.filter((c) => c.w < 44 || c.h < 44).map((c) => c.id), out: cells.filter((c) => !c.in).map((c) => c.id),
+    bag: !!sc.querySelector('[data-gear-bag], [data-bag-key]'),
+    figure: fr ? { w: Math.round(fr.width), h: Math.round(fr.height), in: inside(fr) } : null,
+    manage: mr ? { w: Math.round(mr.width), h: Math.round(mr.height), in: inside(mr), text: m.textContent.trim() } : null,
+    /* the body upright: the weapons one column, Cape, Chest, Legs the next, Shield, Amulet, Gem the third, left to right */
+    body: col(['sword', 'bow', 'staff']) && col(['cape', 'chest', 'legs']) && col(['shield', 'amulet', 'gem'])
+      && (at('sword') || {}).x < (at('chest') || {}).x && (at('chest') || {}).x < (at('shield') || {}).x,
+  };
+}
+const sread = (P) => P.page.evaluate(showRead);
+const showOk = (s, short) => s.there && s.n === 9 && s.small.length === 0 && s.out.length === 0 && !s.bag && !!s.manage && s.manage.in && s.manage.h >= 44
+  && !!s.figure && s.figure.in && s.figure.h >= 40 && (short ? s.short : s.body) && s.title === 'Equipment';
+const showWhy = (s) => ({ there: s.there, n: s.n, small: s.small, out: s.out, bag: s.bag, manage: s.manage, figure: s.figure, body: s.body, short: s.short, box: s.box, title: s.title });
+/* Bro's landing, then its Equipment door pressed */
+async function toShowcase(P, press) {
+  await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
+  await P.page.waitForTimeout(500);
+  await P.page.evaluate(() => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); });
+  /* the page grows into place (dashGrow: drawn scaled until the animation's own end, `data-dash-grow` worn
+     till then): the tap waits for the motion's end, read as a state (TRAPS §200).  The first runs' tap, aimed
+     at the Equipment tile mid-growth on this box's few frames a second, landed on Combat once it ended. */
+  const settled = () => H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
+  await settled();
+  await press(P, '[data-dash-grid="bro"] [data-dest="equipment"]', 1200);
+  await H.waitFor(P, () => !!document.querySelector('[data-gear-showcase] [data-gear-cell]'), (v) => !!v, { timeout: 15000, label: 'the showcase' }).catch(() => null);
+  await P.page.waitForTimeout(800);
+  await settled();
+}
 
 export async function run({ browser, wsPort, webPort, rec }) {
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -352,6 +418,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('7. the minnows are in the bag (guard)', false, 'no i-fish_minnow tile');
     }
 
+    /* 11-14 (v2.3.6689, PR 3): Bro's Equipment, a showcase */
+    const g12 = await swordPage(P, tap);   /* the worn sword's item page from Gear, to hold the showcase's to */
+    await toShowcase(P, tap);
+    const s11 = await sread(P);
+    await bandShot(P, 'ui2-gear-showcase.png');
+    rec.ok('11. Bro, Equipment: the showcase (the figure, the nine worn cells in the body\'s shape, no bag, none under 44 px, Manage Gear), "Equipment" under the header, Back to Bro, the band 390 x 243',
+      showOk(s11, false) && /Bro/.test(s11.back || '') && !!s11.band && s11.band[1] === 243, { ...showWhy(s11), back: s11.back, band: s11.band });
+    await tap(P, '[data-gear-showcase] [data-gear-cell="sword"] [role="button"]', 1200);
+    const p12 = await read(P);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    rec.ok('12a. the worn sword\'s cell: the one item page, the SAME name, grade, facts, place and actions as from Gear', p12.page && g12.page && p12.name === g12.name && p12.grade === g12.grade
+      && same(p12.facts, g12.facts) && p12.where === g12.where && same(p12.acts, g12.acts) && fits(p12),
+      { show: { name: p12.name, facts: p12.facts, where: p12.where, acts: p12.acts }, gear: { name: g12.name, facts: g12.facts, where: g12.where, acts: g12.acts }, fit: fitWhy(p12) });
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 1000);
+    await H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
+    const b12 = await sread(P);
+    rec.ok('12b. Back: the showcase again', b12.there && !b12.item, { there: b12.there, item: b12.item, title: b12.title });
+    await tap(P, '[data-gear-showcase] [data-gear-manage]', 1500);
+    const m13 = await pread(P);
+    /* Gear as it was left (the owner, 2026-11-25: Close resets no workspace; workspace.js 'fold'): management, or the look left open */
+    rec.ok('13. Manage Gear: Gear\'s two panels, as they were left', m13.root && (m13.mode === 'manage' || m13.mode === 'look') && (m13.leftBag || !!m13.rightBody), { root: m13.root, mode: m13.mode });
+    /* 14. your own player card: its equipment row */
+    await P.page.evaluate(() => { if (window.__broInspectSelf) window.__broInspectSelf(); });
+    await H.waitFor(P, () => !!document.querySelector('.bt-pin-equip [data-pin-item]'), (v) => !!v, { timeout: 15000, label: 'the card\'s equipment row' }).catch(() => null);
+    const slot14 = await P.page.evaluate(() => { const e = document.querySelector('.bt-pin-equip [data-pin-item][data-slot="weapon"]') || document.querySelector('.bt-pin-equip [data-pin-item]'); return e ? e.getAttribute('data-slot') : null; });
+    if (slot14) await tap(P, `.bt-pin-equip [data-pin-item][data-slot="${slot14}"]`, 1500);
+    const p14 = await read(P);
+    const card14 = await P.page.evaluate(() => !!document.querySelector('.bt-pcard'));
+    rec.ok(`14. your player card: a worn slot (${slot14}) opens the one item page ("Worn"), the card gone`, !!slot14 && p14.page && p14.where === 'Worn' && !card14,
+      { slot: slot14, page: p14.page, where: p14.where, name: p14.name, card: card14 });
+
     /* 8. the other shapes */
     for (const sh of [{ w: 375, h: 667, band: 235, tag: '375x667' }, { w: 844, h: 390, band: 130, tag: '844x390' }]) {
       await P.page.setViewportSize({ width: sh.w, height: sh.h });
@@ -367,6 +464,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         manageOk(m) && !!m.band && m.band[1] === sh.band && lookOk(l, 'left') && !!l.sum.head, { manage: manageWhy(m), band: m.band, look: lookWhy(l) });
       const s8 = await swordPage(P, tap);
       rec.ok(`8b. ${sh.tag}: the sword's item page from the summary fits`, fits(s8), fitWhy(s8));
+      /* v2.3.6689: the showcase in this shape */
+      await toShowcase(P, tap);
+      const c8 = await sread(P);
+      if (sh.tag === '844x390') await bandShot(P, 'ui2-gear-showcase-sideways.png');
+      rec.ok(`8c. ${sh.tag}: Bro's Equipment showcase fits (nine cells, none under 44 px, none past the page, the figure and Manage Gear in view; the band as today)`,
+        showOk(c8, sh.tag === '844x390') && !!c8.band && c8.band[1] === sh.band, { ...showWhy(c8), band: c8.band });
     }
   } finally {
     await P.ctx.close().catch(() => {});
@@ -389,6 +492,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       manageOk(m) && lookOk(l, 'right') && e.mode === 'manage', { manage: manageWhy(m), look: lookWhy(l), esc: e.mode });
     const s9 = await swordPage(D, click);
     rec.ok('9b. a computer: the sword\'s item page from the summary fits, every button 44 px or more', s9.page && s9.title === 'Sword' && fits(s9), { title: s9.title, fit: fitWhy(s9) });
+    /* v2.3.6689: the showcase on a computer; a click on a cell is the item page, not a swing */
+    await toShowcase(D, click);
+    const c9 = await sread(D);
+    await bandShot(D, 'ui2-gear-showcase-computer.png');
+    await click(D, '[data-gear-showcase] [data-gear-cell="sword"] [role="button"]', 1000, () => !!document.querySelector('[data-item-page]'));
+    const p9 = await read(D);
+    rec.ok('9c. a computer: the showcase fits; a click on the worn sword opens its item page (not a swing)', showOk(c9, false) && p9.page && p9.title === 'Sword',
+      { show: showWhy(c9), page: p9.page, title: p9.title });
   } finally {
     await D.ctx.close().catch(() => {});
   }

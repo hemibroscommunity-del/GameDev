@@ -910,6 +910,9 @@ export const STATES = [
       await wait(P, 400);
       return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
     } },
+  /* v2.3.6689: Bro's Equipment door, a showcase (card UI2-gear PR 3) */
+  { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broEquip' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the

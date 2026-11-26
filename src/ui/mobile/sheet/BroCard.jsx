@@ -30,6 +30,7 @@ import { CombatHub } from './CombatHub.jsx';   /* v2.3.6685 (card UI2-combat): C
 import { WeaponPage } from './WeaponPage.jsx';   /* v2.3.6685: a weapon's page */
 import { SharedPage } from './SharedPage.jsx';   /* v2.3.6686: the Shared page */
 import { StatTree } from './StatTree.jsx';   /* v2.3.6686: the stat tree, a layer a page */
+import { GearShowcase } from './GearShowcase.jsx';   /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase */
 import { COMBAT_PAGES } from '@/game/combatHub.js';
 const isWeapon = (c) => Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(c));   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
@@ -297,6 +298,7 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
   if (door === 'tree') return <StatTree S={S} page={page} />;
   if (door === 'character') return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
+  if (door === 'equip') return <GearShowcase S={S} who={who == null ? null : who} onManage={openGear} />;   /* v2.3.6689: Manage Gear, Gear's road */
 
   if (BRO_PAGES_ON) {
     const held = broStartWeapon(R);
