@@ -17,7 +17,7 @@ The owner sent the art TWICE, and the second drop is the usable one:
                                    no plaque, no name, no captions.
 
 This tool reads the ORNAMENT sheets.  The contact sheets stay in
-docs/triage-2026-09-17/assets/ as the reference for what the assembled banner
+docs/archive/triage-2026-09-17/assets/ as the reference for what the assembled banner
 is supposed to look like, and are not cut: their text is unusable (baked name,
 baked captions) and their plaque is something the game can draw better itself,
 at any width, in the live UI palette.
@@ -138,9 +138,9 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-SRC_DIR = 'docs/triage-2026-09-17/assets'
+SRC_DIR = 'docs/archive/triage-2026-09-17/assets'
 OUT_DIR = 'public/sprites/fx'
-PROOF_DIR = 'docs/triage-2026-09-17/assets'
+PROOF_DIR = 'docs/archive/triage-2026-09-17/assets'
 
 # theme -> source sheet basename.  The zone ids these serve live in
 # src/data/zoneBanner.js, not here: this tool knows about ART, not about zones.

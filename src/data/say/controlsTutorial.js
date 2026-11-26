@@ -3,6 +3,8 @@ export const SAY = Object.freeze({
   /* the steps: each a label and its words */
   'controlsTutorial.moveLabel': 'Move',
   'controlsTutorial.moveBody': 'Drag the left joystick to move.',
+  /* v2.3.6644: the usual controls on a touch screen sprint from the stick's edge too, the Sprint button gone (card PAD part 9; not with `?rimsprint=0`, nor on a computer) */
+  'controlsTutorial.moveBodyEdge': 'Drag the left joystick to move. Push it past its edge to sprint.',
   'controlsTutorial.attackLabel': 'Attack',
   'controlsTutorial.attackBody': 'The button lights up when something is in reach. Tap it to swing, hold it to keep fighting, and flick across it for your special.',
   'controlsTutorial.targetLabel': 'Your target',

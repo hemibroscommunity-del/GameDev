@@ -149,6 +149,7 @@ const FOCUS_FULL = { cy: 0.49, h: 0.99 };
  * category if the art is redrawn later, and so the `crown` machinery
  * (v2.3.1956) that keeps a tall hat inside its frame stays exercised by the
  * eye frame instead of going dead. */
+// eslint-disable-next-line no-unused-vars -- the frames are kept rather than deleted so this is one line to reverse per category if the art is redrawn later
 const RETIRED_FOCUS = {
   hair: { cy: 0.30, h: 0.44, crown: true },
   hat: { cy: 0.28, h: 0.46, crown: true },

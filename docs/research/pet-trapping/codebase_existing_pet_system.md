@@ -219,7 +219,7 @@ NOTE: the local clone is SHALLOW (`git rev-parse --is-shallow-repository` → tr
 - docs/UI-BIBLE.md:334 skill-trapping icon prompt ("a simple box trap with its door propped on a stick"), :397 pets icon (paw print with a heart pad), :157 pet tiers in DOM UI, :579 alchemy/tailoring/taming don't exist.
 - docs/specs/wheel-and-card.md:198-220, 319, 364 and docs/specs/inventory.md (PET equip slot, green border, Weapon/Armor/Pet/Tool silhouette) — UI specs for a pet tile/slot that real data never fills.
 - docs/WIRE-PROTOCOL.md:288 (`pet` cosmetic truncation), :459 (`pet_capture_result`), :496-502 (vacuum).
-- docs/BACKLOG-TRIAGE-2026-09-14.md:203, 232, 511-512 + docs/triage-2026-09-14/loot-persist-audio.md:19-24, 59 (pet path in the loot triage; fixed v2.3.2490). docs/triage-2026-09-18/town-extent.md:177 (Pet House "Enchant" is pet enchanting, distinct from gear).
+- docs/BACKLOG-TRIAGE-2026-09-14.md:203, 232, 511-512 + docs/archive/triage-2026-09-14/loot-persist-audio.md:19-24, 59 (pet path in the loot triage; fixed v2.3.2490). docs/archive/triage-2026-09-18/town-extent.md:177 (Pet House "Enchant" is pet enchanting, distinct from gear).
 
 ### GDD README.md — pets/trapping (STALE: early design thinking, NOT a blueprint; CLAUDE.md "Doc trust")
 - §18 table: "Trapping — Capture pet companions (combat + loot) — Active" (README.md:4783).

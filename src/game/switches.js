@@ -61,6 +61,7 @@ const FORMS = {
   'bakeread': '0',
   'bakeurl': '0',
   'bandbeat': '0|off|false',
+  'bandgrip': '1',
   'banners': 'all',
   'barretry': '0',
   'beathold': '0',
