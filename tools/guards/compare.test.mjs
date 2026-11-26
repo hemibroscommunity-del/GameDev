@@ -48,7 +48,9 @@ import { compareRow, compareSet, compareSubjects, metricDef, tradeoffLine, COMPA
 import { projectEquip, weaponNumbers, cutNumbers, wornNumbers, projectKind } from '../../src/game/equipProject.js';
 import { inspectItem, itemSummary } from '../../src/game/itemInspect.js';
 import { SAY } from '../../src/data/say/compare.js';
-import { calcDisplayDps } from '../../src/data/gameSystems.js';
+import { calcDisplayDps, calcDisplayDmgRange, calcBlockReduction, getEquipReqLabel } from '../../src/data/gameSystems.js';
+import { getShieldStats } from '../../src/data/items.js';
+import { autoSwingMs } from '../../src/ui/mobile/sheet/statSim.js';
 
 let failed = 0;
 function check(name, ok, detail) {
@@ -218,6 +220,31 @@ for (const [p, c, what, M] of PLANTS) {
   check('tradeoffLine: one way only is silent', tradeoffLine([compareRow('dps', 1, 2), compareRow('hit', 1, 2)]) === '' && tradeoffLine([]) === '');
   const tiny = compareRow('dps', 100, 100.1);
   check('a change under one percent prints its amount, never "+0%"', tiny && tiny.change.pct === null && tiny.change.v === '+0.1', txt(tiny && tiny.change));
+  /* v2.3.6688: the mutants the suite first let live (each line's own why) */
+  const z = compareRow('dps', 0.04, 5);
+  check('a baseline that rounds to zero gives no percentage', z && z.change.pct === null && !/%/.test(z.change.v), txt(z && z.change));
+  const nan = compareRow('dps', NaN, 5);
+  check('a baseline that is not a number reads "Nothing worn"', nan && nan.a.v === 'Nothing worn' && nan.change.dir === 'none', txt(nan));
+  check('Damage, Defence and Energy changes are percentages from a real baseline', compareRow('hit', 10, 12).change.pct === 20 && compareRow('def', 10, 15).change.pct === 50 && compareRow('stamina', 10, 5).change.pct === -50);
+  const bl = compareRow('block', 10, 15);
+  check('a Block change is points, never a percent of a percent', bl.change.pct === null && bl.change.v === '+5%' && bl.change.say === '+5% blocks more', txt(bl.change));
+  check('tradeoffLine: a missing row is passed over', tradeoffLine([null, compareRow('dps', 1, 2), compareRow('swing', 1, 2)]) === 'More damage per second, slower attacks');
+  /* v2.3.6688: equipProject's numbers are the game's readers', each one */
+  {
+    const as = { ...STRONG, weapon: SWORD_B, activeSlot: 'melee' };
+    const rg = calcDisplayDmgRange(as, SWORD_B);
+    const p = projectEquip(STRONG, SWORD_B, 'sword');
+    check('a weapon\'s hit is the average of calcDisplayDmgRange, its time autoSwingMs in seconds', p && p.kind === 'sword' && p.then.hit === (rg.min + rg.max) / 2 && p.then.swing === autoSwingMs(as, SWORD_B) / 1000, txt(p));
+    const SH = { name: 'Oak Shield', quality: 'rare', tier: 'oak', blockPct: 25, staminaBonus: 7, flatDef: 3 };
+    const ss = getShieldStats(SH) || {};
+    const ps = projectEquip({ ...WEAK, shield: { name: 'Twig', quality: 'normal' } }, SH, 'shield');
+    check('a shield\'s Block, Defence and Energy are calcBlockReduction\'s and getShieldStats\'', ps && ps.now && ps.then.block === calcBlockReduction(0, SH) * 100 && ps.then.def === (Number(ss.flatDef) || 0) && ps.then.stamina === (Number(ss.staminaBonus) || 0), txt([ps, ss]));
+    const pr = projectEquip(WEAK, SWORD_B, 'sword');
+    check('the equip gate\'s own requirement comes back', JSON.stringify(pr.req) === JSON.stringify(getEquipReqLabel(SWORD_B, 'weapon', WEAK) || null), txt(pr.req));
+    const ARM = { name: 'Iron Torso', dr: 0.1, quality: 'rare' };
+    check('wornNumbers: armour worn is your whole cut; a shield worn its numbers', wornNumbers({ ...WEAK, armor: ARM }, 'chest').cut === cutNumbers({ ...WEAK, armor: ARM }).cut && wornNumbers({ ...WEAK, legsArmor: ARM }, 'legs') !== null && wornNumbers({ ...WEAK, shield: SH }, 'shield').block === calcBlockReduction(0, SH) * 100, '');
+    check('projectKind: a sword is a sword, a string is no item', projectKind({ type: 'sword' }, 'sword') === 'sword' && projectEquip(WEAK, 'x', 'sword') === null);
+  }
   const sec = compareRow('swing', 0.6, 0.75);
   check('seconds print with their unit', sec && sec.a.v === '0.6s' && sec.b.v === '0.75s' && sec.change.pct === 25 && sec.change.v === '+25%', txt(sec));
 }

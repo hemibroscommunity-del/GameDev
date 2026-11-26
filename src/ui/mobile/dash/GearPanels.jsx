@@ -342,11 +342,14 @@ export function GearPanels({ R: Rin }) {
     });
   }, []);
   const bagShown = show.left === 'panel';
+  /* given back when the bag is drawn again: after a look from the Equipped side, and after the item page (Gear
+     drawn afresh, the grid there only once its box is known: hence `drawn` among the reasons) */
+  const drawn = bagShown && box.w > 0;
   React.useLayoutEffect(() => {
-    if (!bagShown) return;
+    if (!drawn) return;
     const top = wsScroll(gearTabBus.state.ws, 'left');
     if (top > 0) beforeDraw(() => { const el = bagRef.current; if (el) el.scrollTop = top; });
-  }, [bagShown]);
+  }, [drawn]);
 
   const geo = gearPanelsGeometry(box.w, box.h);
   const coins = Number(R.coins || 0);

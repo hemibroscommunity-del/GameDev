@@ -138,6 +138,20 @@ for (const [p, c, what, M] of PLANTS) {
   check(`${p} (${what}) turns ${c} red`, !!r, 'the plant stayed green');
 }
 
+/* v2.3.6688: the mutants the suite first let live */
+{
+  const r = run(REAL, [{ type: 'scroll', side: 'right', top: 50 }, { type: 'pick', side: 'left', key: 'b1' }, { type: 'close' }]);
+  check('the right side\'s scroll is kept too', wsScroll(r, 'right') === 50 && wsScroll(run(REAL, [{ type: 'scroll', side: 'right', top: -3 }]), 'right') === 0, txt(r));
+  const s0 = wsStart();
+  check('a pick with no key, or no side, changes nothing', wsStep(s0, { type: 'pick', side: 'left' }) === s0 && wsStep(s0, { type: 'pick', key: 'b1' }) === s0);
+  check('close at rest is the same state', wsStep(s0, { type: 'close' }) === s0);
+  const ec = run(REAL, [{ type: 'pick', side: 'right', key: 'cape', look: false }, { type: 'close' }]);
+  check('close puts down an empty cell picked in management', ec.mode === 'manage' && ec.pick === null, txt(ec));
+  const pg = run(REAL, [{ type: 'pick', side: 'left', key: 'b1' }, { type: 'details' }]);
+  check('a scroll under the page, or of no side, is not recorded', wsStep(pg, { type: 'scroll', side: 'left', top: 9 }) === pg && wsStep(s0, { type: 'scroll', side: 'x', top: 9 }) === s0);
+  check('a look is not the page', wsPanels(run(REAL, [{ type: 'pick', side: 'left', key: 'b1' }])).page === false);
+}
+
 /* ── 7. in the source ── */
 {
   const rd = (p) => { try { return fs.readFileSync(path.join(ROOT, p), 'utf8'); } catch (e) { return ''; } };
