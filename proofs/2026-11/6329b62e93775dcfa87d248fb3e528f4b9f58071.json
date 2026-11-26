@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6329b62e93775dcfa87d248fb3e528f4b9f58071",
+  "tree": "5ab1088efa9513a9a5814b87283a6a88f11c2056",
+  "committedAt": "2026-11-26T07:26:16-08:00",
+  "subject": "Merge pull request #2361 from hemibroscommunity-del/claude/plan-gr-2-camfollow",
+  "files": 8747,
+  "bytes": 987465060,
+  "listingSha256": "88fbcdd75a6aba84382463f502d5618bce269ec88aaeed63c1c306b021b7ba97",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
