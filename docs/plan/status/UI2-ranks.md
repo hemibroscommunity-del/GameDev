@@ -10,7 +10,8 @@ state: working
 - The phone runs on the final code, precheck, the one push.
 
 ## Found
-- (merge) claude/plan-ui3-3-bro into claude/plan-ui2-11-quests turns ui3-weights check 3 red on `src/ui/mobile/dash/questsUi2.css` (six text colours outside the kit's list): the orchestrator's mend session changes it on claude/plan-ui2-11-quests (part 29, 22:11: leave it alone).
+- (merge) claude/plan-ui3-3-bro into claude/plan-ui2-11-quests turned ui3-weights check 3 red on `questsUi2.css`: mended on claude/plan-ui2-11-quests (79b820ea), merged here.
+- Turning a phone folds the dashboard (the frame's own rule): mp-ui2ranks opens the board again after each turn.
 - The UI review's states cannot open a page under `?ui2=0`, so `leaderboard-picker` (today's picker) has no state now: mp-ranksstyle plays it.
 
 ## Needs
