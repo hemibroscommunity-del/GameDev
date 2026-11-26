@@ -39,4 +39,8 @@ export const SAY = Object.freeze({
   'charPage.noTitlesHow': 'Earn one in Feats.',
   'charPage.titlesShut': 'Titles are not open on this server yet',
   'charPage.titlesOther': 'Only its owner can change a title.',
+  /* v2.3.6782 (card UI3-bro): the Bro page's strip (src/game/broHub.js broStrip) */
+  'charPage.title': 'Title',
+  'charPage.factAria': '{k}: {v}',
+  'charPage.stripAria': 'What you have',
 });
