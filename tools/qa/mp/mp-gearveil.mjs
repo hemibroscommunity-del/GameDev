@@ -101,6 +101,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
       return true;
     };
+    /* the panels draw a frame or more after a tap on this box (a software graphics chip, the deferred tab): wait for the mode the tap should reach before reading or tapping again (TRAPS 200) */
+    const settled = (mode) => P.page.waitForFunction((m) => { const w = document.querySelector('[data-gear-ws]'); return !!w && w.getAttribute('data-ws-mode') === m; }, mode, { timeout: 12000 }).catch(() => null).then(() => P.page.waitForTimeout(250));
     const CELL = '[data-gear-cell="sword"] [role="button"]';
     try {
       await H.enterWorld(P);
@@ -116,24 +118,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const n0 = await nread(P);
       rec.ok(`new ${V.id} 0. the two panels at rest: management, no summary, no pick`, n0.ws && n0.mode === 'manage' && !n0.sum && !n0.sel, n0);
       await press(CELL);
+      await settled('look');
       const n1 = await nread(P);
       rec.ok(`new ${V.id} 1. a worn cell picked: the summary opens (look), the pick is the sword, no veil over the tab`, n1.mode === 'look' && n1.sum && !!n1.sel && n1.sel.cell === 'sword' && !n1.veil, n1);
       await press(CELL);
+      await settled('manage');
       const n2 = await nread(P);
       rec.ok(`new ${V.id} 2. the same cell again: back to management, nothing picked`, n2.mode === 'manage' && !n2.sum && !n2.sel, n2);
       await press(CELL);
+      await settled('look');
       await press('[data-gear-summary] [data-ws-close]');
+      await settled('manage');
       const n3 = await nread(P);
       rec.ok(`new ${V.id} 3. the summary's ✕: back to management, nothing picked`, n3.mode === 'manage' && !n3.sum && !n3.sel, n3);
       await press(CELL);
+      await settled('look');
       await P.page.keyboard.press('Escape');
-      await P.page.waitForTimeout(700);
+      await settled('manage');
       const n4 = await nread(P);
       rec.ok(`new ${V.id} 4. Esc with a summary open: the summary goes, the dashboard stays (the way back is one step)`, n4.mode === 'manage' && !n4.sum && !n4.sel && !!(await P.page.$('[data-dash-frame]')), n4);
       await press(CELL);
+      await settled('look');
       await press('[data-dash-frame] [data-u2="close"]');
       await H.dashOpen(P, 'dashboard');
-      await P.page.waitForTimeout(600);
+      await settled('look');
       const n5 = await nread(P);
       rec.ok(`new ${V.id} 5. Close, then open: Gear keeps its pick (Close resets no workspace)`, n5.mode === 'look' && n5.sum && !!n5.sel && n5.sel.cell === 'sword', n5);
       rec.ok(`new ${V.id} 6. no page errors`, errors.length === 0, errors.slice(0, 3));
