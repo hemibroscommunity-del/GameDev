@@ -72,7 +72,7 @@ function landing() {
   };
 }
 const read = (P) => P.page.evaluate(landing);
-const tap = async (P, sel, ms = 600) => { await P.page.locator(sel).first().tap({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
+const tap = async (P, sel, ms = 600) => { await P.page.locator(sel).first().tap({ timeout: 15000 });   /* a slow box: 2 of 4 runs waited past 6 s for Bro's tiles after Points, Back, Back */ await P.page.waitForTimeout(ms); };
 async function bandShot(P, file) {
   try {
     const r = await P.page.evaluate(() => { const b = document.querySelector('.bt-dashboard').getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: Math.min(innerHeight, b.bottom) - b.top }; });
@@ -129,7 +129,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok('3b. Combat\'s Points opens the Points window; Back returns to Combat', Pp.title === 'hero' && Pp.hero === 'Build' && Pb.title === 'broCombat', { open: [Pp.title, Pp.hero], back: Pb.title });
       }
       await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
-      seen[seen.length - 1].after = (await read(P)).title;
+      const A = await read(P);
+      seen[seen.length - 1].after = A.title;
+      seen[seen.length - 1].afterHero = A.hero;
+      if (k === 'combat') {
+        const vis = await P.page.evaluate(() => { const e = document.querySelector('[data-dash-grid="bro"] [data-dest="skills"]'); if (!e) return null; const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { r: [r.x, r.y, r.width, r.height].map(Math.round), vis: cs.visibility, op: cs.opacity, n: document.querySelectorAll('[data-dash-grid="bro"]').length }; });
+        seen[seen.length - 1].vis = vis;
+        if (!vis || vis.r[2] < 1) { rec.ok('2z. after Combat, Bro\'s landing is back', false, { A: { title: A.title, hero: A.hero, tiles: A.tiles.length }, vis }); return; }
+      }
     }
     rec.ok('2a. each door opens its page under its name, Back saying Bro and returning to Bro',
       seen.every((s) => s.title === PAGES[s.k] && /Bro/.test(s.back || '') && s.after === 'hero'), seen.map((s) => ({ k: s.k, title: s.title, back: s.back, after: s.after })));
