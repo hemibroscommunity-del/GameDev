@@ -1,0 +1,27 @@
+/* v2.3.6681: the dashboard's frame's own words (card UI2-frame: the Menu, its
+   doors and hubs, the header's Back, the closed row; docs/specs/player-words.md) */
+export const SAY = Object.freeze({
+  'dashFrame.gear': 'Gear',
+  'dashFrame.menu': 'Menu',
+  'dashFrame.world': 'World',
+  'dashFrame.bro': 'Bro',
+  'dashFrame.quests': 'Quests',
+  'dashFrame.social': 'Social',
+  'dashFrame.ranks': 'Ranks',
+  'dashFrame.codex': 'Codex',
+  'dashFrame.homestead': 'Homestead',
+  'dashFrame.map': 'Map',
+  'dashFrame.settings': 'Settings',
+  'dashFrame.friends': 'Friends',
+  'dashFrame.party': 'Party',
+  'dashFrame.clan': 'Clan',
+  'dashFrame.guilds': 'Guilds',
+  'dashFrame.notifications': 'Notifications',
+  'dashFrame.account': 'Account',
+  'dashFrame.feedback': 'Feedback',
+  'dashFrame.about': 'About',
+  'dashFrame.journey': 'Journey',
+  'dashFrame.page': 'Page',
+  'dashFrame.menuAria': 'Menu: every page of the game',
+  'dashFrame.gearAria': 'Gear: your bag and what you wear',
+});

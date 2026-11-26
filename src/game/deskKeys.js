@@ -70,6 +70,10 @@ export function browserChord(e) {
  */
 export function navKey(id) {
   const bus = dashboardPanelBus;
+  /* v2.3.6681: under the new frame (card UI2-frame's reading 7) I is Gear, O
+     the Menu (resumed), and P, J, U, K, L open their pages as today; each
+     pressed with its own up closes the dashboard (dashNav.js dashNavKey) */
+  if (bus.frameOn && bus.frameOn()) { bus.key(id); return; }
   const open = bus.state.mode === 'expanded';
   if (id === 'dashboard') {
     if (playIsLandscape()) {

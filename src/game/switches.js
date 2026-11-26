@@ -310,6 +310,7 @@ const FORMS = {
   'trial': '',
   'trialhud': '',
   'turnzone': '*',
+  'ui2': '0',
   'ui2shine': '0',
   'uikit': '1',
   'uploadicons': '0',

@@ -47,11 +47,11 @@ const row = (extra) => ({ display: 'flex', gap: G, alignItems: 'stretch', minWid
 const col = (extra) => ({ display: 'flex', flexDirection: 'column', gap: G, minWidth: 0, ...extra });
 const ACT_WORD = Object.freeze({ gold: 'Equip', green: 'Accept', blue: 'Travel', red: 'Delete', silver: 'Cancel' });
 
-function Plate({ id, caption, room, title = 'Bro', children }) {
+function Plate({ id, caption, room, title = 'Bro', head, children }) {
   return (
     <figure style={{ margin: '0 0 14px' }} data-u2-plate={id}>
       <figcaption style={{ font: `${UI2_TYPE.small}px/1.3 'Source Sans 3', sans-serif`, color: '#BCC8CC', margin: '0 0 4px 2px' }}>{caption}</figcaption>
-      <Ui2Frame w={room.w} h={room.h} headH={room.head} label={caption} head={<Ui2Header title={title} />}>
+      <Ui2Frame w={room.w} h={room.h} headH={room.head} label={caption} head={head || <Ui2Header title={title} />}>
         {children}
       </Ui2Frame>
     </figure>
@@ -271,6 +271,13 @@ export function UiKitPage() {
       <div style={wrap}>
         <Plate id="bro" room={room} title="Bro" caption={'Sample: the Bro landing' + (me ? ' (your doors; a count where points wait)' : ' (no player handed to this page)')}><BroSample room={room} me={me} /></Plate>
         <Plate id="character" room={room} title="Character" caption={'Sample: the Character page' + (me ? ' (your real data)' : ' (no player handed to this page: honest empty lines)')}><CharacterSample room={room} me={me} /></Plate>
+        {/* v2.3.6681 (card UI2-frame): the header at the frame's two roots and a deep page */}
+        <Plate id="headers" room={room} caption="The header: Gear's root (Close, Gear, Menu ›), the Menu's root (‹ Gear, Menu, Close), a deep page (‹ Back, its title, Menu, Close)" head={<Ui2Header title="Gear" closeStart menuNext />}>
+          <div style={col({ justifyContent: 'center', height: '100%' })}>
+            <Ui2Header title="Menu" backLabel="Gear" onMenu={false} />
+            <Ui2Header title="Life Skills" backLabel="Bro" />
+          </div>
+        </Plate>
         <Plate id="tiles" room={room} title="Tiles" caption="Destination tiles: default, pressed, selected (pushed in), focused, locked, a count, new, the rare warm light"><TilesPlate room={room} /></Plate>
         <Plate id="actions" room={room} title="Actions" caption="The five action colours, one dark label: default, then pressed"><ActionsPlate room={room} /></Plate>
         <Plate id="use" room={room} title="Actions" caption="An action with its price; disabled with its reason; pending; focused; dismiss"><ActionUsePlate room={room} /></Plate>

@@ -77,6 +77,15 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape, winVh } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape; v2.3.6241: + winVh */
 import { dashMinBus } from './dashMinBus.js';
+/* v2.3.6681: the new frame (card UI2-frame): the one header, the Menu's directory, its hubs */
+import { DashHeader } from './dash/DashHeader.jsx';
+import { MenuGrid, HomesteadPage, doorWord } from './dash/MenuGrid.jsx';
+import { MENU_DESTS, DASH_HUBS, FRAME_PAGES } from '@/game/dashDests.js';
+import { dashNavView } from '@/game/dashNav.js';
+import { dashScrollBox, dashScrollShown } from './dash/dashScroll.js';
+import { ui2RootClass } from '@/ui/kit/index.js';
+import { profileFromSelf } from '../panels/playerProfile.js';
+import { openWorldMap } from '../WorldMapOverlay.jsx';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
 import { SAY } from '@/data/say/bottomDashboard.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
@@ -687,6 +696,36 @@ const RAIL_ITEMS = [
 /* v2.3.4470: `?bandbeat=0` -- the band's 200 ms redraw in one piece, as before (see the beat, below) */
 const BAND_BEAT_WHOLE = (() => { try { return /(^|[?&])bandbeat=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 
+/* ═══ v2.3.6681: THE NEW FRAME'S PAGE WORDS AND DOORS (card UI2-frame) ═══ */
+/* the frame's own pages are drawn by the frame (no Component), titled by the header */
+const FRAME_ACTIVE = Object.freeze({ title: '', Component: null });
+/* the worker's caps as last drawn: a resumed Menu whose page is no longer
+   offered falls to its root (dashNav's 'menu'; the card's dodge) */
+let _capsNow = null;
+const CAP_PAGES = Object.freeze({ pets: 'petbook', achievements: 'achievements' });
+dashboardPanelBus.setOffers((id) => {
+  if (!(PANELS[id] || FRAME_PAGES[id])) return false;
+  const cap = CAP_PAGES[id];
+  return !cap || !_capsNow || !!_capsNow[cap];
+});
+/** A page's name, for the header's title and Back's word. */
+function titleOf(id) {
+  if (id === 'menu') return doorWord('dashFrame.menu');
+  if (FRAME_PAGES[id]) return doorWord(FRAME_PAGES[id]);
+  const p = PANELS[id];
+  return (p && p.title) || doorWord('dashFrame.page');
+}
+/** A door of the Menu or a hub: its page over the directory, or the World map
+    over the game (Map: what More's tile and the minimap open; where there is
+    none, the Map page, as More did). */
+function openDoor(d, from) {
+  if (d.opens === 'worldMap') {
+    if (!openWorldMap()) dashboardPanelBus.go({ type: 'push', id: 'map', from });
+    return;
+  }
+  dashboardPanelBus.go({ type: 'push', id: d.page, from });
+}
+
 export const BottomDashboard = () => {
   /* v2.3.3049: OPEN, then the sword and the shield (then the bow and the
      staff) flash until worn -- the owner's first-quest flashes (gearFlash.js).
@@ -747,6 +786,11 @@ export const BottomDashboard = () => {
     };
   }, []);
   useEffect(() => dashMinBus.subscribe(setDashMin), []);
+  /* v2.3.6681: a page up again gets its kept scroll back (dash/dashScroll.js; card UI2-frame) */
+  const _navNow = dashboardPanelBus.frameOn() ? dashboardPanelBus.nav() : null;
+  const _navTop = _navNow ? dashNavView(_navNow).top : null;
+  const _navSeen = _navTop && _navNow.shown ? _navNow.ws + ':' + _navTop.key : '';
+  useEffect(() => { if (_navTop && _navNow.shown) dashScrollShown(_navTop.key, _navTop.scroll); }, [_navSeen]);
   /* v2.3.2178: the landscape dock's box and the room panels keep clear of
      it, from one seam (sheetGeometry.landDockFootprint).  Recomputed every
      render like the other playVw()-derived numbers here -- the component
@@ -1034,7 +1078,12 @@ export const BottomDashboard = () => {
   const mode = dashboardPanelBus.state.mode;
   const rootId = dashboardPanelBus.root();
   const activeId = stack.length ? stack[stack.length - 1] : null;
-  const active = mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
+  /* v2.3.6681: under the new frame (card UI2-frame) the Menu's root and the
+     frame's own pages are pages too (dashDests.js FRAME_PAGES): drawn below
+     by the frame, never by PANELS */
+  const ui2 = !land && dashboardPanelBus.frameOn();
+  const framePage = ui2 && mode === 'expanded' && (activeId === 'menu' || FRAME_PAGES[activeId]) ? activeId : null;
+  const active = framePage ? FRAME_ACTIVE : mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
   /* v2.3.2119: OPENING A DESTINATION UNFOLDS.  Tapping Bag from a folded
      band means "I want the UI back", and the expanded sheet's own layout
      assumes the resting geometry.  Restoring here (not in the nav handler)
@@ -1178,6 +1227,35 @@ export const BottomDashboard = () => {
      count-up left with the card — the Hero identity strip owns the
      readouts now (its coin keeps the glimmer class; the RAF count-up
      retired with its anchor). */
+
+  /* ═══ v2.3.6681: THE NEW FRAME'S MARKS, DOORS AND WORDS (card UI2-frame) ═══
+     The same badges as the old row's (`dots` above), on the doors that lead
+     to them now: points glow on Bro's tile AND climb to the Menu button (the
+     audit's part 2, BUILD 6); a ready quest on Quests; the codex's new pages
+     on Codex; requests on Social and its Friends; the bell's unread on
+     Settings and its Notifications. */
+  _capsNow = (Sb && Sb._serverCaps) || null;
+  let menuMark = null, doorMarks = null, plotsReady = 0;
+  if (ui2) {
+    const soc = typeof dots.social === 'number' ? dots.social : 0;
+    const bell = typeof dots.more === 'number' ? dots.more : (dots.more ? 1 : 0);
+    doorMarks = {
+      hero: { count: _pts > 0 ? _pts : 0, glow: _pts > 0, dot: !(_pts > 0) && !!_skillsNew },
+      quests: { dot: !!dots.quests },
+      encyclopedia: { count: dots.encyclopedia || 0 },
+      social: { count: soc },
+      settings: { count: bell },
+      notifications: { count: bell },
+    };
+    const other = !!dots.quests || !!_skillsNew || dots.encyclopedia > 0 || soc > 0 || bell > 0;
+    menuMark = { count: _pts > 0 ? _pts : 0, glow: _pts > 0, dot: !(_pts > 0) && other };
+    try {
+      const pr = profileFromSelf(Sb);
+      plotsReady = pr && pr.homestead ? Math.max(0, Number(pr.homestead.plotsReady) || 0) : 0;
+    } catch (e) { plotsReady = 0; }
+  }
+  const partyWords = (() => { try { return clanPartyOn(Sb); } catch (e) { return true; } })();
+  const hubWord = (d) => doorWord(d.id === 'clan' && !partyWords ? d.wordClan : d.word);
 
   const Active = active?.Component;
   const deskKeys = land && deskWideActive();   /* v2.3.3687: a computer playing wide (deskWide.js) */
@@ -1679,7 +1757,7 @@ export const BottomDashboard = () => {
           {/* v2.3.4152: data-band-box -- the band's content box (the page, the nav
               row, the resting columns), centred at the world's width and at
               most 1200 px on a wide screen (game.css html.bt-one-band block) */}
-          <div data-band-box="page" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
+          <div data-band-box="page" ref={ui2 ? dashScrollBox : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
             {/* ═══ v2.3.2320b: THE DRILL TITLE COMES BACK DOWN HERE ═══
                 v2.3.1922 moved it UP into the toolbar row, and its reasoning
                 was sound at the time: the 44px header it replaced sat in the
@@ -1729,7 +1807,14 @@ export const BottomDashboard = () => {
                 row, right of the back button: the row's free width, wrapping
                 under the button where there is none.  Every other page: the
                 button alone, as before. */}
-            {drill && (() => {
+            {/* v2.3.6681: under the new frame the header above carries Back and
+                the page's name; a page's own `Head` keeps its row */}
+            {ui2 && Head ? (
+              <div data-dash-head-row="" style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: 32 }}>
+                <div data-dash-head="" style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'flex-end', padding: '0 2px' }}><Head /></div>
+              </div>
+            ) : null}
+            {!ui2 && drill && (() => {
               const back = (
                 <button
                   data-dash-back
@@ -1765,7 +1850,13 @@ export const BottomDashboard = () => {
                 </div>
               ) : back;
             })()}
-            {Active && <Active />}
+            {framePage ? (
+              <div className={ui2RootClass()} data-dash-page={framePage} style={{ flex: 1, minHeight: 0, padding: 4 }}>
+                {framePage === 'homestead' ? <HomesteadPage plots={plotsReady} />
+                  : <MenuGrid label={framePage} doors={framePage === 'menu' ? MENU_DESTS : DASH_HUBS[framePage]} marks={doorMarks}
+                      wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
+              </div>
+            ) : Active && <Active />}
           </div>
         </>
       ) : null /* v2.3.1350: bar mode — toolbar only, the game's resting
@@ -1949,7 +2040,9 @@ export const BottomDashboard = () => {
         {/* v2.3.2166: not sideways — there the five buttons live in the
             fixed nav dock so the side container can enclose them (owner:
             "included in that container on that whole right side"). */}
-        {!land && (
+        {/* v2.3.6681: the new frame's one header in the row's place (dash/DashHeader.jsx) */}
+        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={menuMark} />}
+        {!land && !ui2 && (
           <BandClose min={dashMin} expanded={mode === 'expanded'}
             h={navButtonSize(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844).h} />
         )}
@@ -1957,7 +2050,7 @@ export const BottomDashboard = () => {
             width after CLOSE (`navFill`; the owner: "part of the dashboard
             assembly the same way it appears on mobile"), so the row's ends
             are the open tab's ends; a phone's row is as it was */}
-        {!land && (
+        {!land && !ui2 && (
           <div data-nav-fill={navFill ? '1' : undefined} style={{ flex: navFill ? '1 1 0' : 'none', minWidth: 0, display: 'flex', alignItems: 'center' }}>
             <NavRail
               items={RAIL_ITEMS}
