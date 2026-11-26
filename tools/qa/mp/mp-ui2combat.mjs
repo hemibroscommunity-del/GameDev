@@ -79,7 +79,13 @@ const pools = (P) => H.readState(P, (S) => {
     dmg: (atk.sword && atk.sword.dmg) || 0, hp: (p.alloc && p.alloc.hp) || 0, lv: p.sk ? [p.sk.sword.level, p.sk.bow.level, p.sk.staff.level] : null };
 });
 const hubDoors = (P) => P.page.evaluate(() => Array.from(document.querySelectorAll('[data-combat-door]')).map((e) => ({ id: e.getAttribute('data-combat-door'), pts: e.getAttribute('data-combat-points'), lv: e.getAttribute('data-combat-lv'), text: e.textContent.trim() })));
-const tap = async (P, sel, ms = 700) => { await P.page.locator(sel).first().tap({ timeout: 15000 }); await P.page.waitForTimeout(ms); };
+/* a finger on a phone, a click on a computer (its page has no touch) */
+const tap = async (P, sel, ms = 700) => {
+  const el = P.page.locator(sel).first();
+  const touch = await P.page.evaluate(() => navigator.maxTouchPoints > 0).catch(() => false);
+  if (touch) await el.tap({ timeout: 15000 }); else await el.click({ timeout: 15000 });
+  await P.page.waitForTimeout(ms);
+};
 async function bandShot(P, file) {
   try {
     const r = await P.page.evaluate(() => { const b = document.querySelector('.bt-dashboard').getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: Math.min(innerHeight, b.bottom) - b.top }; });
