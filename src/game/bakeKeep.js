@@ -342,7 +342,7 @@ export function keepTell(wk, win) {
   if (win && mine) {
     /* QA: the worker's counts, asked over the port (one answer an ask) */
     win.__btBakeKeep = () => new Promise((res) => {
-      const t = setTimeout(() => res(null), 3000);
+      const t = setTimeout(() => res(null), 20000);   /* the worker answers between jobs: a bake on a slow box takes seconds */
       mine.onmessage = (e) => { clearTimeout(t); res(e.data || null); };
       try { mine.postMessage({ ask: 1 }); } catch (e) { clearTimeout(t); res(null); }
     });
