@@ -83,7 +83,7 @@ export const JOB_FIELDS = Object.freeze({
   _urlRead: 'none',      /* the worker's own mark: its addresses read */
   _sheets: 'none',       /* the worker's own list: the sheets it holds */
   _qa: 'none',           /* QA: the address read against the page's cut */
-  _keyTried: 'none', _key: 'none', _verifyOut: 'none', _files: 'none',   /* the keep's own marks on a job */
+  _keyTried: 'none', _key: 'none', _verifyOut: 'none', _files: 'none', _numbersSeen: 'none',   /* the keep's own marks on a job */
 });
 export const INPUT_FIELDS = Object.freeze({
   bm: 'pixels',                               /* a bitmap cut on the page: its pixels */
@@ -362,9 +362,9 @@ export function keepTell(wk, { on = true, verify = false } = {}) {
   try { wk.postMessage({ type: 'keep', on: !!on, verify: !!verify, port }, port ? [port] : []); } catch (e) { return null; }
   if (!mine) return null;
   /* one answer an ask; the worker answers between jobs (a bake on a slow box takes seconds) */
-  return () => new Promise((res) => {
+  return (opts) => new Promise((res) => {
     const t = setTimeout(() => res(null), 20000);
     mine.onmessage = (e) => { clearTimeout(t); res(e.data || null); };
-    try { mine.postMessage({ ask: 1 }); } catch (e) { clearTimeout(t); res(null); }
+    try { mine.postMessage({ ask: 1, missed: !!(opts && opts.missed) }); } catch (e) { clearTimeout(t); res(null); }
   });
 }

@@ -567,6 +567,7 @@ function residueOf(res) {
    when the store throws or is not there.  docs/specs/bake-keep.md. */
 const keep = { on: false, verify: false, port: null, store: null, ver: '',
   hits: 0, misses: 0, stored: 0, bad: 0, nokey: 0, same: 0, differ: 0, diffs: [], ms: 0,
+  missed: [],   /* QA: each job not kept, as its pose and its inputs' sources (a first 400) */
   t: { px: 0, digest: 0, get: 0, out: 0, n: 0, bm: 0 } };   /* QA: where a kept answer's time goes */
 function keepSet(m) {
   keep.on = !!m.on;
@@ -584,13 +585,13 @@ function keepSet(m) {
     keep.store = keepStore(idb, keep.ver, KEEP_CAP_BYTES);
     keep.store.open();
   }
-  if (keep.port) keep.port.onmessage = () => { try { keep.port.postMessage(keepStats()); } catch (e) { /* the page is gone */ } };
+  if (keep.port) keep.port.onmessage = (e) => { try { const st = keepStats(); if (e && e.data && e.data.missed) st.missedList = keep.missed.slice(); keep.port.postMessage(st); } catch (e2) { /* the page is gone */ } };
 }
 function keepStats() {
   const S = keep.store ? keep.store.state : null;
   return { on: keep.on && !!S && !S.off, verify: keep.verify, why: S ? S.why : (keep.on ? '' : 'switched off'),
     hits: keep.hits, misses: keep.misses, stored: keep.stored, bad: keep.bad, nokey: keep.nokey,
-    same: keep.same, differ: keep.differ, diffs: keep.diffs.slice(0, 6), ms: Math.round(keep.ms),
+    same: keep.same, differ: keep.differ, diffs: keep.diffs.slice(0, 6), ms: Math.round(keep.ms), missed: keep.missed.length,
     t: { px: Math.round(keep.t.px), digest: Math.round(keep.t.digest), get: Math.round(keep.t.get), out: Math.round(keep.t.out), n: keep.t.n, bm: keep.t.bm },
     frames: S ? S.rows.size : 0, mb: S ? Math.round(S.bytes / 1048576 * 100) / 100 : 0, capMb: KEEP_CAP_MB };
 }
@@ -714,6 +715,20 @@ function fileDigest(url) {
   while (_files.size > FILE_KEEP_N) _files.delete(_files.keys().next().value);
   return p;
 }
+/* QA: a job not kept, said as its pose and where each input came from (a
+   file's digest, its first bytes; a sheet of numbers'; a cut picture) */
+const hex4 = (u8) => (u8 ? Array.from(u8.slice(0, 4), (v) => (v < 16 ? '0' : '') + v.toString(16)).join('') : '-');
+function missSay(j) {
+  const p = j.poseInfo || {};
+  const one = (x) => {
+    if (!x) return '0';
+    const at = '@' + [x.tx, x.ty, x.fw, x.fh, x.ow, x.oh].join(',');
+    if (x.look) return 'n' + hex4(j._numbersSeen && j._numbersSeen.get(x.look)) + ':' + [x.cell && x.cell.x, x.cell && x.cell.y].join(',') + at;
+    if (x.url) return (String(x.url).slice(0, 5) === 'blob:' ? 'b' : 'f') + hex4(j._files && j._files.get(x.url)) + ':' + x.sx + ',' + x.sy + at;
+    return 'c' + at;
+  };
+  return p.pose + '/' + p.dir + '#' + p.frameIdx + ' ' + (j.look ? 'look:' + j.look.sheet + ' ' : 'body:' + one(j.body) + ' ') + 'belt:' + one(j.belt) + ' ' + (j.worn || []).map((w) => w.k + ':' + one(w.inp)).join(' ');
+}
 /* the key first: a kept job answered from the disk; one not kept goes on
    its road (its sheets read, baked) with its key, and is kept when baked */
 async function keyFirst(j) {
@@ -730,6 +745,7 @@ async function keyFirst(j) {
       }
       key = await keepKey(j, files, numbers);
       j._files = files;
+      j._numbersSeen = numbers;
     }
   } catch (e) { key = null; }
   if (key) {
@@ -751,6 +767,7 @@ async function keyFirst(j) {
       keep.bad++;   /* not whole: baked again below, and replaced */
     }
     keep.misses++;
+    if (keep.missed.length < 400) keep.missed.push(missSay(j));
   }
   j._key = key;
   takeJob(j);

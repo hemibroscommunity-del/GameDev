@@ -108,6 +108,17 @@ const say = (n, r) => `login ${n}: the screen up ${r.upMs} ms, the bro ${r.ready
 
 /* the keep's own probe (the worker's counts over its port) */
 const keepStats = (P) => P.page.evaluate(() => (window.__btBakeKeep ? window.__btBakeKeep() : null)).catch(() => null);
+/* ...and each job the store did not have, said as its pose and its inputs' sources (to a file) */
+async function keepMissed(P, n) {
+  const st = await P.page.evaluate(() => (window.__btBakeKeep ? window.__btBakeKeep({ missed: true }) : null)).catch(() => null);
+  const list = (st && st.missedList) || [];
+  try {
+    const { writeFileSync, mkdirSync } = await import('node:fs');
+    mkdirSync('tools/qa/mp/out', { recursive: true });
+    writeFileSync(`tools/qa/mp/out/bakekeep-missed-${n}.txt`, list.join('\n') + '\n');
+  } catch (e) { /* a note only */ }
+  console.log(`    login ${n}: ${list.length} jobs not kept (tools/qa/mp/out/bakekeep-missed-${n}.txt)` + (n > 1 && list.length ? ': ' + list.slice(0, 4).join(' | ') : ''));
+}
 
 async function relogin(P, query) {
   if (query != null) {
@@ -177,6 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    login 1, masks made: ${masked ? 'yes' : 'NO'}; frames ${cov1 && cov1.have} of ${cov1 && cov1.want}; the keep: ${JSON.stringify(k1)}`);
     rec.ok('setup: the first login made every frame of the worn set (guard)', !!masked && !!cov1 && cov1.want > 100 && cov1.have === cov1.want, cov1);
     rec.ok(`the first login kept what it made (${k1 && k1.stored} stored)`, !!k1 && k1.on === true && k1.stored > 0, k1);
+    await keepMissed(P, 1);
     /* the spare sets and the uploads after `masks`, and the store's writes */
     await H.waitFor(P, () => (window.__btPreloadSteps && window.__btPreloadSteps.done) || 0, (v) => v > 0, { timeout: 300000, label: 'the bro done' }).catch(() => 0);
     await P.page.waitForTimeout(3000);
@@ -198,6 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.waitFor(P, () => (window.__btPreloadSteps && window.__btPreloadSteps.done) || 0, (v) => v > 0, { timeout: 120000, label: 'the bro done' }).catch(() => 0);
     const k2 = await keepStats(P);
     console.log('    login 2, the keep: ' + JSON.stringify(k2));
+    await keepMissed(P, 2);
     rec.ok(`second login: the worn set answered from the store (${k2 && k2.hits} kept answers, ${k2 && k2.misses} baked)`, !!k2 && k2.hits >= (b ? b.want : 1) * 0.5, k2);
 
     /* ── 4. a third login, every kept answer baked again beside it ── */
