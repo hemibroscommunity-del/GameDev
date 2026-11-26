@@ -10,6 +10,7 @@ import { applyDeskWide } from './ui/deskWide.js';
 import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4072 */
 import { markLoad } from './game/loadTimes.js';   /* v2.3.5019: the load timer (the Test panel's "Loading times") */
 import { startBandSideways } from './ui/mobile/bandSideways.js';   /* v2.3.4152 */
+import { sw } from './game/switches.js';
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -66,3 +67,8 @@ applyOneBand();
 startBandSideways();
 
 createRoot(document.getElementById('root')).render(<GameApp />);
+
+/* v2.3.6680: `?uikit=1`, the new dashboard's kit on a page of its own over the game
+   (card UI2; src/ui/kit/UiKitPage.jsx).  Lazy: nothing of the kit reaches any
+   other page. */
+if (sw('uikit')) import('./ui/kit/mountKit.js').then((m) => m.mountUiKit());

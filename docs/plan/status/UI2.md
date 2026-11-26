@@ -1,19 +1,17 @@
 card: UI2
-branch: claude/plan-ui2-1-audit
-prs: the one draft PR of this branch (6401; its number is in the message to the orchestrator)
+branch: claude/plan-ui2-5-kit
+prs: the kit's draft PR (ready)
 state: ready
 
 ## Done
-- Part 1 (6401), documents only: `docs/design/UI_ARCHITECTURE_V2.md` (the owner's document word for word, with part 13, the decision log); `UI_ARCHITECTURE_V2_AUDIT.md` (the game today against parts 2 to 8); `UI_ARCHITECTURE_V2_PLAN.md` (seven phases and the owner's ten questions); `docs/plan/cards/UI2-nav.md` (phase 1's card, a draft); CLAUDE.md section 2's line.
+- v2.3.6680, the build's step 1: the tokens (`src/game/ui2Tokens.js`), the kit's style sheet with its block written from them (`src/ui/kit/ui2.css`), the pieces (`src/ui/kit/`), the page `?uikit=1` with the Bro landing and Character samples, `?ui2shine=0`, the suite `tools/guards/ui2-tokens.test.mjs` (all pass; 188 mutants of the token module, one survivor: `c <= 0.03928` as `<`, equivalent: no 8-bit colour lands on 0.03928), `mp-uikit` (23 PASS, 0 FAIL, on the test box; run twice, the second after the guards' fixes), pictures `docs/shots/ui2-kit-*.png`.
 
 ## Next
-- nothing: phase 1 starts only on the owner's yes and their answers to questions 1 to 3.
+- Nothing: the PR waits for the gatekeeper.
 
 ## Found
-- The document's points rule is not the game's: shared points come with the best weapon's level (`server/src/prog3.js`, the note of v2.3.3538), and a weapon's points may buy body stats.
-- Another player's card is drawn from a blob their own phone relays (`rpgData`; `server/src/index.js` about 6309 calls it vanity-only): levels and item names there can be forged.
-- `dash/EncyclopediaPanel.jsx` has three tabs (Codex, Materials, Zones) that read lists nothing writes; `dash/SpendPointConfirm.jsx` is mounted but is not in today's points flow (not verified whether anything still reaches it).
-- `dash/NavRail.jsx` about line 44 still says "five" buttons; there are six.
+- Part 1's (the audit's, 6401) four facts stand: `git show 06a11e09:docs/plan/status/UI2.md` (main's copy, merged here), and its documents in docs/design/.
+- `tools/qa/ui-review/capture.mjs --check-notes` already fails on main: 18 screens in no ChatGPT packet and two packets over 9 pictures (`tools/qa/ui-review/packets.mjs`); this PR adds its own screen to a packet of its own, so the count stays 18.
 
 ## Needs
-- The owner: yes or no to the plan, and questions 1 to 3 (the Menu's eight; the closed row and the Menu button; how phase 1 arrives).
+- The samples' real data is HANDED to the page by the QA harness (`window.__btUiKitHand(S)`): open-hand.test closes `window._gameState` to any new reader, and the fixture lies outside the game's tree. The live Bro screens (the next card) are handed the state by their parent, as BroCard is.
