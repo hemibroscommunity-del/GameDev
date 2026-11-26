@@ -228,7 +228,8 @@ async function toFrost(P, wsPort, rec, label) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Xpbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.6781: the top bar's XP slot is this test's purpose, and with the character HUD up (card UI3) that slot is quiet: `?hud=0` (mp-charhud plays the HUD's bar) */
+  const P = await H.newPlayer(browser, { name: 'Xpbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'hud=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let D = null;
@@ -448,7 +449,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
 
     /* 8. a computer playing wide (src/ui/deskWide.js): real clicks */
-    D = await H.newPlayer(browser, { name: 'Xpdesk', wsPort, webPort, viewport: { width: 1280, height: 800 }, dpr: 2, world: 'wheel', wide: true });
+    D = await H.newPlayer(browser, { name: 'Xpdesk', wsPort, webPort, viewport: { width: 1280, height: 800 }, dpr: 2, world: 'wheel', wide: true, query: 'hud=0' });   /* v2.3.6781: the top bar's slot, as above */
     const dErrors = [];
     D.page.on('pageerror', (e) => dErrors.push(String((e && e.message) || e).slice(0, 200)));
     await H.enterWorld(D);

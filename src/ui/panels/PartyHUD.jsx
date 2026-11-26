@@ -249,7 +249,7 @@ export function PartyHUD(props) {
       title: deskWords('Tap to see your party'),
       onClick: function (e) { e.stopPropagation(); writePinned(true); setPinned(true); },
       style: Object.assign({}, _btnBase, {
-        position: 'absolute', top: 92, left: 8, zIndex: 16, height: 32, padding: '0 9px 0 7px',
+        position: 'absolute', top: 'var(--bt-party-top, 92px)', left: 8, zIndex: 16, height: 32, padding: '0 9px 0 7px', /* v2.3.6781: under the character HUD's stack (game.css --bt-party-top; 92 as before under ?hud=0) */
         display: 'flex', alignItems: 'center', gap: 5, touchAction: 'manipulation',
         background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
         border: '1px solid rgba(238,242,235,.24)', borderRadius: 16,
@@ -280,7 +280,7 @@ export function PartyHUD(props) {
     'data-party-chip': 'open',
     'data-party-open': pinned ? 'you' : 'attention',
     style: {
-      position: 'absolute', top: 92, left: 8, zIndex: 16, width: 164,
+      position: 'absolute', top: 'var(--bt-party-top, 92px)', left: 8, zIndex: 16, width: 164,
       /* v2.3.1232: world card; blur removed */
       background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
       border: '1px solid rgba(238,242,235,.24)',

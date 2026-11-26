@@ -36,6 +36,7 @@ import { twoButtonsLive, holdAutoOn } from '@/game/latch.js';   /* v2.3.6544: th
 import { SAY } from '@/data/say/questCoach.js';
 import { SAY as GUIDE } from '@/data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 import { say } from '@/game/say.js';
+import { charHudSpan } from '@/game/charHud.js';   /* v2.3.6781: the character HUD and the quest line, one box to keep clear of */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -274,7 +275,8 @@ function readCoachPage() {
   try {
     const el = document.querySelector('[data-coach-card]');
     p.cardH = (el && el.offsetHeight) || 0;
-    p.qh = rect(document.querySelector('[data-quest-hud]'));
+    /* v2.3.6781: with the character HUD up, the HUD and the quest line are one box (game/charHud.js charHudSpan: no new read) */
+    p.qh = charHudSpan(rect(document.querySelector('[data-quest-hud]')));
     p.map = rect(document.querySelector('[data-world-map-open]'));
   } catch (_e) { /* none to keep clear of */ }
   return p;
@@ -297,7 +299,7 @@ function deskStepRight() {
   const el = document.querySelector('[data-coach-card]');
   const qh = document.querySelector('[data-quest-hud]');
   if (!el || !qh) return;
-  const cr = el.getBoundingClientRect(), qr = qh.getBoundingClientRect();
+  const cr = el.getBoundingClientRect(), qr = charHudSpan(qh.getBoundingClientRect());   /* v2.3.6781: the HUD's span */
   if (!(cr.width > 0) || !(qr.width > 0)) return;
   if (!(cr.left < qr.right && cr.right > qr.left && cr.top < qr.bottom && cr.bottom > qr.top)) return;
   const layer = document.querySelector('[data-coach]');

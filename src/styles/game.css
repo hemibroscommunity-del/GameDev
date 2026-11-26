@@ -2548,7 +2548,23 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    card and the status chips start, is just under the top bar again: its
    bottom (46 px + its growth + the notch) and a 10 px gap, the card's old 56
    px, now following the bar as it grows. */
-html{--bt-hud-top:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0px))}
+html{--bt-hud-base:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0px));
+  --bt-hud-top:calc(var(--bt-hud-base) + var(--bt-charhud-h,0px))}
+/* ═══ v2.3.6781: THE CHARACTER HUD ABOVE THE QUEST CARD (card UI3, PR 2) ═══
+   The owner, 2026-11-26: "I strongly agree with moving the character portrait
+   into the top-left corner" (src/ui/hud/CharacterHud.jsx, charHud.css).  The
+   bar's bottom is --bt-hud-base now, where the HUD stands; --bt-hud-top, where
+   the quest card starts, is the base plus the HUD and its gap while the HUD
+   is up (html[data-charhud="1"], written by the HUD on mount), and the base
+   alone under ?hud=0, so the card's own line (QuestCard.jsx) never changes.
+   Under them: the status column under the quest line's 44 px hit box, and the
+   party chip under the status column's two rows (its fallback, 92 px, and
+   the column's, are today's, so ?hud=0 moves nothing).  The numbers are
+   src/game/charHud.js CHAR_HUD's (stack 56, sideways 52; the line's hit 44). */
+html[data-charhud="1"]{--bt-charhud-h:56px;
+  --bt-status-top:calc(var(--bt-hud-top) + 44px);
+  --bt-party-top:calc(var(--bt-status-top) + 48px)}
+@media (max-height:480px){html[data-charhud="1"]{--bt-charhud-h:52px}}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */

@@ -44,7 +44,8 @@ const VIEWS = [
      saw it (the state-machine sweep, V15 M1-1).  `box`: the minimap's side the
      view must really have, so it cannot pass on the band's 132 px box. */
   { id: 'laptop', opts: { viewport: { width: 1366, height: 657 }, wide: true } },
-  { id: 'laptopcol', opts: { viewport: { width: 1366, height: 657 }, wide: true, query: 'oneband=0' }, box: 264 },
+  /* v2.3.6781: and without the character HUD (`?hud=0`), where the quest card still folds (5b) */
+  { id: 'laptopcol', opts: { viewport: { width: 1366, height: 657 }, wide: true, query: 'oneband=0&hud=0' }, box: 264 },
 ];
 const WANT = ['mayor', 'equip', 'minimap', 'questPill'];
 
@@ -174,6 +175,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot('5-quest');
       rec.ok(`${V.id} 5. then "${c5 && c5.text}" rings the quest card at the top left`, !!c5 && c5.id === 'questPill' && ringOn(c5, pill) && !!pill && pill.top < 200, { c5, pill });
 
+      /* v2.3.6781: under the character HUD the card is ONE line (the folded
+         form: no fold); the fold is ?hud=0's (the laptopcol view) */
+      const one = await P.page.evaluate(() => {
+        const e = document.querySelector('[data-quest-hud-oneline]');
+        if (!e) return null;
+        const d = e.firstElementChild, r = d && d.getBoundingClientRect();
+        return { folded: e.hasAttribute('data-quest-hud-folded'), h: r ? Math.round(r.height) : 0, hud: !!document.querySelector('[data-charhud-box]') };
+      });
+      if (one) {
+        rec.ok(`${V.id} 5b. under the character HUD the quest card is one line (${one.h} px), no fold`, one.hud && !one.folded && one.h > 0 && one.h <= 30, one);
+      } else {
       /* v2.3.4207: a tap on the quest card folds it to its title, a second one opens it again */
       const foldState = () => P.page.evaluate(() => { const e = document.querySelector('[data-quest-hud-folded]'); return e ? { f: e.getAttribute('data-quest-hud-folded'), line: !!e.querySelector('[data-quest-hud-line]') } : null; });
       const f0 = await foldState();
@@ -185,6 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(400);
       const f2 = await foldState();
       rec.ok(`${V.id} 5b. a tap folds the quest card to its title, a second tap opens it`, !!f0 && f0.f === '0' && f0.line && !!f1 && f1.f === '1' && !f1.line && !!f2 && f2.f === '0' && f2.line, { f0, f1, f2 });
+      }
 
       /* then quiet */
       await P.page.waitForTimeout(25000);
