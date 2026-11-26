@@ -215,6 +215,7 @@ for (const r of real) check(r.name, r.ok, r.detail);
   check(`2e every one of More's ${tiles.length} pages has its new road`, tiles.length === 15 && roadless.length === 0, `${tiles.join(',')} | without: ${roadless.join(',')}`);
   const lost = Object.entries(MORE_ROADS).filter(([id, road]) => {
     if (road === 'bro') return !['skills', 'achievements', 'pets'].includes(id);
+    if (road === 'bro:character') return id !== 'journey';   /* v2.3.6684 (card UI2-bro): Journey, the passport's door */
     if (road.startsWith('menu:')) return !MENU_DESTS.some((d) => d.id === road.slice(5));
     if (road.startsWith('hub:')) return !(DASH_HUBS[road.slice(4)] || []).some((d) => d.page === id);
     return true;

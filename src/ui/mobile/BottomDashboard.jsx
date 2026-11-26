@@ -24,6 +24,7 @@ import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, navButtonSize, navRowFills } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
+import { ItemPage, itemPageTitle } from './dash/ItemPage.jsx';   /* v2.3.6687: the one item page, a page of Gear's stack (card UI2-gear) */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { OneBandColumns } from './dash/OneBandColumns.jsx';    /* v2.3.4072 */
 import { oneBandActive } from '../oneBand.js';                  /* v2.3.4072 */
@@ -81,6 +82,8 @@ import { dashMinBus } from './dashMinBus.js';
 import { DashHeader } from './dash/DashHeader.jsx';
 import { MenuGrid, HomesteadPage, doorWord, openDoor, farmPlots, hubWordFor } from './dash/MenuGrid.jsx';
 import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests.js';
+import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
+import { BroDoorPage } from './sheet/BroCard.jsx';
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
 import { DashGrowBox } from './dash/DashGrowBox.jsx';   /* v2.3.6682: the page grows out of the tile tapped (card UI2-frame PR 2) */
 import { ui2RootClass } from '@/ui/kit/index.js';
@@ -519,6 +522,7 @@ const PANELS = {
      in old sessions don't render a blank sheet. */
   bag:          { title: say(SAY, 'bottomDashboard.titleBag'),         Component: InventoryPanel },
   hero:         { title: say(SAY, 'bottomDashboard.titleBro'),         Component: HeroExpanded },   /* v2.3.4172: the Bro page */
+  item:         { get title() { return itemPageTitle(); }, Component: ItemPage },   /* v2.3.6687: the one item page (dash/ItemPage.jsx; card UI2-gear) */
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
@@ -1804,6 +1808,7 @@ export const BottomDashboard = () => {
             {framePage ? (
               <div className={ui2RootClass()} data-dash-page={framePage} style={{ flex: 1, minHeight: 0, padding: 4 }}>
                 {framePage === 'homestead' ? <HomesteadPage plots={plotsReady} />
+                  : isBroHubPage(framePage) ? <BroDoorPage id={framePage} points={_pts} />   /* v2.3.6683 (card UI2-bro): Character, Combat */
                   : <MenuGrid label={framePage} doors={framePage === 'menu' ? MENU_DESTS : DASH_HUBS[framePage]} marks={marks.doors}
                       wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
               </div>

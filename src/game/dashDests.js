@@ -22,8 +22,8 @@
  * dash/MorePanel.jsx TILES): Quests, Codex, Map and Settings are doors here;
  * Life Skills, Achievements and Pets are Bro's own doors, as today; Social,
  * Party and Guilds are the Social hub's; Settings, Account, Notifications,
- * Feedback and About the Settings hub's, with Journey until step 3 gives it a
- * home under Bro (its Feats' records).
+ * Feedback and About the Settings hub's; Journey (lifetime records) is a door
+ * of Bro's Character page, the passport (v2.3.6684: it left the Settings hub).
  *
  * NO IMPORTS: node reads it (tools/guards/dash-nav.test.mjs). */
 
@@ -53,7 +53,6 @@ export const DASH_HUBS = Object.freeze({
     Object.freeze({ id: 'account', word: 'dashFrame.account', art: '/icons/ui/panel-account.webp', page: 'account' }),
     Object.freeze({ id: 'feedback', word: 'dashFrame.feedback', art: '/icons/ui/panel-feedback.webp', page: 'feedback' }),
     Object.freeze({ id: 'about', word: 'dashFrame.about', art: null, page: 'about' }),
-    Object.freeze({ id: 'journey', word: 'dashFrame.journey', art: '/icons/ui/journey.webp', page: 'journey' }),
   ]),
 });
 
@@ -62,6 +61,20 @@ export const FRAME_PAGES = Object.freeze({
   homestead: 'dashFrame.homestead',
   socialHub: 'dashFrame.social',
   settingsHub: 'dashFrame.settings',
+  /* v2.3.6683 (card UI2-bro): Bro's Character and Combat doors (src/game/broHub.js
+     BRO_HUB_PAGES): today's pages under the header until their own steps */
+  broCharacter: 'dashFrame.character',
+  broCombat: 'dashFrame.combat',
+  broTitles: 'dashFrame.titles',   /* v2.3.6684: the passport's Titles door (the title's Equip) */
+  /* v2.3.6685 (card UI2-combat): a weapon's page under Combat's hub; Back returns to the hub */
+  broSword: 'dashFrame.sword',
+  broBow: 'dashFrame.bow',
+  broStaff: 'dashFrame.staff',
+  /* v2.3.6686 (card UI2-combat PR 2): the Shared page under the hub; the stat tree's layers, one a
+     depth (src/game/combatHub.js TREE_PAGES), each titled DPS: Back returns layer by layer */
+  broShared: 'dashFrame.sharedAttributes',
+  broTree0: 'dashFrame.dps', broTree1: 'dashFrame.dps', broTree2: 'dashFrame.dps', broTree3: 'dashFrame.dps',
+  broTree4: 'dashFrame.dps', broTree5: 'dashFrame.dps', broTree6: 'dashFrame.dps',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:
@@ -69,7 +82,7 @@ export const FRAME_PAGES = Object.freeze({
 export const MORE_ROADS = Object.freeze({
   quests: 'menu:quests',
   skills: 'bro',
-  journey: 'hub:settingsHub',
+  journey: 'bro:character',   /* v2.3.6684: the passport's Journey door (it left the Settings hub) */
   achievements: 'bro',
   encyclopedia: 'menu:encyclopedia',
   pets: 'bro',

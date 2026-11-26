@@ -36,6 +36,15 @@
  *     7. the Gear tab in the band, no weapon bar in it; the key 2 puts the bow
  *        in hand (the WORKER's activeSlot 'ranged'), 3 the staff, 1 the sword,
  *        and the gold ring follows.
+ *
+ * v2.3.6688 (card UI2-gear, the tests part): this scenario's PURPOSE is today's
+ * Gear itself -- the three panels, the middle card, its HP/MP/EN bars, the
+ * stat pills -- none of which exist under the dashboard's new frame (Gear is
+ * two panels there, dash/GearPanels.jsx).  So every player here joins with
+ * `?ui2=0` (the frame's way back, kept until the build's step 10) and every
+ * check below is unchanged.  The new Gear's own checks (equip, unequip, the
+ * filter menu, the keys) are the section at the end of this file and
+ * mp-ui2gear.  None dropped.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -277,7 +286,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ══ the upright phone ══ */
   {
-    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 } });
+    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', query: 'ui2=0', viewport: { width: 390, height: 844 } });
     try {
       await H.enterWorld(P);
       await seed(P, wsPort, rec, '390x844');
@@ -656,7 +665,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ══ a computer playing wide ══ */
   {
-    const P = await H.newPlayer(browser, { name: 'Deska', wsPort, webPort, world: 'wheel', wide: true, viewport: { width: 1280, height: 800 } });
+    const P = await H.newPlayer(browser, { name: 'Deska', wsPort, webPort, world: 'wheel', wide: true, query: 'ui2=0', viewport: { width: 1280, height: 800 } });
     try {
       await H.enterWorld(P);
       const id = await seed(P, wsPort, rec, 'computer');
@@ -692,6 +701,94 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`[computer] the key ${key.slice(-1)} puts the ${CELL[slot]} in hand: the page and the WORKER say ${slot}, the gold ring on its cell`,
           r.active === slot && srvSlot === slot && (d2.cells.find((c) => c.id === CELL[slot]) || {}).on
             && d2.cells.filter((c) => c.on).length === 1, { page: r.active, srvSlot, on: d2.cells.filter((c) => c.on).map((c) => c.id) });
+      }
+    } finally {
+      await P.ctx.close().catch(() => {});
+    }
+  }
+
+  /* ══ THE NEW GEAR (v2.3.6688, card UI2-gear, the tests part): the same behaviours, under the frame ══
+     Everything above is today's three panels (`?ui2=0`).  What of it still
+     exists under the two panels is checked here on the frame's own page: the
+     filter pill and its menu (every group with a count, Fish, an empty kind
+     with Show all, the menu's ✕ wearing data-esc), and on a computer the
+     keys 1 2 3 putting the sword, the bow and the staff in hand (the worker
+     too), the gold ring (data-gear-active) on the cell in hand.  The cells'
+     fit, the summary, Equip and Unequip are mp-ui2gear's. */
+  const nlook = (P) => P.page.evaluate(() => {
+    const q = (s) => document.querySelector(s);
+    const pill = q('[data-gear-filter]');
+    return {
+      ws: !!q('[data-gear-ws]'), pill: pill ? pill.getAttribute('data-gear-filter') : null, pillText: pill ? pill.innerText.trim() : null,
+      menu: !!q('[data-gear-menu]'), rows: Array.from(document.querySelectorAll('[data-gear-filter-row]')).map((r) => ({ id: r.getAttribute('data-gear-filter-row'), n: Number(r.getAttribute('data-count')) })),
+      bag: Array.from(document.querySelectorAll('[data-gear-bag] [data-bag-key]')).map((e) => e.getAttribute('data-bag-key')),
+      empty: (q('[data-gear-empty]') || { innerText: null }).innerText, showAll: !!q('[data-gear-showall]'),
+      on: Array.from(document.querySelectorAll('[data-gear-cell][data-gear-active="1"]')).map((c) => c.getAttribute('data-gear-cell')),
+    };
+  });
+  {
+    const P = await H.newPlayer(browser, { name: 'Geary2', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 } });
+    try {
+      await H.enterWorld(P);
+      await seed(P, wsPort, rec, 'new 390x844');
+      await H.unfoldBand(P).catch(() => null);
+      await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
+      await P.page.waitForTimeout(500);
+      await H.dashOpen(P, 'dashboard');
+      await P.page.waitForTimeout(1000);
+      const n0 = await nlook(P);
+      rec.ok('[new 390x844] the frame\'s Gear: the two panels, the pill "All Items", the sword cell in hand (gold ring)', n0.ws && n0.pill === 'all' && n0.on.join() === 'sword', n0);
+      await tapEl(P, '[data-gear-filter]');
+      const n1 = await nlook(P);
+      const ids = n1.rows.map((r) => r.id);
+      rec.ok('[new 390x844] the pill drops its menu over the bag: every group, each with its count',
+        n1.menu && ['all', 'sword', 'bow', 'staff', 'shield', 'chest', 'legs', 'cape', 'amulet', 'gem', 'ore', 'wood', 'crops', 'fish', 'food', 'potion', 'quest', 'other'].every((x) => ids.includes(x))
+          && (n1.rows.find((r) => r.id === 'fish') || {}).n >= 1, n1.rows);
+      await tapEl(P, '[data-gear-filter-row="fish"]');
+      const n2 = await nlook(P);
+      rec.ok('[new 390x844] Fish: the menu shut, the pill "Fish", the bag the fish', !n2.menu && n2.pill === 'fish' && n2.bag.length >= 1 && n2.bag.every((k) => /^i-fish_/.test(k)), n2);
+      await tapEl(P, '[data-gear-filter]');
+      await tapEl(P, '[data-gear-filter-row="potion"]');
+      const n3 = await nlook(P);
+      rec.ok('[new 390x844] an empty kind is never a mysterious empty bag: "No potions in your bag" and Show all', /No potions in your bag/.test(n3.empty || '') && n3.showAll, n3);
+      await tapEl(P, '[data-gear-showall]');
+      const n4 = await nlook(P);
+      rec.ok('[new 390x844] Show all: "All Items" and the whole bag back', n4.pill === 'all' && n4.bag.length >= 3 && !n4.empty, n4);
+      await tapEl(P, '[data-gear-filter]');
+      const esc = await P.page.evaluate(() => { const m = document.querySelector('[data-gear-menu] [data-esc]'); if (!m) return false; m.click(); return true; });
+      await P.page.waitForTimeout(400);
+      rec.ok('[new 390x844] the menu\'s ✕ wears data-esc and shuts it', esc && !(await nlook(P)).menu);
+    } finally {
+      await P.ctx.close().catch(() => {});
+    }
+  }
+  {
+    const P = await H.newPlayer(browser, { name: 'Deska2', wsPort, webPort, world: 'wheel', wide: true, viewport: { width: 1280, height: 800 } });
+    try {
+      await H.enterWorld(P);
+      const id = await seed(P, wsPort, rec, 'new computer');
+      await H.unfoldBand(P).catch(() => null);
+      await H.dashOpen(P, 'dashboard');
+      await P.page.waitForTimeout(1200);
+      const srvSlotOf = async (want) => {
+        let v = null;
+        for (let i = 0; i < 40 && v !== want; i++) {
+          const srv = await H.adminPlayer(wsPort, id).catch(() => null);
+          v = srv && srv.rpg ? srv.rpg.activeSlot : null;
+          if (v !== want) await P.page.waitForTimeout(500);
+        }
+        return v;
+      };
+      await P.page.evaluate(() => { try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (e) { /* none */ } });
+      const CELL = { melee: 'sword', ranged: 'bow', staff: 'staff' };
+      for (const [key, slot] of [['Digit2', 'ranged'], ['Digit3', 'staff'], ['Digit1', 'melee']]) {
+        await P.page.keyboard.press(key);
+        await P.page.waitForTimeout(1200);
+        const srvSlot = await srvSlotOf(slot);
+        const r = await rpgOf(P);
+        const d = await nlook(P);
+        rec.ok(`[new computer] the key ${key.slice(-1)} puts the ${CELL[slot]} in hand: the page and the WORKER say ${slot}, the gold ring on its cell`,
+          r.active === slot && srvSlot === slot && d.on.join() === CELL[slot], { page: r.active, srvSlot, on: d.on });
       }
     } finally {
       await P.ctx.close().catch(() => {});
