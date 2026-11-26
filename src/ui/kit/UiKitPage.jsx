@@ -18,7 +18,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
-  Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass,
+  Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass, Ui2TwoPanel, Ui2ItemGrid,
 } from './index.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
 import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/sheet/sheetGeometry.js';
@@ -119,6 +119,20 @@ function InfoPlate({ room }) {
     </div>
   );
   return <div style={room.wide ? row({ height: '100%' }) : col()}>{stats}{bars}{vals}</div>;
+}
+
+/* v2.3.6688: the two panels and the one grid of item cells (card UI2-gear PR 2): a look from the
+   left panel (a cell selected, pushed in), the summary in the right panel's place; default and empty cells */
+function WorkspacePlate({ room }) {
+  const art = '/icons/items/';
+  const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
+  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: art + pics[i], label: g }));
+  const s = Math.max(UI2_SIZE.touch, Math.min(52, Math.floor((room.cw / 2 - 3 * G) / 3)));
+  return (
+    <Ui2TwoPanel height={room.ch}
+      left={{ label: 'Inventory', kind: 'storage', children: <Ui2ItemGrid cells={cells} cols={3} size={s} selectedKey="k1" fill={9} onPick={() => {}} /> }}
+      right={{ label: 'Summary', kind: 'summary', children: <Ui2Group k="DPS"><Ui2Stat k="Now → If equipped" v="7.5 → 9.4" /></Ui2Group> }} />
+  );
 }
 
 function SlotsPlate({ room }) {
@@ -283,6 +297,7 @@ export function UiKitPage() {
         <Plate id="use" room={room} title="Actions" caption="An action with its price; disabled with its reason; pending; focused; dismiss"><ActionUsePlate room={room} /></Plate>
         <Plate id="info" room={room} title="Information" caption="Stat headlines (default, pressed, selected), progress, recessed information"><InfoPlate room={room} /></Plate>
         <Plate id="slots" room={room} title="Items" caption="Rarity slots (Normal, Rare, Elite, Godly; selected; focused; empty), a count, a dot, still loading"><SlotsPlate room={room} /></Plate>
+        <Plate id="workspace" room={room} title="Gear" caption="Two panels: the storage grid with a cell selected (pushed in) and empty cells; the summary in the opposite panel's place"><WorkspacePlate room={room} /></Plate>
       </div>
     </div>
   );

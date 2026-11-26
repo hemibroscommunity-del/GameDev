@@ -16,3 +16,5 @@ export { Ui2Progress } from './Progress.jsx';
 export { Ui2Badge } from './Badge.jsx';
 export { Ui2Loading } from './Loading.jsx';
 export { ui2RootClass } from './shine.js';
+export { Ui2TwoPanel } from './TwoPanel.jsx';   /* v2.3.6688: two panels side by side (card UI2-gear PR 2) */
+export { Ui2ItemGrid, Ui2ItemCell } from './ItemGrid.jsx';   /* v2.3.6688: the one grid of item cells */
