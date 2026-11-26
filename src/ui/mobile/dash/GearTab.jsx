@@ -460,15 +460,18 @@ const GearCellView = ({ c, R, slots, selCell, hand, t }) => {
    summary carries the Details button of the specification's part 5. */
 const HeadBox = ({ door, name, style, children }) => {
   if (!door) return <div style={style}>{children}</div>;
+  /* a div with the button's role and keys, not a <button>: the head keeps
+     its box exactly as it was (mp-geartab and mp-oneband count the card's
+     buttons against its edges, and the head was never one of them) */
+  const go = (e) => { e.stopPropagation(); door(); };
   return (
-    <button type="button" data-gear-details="" aria-label={say(SAY_ITEM, 'itemInspect.detailsAria', { name: name || '' })}
-      onClick={(e) => { e.stopPropagation(); door(); }}
-      style={{ ...style, position: 'relative', width: '100%', boxSizing: 'border-box', margin: 0, padding: 0, ...(style && style.paddingRight != null ? { paddingRight: style.paddingRight } : null),
-        border: 0, background: 'none', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer',
-        touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}>
+    <div role="button" tabIndex={0} data-gear-details="" aria-label={say(SAY_ITEM, 'itemInspect.detailsAria', { name: name || '' })}
+      onClick={go}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } }}
+      style={{ ...style, position: 'relative', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}>
       {children}
-      <span aria-hidden="true" data-gear-details-mark="" style={{ position: 'absolute', right: 2, bottom: -2, fontSize: 18, fontWeight: 900, lineHeight: 1, color: COL.accent, pointerEvents: 'none' }}>{'›'}</span>
-    </button>
+      <span aria-hidden="true" data-gear-details-mark="" style={{ position: 'absolute', right: 2, bottom: 0, fontSize: 18, fontWeight: 900, lineHeight: 1, color: COL.accent, pointerEvents: 'none' }}>{'›'}</span>
+    </div>
   );
 };
 
