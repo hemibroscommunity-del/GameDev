@@ -78,6 +78,7 @@ import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: t
 import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
 import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare, folkSkillFallback } from '../folkSkill.js';   /* v2.3.5462: ...at their own trades (card TF) */
 import { folkBeatOf } from '../../game/townsfolkWalk.js';   /* v2.3.5462: his beat */
+import { exBodyPose, hideHeld, ownToolPose, poseHidesHeld } from '../../game/poseHides.js';   /* v2.3.6208: what a body's pose hides, asked by my bro and a peer alike */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -172,7 +173,7 @@ import { _hideExceptDeep, drawnAsContent } from '../leaves/entity-render.js';   
 import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.js';   /* v2.3.6200: its leaves (card EN) */
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
 import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, folkSheetsStep, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
-import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
+import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, resBarBoxes, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
 export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
 export { MONSTER_SIZE_MULT, MINE_TRAIT_MUL, FISH_TRAIT_MUL };   /* v2.3.5345: still the renderer's exports (moved to ../tables/) */
@@ -10354,6 +10355,12 @@ export class EntityRenderer {
             width: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.width * _pb2.scale.x) : 0,
             height: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.height * _pb2.scale.y) : 0,
             visible: display.visible,
+            /* v2.3.6208: their weapon as last drawn, and the harvest it was
+               drawn in (mp-fishpeer: put away while they fish or mine) */
+            weaponShown: !!(display._weaponContainer && display._weaponContainer.visible
+              && ((display._weaponSprite && display._weaponSprite.visible && display._weaponSprite.texture && display._weaponSprite.texture.orig.width > 1)
+                || (display._weaponGfx && display._weaponGfx.visible))),
+            ex: other._ex || null,
           });
         }
       }
@@ -10453,7 +10460,15 @@ export class EntityRenderer {
       }
       /* Living — restore visibility of containers that might have been
          hidden by a previous death frame on this display. */
-      if (display._weaponContainer && !display._weaponContainer.visible) {
+      /* v2.3.6208: ...unless their pose holds its own tool (a fish or mine
+         harvest, `other._ex`): then the weapon, and whatever else my own bro
+         puts away in that pose, is hidden, as mine is (game/poseHides.js).
+         The owner, 2026-11-25: a peer's sword "floating mid air while he
+         fished".  Written only when it changes: hidden the frame the pose
+         starts, shown the frame it ends (TRAPS §218). */
+      const _oHeldOff = poseHidesHeld(exBodyPose(other._ex));
+      if (_oHeldOff) hideHeld(display);
+      else if (display._weaponContainer && !display._weaponContainer.visible) {
         display._weaponContainer.visible = true;
       }
       /* v2.3.809: drop the corpse-position snapshot once alive so the NEXT
@@ -10700,7 +10715,7 @@ export class EntityRenderer {
       /* v2.3.3439: and a step on a bed ('farm:<step>:<n>'): their farmer
          (effectsRenderer _drawPeerFarmer) */
       const _rexStandIn = (_rex === 'chop' || _rex === 'cook' || _rex === 'fire' || !!parseFarmEx(_rex)) && peerStandInReady(id, other, _rex);
-      const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
+      const _rexBodyPose = exBodyPose(_rex);   /* v2.3.6208: the rule's own mapping (game/poseHides.js) */
       if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
       /* v2.3.1534: remote dodge roll.  other._dodgeRoll is already set from
          the `player_dodge` broadcast (v2.3.1011) and drives the afterimage
@@ -12107,7 +12122,7 @@ export class EntityRenderer {
        weapon and shield are put away.  tickSmithing also ends the work when
        the player walks off or dies; called once, here, per frame. */
     const _smithing = !S._extraction && tickSmithing(S, Date.now());
-    const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining')) || _smithing;
+    const _fishingPose = poseHidesHeld(ownToolPose(S._extraction && S._extraction.skill, _smithing));   /* v2.3.6208: the rule a peer's pose asks too (game/poseHides.js) */
     /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
        and hide the real body + weapon for the swing window.  Gated on the melee
        swing flag and no active gathering/firemaking.
@@ -12244,12 +12259,10 @@ export class EntityRenderer {
     const _bowShot = !!_bowDir;
     S._bowShowing = _bowShot;
     S._bowDir = _bowDir;
-    if (_fishingPose || _swordSwing || _bowShot) {
-      if (display._weaponContainer) display._weaponContainer.visible = false;
-      if (display._shieldSprite) display._shieldSprite.visible = false;
-      if (display._handCapSprite) display._handCapSprite.visible = false;
-      _hideArmClones(display);   /* v2.3.3520 */
-    }
+    /* v2.3.6208: the weapon, the held shield, the hand's cap and the arm's
+       clones (v2.3.3520): poseHides.js HELD_PIECES, the list a peer's pose
+       hides too, so the two paths cannot drift. */
+    if (_fishingPose || _swordSwing || _bowShot) hideHeld(display);
 
     const body = display._body;
 
@@ -16454,11 +16467,20 @@ export class EntityRenderer {
         sp._mid = mk(parts && parts.mid);
         sp._capR = mk(parts && parts.capR);
         sp._cells = [];
+        /* v2.3.6206: the bars cast no shadow (the owner, 2026-11-25: "Also
+           remove the shadows they cast on the game area").  They sit on the
+           display, not its _uiLayer, so the shadow casters walked them as
+           body (lightfx/casters.js walkDisplay skips this mark). */
+        sp._castsNoShadow = true;
         d.addChild(sp);
         return sp;
       };
       d._resMpBlocks = mkBlocks('mana');
       d._resEnBlocks = mkBlocks('stamina');
+      /* v2.3.6206: where each bar's pieces are drawn, on the stage, asked only
+         when a test calls it (mp-resbars reads the pixels between the blocks
+         from it; nothing measures it in a frame). */
+      if (typeof window !== 'undefined') window.__btResBarBoxes = () => resBarBoxes(d);
     }
     /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
        _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
