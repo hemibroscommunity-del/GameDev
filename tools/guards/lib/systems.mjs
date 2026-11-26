@@ -285,10 +285,11 @@ export const SYSTEMS = Object.freeze({
   },
   preload: {
     what: 'what loads behind the loading screen, and what loads later on purpose',
-    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels')],
+    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels'), f('src/game', 'assetUrl|assetTable') /* v2.3.6742: a file's address with its file's version (card KEEP PR 3) */],
     words: ['preload', 'loading', 'lazy', 'warm'],
     traps: ['preload'],
-    doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' }],
+    doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' },
+      { name: 'assetUrl', file: 'src/game/assetUrl.js', what: 'an address BUILT from parts gets its file\'s version, so its folder can be kept a year (v2.3.6742, card KEEP)' }],
   },
   art: {
     what: 'loading art in play: strips of 256 colours, the readers off the page\'s thread, bakes on workers',

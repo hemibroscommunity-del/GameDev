@@ -1,26 +1,26 @@
 # KEEP: which of the game's requests carry a version (the census, tag 6740)
 
-Card KEEP PR 1 (`docs/plan/cards/KEEP.md`). Made by `tools/qa/mp/mp-keepcensus.mjs` on 2026-11-26, the build of 5c6c2345, on the test box (a headless Chromium, a phone 390 x 844 at dpr 3, touch), against this repository's own worker and build. Not measured on a phone; the counts are the page's requests, which do not depend on the device.
+Card KEEP PR 1 (`docs/plan/cards/KEEP.md`). Made by `tools/qa/mp/mp-keepcensus.mjs` on 2026-11-26, the build of a7a0519 with card KEEP PR 3's change (the commit that carries this file), on the test box (a headless Chromium, a phone 390 x 844 at dpr 3, touch), against this repository's own worker and build. Not measured on a phone; the counts are the page's requests, which do not depend on the device.
 
-**The tour:** one load (from the navigation), into BroTown; a walk to the Flame Fields' first spawn; a fight there (19 swings, 0 px from the spot); home; three windows (gear, the bro's page, quests).
+**The tour:** one load (from the navigation), into BroTown; a walk to the Flame Fields' first spawn; a fight there (29 swings, 0 px from the spot); home; three windows (gear, the bro's page, quests).
 
 **The columns** (`tools/assets/versions.mjs classify`): **table** asks with `v=` equal to the first 10 characters of the file's SHA-256 in `tools/assets/shipped.json` (the version this card gives every file); **hand** with any other query (a hand-kept key: `GEAR_VERSION`, `TRAIT_VER`, a `?v=2.3.1224` written out, a manifest's date); **bare** with none. A folder is kept a year only when its hand + bare is 0 (the card's rule 2). "Files" counts distinct addresses.
 
-## By folder (1592 requests for 1477 files of the table)
+## By folder (1579 requests for 1477 files of the table)
 
 | folder | requests | files | table | hand | bare | kept by this card |
 |---|---:|---:|---:|---:|---:|---|
-| `/sprites` | 991 | 963 | 22 | 961 | 8 | yes |
+| `/sprites` | 982 | 963 | 22 | 952 | 8 | yes |
 | `/ui` | 149 | 134 | 57 | 61 | 31 | yes |
-| `/sfx` | 96 | 96 | 95 | 0 | 1 | yes |
+| `/sfx` | 96 | 96 | 96 | 0 | 0 | yes |
 | `/icons` | 214 | 193 | 89 | 125 | 0 | yes |
 | `/world/objects` | 89 | 47 | 0 | 1 | 88 | yes |
-| `/world/ground` | 33 | 27 | 0 | 33 | 0 | only if easy |
+| `/world/ground` | 29 | 27 | 0 | 29 | 0 | only if easy |
 | `/audio` | 14 | 11 | 14 | 0 | 0 | only if easy |
 | `/world/placed5` | 3 | 3 | 0 | 3 | 0 | only if easy |
 | `/intro` | 2 | 2 | 2 | 0 | 0 | only if easy |
 | `/world/dungeons` | 1 | 1 | 0 | 1 | 0 | only if easy |
-| **all** | **1592** | | **279** | **1185** | **128** | |
+| **all** | **1579** | | **280** | **1172** | **127** | |
 
 ## By family (the ranking for PR 3: a family a PR, biggest first)
 
@@ -38,10 +38,10 @@ The family is the file's row in `tools/assets/shipped.json` (`tools/assets/famil
 | look-gearwalk | `/sprites` | 44 | 44 | 0 | 44 | 0 |
 | world-objects | `/world/objects` | 44 | 23 | 0 | 0 | 44 |
 | look-gear | `/sprites` | 42 | 42 | 0 | 42 | 0 |
-| traits-hairmasks-twins | `/sprites` | 40 | 30 | 0 | 40 | 0 |
-| world-ground | `/world/ground` | 32 | 26 | 0 | 32 | 0 |
 | ui-quest | `/ui` | 31 | 31 | 0 | 0 | 31 |
+| traits-hairmasks-twins | `/sprites` | 31 | 30 | 0 | 31 | 0 |
 | icons-items | `/icons` | 31 | 31 | 1 | 30 | 0 |
+| world-ground | `/world/ground` | 28 | 26 | 0 | 28 | 0 |
 | icons-owner | `/icons` | 40 | 40 | 18 | 22 | 0 |
 | npc-heads | `/sprites` | 21 | 21 | 0 | 21 | 0 |
 | look-standin | `/sprites` | 21 | 21 | 0 | 21 | 0 |
@@ -95,7 +95,6 @@ The family is the file's row in `tools/assets/shipped.json` (`tools/assets/famil
 | fx-zonebanners | `/sprites` | 2 | 2 | 0 | 2 | 0 |
 | monster-stills | `/sprites` | 2 | 2 | 0 | 2 | 0 |
 | icons-sheets | `/icons` | 31 | 27 | 30 | 1 | 0 |
-| sfx-m4a-twins | `/sfx` | 19 | 19 | 18 | 0 | 1 |
 | icons-owner-items | `/icons` | 3 | 2 | 2 | 1 | 0 |
 | world-dungeons | `/world/dungeons` | 1 | 1 | 0 | 1 | 0 |
 | gear-walk-supplied | `/sprites` | 1 | 1 | 0 | 1 | 0 |
@@ -113,6 +112,7 @@ The family is the file's row in `tools/assets/shipped.json` (`tools/assets/famil
 | sfx-owner-cuts | `/sfx` | 36 | 36 | 36 | 0 | 0 |
 | sfx-supplied | `/sfx` | 26 | 26 | 26 | 0 | 0 |
 | ui-daily-spin | `/ui` | 21 | 10 | 21 | 0 | 0 |
+| sfx-m4a-twins | `/sfx` | 19 | 19 | 19 | 0 | 0 |
 | icons-coins | `/icons` | 14 | 14 | 14 | 0 | 0 |
 | sfx-footsteps | `/sfx` | 10 | 10 | 10 | 0 | 0 |
 | ui-controls-drawn | `/ui` | 8 | 8 | 8 | 0 | 0 |
@@ -144,10 +144,10 @@ The family is the file's row in `tools/assets/shipped.json` (`tools/assets/famil
 
 | stage | table | hand | bare | not a file of the table |
 |---|---:|---:|---:|---:|
-| load | 260 | 1126 | 76 | 53 |
-| land | 4 | 56 | 10 | 1 |
+| load | 261 | 1128 | 75 | 73 |
+| land | 4 | 41 | 10 | 1 |
 | fight | 0 | 0 | 0 | 0 |
-| home | 3 | 0 | 42 | 0 |
+| home | 3 | 0 | 42 | 1 |
 | windows | 12 | 3 | 0 | 0 |
 
 ## The hand-kept keys seen (the query's shape, by folder)
@@ -160,8 +160,8 @@ A `<10 hex>` is a value the shape of this card's version that is not the file's 
 | `/sprites  ?v=2.3.2324` | 66 |
 | `/sprites  ?v=2.3.3603` | 65 |
 | `/sprites  ?v=103` | 42 |
-| `/world/ground  ?v=2026-10-01T19%3A51%3A25.074Z` | 32 |
 | `/sprites  ?v=<its own>?v=2.3.3590` | 30 |
+| `/world/ground  ?v=2026-10-01T19%3A51%3A25.074Z` | 28 |
 | `/icons  ?v=2.3.4222` | 25 |
 | `/sprites  ?v=<its own>?v=2.3.3587` | 23 |
 | `/sprites  ?v=2.3.3685` | 20 |
@@ -177,7 +177,6 @@ A `<10 hex>` is a value the shape of this card's version that is not the file's 
 | `/icons  ?v=<its own>?v=2.3.4222` | 11 |
 | `/sprites  ?v=<its own>?v=v2.3.3737` | 10 |
 | `/sprites  ?v=<10 hex>?v=964` | 10 |
-| `/sprites  ?v=<its own>?v=2.3.3590&g=1` | 10 |
 | `/icons  ?v=2.3.4199` | 9 |
 | `/icons  ?v=<its own>?v=<10 hex>?v=2.3.2201` | 9 |
 | `/icons  ?v=2.3.2201` | 8 |
@@ -196,6 +195,7 @@ A `<10 hex>` is a value the shape of this card's version that is not the file's 
 | `/icons  ?v=<its own>?v=2.3.68` | 3 |
 | `/ui  ?v=<its own>?v=<10 hex>` | 3 |
 | `/icons  ?v=<its own>?v=2.3.68&g=1` | 3 |
+| `/ui  ?v=<its own>?v=<10 hex>&g=1` | 3 |
 | (240 more shapes) | |
 
 ## Requests for no file of the table
@@ -205,7 +205,7 @@ The build's own scripts and styles (`/assets/`, already named by Vite with their
 | folder | requests |
 |---|---:|
 | `/tools` | 20 |
-| `/assets` | 9 |
+| `/assets` | 10 |
 | `/api` | 4 |
 | `/` | 1 |
 
@@ -215,19 +215,19 @@ Requests for a file that is not in the build: the page's fallback (`index.html`)
 
 | folder | requests |
 |---|---:|
-| `/sprites/traits/facialhair/beard/*` | 2 |
-| `/sprites/traits/eyewear/golden-monocle/*` | 2 |
-| `/sprites/traits/eyestyle/sleepy/*` | 2 |
-| `/sprites/traits/eyestyle/one-eye/*` | 2 |
-| `/sprites/traits/eyestyle/demon/*` | 2 |
-| `/sprites/traits/eyestyle/wtf/*` | 2 |
-| `/sprites/traits/eyestyle/alien/*` | 2 |
-| `/sprites/traits/eyewear/3d-glasses/*` | 1 |
-| `/sprites/traits/eyewear/goggles/*` | 1 |
-| `/sprites/traits/eyewear/laser-glasses/*` | 1 |
-| `/sprites/traits/eyewear/thug-life/*` | 1 |
-| `/sprites/traits/eyewear/white-glass/*` | 1 |
-| `/sprites/traits/eyewear/golden-glasses/*` | 1 |
+| `/sprites/traits/facialhair/beard/*` | 4 |
+| `/sprites/traits/eyewear/golden-monocle/*` | 4 |
+| `/sprites/traits/eyestyle/sleepy/*` | 4 |
+| `/sprites/traits/eyestyle/one-eye/*` | 4 |
+| `/sprites/traits/eyestyle/demon/*` | 4 |
+| `/sprites/traits/eyestyle/wtf/*` | 4 |
+| `/sprites/traits/eyestyle/alien/*` | 4 |
+| `/sprites/traits/eyewear/3d-glasses/*` | 2 |
+| `/sprites/traits/eyewear/goggles/*` | 2 |
+| `/sprites/traits/eyewear/laser-glasses/*` | 2 |
+| `/sprites/traits/eyewear/thug-life/*` | 2 |
+| `/sprites/traits/eyewear/white-glass/*` | 2 |
+| `/sprites/traits/eyewear/golden-glasses/*` | 2 |
 
 ### Other sites
 
@@ -239,4 +239,4 @@ Not the game's files, not this card's (this box reaches no outside site, so they
 | fonts.googleapis.com | 1 |
 | raw.githubusercontent.com | 1 |
 
-Every request: `tools/qa/mp/out/keepcensus.json` (not in the repository; 1651 rows).
+Every request: `tools/qa/mp/out/keepcensus.json` (not in the repository; 1659 rows).
