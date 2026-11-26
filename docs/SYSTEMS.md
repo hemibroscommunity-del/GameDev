@@ -272,7 +272,7 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin
 - **Files**: `src/ui/`: tapDismiss, swallowTapClick
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
@@ -362,7 +362,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
 - **Files**: `src/rendering/tables/`: render
-- **Files**: `src/game/`: poseHides
+- **Files**: `src/game/`: poseHides, cameraFollow
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)
@@ -374,7 +374,7 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
-- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests
+- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, broHub, screenZones, pending, combatHub, progression, metricTree
 - **Files**: `src/game/`: itemInspect
 - **Files**: `src/game/`: compare, equipProject, workspace
 - **Rest of**: `src/ui/`

@@ -16,5 +16,10 @@ export { Ui2Progress } from './Progress.jsx';
 export { Ui2Badge } from './Badge.jsx';
 export { Ui2Loading } from './Loading.jsx';
 export { ui2RootClass } from './shine.js';
+/* v2.3.6683 (card UI2-bro): a screen's pieces -- its zones, its row of actions, its empty state, its one confirmation */
+export { Ui2Zones } from './Zones.jsx';
+export { Ui2Actions } from './ActionRow.jsx';
+export { Ui2Empty } from './EmptyState.jsx';
+export { Ui2Confirm } from './Confirm.jsx';
 export { Ui2TwoPanel } from './TwoPanel.jsx';   /* v2.3.6688: two panels side by side (card UI2-gear PR 2) */
 export { Ui2ItemGrid, Ui2ItemCell } from './ItemGrid.jsx';   /* v2.3.6688: the one grid of item cells */

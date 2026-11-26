@@ -127,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(600);
     /* the hubs */
     const hubs = [];
-    for (const [door, hub, tiles] of [['social', 'socialHub', ['social', 'clan', 'guild']], ['settings', 'settingsHub', ['settings', 'notifications', 'account', 'feedback', 'about', 'journey']]]) {
+    for (const [door, hub, tiles] of [['social', 'socialHub', ['social', 'clan', 'guild']], ['settings', 'settingsHub', ['settings', 'notifications', 'account', 'feedback', 'about']]]) {
       await H.dashMenuRoot(P);
       await tap(P, `[data-dash-grid="menu"] [data-dest="${door}"]`, 700);
       const Hh = await read(P);
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       hubs.push({ hub, doors: Hh.grid && Hh.grid.doors, seen });
     }
-    rec.ok('4d. the hubs: Social (Friends, Party, Guilds), Settings (Settings, Notifications, Account, Feedback, About, Journey); each its page, Back saying the hub', hubs.every((h, i) => h.seen.every((x) => x.page === x.t && /(Social|Settings)/.test(x.back || '')) && h.doors.join(',') === [['social', 'clan', 'guild'], ['settings', 'notifications', 'account', 'feedback', 'about', 'journey']][i].join(',')), hubs);
+    rec.ok('4d. the hubs: Social (Friends, Party, Guilds), Settings (Settings, Notifications, Account, Feedback, About; Journey left for the passport, v2.3.6684); each its page, Back saying the hub', hubs.every((h, i) => h.seen.every((x) => x.page === x.t && /(Social|Settings)/.test(x.back || '')) && h.doors.join(',') === [['social', 'clan', 'guild'], ['settings', 'notifications', 'account', 'feedback', 'about']][i].join(',')), hubs);
     /* 5. Close then Menu resumes the page and its scroll (Settings scrolls) */
     await H.dashMenuRoot(P);
     await tap(P, '[data-dash-grid="menu"] [data-dest="settings"]', 600);

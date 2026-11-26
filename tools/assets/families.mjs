@@ -520,6 +520,9 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'tools/import_chest_sheet.py', sources: 'assets/ui/daily-chest-sheet.png', draw: 'dom', loader: 'src/ui/mobile/ChestReveal.jsx', px: 'cells 256x256' }),
   fam('ui-controls-drawn', 'made', 'public/ui/controls/{ctl-*,wpn-*}.webp',
     { tool: 'tools/ui/draw-control-icons.py', sources: 'public/icons/ui/hero/{melee,bow,magic}.webp', draw: 'dom', loader: 'src/ui/panels/controlSkin.jsx' }),
+  /* v2.3.6640 (card PAD): the controller's eighteen pieces, cut from the owner's four sheets */
+  fam('ui-pad', 'made', 'public/ui/pad/*.png',
+    { tool: 'tools/art/cut-pad.mjs', sources: 'assets/icons-source/owner-2026-11-25-pad3/*.png', draw: 'dom', loader: 'src/ui/panels/controlSkin.jsx' }),
   fam('ui-daily-spin', 'made', 'public/ui/daily-spin/*.png',
     { tool: 'unknown', sources: 'assets/ui/daily-spin/*.png', draw: 'dom', loader: 'src/ui/mobile/LoginSpinWindow.jsx' }),
   /* v2.3.5500 (card LB): the leaderboards' new look, cut by the sheet's own alpha from the owner's sheet; nothing draws them until LB's PR 2 */

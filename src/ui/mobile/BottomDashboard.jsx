@@ -82,6 +82,8 @@ import { dashMinBus } from './dashMinBus.js';
 import { DashHeader } from './dash/DashHeader.jsx';
 import { MenuGrid, HomesteadPage, doorWord, openDoor, farmPlots, hubWordFor } from './dash/MenuGrid.jsx';
 import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests.js';
+import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
+import { BroDoorPage } from './sheet/BroCard.jsx';
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
 import { ui2RootClass } from '@/ui/kit/index.js';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
@@ -1805,6 +1807,7 @@ export const BottomDashboard = () => {
             {framePage ? (
               <div className={ui2RootClass()} data-dash-page={framePage} style={{ flex: 1, minHeight: 0, padding: 4 }}>
                 {framePage === 'homestead' ? <HomesteadPage plots={plotsReady} />
+                  : isBroHubPage(framePage) ? <BroDoorPage id={framePage} points={_pts} />   /* v2.3.6683 (card UI2-bro): Character, Combat */
                   : <MenuGrid label={framePage} doors={framePage === 'menu' ? MENU_DESTS : DASH_HUBS[framePage]} marks={marks.doors}
                       wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
               </div>
