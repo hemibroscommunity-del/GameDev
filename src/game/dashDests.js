@@ -62,6 +62,10 @@ export const FRAME_PAGES = Object.freeze({
   homestead: 'dashFrame.homestead',
   socialHub: 'dashFrame.social',
   settingsHub: 'dashFrame.settings',
+  /* v2.3.6683 (card UI2-bro): Bro's Character and Combat doors (src/game/broHub.js
+     BRO_HUB_PAGES): today's pages under the header until their own steps */
+  broCharacter: 'dashFrame.character',
+  broCombat: 'dashFrame.combat',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:

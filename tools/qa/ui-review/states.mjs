@@ -856,6 +856,13 @@ export const STATES = [
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'settingsHub' }); }); } },
   { id: 'dash-frame-homestead', group: 'Dashboard', title: 'Homestead', about: 'The Menu\'s Homestead tile: the farm\'s picture and what the Bro row says today (plots ready to harvest, and that the farm is reached from the Feed & Seed); nothing to manage from here.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
+  /* v2.3.6683 (card UI2-bro): Bro's landing and its two frame pages */
+  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: six doors', about: 'The Menu\'s Bro tile: six equal tiles, three by two (one row of six sideways) -- Character, Combat, Equipment / Life Skills, Feats, Pets -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close). No portrait, no banner, no page marks; the points glow on Combat while points wait. Under ?ui2=0 today\'s three pages.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },
+  { id: 'ui2-bro-combat', group: 'Dashboard', title: 'Bro: Combat', about: 'Bro\'s Combat door: today\'s Combat page alone under the header (\u2039 Bro, Combat, Menu, Close): the weapon picker with Points beside it (glowing while points wait; it opens the Points window), then every combat stat in three groups. The combat hub (step 4) replaces it.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); }); } },
+  { id: 'ui2-bro-character', group: 'Dashboard', title: 'Bro: Character (until the passport)', about: 'Bro\'s Character door: today\'s three pages (Overview, Combat, Progress) under the header (\u2039 Bro, Character, Menu, Close), until the passport (card UI2-bro PR 2) replaces them; its Progress page keeps Titles, Clan and the rest of today\'s doors.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCharacter' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the

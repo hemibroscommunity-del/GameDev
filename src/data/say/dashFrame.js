@@ -24,4 +24,15 @@ export const SAY = Object.freeze({
   'dashFrame.page': 'Page',
   'dashFrame.menuAria': 'Menu: every page of the game',
   'dashFrame.gearAria': 'Gear: your bag and what you wear',
+  /* v2.3.6683 (card UI2-bro): Bro's six doors (src/game/broHub.js), whose page, a door the worker does not offer */
+  'dashFrame.character': 'Character',
+  'dashFrame.combat': 'Combat',
+  'dashFrame.equipment': 'Equipment',
+  'dashFrame.lifeSkills': 'Life Skills',
+  'dashFrame.feats': 'Feats',
+  'dashFrame.pets': 'Pets',
+  'dashFrame.whose': "{name}'s Bro",
+  'dashFrame.whoseUnknown': "Another player's Bro",
+  'dashFrame.notOffered': 'Not open on this server yet',
+  'dashFrame.points': 'Points',
 });
