@@ -354,6 +354,29 @@ stays with that PR until it lands, and is marked (held).
   Merriweather's, the kit's serif; no new request) and `CREDITS.md` (its
   row): outside its own list, harmless (read at 67).
 
+## PAD (68)
+
+- Next job (not a hold): mp-padskin 8c upright reads Attack before it is
+  seated, a one-in-three flake (64/65, 65/65, 65/65 on e1467159): wait on
+  Attack's socket before the read (part 22's runs).
+- `mp-contextbuttons` 5 (mode 4: a press of Attack starts the chop) is red on
+  `main` d42e48ac, on d8a10178, on e1467159 and on the final tree alike:
+  main's own (Found (68)), not PAD's.
+
+## UI2 (68)
+
+- Next jobs (not holds; read by a lane at 68, unsure, none seen on a phone):
+  `GearPanels.jsx` Summary (~:237) renders nothing, with no close, when a
+  WORN pick's cell is emptied by the worker (the 'gone' effect covers bag
+  picks only); `StatTree` is not given `who` (another player's tree would
+  show your numbers once step 9 opens it); a '?' bag cell carries its real
+  `data-grade` in the page (no style reads it); the first points' guide
+  arrow stops at Bro's landing (`guideArrow.js`); `ItemPage` reads the `R`
+  it opened with (a count changed while it is open is stale).
+- Each UI2 line's merge of main kept the BRANCH's `docs/plan/status/UI2.md`
+  whole (`git checkout --ours`): the earlier lines' Done and Found are in
+  their heads' history; the next UI2 PR gathers them.
+
 ## BRO
 
 - `mp-brocard` 55/59 red the same four on `main` 096d7000 and on #2349's
@@ -379,3 +402,11 @@ stays with that PR until it lands, and is marked (held).
 - `node tools/dev/state-census.mjs --check` is red on `main` 096d7000
   (`docs/plan/census/state.md` not what the code says: 913 files then,
   1098 now); precheck does not run it (65).
+- `mp-onboarding` is flaky on `main` d42e48ac: 5/5 then 2/5 (the intro
+  clip's lift, the rail, the first tap), and 4/5 then 5/5 on #2377 (68).
+- `mp-heldsweep`'s sample is red on `main` d42e48ac at the ride (`other:
+  _sprite` 19.7 ms > 12) and on the final tree once (`screen-check` 16.8 ms
+  left no note), then 6/6 on it: the ride station is noisy (68).
+- `mp-contextbuttons` 5 ("mode 4: a press of Attack starts the chop, as
+  before") is red on `main` d42e48ac (26/27): the press lands on Attack's
+  disc and no chop starts in 5 s. Card CT's files (68).
