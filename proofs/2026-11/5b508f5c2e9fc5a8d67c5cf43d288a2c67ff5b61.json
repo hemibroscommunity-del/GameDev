@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5b508f5c2e9fc5a8d67c5cf43d288a2c67ff5b61",
+  "tree": "7bd0bbefaf95b209259d2bb104a64aba2be1807f",
+  "committedAt": "2026-11-26T15:02:10-08:00",
+  "subject": "Merge pull request #2380 from hemibroscommunity-del/claude/codebase-inventory-gaps-pz4bpa",
+  "files": 8892,
+  "bytes": 999791005,
+  "listingSha256": "7a6cd13ad1f9e1e729965a4e54ac641e0d66e0840e969e1edb30475eef58c8df",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
