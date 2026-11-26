@@ -245,14 +245,25 @@ const FACE_ICON = (P) => P.page.evaluate(() => {
     /* v2.3.6640 (card PAD): in the controller the disc wears the owner's painted face (its sword), never the plain sword or the crosshair */
     pad: !!base && base.getAttribute('data-pad') === '1', face: on(base && base.querySelector('.bt-pad-face')) };
 });
-/* v2.3.6640 (card PAD): the controller's socket a control sits in, on the page (the right housing's box and window.__btPad's layout; mp-padskin's SOCKET) */
+/* v2.3.6640 (card PAD): the controller's socket a control sits in, on the page (window.__btPad's layout; mp-padskin's WELL).
+   v2.3.6641 (part 3): one shell, its wells; in a fight (Block shown) Block is the big well and Jump the middle one (padSkin.js wellOf) */
 const PAD_SOCKETS = (P) => P.page.evaluate(() => {
-  const hr = document.querySelector('[data-padhousing="R"]'), L = window.__btPad && window.__btPad.layout;
-  if (!hr || !L || !L.sockets) return null;
-  const b = hr.getBoundingClientRect(), o = {};
-  for (const k of Object.keys(L.sockets)) o[k] = { x: b.right - L.sockets[k].x, y: b.bottom - L.sockets[k].y, d: L.sockets[k].d };
-  return o;
+  const sh = document.querySelector('[data-padhousing="shell"]'), L = window.__btPad && window.__btPad.layout;
+  if (!sh || !L || !L.wells) return null;
+  const b = sh.getBoundingClientRect(), W = L.wells, fight = !!document.querySelector('[data-shield]');
+  const at = (w) => ({ x: b.left + w.x, y: b.bottom - w.y, d: w.d });
+  return { attack: at(W.attack), special: at(W.special), ctx: at(W.mobility), jump: at(fight ? W.mid : W.big), block: at(fight ? W.big : W.mid) };
 });
+
+/* v2.3.6641 (card PAD part 4): each control's ART (its face, the picture in its well) and its touch BOX, read apart: a box may be
+   larger than its art and, in the top row, rise off it (padSkin.js padLayout) */
+const PAD_FACES = (P, sels) => P.page.evaluate((qs) => { const o = {}; for (const [k, q] of qs) { const el = document.querySelector(q); if (!el) continue; const f = el.querySelector('.bt-pad-face') || el; const b = f.getBoundingClientRect(); o[k] = { x: b.left + b.width / 2, y: b.top + b.height / 2, d: Math.round(Math.min(b.width, b.height)) }; } return o; }, sels);
+const PAD_BOXES = (P, sels) => P.page.evaluate((qs) => {
+  const o = [], bad = [];
+  for (const [k, q] of qs) { const el = document.querySelector(q); if (!el) continue; const b = el.getBoundingClientRect(); o.push([k, b]); if (b.width < 43.5 || b.height < 43.5) bad.push(k + ' ' + Math.round(b.width) + 'x' + Math.round(b.height)); if (b.left < innerWidth / 2 - 1) bad.push(k + ' left half'); }
+  for (let i = 0; i < o.length; i++) for (let j = i + 1; j < o.length; j++) { const a = o[i][1], b = o[j][1]; if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) bad.push(o[i][0] + '/' + o[j][0] + ' boxes overlap'); }
+  return bad;
+}, sels);
 
 /* ═══ v2.3.6545: PART 5's helpers ═══ */
 /* the sprint as the phone and its button see it, the ring, the frame */
@@ -1136,8 +1147,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.6640 (card PAD): in the controller the spots are the housing's sockets, whose faces have 4 to 6 px of air (the owner's art): there each
          control's centre is on its own socket (2 px) and no two touch boxes overlap (game/padSkin.js), 44 px or more, on the right half */
       const sock4 = await PAD_SOCKETS(P);
-      const bad4 = spotsOk(c4, sock4 ? 0 : 8);
-      if (sock4) for (const [k, sk] of [['attack', 'attack'], ['jump', 'jump'], ['block', 'block'], ['special', 'special'], ['charge', 'ctx']]) if (c4[k] && (Math.abs(c4[k].x - sock4[sk].x) > 2 || Math.abs(c4[k].y - sock4[sk].y) > 2)) bad4.push(k + ' off its socket');
+      /* v2.3.6641 (card PAD part 4): in the one shell a top-row box (44 px) rises off the big buttons' boxes while its 37 px art
+         stays in its well (padSkin.js padLayout), so a box's centre is not its well's: the ART is held to its well (2 px) and the
+         BOXES to their size, no two overlapping, on the right half (PAD_BOXES) */
+      const bad4 = sock4 ? await PAD_BOXES(P, SELS) : spotsOk(c4, 8);
+      if (sock4) { const f4 = await PAD_FACES(P, SELS); for (const [k, sk] of [['attack', 'attack'], ['jump', 'jump'], ['block', 'block'], ['special', 'special'], ['charge', 'ctx']]) if (c4[k] && (!f4[k] || Math.abs(f4[k].x - sock4[sk].x) > 2 || Math.abs(f4[k].y - sock4[sk].y) > 2)) bad4.push(k + ' art off its well ' + JSON.stringify(f4[k] || null) + ' ' + JSON.stringify(sock4[sk])); }
       rec.ok(`3f. ${label}: the ${sock4 ? 'controller\'s sockets' : 'arc\'s spots'} as drawn (${Object.keys(c4).join(', ')}): 44 px or more, ${sock4 ? 'each on its socket, no two boxes over each other' : '8 px or more of air'}, on the right half`, bad4.length === 0 && !!c4.attack && !!c4.jump && !!c4.block && !!c4.special, { bad4, c4 });
       /* 3h: Charge -- out to 400 on its line, facing it (the line from the monster through the body: the drawn facing turns with the hop's walk) */
       await dryHop(400);
@@ -1212,11 +1226,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         /* v2.3.6549: and the right thumb's part touches nothing: no Charge, Attack at its old place (ShieldButton.jsx RBTN: upright 36 px in, 72 over the band, 84 across) */
         const off2 = await Q.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-zone'), dash = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 0; const b = el ? el.getBoundingClientRect() : null;
           return { charge: !!document.querySelector('[data-charge]'), probe: window.__btChargeBtn ? window.__btChargeBtn().shown : 'no probe', at: b ? { right: Math.round(innerWidth - b.right), bottom: Math.round(innerHeight - b.bottom - dash), w: Math.round(b.width) } : null, phase: (window._gameState.current || {})._thumbPhase || 'calm' }; });
-        const qSock = await PAD_SOCKETS(Q), qDisc = qSock ? await Q.page.evaluate(() => { const b = document.querySelector('.bt-rjoy-zone').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }) : null;
+        /* v2.3.6641 (card PAD part 4): Attack's ART (its face) on its well, its box at least 44 and its art's size (the one shell's
+           Attack well is 65 px at 430: today's 84 px box no longer fits beside the big well, said in the PR) */
+        const qSock = await PAD_SOCKETS(Q), qDisc = qSock ? await Q.page.evaluate(() => { const z = document.querySelector('.bt-rjoy-base .bt-pad-face') || document.querySelector('.bt-rjoy-zone'); const b = z.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, d: Math.round(b.width) }; }) : null;
         rec.ok(`3e. the mode off: no Charge (${off2.charge}), Attack at its old place${qSock ? ' (the controller: its socket)' : ''} (${JSON.stringify(off2.at)}), the thumb's phase never written (${off2.phase})`,
           !off2.charge && off2.probe !== true && !!off2.at && off2.phase === 'calm' && (qSock
-            /* v2.3.6640 (card PAD): in the controller its old place is Attack's socket, its box no smaller than today's 84 */
-            ? !!qDisc && Math.abs(qDisc.x - qSock.attack.x) <= 2 && Math.abs(qDisc.y - qSock.attack.y) <= 2 && off2.at.w >= 84
+            /* v2.3.6640 (card PAD): in the controller its old place is Attack's socket; v2.3.6641: its box 44 px or more and no smaller than its art */
+            ? !!qDisc && Math.abs(qDisc.x - qSock.attack.x) <= 2 && Math.abs(qDisc.y - qSock.attack.y) <= 2 && off2.at.w >= Math.max(44, qDisc.d - 1)
             : off2.at.right === 36 && Math.abs(off2.at.bottom - 72) <= 1 && off2.at.w === 84), { off2, qSock: qSock && qSock.attack, qDisc });
 
         /* 5g (v2.3.6545): the mode off: the sprint button as today, and the

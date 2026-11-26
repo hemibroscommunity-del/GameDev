@@ -1,5 +1,5 @@
 import React from 'react';
-import { jumpAnchor, ctlBottom, discRight, RBTN, LBTN } from './ShieldButton.jsx';
+import { jumpAnchor, ctlBottom, discRight, RBTN, LBTN, blockLive } from './ShieldButton.jsx';   /* v2.3.6641: blockLive, the controller's fight (card PAD part 3) */
 import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
@@ -7,7 +7,7 @@ import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
 import { Skin, JumpGlyph, jumpGlyphKind, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
-import { padAnchor } from './padSpot.js';   /* v2.3.6640: its socket in the controller (card PAD) */
+import { padAnchor, padLive, usePadWidth } from './padSpot.js';   /* v2.3.6640: its socket in the controller (card PAD) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
@@ -77,6 +77,7 @@ export function jumpButtonView(S) {
 }
 
 export function JumpButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _t = React.useState(0);
@@ -87,7 +88,8 @@ export function JumpButton(props) {
   React.useEffect(function () {
     var id = setInterval(function () {
       var v = jumpButtonView(stateRef && stateRef.current);
-      var k = v ? v.key : '';
+      /* v2.3.6641: and which well it sits in, in the controller (the fight's) */
+      var k = (v ? v.key : '') + (v && padLive() && blockLive(stateRef.current) ? '|fight' : '');
       if (k !== keyRef.current) {
         keyRef.current = k;
         setTick(function (x) { return (x + 1) % 1000000; });
@@ -149,7 +151,7 @@ export function JumpButton(props) {
   if (!view || !jumpButtonWanted()) return null;   /* v2.3.3105: ?jumpbtn only; v2.3.3681: unless ?jumpbtn=0 */
 
   var anchor = thumbAnchor('jump', isLandscape) || jumpAnchor(isLandscape);   /* v2.3.6549: beside Attack on the thumb's arc in the two buttons */
-  anchor = padAnchor('jump', isLandscape, anchor);   /* v2.3.6640: its socket in the controller (card PAD) */
+  anchor = padAnchor('jump', isLandscape, anchor, blockLive(S));   /* v2.3.6640: its socket in the controller (card PAD); v2.3.6641: the middle well while Block holds the big one (padSkin.js wellOf) */
   var size = anchor.size;
 
   var press = function () {
@@ -215,7 +217,7 @@ export function JumpButton(props) {
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal', pad: anchor.pad ? 'jump' : null, face: anchor.face },
+  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal', pad: anchor.pad ? 'jump' : null, face: anchor.face, dy: anchor.dy },
     /* v2.3.3526: the owner's round jump (card 11), the button's face.
        v2.3.3721: a plain arrow over the ground instead (the owner's pick of
        four: "I like option B for jump better") -- the owner: "the

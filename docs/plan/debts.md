@@ -92,6 +92,23 @@ stays with that PR until it lands, and is marked (held).
 
 ## CT
 
+- `src/game/bowSpecialNow.js` `bowSpecialMon`: its lock branch asks
+  neither alive nor range, so a lock on a monster killed since the last
+  `latchFrame` can loose one Special at the corpse for a frame, and a lock
+  past the bow's range fires as Attack would (#2357, 66; no failing case
+  found: CT's next job, a node case).
+- `tools/qa/mp/mp-twobuttons.mjs` / `mp-contextbuttons.mjs`: card
+  CT-part22 asks them mended "where the shape changed"; #2356 changed
+  neither and its status does not say they were read (66: the rehearsal's
+  run below).
+- `tools/qa/mp/mp-twobuttons.mjs:921` 7d on #2357's head 545761ec (a
+  helper, once): red both ways where `main` and the tree SKIP it. Upright
+  (0 free, 1 loosed, idle, hit null): the test's, its hide lifts only on
+  a FREE shot and a line shot was loosed. Sideways (0 free, 0 loosed, the
+  latch ACTIVE, three presses) is not explained: a press with nothing in
+  sight took a lock and loosed nothing. CT's next job: run 7d where it
+  does not skip, say which half fails, `?nearpick=0` beside it (66).
+
 - `tools/qa/mp/mp-contextbuttons.mjs:292-298` steps 4 and 5 (sitting 65's
   tail, the stack 3d0846c8 and the pill 2825d8e0 alike: red once in two
   runs, the press on the disc, HARVEST, `_btnHarvest` true, no chop): the
@@ -270,6 +287,73 @@ stays with that PR until it lands, and is marked (held).
   `fx.resume(d.gap, d.carried)` (`thawCarried.js:123`) and a throw that
   skips noting the same beat's gap (:121/124) are green (61).
 
+## PAD (66: #2354 withdrawn by the owner at 21:5x, before the list)
+
+- Whirlwind (`AbilityButtons`) and Shield Bash (`ShieldButton.jsx:648`)
+  keep today's `rightCluster` places while Special moved to its socket:
+  their boxes may meet by a few px, and `server/test/pad-skin.test.mjs` 3c
+  checks only the socketed controls. Part 3's job: a case for the
+  unsocketed ones (no failing case shown).
+- mp-contextbuttons (named by the card) is not in PAD's status;
+  mp-membudget was read on part 1's 96f0ebf3, not on 8f9e2d87.
+- #2354 rewrites `tools/guards/lib/systems.mjs` and `docs/SYSTEMS.md`'s
+  input row (+ padSkin) and the switch tables: after sitting 66's list
+  lands, its stack merges `main` and writes them again
+  (`node tools/guards/systems.test.mjs --write`, `switches.test.mjs
+  --write`).
+
+## PAD (67: #2363 held, landing #2354 with it)
+
+- HOLD (a bug in behaviour, read on 1f862236): `src/ui/panels/RideButton.jsx`
+  draws nothing in the controller while Charge shows
+  (`padLive() && ctxFor(true, chargeShowing(S)) !== 'skate'`, :123), but its
+  poll redraws only when `rideButtonView(S).key` (on|asking, :78) moves.
+  Riding with a sword, a monster comes into sight and Charge appears: the
+  Skate face stays drawn over Charge in the one mobility well (the rule
+  mp-padskin 2c checks, on foot only); if a redraw comes while Charge shows,
+  the dismount is gone after the sighting until the ride's on/asking moves.
+  The mend: the poll's key carries the pick, e.g. at :95
+  `var k = v ? v.key + '|' + (padLive() && chargeShowing(stateRef.current) ? 1 : 0) : '';`
+  and an mp-padskin step that rides into a sighting with a sword (Skate gone,
+  Charge alone) and out of it (Skate back).
+- Next job (not a hold): `ShieldButton.jsx` stamps `_shieldTouchAt` at
+  `touchstart` (:896) and drops a `mousedown` within 800 ms of it (:895); the
+  browser's mouse press comes after `touchend`, so a press held past 800 ms
+  (the uncancelable case the comment names) still toggles twice. Stamp it in
+  `onTouchEnd` (:937) too. Chrome's case; not seen on Safari.
+- After the mend #2363 merges `main` (sitting 67's lines landed): its one
+  conflict is `tools/dev/tag-blocks.json`'s end, kept as `"QP"`, `"PAD":
+  [[6640, 6659]]`, `"UI2": [[6680, 6699]]`, `"nextBlock": 6700`; then
+  precheck, mp-padskin, mp-twobuttons; the next sitting rehearses it (its
+  six behaviour changes of part 4 read and found right: the width, `padSpot`
+  dy, no housing on a computer, the 800 ms rule, the ring, Attack's box).
+- Still part 3's: Whirlwind and Shield Bash beside the Special socket (66).
+
+## GR (67: #2361 waits on #2363)
+
+- #2361 carries #2354 (base `claude/plan-pad-1-controller`), which never
+  lands alone: it lands after #2363. Its own change (`src/game/cameraFollow.js`,
+  BroTown's call, `?camfollow=0`) read and found right; mp-camfollow 11/11 on
+  sitting 67's tree. Its mend then: retarget to `main`; merge `main`; keep
+  the render row of `tools/guards/lib/systems.mjs` as
+  `f('src/game', 'poseHides|cameraFollow') /* v2.3.6208: what a body's pose hides (card EN); v2.3.6660: the camera's follow (card GR) */`;
+  `tools/dev/tag-blocks.json`'s end `"PAD"`, `"GR": [[6660, 6679]]`,
+  `"UI2"`, the highest `nextBlock`; `node tools/guards/systems.test.mjs
+  --write`, `switches.test.mjs --write`; precheck. Landing it deploys
+  nothing (no file under `server/` beyond #2363's, already on `main`).
+
+## UI2 (67)
+
+- Line 2's mend keeps the kit's `docs/plan/status/UI2.md`: parts 1 to 5's
+  Done, Found and Needs (14 found lines: `trade2.js`'s header, the craft's
+  repeat, `LANTERN-SLATE-SPEC.md`'s old palette, Raleway, three loops without
+  reduced motion, `prog3.js`:35...) are at
+  `git show 46e88b30:docs/plan/status/UI2.md`: the next UI2 PR carries them
+  back into its status.
+- #2368 also changed `src/index.html` (Raleway's request swapped for
+  Merriweather's, the kit's serif; no new request) and `CREDITS.md` (its
+  row): outside its own list, harmless (read at 67).
+
 ## BRO
 
 - `mp-brocard` 55/59 red the same four on `main` 096d7000 and on #2349's
@@ -281,6 +365,11 @@ stays with that PR until it lands, and is marked (held).
   (65).
 
 ## Found (no card's debt)
+
+- A merge that adds or changes a file in `server/test/` deploys the worker
+  (TRAPS §277): #2355/#2357 and #2356 carry no worker code but each
+  merge redeploys it (one brief disconnect each; the last deploy wins).
+  The orchestrator's note "none deploys" read `server/src` only (66).
 
 - The Deploy worker on c2da80bf failed 14:57 on `login-keys` 12g ("...that
   join is put out and handed nothing": the join got its whole state);

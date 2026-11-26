@@ -8,7 +8,8 @@ import { fightOn } from '@/game/sparTargets.js';
 import { blockShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6549: Block at a threat (card CT part 16) */   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
-import { padAnchor } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
+import { padAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
+import { pressGate } from '@/game/padSkin.js';   /* v2.3.6641: Block's one press (the gatekeeper's sitting 67) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
@@ -823,7 +824,27 @@ export function ctlBottom(px) {
   return 'calc(var(--sheet-h, var(--dash-h)) + ' + px + 'px)';
 }
 
+/* ═══ v2.3.6641: WHETHER BLOCK SHOWS, ONE FUNCTION (card PAD part 3) ═══
+   The owner, 2026-11-25: "Make the jump button turn into the shield button
+   while in combat."  In the controller the big left button is Block exactly
+   when this button would show (padSkin.js wellOf), so JumpButton asks the
+   same function rather than a second rule: the shield in hand and in range
+   (shieldToggle.js shieldButtonLive, true while the guard is up) and the
+   two buttons' moment (controlVisibility.js blockShown). */
+export function blockLive(S) {
+  if (!S || !S.rpg) return null;
+  /* `true`, or null when Block does not show: the render's gate is this
+     `return null` (sight.test 10 reads it off the syntax tree), and
+     padSkin.js wellOf takes only `true` for a fight */
+  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn);
+  if (!live) return null;
+  return true;
+}
+
+/* v2.3.6641: when a finger last pressed Block (the mouse press after it is the same press: press, below) */
+let _shieldTouchAt = 0;
 export function ShieldButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _tick = React.useState(0);
@@ -838,7 +859,7 @@ export function ShieldButton(props) {
      the shield's cooldown runs out. */
   var flash = useReadyFlash(!!(S && S._shieldCdUntil && Date.now() < S._shieldCdUntil));
   if (!S || !S.rpg) return null;
-  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && blockShown(S, twoButtonsLive(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
+  var live = blockLive(S);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js); v2.3.6641: one function, Jump's well asks it too */
   /* QA probe (house style: __btMonHit, __btCoach): why the button is or is
      not on screen, which a screenshot cannot say. */
   if (typeof window !== 'undefined') {
@@ -861,11 +882,22 @@ export function ShieldButton(props) {
      the diagonal bottom-left of the disc, on its own, for "mental separation
      for combat purpose" -- see blockAnchor. */
   var anchor = thumbAnchor('block', isLandscape) || blockAnchor(isLandscape);   /* v2.3.6549: on the thumb's arc in the two buttons, a spot of its own */
-  anchor = padAnchor('block', isLandscape, anchor);   /* v2.3.6640: its socket in the controller (card PAD) */
+  anchor = padAnchor('block', isLandscape, anchor, live);   /* v2.3.6640: its socket in the controller (card PAD); v2.3.6641: the big well in a fight, the middle one while a raised guard outlives it (padSkin.js wellOf) */
   var size = anchor.size;
   var right = anchor.right;
   var press = function (e) {
     e.preventDefault(); e.stopPropagation();
+    /* v2.3.6641 (card PAD part 4): the browser's mouse press after a touch is
+       the same press, never a second toggle.  touchend's preventDefault (below)
+       stops it only while touchend is cancelable, and Chrome sends it
+       uncancelable once the page has held the touch past its wait (seen on the
+       test box: mp-padskin 6d sideways read the guard lowered by 'tap' where
+       Attack was meant to lower it).  The weapon pill's rule (800 ms). */
+    /* v2.3.6641 (the gatekeeper's sitting 67): and touchend stamps too (below;
+       padSkin.js pressGate): the mouse press comes after it */
+    var g = pressGate(e.type, Date.now(), _shieldTouchAt);
+    _shieldTouchAt = g.at;
+    if (!g.go) return;
     pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     try { toggleShield(stateRef.current); } catch (err) { /* refusal is silent-safe */ }
     setTick(function (v) { return v + 1; });
@@ -906,7 +938,7 @@ export function ShieldButton(props) {
        already carry.  Not stopped from bubbling: nothing on this side needs
        to stop hearing a release, and lE/rE/bE ignore a touch that is not
        theirs. */
-    onTouchEnd: function (e) { e.preventDefault(); pressOff(e); },
+    onTouchEnd: function (e) { e.preventDefault(); _shieldTouchAt = pressGate('touchend', Date.now(), _shieldTouchAt).at; pressOff(e); },   /* v2.3.6641: the stamp at the finger's lift too (pressGate) */
     onTouchCancel: pressOff,
     onMouseUp: pressOff,
     onMouseLeave: pressOff,
@@ -923,7 +955,7 @@ export function ShieldButton(props) {
   },
   React.createElement(Skin, {
     size: size, tone: on ? 'warm' : 'slate', state: skinState,
-    pad: anchor.pad ? 'block' : null, face: anchor.face,   /* v2.3.6640 */
+    pad: anchor.pad ? 'block' : null, face: anchor.face, dy: anchor.dy,   /* v2.3.6640 */
     progress: onCd ? 1 - Math.min(1, cdLeft / SHIELD_CD_MS) : null,
     flash: flash && skinState === 'normal',
   },

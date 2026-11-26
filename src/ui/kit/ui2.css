@@ -1,0 +1,556 @@
+/* ═══ v2.3.6680: THE NEW DASHBOARD'S KIT, ITS ONE STYLE SHEET (card UI2, the build's step 1) ═══
+ *
+ * Everything here is under `.ui2`, so nothing that exists today changes its
+ * look.  The custom properties in the block below are WRITTEN FROM
+ * src/game/ui2Tokens.js (`node tools/guards/ui2-tokens.test.mjs --write`)
+ * and held equal to it; the rules after the block take their colours from
+ * those properties (no hex colour of their own: a shadow or a light is black
+ * or white at an alpha) and every font size from them (the suite holds both).
+ *
+ * ALL CHROME IS CODE (the owner, 2026-11-25): gradients, borders, inset and
+ * drop shadows, one pseudo-element gloss.  No picture for a surface, a
+ * button, a rim or a texture; no filter, no backdrop-filter (iPhone Safari);
+ * no loop that runs while nothing changes, and prefers-reduced-motion stops
+ * every loop and every move (the block's own media rule and the last rule
+ * here).  The gloss is ONE token, `--ui2-shine`: `?ui2shine=0` sets it to 0
+ * (`.ui2-noshine`), and raised still reads apart from recessed without it:
+ * the drop shadow, the bevel and the light edge carry the difference.
+ *
+ * THE STATES, the same on every control: default; pressed (`:active`, and
+ * `.is-press` to show it still); SELECTED (`.is-sel`, `[aria-pressed=true]`,
+ * `[aria-selected=true]`: pushed IN, its light inverted, the footprint the
+ * same); focused (`:focus-visible`, `.is-focus`: a brass ring for a
+ * keyboard); disabled (`[disabled]`, `.is-off`); pending (`.is-pending`).
+ */
+
+/* @@ui2-tokens: made by `node tools/guards/ui2-tokens.test.mjs --write` from src/game/ui2Tokens.js. Do not edit. */
+.ui2 {
+  --ui2-frame-top: #223D53;
+  --ui2-frame-mid: #1C3549;
+  --ui2-frame-bottom: #172C3E;
+  --ui2-page: #193145;
+  --ui2-raised-top: #294765;
+  --ui2-raised-mid: #27425D;
+  --ui2-raised-bottom: #1F374E;
+  --ui2-sunk-top: #122334;
+  --ui2-sunk-bottom: #1B3349;
+  --ui2-well: #102336;
+  --ui2-well-soft: #152B3F;
+  --ui2-well-deep: #0A1724;
+  --ui2-brass-brass: #D8AA58;
+  --ui2-brass-highlight: #EAC675;
+  --ui2-brass-deep: #8C6530;
+  --ui2-text-ivory: #F4F0E7;
+  --ui2-text-muted: #BCC8CC;
+  --ui2-text-disabled: #6F8087;
+  --ui2-text-on-action: #141D22;
+  --ui2-text-gold: #EAC675;
+  --ui2-gold-face-0: #F3D894;
+  --ui2-gold-face-1: #E4BA68;
+  --ui2-gold-face-2: #D2A24E;
+  --ui2-gold-press-0: #C99644;
+  --ui2-gold-press-1: #D4A655;
+  --ui2-gold-press-2: #DDB565;
+  --ui2-gold-edge: #EAC675;
+  --ui2-gold-rim: #8C6530;
+  --ui2-green-face-0: #B4E8C9;
+  --ui2-green-face-1: #7FCDA2;
+  --ui2-green-face-2: #5DBB8E;
+  --ui2-green-press-0: #52AD82;
+  --ui2-green-press-1: #61BA8F;
+  --ui2-green-press-2: #70C69C;
+  --ui2-green-edge: #A6E2C0;
+  --ui2-green-rim: #2F7457;
+  --ui2-blue-face-0: #B6D7F7;
+  --ui2-blue-face-1: #88BBEE;
+  --ui2-blue-face-2: #66A6E6;
+  --ui2-blue-press-0: #5D9BDB;
+  --ui2-blue-press-1: #6CA8E3;
+  --ui2-blue-press-2: #7BB4EA;
+  --ui2-blue-edge: #A9CDF3;
+  --ui2-blue-rim: #2F5F92;
+  --ui2-red-face-0: #F6BBB2;
+  --ui2-red-face-1: #EE958A;
+  --ui2-red-face-2: #E57D70;
+  --ui2-red-press-0: #DC7366;
+  --ui2-red-press-1: #E38276;
+  --ui2-red-press-2: #E99084;
+  --ui2-red-edge: #F2ADA3;
+  --ui2-red-rim: #8E3B33;
+  --ui2-silver-face-0: #EEF2F3;
+  --ui2-silver-face-1: #CFD8D9;
+  --ui2-silver-face-2: #B3C0C2;
+  --ui2-silver-press-0: #A8B5B8;
+  --ui2-silver-press-1: #B6C2C4;
+  --ui2-silver-press-2: #C3CED0;
+  --ui2-silver-edge: #F4F7F7;
+  --ui2-silver-rim: #5D6B70;
+  --ui2-grade-normal: #7E8F97;
+  --ui2-grade-rare: #5B99DE;
+  --ui2-grade-elite: #E8893A;
+  --ui2-grade-godly: #F0C45F;
+  --ui2-grade-elite-light: #F6C08A;
+  --ui2-prism-0: #FF6B6B;
+  --ui2-prism-1: #FFD166;
+  --ui2-prism-2: #6BFF95;
+  --ui2-prism-3: #5CB8FF;
+  --ui2-prism-4: #C77DFF;
+  --ui2-mark-count: #B23A31;
+  --ui2-mark-count-text: #FFF6EC;
+  --ui2-mark-dot: #E9C46A;
+  --ui2-mark-glow-inner: #FFD98A;
+  --ui2-mark-glow-outer: #E07B2E;
+  --ui2-fill-top: #F1D58E;
+  --ui2-fill-mid: #D9AE5C;
+  --ui2-fill-bottom: #B98B3E;
+  --ui2-size-touch: 44px;
+  --ui2-size-header: 44px;
+  --ui2-size-rim: 2px;
+  --ui2-size-edge: 1px;
+  --ui2-size-bevel: 2px;
+  --ui2-size-sink: 3px;
+  --ui2-size-focus: 2px;
+  --ui2-size-bar: 10px;
+  --ui2-radius-frame: 14px;
+  --ui2-radius-tile: 12px;
+  --ui2-radius-button: 11px;
+  --ui2-radius-group: 10px;
+  --ui2-radius-slot: 8px;
+  --ui2-radius-pill: 999px;
+  --ui2-space-xs: 2px;
+  --ui2-space-s: 4px;
+  --ui2-space-m: 6px;
+  --ui2-space-l: 8px;
+  --ui2-space-xl: 12px;
+  --ui2-font: 'Merriweather', Georgia, 'Times New Roman', serif;
+  --ui2-fs-badge: 10px;
+  --ui2-fs-small: 11px;
+  --ui2-fs-body: 12px;
+  --ui2-fs-label: 13px;
+  --ui2-fs-value: 15px;
+  --ui2-fs-title: 17px;
+  --ui2-fs-big: 24px;
+  --ui2-shine: 0.5;
+  --ui2-gloss: 0.12;
+  --ui2-edge-light: 0.16;
+  --ui2-shadow: 0.42;
+  --ui2-sink-shadow: 0.55;
+  --ui2-brush: 0.035;
+  --ui2-motion-press: 70ms;
+  --ui2-motion-state: 140ms;
+  --ui2-motion-loop: 1400ms;
+}
+.ui2.ui2-noshine { --ui2-shine: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .ui2 { --ui2-motion-press: 0ms; --ui2-motion-state: 0ms; --ui2-motion-loop: 0ms; }
+}
+/* @@ui2-tokens-end */
+
+/* ── the scope ── */
+.ui2 {
+  font-family: var(--ui2-font);
+  color: var(--ui2-text-ivory);
+  font-size: var(--ui2-fs-body);
+  line-height: 1.25;
+  font-variant-numeric: lining-nums tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+.ui2 *, .ui2 *::before, .ui2 *::after { box-sizing: border-box; touch-action: manipulation; }
+.ui2 button { font: inherit; color: inherit; margin: 0; -webkit-appearance: none; appearance: none; }
+.ui2 img { -webkit-user-drag: none; user-select: none; }
+
+/* ═══ the dashboard's frame: shallow, a thin restrained gold rim, a fine brushed slate ═══ */
+.ui2 .u2-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--ui2-radius-frame);
+  border: var(--ui2-size-rim) solid transparent;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, var(--ui2-brush)) 0 1px, transparent 1px 3px) padding-box,
+    linear-gradient(180deg, var(--ui2-frame-top), var(--ui2-frame-mid) 45%, var(--ui2-frame-bottom)) padding-box,
+    linear-gradient(180deg, var(--ui2-brass-highlight), var(--ui2-brass-brass) 35%, var(--ui2-brass-deep)) border-box;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, var(--ui2-shadow));
+}
+.ui2 .u2-page {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 var(--ui2-space-s) var(--ui2-space-s);
+  padding: var(--ui2-space-s);
+  border-radius: calc(var(--ui2-radius-frame) - var(--ui2-space-s));
+  background: linear-gradient(180deg, var(--ui2-well-soft), var(--ui2-page) 18%);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, var(--ui2-sink-shadow)), 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+/* ═══ the header: Back with its label, the title, Menu, Close; no title plate ═══ */
+.ui2 .u2-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ui2-space-m);
+  padding: 0 var(--ui2-space-s);
+}
+.ui2 .u2-head-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-size: var(--ui2-fs-title);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ui2-text-ivory);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+.ui2 .u2-head-side { flex: 0 0 auto; display: flex; gap: var(--ui2-space-m); }
+.ui2 .u2-head-side.is-start { min-width: 0; }
+.ui2 .u2-ctl {
+  height: var(--ui2-size-header);
+  min-width: var(--ui2-size-touch);
+  padding: 0 var(--ui2-space-xl);
+  border-radius: var(--ui2-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui2-space-s);
+  font-size: var(--ui2-fs-label);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ui2 .u2-ctl.is-round { width: var(--ui2-size-header); padding: 0; font-size: var(--ui2-fs-value); }
+.ui2 .u2-ctl-glyph { font-size: var(--ui2-fs-value); line-height: 1; }
+
+/* ═══ the raised face: every control you press (a tile, a header control, a stat) ═══ */
+.ui2 .u2-raised {
+  position: relative;
+  color: var(--ui2-text-ivory);
+  border: var(--ui2-size-edge) solid rgba(150, 195, 230, 0.24);
+  border-bottom-color: rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, var(--ui2-raised-top), var(--ui2-raised-mid) 50%, var(--ui2-raised-bottom));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--ui2-edge-light)),
+    inset 0 calc(-1 * var(--ui2-size-bevel)) 0 rgba(0, 0, 0, 0.26),
+    0 var(--ui2-size-bevel) 0 rgba(0, 0, 0, var(--ui2-shadow)),
+    0 3px 5px rgba(0, 0, 0, 0.28);
+  transition: transform var(--ui2-motion-press) ease-out, box-shadow var(--ui2-motion-state) ease-out;
+}
+/* the gloss: broad, over the top of the face, away from a label at the bottom; ONE token turns it off */
+.ui2 .u2-raised::before, .ui2 .u2-act::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 1px;
+  height: 46%;
+  border-radius: inherit;
+  border-bottom-left-radius: 40% 12px;
+  border-bottom-right-radius: 40% 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, var(--ui2-gloss)), rgba(255, 255, 255, 0));
+  opacity: var(--ui2-shine);
+  pointer-events: none;
+}
+.ui2 .u2-raised > *, .ui2 .u2-act > * { position: relative; }
+/* pressed: the face goes down a pixel, its shadow shortens, its light dims (momentary) */
+.ui2 .u2-raised:active:not([disabled]), .ui2 .u2-raised.is-press {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, var(--ui2-raised-mid), var(--ui2-raised-bottom));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 1px 3px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(0, 0, 0, var(--ui2-shadow));
+}
+/* SELECTED: pushed deep into the dashboard: inverted depth, shadow and light; the same footprint */
+.ui2 .u2-raised.is-sel, .ui2 .u2-raised[aria-pressed='true'], .ui2 .u2-raised[aria-selected='true'] {
+  transform: none;
+  border-color: rgba(0, 0, 0, 0.55);
+  border-bottom-color: rgba(150, 195, 230, 0.2);
+  background: linear-gradient(180deg, var(--ui2-sunk-top), var(--ui2-sunk-bottom));
+  box-shadow:
+    inset 0 var(--ui2-size-sink) 6px rgba(0, 0, 0, var(--ui2-sink-shadow)),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.ui2 .u2-raised.is-sel::before, .ui2 .u2-raised[aria-pressed='true']::before, .ui2 .u2-raised[aria-selected='true']::before { opacity: 0; }
+/* focused: a keyboard's ring (a computer) */
+.ui2 .u2-raised:focus-visible, .ui2 .u2-act:focus-visible, .ui2 .u2-raised.is-focus, .ui2 .u2-act.is-focus, .ui2 .u2-slot.is-focus {
+  outline: var(--ui2-size-focus) solid var(--ui2-brass-highlight);
+  outline-offset: 2px;
+}
+/* disabled: flat, no gloss, no shadow; its words dim (its REASON stands beside it, readable) */
+.ui2 .u2-raised[disabled], .ui2 .u2-raised.is-off {
+  cursor: default;
+  color: var(--ui2-text-disabled);
+  border-color: rgba(150, 195, 230, 0.1);
+  background: linear-gradient(180deg, var(--ui2-well-soft), var(--ui2-well));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.ui2 .u2-raised[disabled]::before, .ui2 .u2-raised.is-off::before { opacity: 0; }
+.ui2 .u2-raised[disabled] img, .ui2 .u2-raised.is-off img { opacity: 0.4; }
+
+/* ═══ the destination tile: raised, full-colour art over a readable label ═══ */
+.ui2 .u2-tile {
+  min-width: var(--ui2-size-touch);
+  min-height: var(--ui2-size-touch);
+  border-radius: var(--ui2-radius-tile);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui2-space-xs);
+  padding: var(--ui2-space-s);
+  cursor: pointer;
+}
+.ui2 .u2-tile-art { display: block; object-fit: contain; flex: 0 1 auto; min-height: 0; }
+.ui2 .u2-tile.is-primary .u2-tile-art { width: 46px; height: 46px; }
+.ui2 .u2-tile-label {
+  font-size: var(--ui2-fs-label);
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+.ui2 .u2-tile.is-compact { flex-direction: row; justify-content: flex-start; gap: var(--ui2-space-m); padding: var(--ui2-space-s) var(--ui2-space-l); }
+.ui2 .u2-tile.is-compact .u2-tile-art { width: 30px; height: 30px; }
+.ui2 .u2-tile-sub { display: block; font-size: var(--ui2-fs-small); font-weight: 400; color: var(--ui2-text-muted); text-shadow: none; white-space: nowrap; }
+.ui2 .u2-tile.is-off .u2-tile-sub, .ui2 .u2-tile[disabled] .u2-tile-sub { color: var(--ui2-text-muted); }
+.ui2 .u2-tile-words { display: flex; flex-direction: column; min-width: 0; }
+.ui2 .u2-tile.is-primary .u2-tile-words { align-items: center; }
+/* the rare warm light: an exceptional event; still (it lands once, then rests) */
+.ui2 .u2-raised.is-glow {
+  border-color: var(--ui2-mark-glow-outer);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--ui2-edge-light)),
+    inset 0 0 12px rgba(224, 123, 46, 0.32),
+    0 0 0 1px rgba(224, 123, 46, 0.45),
+    0 0 9px rgba(255, 190, 110, 0.45);
+  animation: u2-land calc(var(--ui2-motion-loop) / 2) ease-out 1;
+}
+@keyframes u2-land { from { box-shadow: 0 0 0 1px rgba(224, 123, 46, 0.2), 0 0 0 rgba(255, 190, 110, 0); } }
+
+/* ═══ the recessed information group: dark, sunk, NOT pressable ═══ */
+.ui2 .u2-group {
+  position: relative;
+  border-radius: var(--ui2-radius-group);
+  border: var(--ui2-size-edge) solid rgba(0, 0, 0, 0.45);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, var(--ui2-well), var(--ui2-well-soft));
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow));
+  padding: var(--ui2-space-s) var(--ui2-space-l);
+  min-width: 0;
+}
+.ui2 .u2-group-k {
+  display: block;
+  font-size: var(--ui2-fs-small);
+  color: var(--ui2-text-muted);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.ui2 .u2-group-v { display: block; font-size: var(--ui2-fs-label); font-weight: 700; white-space: nowrap; }
+.ui2 .u2-group-v.is-none { font-weight: 400; color: var(--ui2-text-muted); }
+
+/* ═══ the stat headline: a number you can tap for its breakdown (it LOOKS tappable: raised, a chevron) ═══ */
+.ui2 .u2-stat {
+  min-height: var(--ui2-size-touch);
+  border-radius: var(--ui2-radius-button);
+  display: flex;
+  align-items: center;
+  gap: var(--ui2-space-m);
+  padding: var(--ui2-space-s) var(--ui2-space-l);
+  text-align: left;
+  cursor: pointer;
+}
+.ui2 .u2-stat-words { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.ui2 .u2-stat-v { font-size: var(--ui2-fs-value); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.ui2 .u2-stat-k { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; }
+.ui2 .u2-stat-art { width: 24px; height: 24px; object-fit: contain; flex: 0 0 auto; }
+.ui2 .u2-chev { flex: 0 0 auto; font-size: var(--ui2-fs-value); color: var(--ui2-brass-highlight); line-height: 1; }
+
+/* ═══ the action button: five light metallic faces, ONE dark label ═══ */
+.ui2 .u2-act {
+  position: relative;
+  min-height: var(--ui2-size-touch);
+  min-width: var(--ui2-size-touch);
+  padding: 0 var(--ui2-space-xl);
+  border-radius: var(--ui2-radius-button);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui2-space-m);
+  font-size: var(--ui2-fs-label);
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ui2-text-on-action);
+  border: var(--ui2-size-edge) solid var(--a-rim);
+  background: linear-gradient(180deg, var(--a-0), var(--a-1) 52%, var(--a-2));
+  box-shadow:
+    inset 0 1px 0 var(--a-edge),
+    inset 0 calc(-1 * var(--ui2-size-bevel)) 0 rgba(0, 0, 0, 0.16),
+    0 var(--ui2-size-bevel) 0 rgba(0, 0, 0, var(--ui2-shadow)),
+    0 3px 5px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition: transform var(--ui2-motion-press) ease-out, box-shadow var(--ui2-motion-state) ease-out;
+}
+.ui2 .u2-act[data-c='gold']   { --a-0: var(--ui2-gold-face-0);   --a-1: var(--ui2-gold-face-1);   --a-2: var(--ui2-gold-face-2);   --p-0: var(--ui2-gold-press-0);   --p-1: var(--ui2-gold-press-1);   --p-2: var(--ui2-gold-press-2);   --a-edge: var(--ui2-gold-edge);   --a-rim: var(--ui2-gold-rim); }
+.ui2 .u2-act[data-c='green']  { --a-0: var(--ui2-green-face-0);  --a-1: var(--ui2-green-face-1);  --a-2: var(--ui2-green-face-2);  --p-0: var(--ui2-green-press-0);  --p-1: var(--ui2-green-press-1);  --p-2: var(--ui2-green-press-2);  --a-edge: var(--ui2-green-edge);  --a-rim: var(--ui2-green-rim); }
+.ui2 .u2-act[data-c='blue']   { --a-0: var(--ui2-blue-face-0);   --a-1: var(--ui2-blue-face-1);   --a-2: var(--ui2-blue-face-2);   --p-0: var(--ui2-blue-press-0);   --p-1: var(--ui2-blue-press-1);   --p-2: var(--ui2-blue-press-2);   --a-edge: var(--ui2-blue-edge);   --a-rim: var(--ui2-blue-rim); }
+.ui2 .u2-act[data-c='red']    { --a-0: var(--ui2-red-face-0);    --a-1: var(--ui2-red-face-1);    --a-2: var(--ui2-red-face-2);    --p-0: var(--ui2-red-press-0);    --p-1: var(--ui2-red-press-1);    --p-2: var(--ui2-red-press-2);    --a-edge: var(--ui2-red-edge);    --a-rim: var(--ui2-red-rim); }
+.ui2 .u2-act[data-c='silver'] { --a-0: var(--ui2-silver-face-0); --a-1: var(--ui2-silver-face-1); --a-2: var(--ui2-silver-face-2); --p-0: var(--ui2-silver-press-0); --p-1: var(--ui2-silver-press-1); --p-2: var(--ui2-silver-press-2); --a-edge: var(--ui2-silver-edge); --a-rim: var(--ui2-silver-rim); }
+.ui2 .u2-act:active:not([disabled]), .ui2 .u2-act.is-press {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, var(--p-0), var(--p-1) 52%, var(--p-2));
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(0, 0, 0, var(--ui2-shadow));
+}
+.ui2 .u2-act:active:not([disabled])::before, .ui2 .u2-act.is-press::before { opacity: 0; }
+.ui2 .u2-act.is-wide { display: flex; width: 100%; }
+.ui2 .u2-act[disabled], .ui2 .u2-act.is-off {
+  cursor: default;
+  color: var(--ui2-text-disabled);
+  border-color: rgba(150, 195, 230, 0.12);
+  background: linear-gradient(180deg, var(--ui2-well-soft), var(--ui2-well));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.ui2 .u2-act[disabled]::before, .ui2 .u2-act.is-off::before { opacity: 0; }
+/* the pending mark: a small turning ring beside the words while the worker answers */
+.ui2 .u2-act.is-pending { cursor: progress; }
+.ui2 .u2-spin {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(20, 29, 34, 0.25);
+  border-top-color: var(--ui2-text-on-action);
+  animation: u2-turn var(--ui2-motion-loop) linear infinite;
+}
+@keyframes u2-turn { to { transform: rotate(360deg); } }
+/* the bottom row: the action, with its price or requirement beside it */
+.ui2 .u2-actrow { display: flex; align-items: center; gap: var(--ui2-space-l); min-width: 0; }
+.ui2 .u2-actrow > .u2-act { flex: 1 1 auto; }
+.ui2 .u2-aside { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--ui2-space-s); font-size: var(--ui2-fs-label); font-weight: 700; white-space: nowrap; }
+.ui2 .u2-aside img { width: 18px; height: 18px; object-fit: contain; }
+.ui2 .u2-aside.is-short { color: var(--ui2-text-muted); font-weight: 400; }
+/* the disabled action's reason: beside it, readable (muted, never the disabled grey) */
+.ui2 .u2-why { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); line-height: 1.2; }
+
+/* ═══ the rarity slot: recessed, outlined by the game's grade, stars as the non-colour cue ═══ */
+.ui2 .u2-slot {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: var(--ui2-radius-slot);
+  border: 2px solid transparent;
+  background:
+    radial-gradient(ellipse at 50% 40%, var(--ui2-well-soft), var(--ui2-well-deep) 80%) padding-box,
+    linear-gradient(180deg, var(--g-0), var(--g-1)) border-box;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow)), 0 0 6px var(--g-glow, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ui2 .u2-slot[data-grade='normal'] { --g-0: rgba(126, 143, 151, 0.55); --g-1: rgba(126, 143, 151, 0.35); }
+.ui2 .u2-slot[data-grade='rare']   { --g-0: var(--ui2-grade-rare); --g-1: var(--ui2-grade-rare); --g-glow: rgba(91, 153, 222, 0.35); }
+/* Elite: the more pronounced metallic finish (a light top and a deep foot to its orange) */
+.ui2 .u2-slot[data-grade='elite']  { --g-0: var(--ui2-grade-elite-light); --g-1: var(--ui2-grade-elite); --g-glow: rgba(232, 137, 58, 0.38); }
+/* Godly: prismatic, still (the restrained glint is the light top-left; no loop) */
+.ui2 .u2-slot[data-grade='godly'] {
+  background:
+    radial-gradient(ellipse at 50% 40%, var(--ui2-well-soft), var(--ui2-well-deep) 80%) padding-box,
+    conic-gradient(from 210deg, var(--ui2-prism-0), var(--ui2-prism-1), var(--ui2-prism-2), var(--ui2-prism-3), var(--ui2-prism-4), var(--ui2-prism-0)) border-box;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow)), 0 0 6px rgba(240, 196, 95, 0.4);
+}
+.ui2 .u2-slot.is-empty { --g-0: rgba(126, 143, 151, 0.3); --g-1: rgba(126, 143, 151, 0.2); --g-glow: transparent; }
+.ui2 .u2-slot-art { width: 72%; height: 72%; object-fit: contain; }
+.ui2 .u2-stars {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  font-size: var(--ui2-fs-badge);
+  line-height: 1;
+  letter-spacing: -0.08em;
+  color: var(--ui2-brass-highlight);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 1), 0 0 2px rgba(0, 0, 0, 1);
+  font-family: Georgia, serif;
+}
+/* a slot that is the chosen one: pushed in, its outline kept */
+.ui2 .u2-slot.is-sel { box-shadow: inset 0 4px 7px rgba(0, 0, 0, 0.75), 0 0 0 2px var(--ui2-sunk-top); }
+.ui2 button.u2-slot { cursor: pointer; padding: 0; }
+
+/* ═══ the progress bar: a continuous metallic fill in a recessed track ═══ */
+.ui2 .u2-bar { display: flex; flex-direction: column; gap: var(--ui2-space-xs); min-width: 0; }
+.ui2 .u2-bar-top { display: flex; justify-content: space-between; gap: var(--ui2-space-l); font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; }
+.ui2 .u2-bar-top b { color: var(--ui2-text-ivory); font-weight: 700; }
+.ui2 .u2-track {
+  position: relative;
+  height: var(--ui2-size-bar);
+  border-radius: var(--ui2-radius-pill);
+  background: linear-gradient(180deg, var(--ui2-well-deep), var(--ui2-well));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.ui2 .u2-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, var(--ui2-fill-top), var(--ui2-fill-mid) 55%, var(--ui2-fill-bottom));
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  transition: width var(--ui2-motion-state) ease-out;
+}
+
+/* ═══ the badge: a count, a dot ═══ */
+.ui2 .u2-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--ui2-radius-pill);
+  background: var(--ui2-mark-count);
+  color: var(--ui2-mark-count-text);
+  font-size: var(--ui2-fs-badge);
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-family: var(--ui2-font);
+}
+.ui2 .u2-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ui2-mark-dot);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+/* ═══ "still loading": a list's placeholder rows ═══ */
+.ui2 .u2-skel { display: flex; flex-direction: column; gap: var(--ui2-space-s); min-width: 0; }
+.ui2 .u2-skel-row {
+  position: relative;
+  height: 14px;
+  border-radius: var(--ui2-radius-slot);
+  background: var(--ui2-well-soft);
+  overflow: hidden;
+}
+.ui2 .u2-skel-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
+  transform: translateX(-100%);
+  animation: u2-sweep var(--ui2-motion-loop) ease-in-out infinite;
+}
+@keyframes u2-sweep { to { transform: translateX(100%); } }
+.ui2 .u2-skel-words { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); }
+
+/* reduced motion: no loop, no move (the block above also zeroes the durations) */
+@media (prefers-reduced-motion: reduce) {
+  .ui2 *, .ui2 *::before, .ui2 *::after { animation: none !important; transition: none !important; }
+}

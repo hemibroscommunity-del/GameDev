@@ -1566,15 +1566,16 @@ export const STATES = [
      the sight line drawn and Block and the specials come.  Put back on
      today's combat after. */
   /* v2.3.6640 (card PAD; game/padSkin.js, panels/PadHousings.jsx): the touch
-     controls as one game controller, the owner's mockup of 2026-11-25 */
+     controls as one game controller, the owner's mockup of 2026-11-25;
+     v2.3.6641 (part 3): one shell seated on the band */
   {
-    id: 'pad-controller', group: 'Fighting', title: 'The controller: the stick and the buttons in their housings',
-    about: 'The touch controls as one built-in game controller (the owner\'s mockup, 2026-11-25): a left housing holds the stick (its socket empty until a thumb walks), a right housing holds Attack (big, low), Jump beside it and a row of three above (the skateboard or Charge, Block, Special), each in a fixed socket, both docked to the band\'s top edge with the middle open. A control the game hides leaves its socket empty. `?padskin=0` gives the old look.',
+    id: 'pad-controller', group: 'Fighting', title: 'The controller: one shell on the band, every control in its well',
+    about: 'The touch controls as one housing seated on the dashboard (the owner\'s redesign, 2026-11-25): the stick\'s lobe at the left, three weapon wells on the rail, the right lobe with a row of three small wells (the skateboard or Charge, the middle well, Special) over the big left button (Jump; the shield in a fight, Jump then the middle well) and Attack. A control the game hides leaves its well empty. `?padskin=0` gives the old look.',
     views: ['portrait', 'landscape'],
     settle: 1200,
     run: async ({ P }) => {
       await wait(P, 600);
-      const ok = await evalIn(P, () => !!document.querySelector('[data-padhousing="R"]') && !!document.querySelector('.bt-pad'));
+      const ok = await evalIn(P, () => !!document.querySelector('[data-padhousing="shell"]') && !!document.querySelector('.bt-pad'));
       return ok ? undefined : 'no controller drawn';
     },
   },
@@ -1968,5 +1969,25 @@ export const STATES = [
       await wait(P, 300);
     },
     after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
+  },
+  /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
+     ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
+  {
+    id: 'ui2-kit', group: 'The new dashboard (in build)', title: 'The new dashboard kit (?uikit=1)',
+    about: 'Not a screen a player meets yet: the new dashboard\'s kit on a page of its own, each piece in every state and two samples (the Bro landing, the Character page with your real data), each inside a box the size of the band on this screen.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.set('uikit', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      const up = await P.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 60000 }).then(() => true, () => false);
+      if (!up) return 'the kit\'s page did not come up';
+      await wait(P, 800);
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.delete('uikit');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    },
   },
 ];

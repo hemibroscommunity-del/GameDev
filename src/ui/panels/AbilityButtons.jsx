@@ -6,6 +6,8 @@ import { specialsShown } from '@/game/controlVisibility.js';   /* v2.3.6549: in 
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
 import { ctlColumn, ctlBottom, CTL_SLOT, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: both buttons are on the RIGHT again -- Bash in the column (slot 0), Whirlwind in the cluster above the disc */
+import { padSpecialAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6642: Whirlwind and Shield Bash in the right lobe's tier (card PAD part 6) */
+import { padTierBus } from './padTier.js';   /* v2.3.6642: ...the shell told when the tier shows */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
@@ -95,37 +97,12 @@ import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash } from '@/ui
  * bt-desktop-hide matches the joysticks: on a mouse the keys are the input,
  * and the keyboard hints strip advertises them.
  */
-export function AbilityButtons(props) {
-  var stateRef = props.stateRef;
-  var isLandscape = props.isLandscape;
-  /* Cooldown sweep + stamina affordability change without a React state
-     change, so tick a cheap counter.  200 ms: fast enough that a 4 s sweep
-     reads as motion, slow enough to be free next to the game loop. */
-  var _tick = React.useState(0);
-  var setTick = _tick[1];
-  /* v2.3.3018: per-button "a cooldown just ended" bookkeeping (readyFlash) --
-     one map, not a hook per button, because how many buttons render changes. */
-  var flashRef = React.useRef(null);
-  if (!flashRef.current) flashRef.current = Object.create(null);
-  React.useEffect(function () {
-    var id = setInterval(function () { setTick(function (v) { return (v + 1) % 1000000; }); }, 200);
-    /* ═══ v2.3.2252: THE SHIELD MOVES THIS BUTTON, SO IT MUST NOT WAIT ═══
-       Shield Bash's button is visible exactly while the shield is RAISED
-       (game/abilities.abilityStatus).  On the 200ms poll alone that reads as a
-       button that arrives late and lingers after the shield drops -- and the
-       lingering half is worse than cosmetic: a tap in that window routes into
-       castAbility, which re-checks the live state and refuses, so the button is
-       on screen and dead.  blockRingBus is the bus shieldToggle already emits
-       on for every raise and drop, so the button re-renders on the same edge
-       the shield does. */
-    var off = blockRingBus.subscribe(function () { setTick(function (v) { return (v + 1) % 1000000; }); });
-    return function () { clearInterval(id); try { off(); } catch (e) { /* already gone */ } };
-  }, [setTick]);
-
-  var S = stateRef && stateRef.current;
+/* v2.3.6642 (card PAD part 6): the buttons shown now, Bash then Whirlwind
+   (null when none; the rule unchanged, moved out of the render so the shell's tier is told
+   before the early return; the comments below are its history) */
+function liveSpecials(S) {
   if (!S || !S.rpg) return null;
   if (!specialsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: in the two buttons Whirlwind and Shield Bash come with the sight (controlVisibility.js; card CT PR 4) */
-
   var kinds = ['bash', 'whirl'];
   var live = [];
   for (var i = 0; i < kinds.length; i++) {
@@ -163,7 +140,60 @@ export function AbilityButtons(props) {
        bare candidacy, which has no hysteresis of its own. */
     if (st.visible && st.engaged !== false) live.push({ kind: kinds[i], st: st });
   }
+  return live;
+}
+
+/* v2.3.6642: the old face, in the tier's well: a box of `size` holds a face
+   of `face`, centred, `dy` lower (the box risen off the top row's) */
+function wrapFace(anchor, size, face, skin) {
+  if (!(anchor.face > 0)) return skin;
+  var inset = (size - face) / 2;
+  return React.createElement('span', {
+    'data-ability-face': '1',
+    style: { position: 'absolute', left: inset, top: inset + (anchor.dy || 0), width: face, height: face, pointerEvents: 'none' },
+  }, skin);
+}
+
+export function AbilityButtons(props) {
+  usePadWidth();   /* v2.3.6642: redrawn when the world's width moves (padSpot.js; card PAD part 4's rule) */
+  var stateRef = props.stateRef;
+  var isLandscape = props.isLandscape;
+  /* Cooldown sweep + stamina affordability change without a React state
+     change, so tick a cheap counter.  200 ms: fast enough that a 4 s sweep
+     reads as motion, slow enough to be free next to the game loop. */
+  var _tick = React.useState(0);
+  var setTick = _tick[1];
+  /* v2.3.3018: per-button "a cooldown just ended" bookkeeping (readyFlash) --
+     one map, not a hook per button, because how many buttons render changes. */
+  var flashRef = React.useRef(null);
+  if (!flashRef.current) flashRef.current = Object.create(null);
+  React.useEffect(function () {
+    var id = setInterval(function () { setTick(function (v) { return (v + 1) % 1000000; }); }, 200);
+    /* ═══ v2.3.2252: THE SHIELD MOVES THIS BUTTON, SO IT MUST NOT WAIT ═══
+       Shield Bash's button is visible exactly while the shield is RAISED
+       (game/abilities.abilityStatus).  On the 200ms poll alone that reads as a
+       button that arrives late and lingers after the shield drops -- and the
+       lingering half is worse than cosmetic: a tap in that window routes into
+       castAbility, which re-checks the live state and refuses, so the button is
+       on screen and dead.  blockRingBus is the bus shieldToggle already emits
+       on for every raise and drop, so the button re-renders on the same edge
+       the shield does. */
+    var off = blockRingBus.subscribe(function () { setTick(function (v) { return (v + 1) % 1000000; }); });
+    return function () { clearInterval(id); try { off(); } catch (e) { /* already gone */ } };
+  }, [setTick]);
+
+  var S = stateRef && stateRef.current;
+  /* v2.3.6642 (card PAD part 6): the list is made BEFORE the early returns,
+     so the hook below tells the controller's shell every render (the tier
+     over its right lobe while either shows; padTier.js) */
+  var live = liveSpecials(S) || [];   /* null: none (the render's gate, sight.test 10) */
+  var tierKey = live.map(function (e) { return e.kind; }).join(',');
+  React.useLayoutEffect(function () {
+    padTierBus.set(tierKey ? { bash: tierKey.indexOf('bash') >= 0, whirl: tierKey.indexOf('whirl') >= 0 } : null);
+  }, [tierKey]);
+  React.useLayoutEffect(function () { return function () { padTierBus.set(null); }; }, []);
   if (!live.length) return null;
+  var shownPair = { bash: tierKey.indexOf('bash') >= 0, whirl: tierKey.indexOf('whirl') >= 0 };
 
   /* ═══ v2.3.2574: SAME SIDE AGAIN, DIFFERENT HEIGHTS ═══
      Whirlwind sits in the cluster ABOVE the attack disc and Shield Bash beside
@@ -179,6 +209,11 @@ export function AbilityButtons(props) {
   var rclu = rightCluster(isLandscape);
 
   var anchorOf = function (kind) {
+    /* v2.3.6642 (card PAD part 6): in the controller, its well in the right
+       lobe's tier (padSkin.js specialLayout), first: the arc's and today's
+       places are under or beside the shell there */
+    var tier = padSpecialAnchor(kind, isLandscape, shownPair);
+    if (tier) return { size: tier.size, right: tier.right, bottom: ctlBottom(tier.bottomPx), face: tier.face, dy: tier.dy };
     var arc = thumbAnchor(kind, isLandscape);   /* v2.3.6549: Whirlwind and Shield Bash on the thumb's arc in the two buttons */
     if (arc) return { size: arc.size, right: arc.right, bottom: ctlBottom(arc.bottomPx) };
     /* v2.3.2574: the cluster above the disc, checked first.  Same
@@ -220,7 +255,10 @@ export function AbilityButtons(props) {
     var skinState = st.cdLeft > 0 ? 'cooldown' : (ready ? 'normal' : 'disabled');
     var grey = skinState !== 'normal';
     var flash = readyFlash(flashRef.current, kind, st.cdLeft > 0, Date.now()) && skinState === 'normal';
-    var iconSize = Math.round(size * 0.7);
+    /* v2.3.6642: in the tier the face is the well's size (`face`), drawn
+       `dy` lower in the 44 px box (padSkin.js specialLayout) */
+    var faceSize = anchor.face > 0 ? anchor.face : size;
+    var iconSize = Math.round(faceSize * 0.7);
     return React.createElement('div', {
       key: kind,
       className: 'bt-desktop-hide',
@@ -296,12 +334,12 @@ export function AbilityButtons(props) {
          picture and no word). */
       'aria-label': meta.label,
     },
-    React.createElement(Skin, {
-      size: size, tone: 'slate', state: skinState,
+    wrapFace(anchor, size, faceSize, React.createElement(Skin, {
+      size: faceSize, tone: 'slate', state: skinState,
       progress: st.cdLeft > 0 ? 1 - st.cdFrac : null,
       flash: flash,
     }, kind === 'whirl'
       ? React.createElement(TornadoIcon, { size: iconSize, grey: grey })
-      : React.createElement(BashIcon, { size: iconSize, grey: grey })));
+      : React.createElement(BashIcon, { size: iconSize, grey: grey }))));
   }));
 }

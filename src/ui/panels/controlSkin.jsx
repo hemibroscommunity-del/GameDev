@@ -154,32 +154,41 @@ function sparklePath(x, y, s) {
  * iPhone pays a layer for one).  The face is the socket's size, centred in
  * the button's box (which keeps today's size when that is bigger).  What a
  * state wears is padSkin.js padFace's. */
-export const PAD_ART_VER = '2.3.6640';
+export const PAD_ART_VER = '2.3.6641';   /* v2.3.6641: part 3's pieces (one shell) */
 export function padArtUrl(name) { return '/ui/pad/' + name + '.png?v=' + PAD_ART_VER; }
 export const PAD_ART_URLS = padPictures().map(padArtUrl);
+/* v2.3.6641 (card PAD part 3): one picture an action, unavailable the same
+   picture dimmed (CSS opacity: game.css .bt-pad[data-state]), the sword's
+   own dimmed face for Attack; the cooldown a DARK SECTOR over the face
+   inside its ring (never the rim: the card's reading 6), drawn as a circle
+   of half the radius stroked a radius wide; a raised guard, a ridden
+   board, the active ring (opacity only).  Attack wears every weapon's face
+   and the empty well, CSS showing the one data-ricon asks (game.css
+   .bt-rjoy-base[data-pad]; padSkin.js attackFace). */
 function PadSkin(props) {
   var name = props.pad, face = props.face;
   var f = padFace(name, props.state || 'normal', props.progress);
   var attack = name === 'attack';
   var acc = PAD_ACCENT[name] || PAD_ACCENT.special;
-  var c = face / 2, rim = Math.max(2.5, face * 0.07), r = c - rim / 2, circ = 2 * Math.PI * r;
-  var pics = attack ? [['on', 'attack'], ['off', 'attack-off'], ['socket', 'socket']] : [['on', name], ['off', name + '-off']];
+  var c = face / 2, r = face * 0.37 / 2, circ = 2 * Math.PI * r;
+  var pics = attack ? [['on', 'attack-sword'], ['off', 'attack-off'], ['bow', 'attack-bow'], ['staff', 'attack-staff'], ['socket', 'socket']] : [['on', f.pic]];
   return React.createElement('span', {
     className: 'bt-skin bt-pad', 'data-pad': name, 'data-state': props.state || 'normal',
-    'data-glow': f.glow ? '1' : '0', 'data-flash': props.flash ? '1' : undefined,
-    style: { '--pad-face': face + 'px', '--pad-acc': acc },
+    'data-glow': f.glow ? '1' : '0', 'data-ring': f.ring ? '1' : '0', 'data-flash': props.flash ? '1' : undefined,
+    /* v2.3.6641 (part 4): `dy`, the art drawn that much lower in a box risen off it, or a rounding's tenth higher (padSkin.js padSpot): the box's inset moved, no layer */
+    style: props.dy ? { '--pad-face': face + 'px', '--pad-acc': acc, top: props.dy + 'px', bottom: -props.dy + 'px' } : { '--pad-face': face + 'px', '--pad-acc': acc },
   },
   React.createElement('span', { className: 'bt-pad-glow' }),
   React.createElement('span', Object.assign({ className: 'bt-pad-face', ref: props.faceRef || undefined }, props.faceProps || null),
     pics.map(function (p) {
       return React.createElement('img', { key: p[0], 'data-pic': p[0], src: padArtUrl(p[1]), alt: '', draggable: false, width: face, height: face });
     }),
-    React.createElement('span', { className: 'bt-pad-shade', style: f.shade ? { opacity: f.shade } : undefined })),
-  f.sweep > 0 ? React.createElement('svg', {
+    React.createElement('span', { className: 'bt-pad-shade' })),
+  f.sweep > 0.001 ? React.createElement('svg', {
     className: 'bt-pad-arc', 'aria-hidden': 'true', 'data-skin-arc': fx(f.sweep),
     viewBox: '0 0 ' + face + ' ' + face, width: face, height: face,
   }, React.createElement('circle', {
-    cx: c, cy: c, r: r, fill: 'none', stroke: acc, strokeWidth: rim, strokeLinecap: 'butt',
+    cx: c, cy: c, r: r, fill: 'none', stroke: 'rgba(5,8,11,.62)', strokeWidth: 2 * r, strokeLinecap: 'butt',
     strokeDasharray: fx(f.sweep * circ) + ' ' + fx(circ), transform: 'rotate(-90 ' + c + ' ' + c + ')',
   })) : null);
 }

@@ -301,6 +301,10 @@ function writesOutside(prop, doorFile, doorFn) {
     if (hadLoc) Object.defineProperty(globalThis, 'location', hadLoc); else delete globalThis.location;
   }
   check('7b. no address: the ring at 30% (11.3 px upright, 13.5 sideways)', turnRingRadius(false) === 11.3 && turnRingRadius(true) === 13.5, [turnRingRadius(false), turnRingRadius(true)]);
+  /* v2.3.6641 (card PAD part 4): the controller's base is drawn at its well's size; the ring follows the drawn radius it is handed */
+  check('7b. a drawn radius handed (the controller, 41.5 px): the ring at 30% of it both ways up (12.5 px); 0 or none: today\'s radius',
+    turnRingRadius(false, 41.5) === 12.5 && turnRingRadius(true, 41.5) === 12.5 && turnRingRadius(true, 0) === 13.5 && turnRingRadius(false, -3) === 11.3,
+    [turnRingRadius(false, 41.5), turnRingRadius(true, 41.5), turnRingRadius(true, 0), turnRingRadius(false, -3)]);
   /* read off the syntax tree: the handler hands stickDrive the thumb's RAW
      offset from where it landed (never a clamped or a one-way copy), and the
      disc draws the ring only when twoButtonsOn() (never in mode 4), at

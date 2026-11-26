@@ -278,9 +278,28 @@ export function noteCanvasCss(w, h) {
   const phone = phoneScreen();
   if (w === _cssW && h === _cssH && phone === _phone) return;
   const was = renderDpr();
+  const moved = w !== _cssW;
   _cssW = w; _cssH = h; _phone = phone;
+  if (moved) for (const fn of Array.from(_cssWatch)) { try { fn(w); } catch (e) { /* a watcher's own */ } }   /* v2.3.6641 */
   const res = renderDpr();
   if (Math.abs(res - was) > 1e-9) { followRenderer(res); markSoft(); }
+}
+
+/** v2.3.6641: the world's width as resize() last gave the canvas (0 = not
+ *  told yet).  The controller's shell spans the WORLD, not the window: a
+ *  sideways phone under the one band keeps its world between two bars
+ *  (sheetGeometry oneBandFootprint: 844 x 390 folded, 752 wide), and
+ *  playVw() is the window's column there (card PAD part 4).  Kept, never
+ *  measured (docs/specs/layout-reads.md way 1). */
+export function canvasCssW() { return _cssW; }
+/* ...and who wants to hear when it moves: resize() gives the canvas its
+   width at the top of the frame AFTER a band fold's render (BroTown.jsx,
+   v2.3.6281), so a control laid out in that render kept the old width till
+   something else redrew it.  A watcher is told once per change. */
+const _cssWatch = new Set();
+export function watchCanvasCssW(fn) {
+  _cssWatch.add(fn);
+  return function () { _cssWatch.delete(fn); };
 }
 
 /** The speed test: lower it now (r), or put it back (0).  The renderer's own

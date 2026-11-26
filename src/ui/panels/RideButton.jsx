@@ -7,7 +7,7 @@ import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { RIDE_KEY } from '@/game/deskKeys.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { Skin, pressOn, pressOff } from './controlSkin.jsx';
-import { padAnchor, padLive } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
+import { padAnchor, padLive, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller's context socket (card PAD) */
 import { ctxFor } from '@/game/padSkin.js';
 import { chargeShowing } from './ChargeButton.jsx';
 import { RIDE_ICON_URL } from '@/rendering/rideFx.js';
@@ -79,6 +79,7 @@ export function rideButtonView(S) {
 }
 
 export function RideButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _t = React.useState(0);
@@ -90,8 +91,14 @@ export function RideButton(props) {
 
   React.useEffect(function () {
     var id = setInterval(function () {
-      var v = rideButtonView(stateRef && stateRef.current);
-      var k = v ? v.key : '';
+      var S0 = stateRef && stateRef.current;
+      var v = rideButtonView(S0);
+      /* v2.3.6641 (the gatekeeper's sitting 67): the controller's pick is in
+         the key.  Charge comes and goes with every sighting (thumbSide.js
+         chargeUp) while the ride's own key holds still: keyed on the ride
+         alone, the board stayed drawn over Charge in the mobility well, or,
+         redrawn during the sighting, a rider had no way off after it */
+      var k = v ? v.key + '|' + (padLive() && chargeShowing(S0) ? 1 : 0) : '';
       if (k !== keyRef.current) {
         keyRef.current = k;
         setTick(function (x) { return (x + 1) % 1000000; });
@@ -189,7 +196,7 @@ export function RideButton(props) {
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement(Skin, { size: size, tone: on ? 'warm' : 'slate', state: on ? 'on' : (view.asking ? 'cooldown' : 'normal'), pad: at.pad ? 'skate' : null, face: at.face },
+  React.createElement(Skin, { size: size, tone: on ? 'warm' : 'slate', state: on ? 'on' : (view.asking ? 'cooldown' : 'normal'), pad: at.pad ? 'skate' : null, face: at.face, dy: at.dy },
     /* the board from above, turned across the button: the owner's own
        picture (public/sprites/ride/skateboard-top.png), loaded with the
        rider's art behind the loading screen (rideFx.js preloadRideArt) */
