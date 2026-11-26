@@ -459,7 +459,7 @@ const TPLANTS = [
   ['B4 a strip entry given a border of its own', 'B4', swap('stripCss', '.ui2 .u2-bro-strip .u2-fact {', '.ui2 .u2-bro-strip .u2-fact { border: 1px solid var(--ui2-border);')],
   ['B7 CharacterPage no longer drawn by BroCard', 'B7', swap('card', "who != null ? <CharacterPage S={S} who={who} onWeapon={onWeapon} /> : landing", 'landing')],
   ['B8 the passport drawn for anyone', 'B8', swap('card', "return who != null ? <CharacterPage S={S} who={who} onWeapon={onWeapon} /> : landing;", 'return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;')],
-  ['B10 the fallback left at \'character\'', 'B10', swap('card', 'const door = broSelfPage(id, who == null ? null : who);', "const door = BRO_HUB_PAGES[id] || 'character';")],
+  ['B10 the fallback left at \'character\'', 'B10', swap('card', 'const door = broSelfPage(id, who);', "const door = BRO_HUB_PAGES[id] || 'character';")],
 ];
 for (const [name, want, X] of TPLANTS) {
   if (!X) { check(`4b. plant ${name}: its anchor is in the file`, false, 'the plant\'s text is not in the file: write it again'); continue; }

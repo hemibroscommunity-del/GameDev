@@ -8,7 +8,11 @@
  * they are. */
 .ui2 .u2-bro-strip { flex: none; gap: var(--ui2-space-s); padding: 0 var(--ui2-space-m); }
 .ui2 .u2-bro-strip.is-side { height: 100%; }
-.ui2 .u2-bro-strip .u2-fact { min-height: var(--ui2-size-touch); justify-content: center; }
+.ui2 .u2-bro-strip .u2-fact { min-height: var(--ui2-size-touch); min-width: var(--ui2-size-touch); justify-content: center; }
+/* sideways each entry keeps its own width (the kit's row shares the width equally, which cut "Quests done"
+   at 844 x 390 and left AP 18 px wide at 667 x 375 on the test box); the six take what is left */
+.ui2 .u2-bro-strip.is-side .u2-fact { flex: 0 0 auto; }
+.ui2 .u2-bro-strip.is-side .u2-fact-v { white-space: nowrap; }
 .ui2 .u2-bro-strip .u2-fact-k { line-height: 13px; }
 .ui2 .u2-bro-strip .u2-fact-end { flex: 0 1 auto; max-width: 100%; }
 .ui2 .u2-bro-strip .u2-fact-v {
