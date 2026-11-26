@@ -83,6 +83,22 @@ export default [
       'valid-typeof': 'error',
     },
   },
+  /* v2.3.6702: UNUSED NAMES ARE REFUSED WHERE THE CODE IS CLEAN (card TD
+   * PR 3).  A name nobody reads is where a session wires a new feature into
+   * something that no longer runs.  src/game, src/state and src/ui/kit were
+   * brought to zero (32 names in 16 files of src/game, deleted; three kept
+   * under a disable line that says why), so the rule holds them there.
+   * Arguments and caught errors are left (a handler's shape), and `React`
+   * (imported for JSX the build no longer needs, in 104 files: harmless).
+   * NOT the rest of src (the screens: hundreds of names), and NOT
+   * server/src (39 names: clearing them deploys the worker, so they wait
+   * for a card that changes it anyway). */
+  {
+    files: ['src/game/**/*.{js,jsx}', 'src/state/**/*.{js,jsx}', 'src/ui/kit/**/*.{js,jsx}'],
+    rules: {
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^React$' }],
+    },
+  },
   /* v2.3.784: gameLoop.js / wsClient.js LEGACY DEBT blocks removed
      (Phase 1 deletion / Phase 5 rewrite with explicit imports).
      v2.3.1189: gameSystems.js (7), lifeSkills.js (1), and BroTown.jsx

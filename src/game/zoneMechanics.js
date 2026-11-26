@@ -21,16 +21,14 @@
    keeps them on their intended `|| 0` fallback path instead — zero
    effect on live play, and flagged in the PR for the owner's
    revive-or-remove decision on frozen-shore actions. */
-import { ZONES, BT_AUDIO, SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWMAN_DURATION, SNOWMAN_AGGRO_RADIUS, SLED_DURATION, TIDE_CYCLE_MS, DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE, DIVE_TREASURE_CHANCE, TORCH_DURATION, toDisplayDamage /* v2.3.2520: the display damage scale */ } from '@/data/index.js';
+import { BT_AUDIO, SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWMAN_DURATION, SNOWMAN_AGGRO_RADIUS, SLED_DURATION, TIDE_CYCLE_MS, DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE, DIVE_TREASURE_CHANCE, TORCH_DURATION, toDisplayDamage /* v2.3.2520: the display damage scale */ } from '@/data/index.js';
 import { _createForOfIteratorHelper } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 export function updateZoneMechanics(S, ptx, pty) {
   var P = S.player;
   var R; /* see header — dormant-code guard, intentionally undefined */
-  var _ZONES$S$currentZone3; /* transpiler temp, was hoisted in BroTown */
         /* ═══ ZONE-SPECIFIC MECHANICS ═══ */
-        var zoneElem2 = (_ZONES$S$currentZone3 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone3 === void 0 ? void 0 : _ZONES$S$currentZone3.element;
 
         /* ── FROZEN SHORE: Snowball projectiles ── */
         if (S._snowballs && S._snowballs.length > 0) {
