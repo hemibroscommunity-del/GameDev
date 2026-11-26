@@ -227,6 +227,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const anchored = () => P.page.evaluate(() => { const e = document.querySelector('[data-gear-bag] [data-bag-key="i-ore_copper_ore"]'); return !!e && /\u2693/.test(e.textContent); });
     for (let i = 0; i < 2 && !(await anchored()); i++) {
       try {
+        /* the bag shows whole rows now: the ore may be under them, so it is brought into view first */
+        await P.page.evaluate(() => { const e = document.querySelector('[data-gear-bag] [data-bag-key="i-ore_copper_ore"]'); if (e) e.scrollIntoView({ block: 'nearest' }); });
+        await P.page.waitForTimeout(900);
         await tap(P, '[data-gear-bag] [data-bag-key="i-ore_copper_ore"]', 1200);
         await tap(P, '[data-gear-details]', 1600);
         await tap(P, '[data-item-pin]', 1200);
