@@ -116,7 +116,7 @@ export function gearPanelsGeometry(W, H) {
 
 /* ── the label rows ── */
 function InventoryHead({ fid, coins, menu }) {
-  const word = fid === 'all' ? say(SAY, 'gearPanels.allItems') : ((GEAR_FILTERS[fid] || {}).pill || say(SAY, 'gearPanels.allItems'));
+  const word = fid === 'all' ? say(SAY, 'gearPanels.clear') : ((GEAR_FILTERS[fid] || {}).pill || say(SAY, 'gearPanels.allItems'));
   return (
     <>
       <button type="button" className="u2-gp-ctl u2-hit" data-gear-filter={fid} aria-expanded={menu} aria-label={say(SAY, 'gearPanels.filter', { word })}
@@ -218,13 +218,15 @@ function runOne(id, got) {
   runItemAction(id, got.target, got.card, ui, { equip: { activate: false } });
 }
 
+/* the change: its arrow and its amount; the headline adds the words ("No change", "25% more damage per
+   second"), a supporting row keeps them in its title and the tradeoff line (the room of a 189 px panel) */
 function Change({ row, big }) {
   const c = row.change;
   const tone = c.good > 0 ? 'good' : c.good < 0 ? 'bad' : 'same';
   return (
     <span className={'u2-gp-chg is-' + tone + (big ? ' is-big' : '')} data-cmp-dir={c.dir} data-cmp-good={c.good} title={c.say}>
       {c.arrow ? <span aria-hidden="true">{c.arrow}</span> : null}
-      <span>{c.v || c.say}</span>
+      <span>{big ? (c.v ? c.v + ' ' + c.words : c.say) : (c.v || (c.dir === 'none' ? c.say : ''))}</span>
     </span>
   );
 }

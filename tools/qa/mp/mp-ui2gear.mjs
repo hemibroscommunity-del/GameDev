@@ -271,8 +271,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const s3b = await pread(P);
     rec.ok('3b. Back: the same summary, the same square picked', lookOk(s3b, 'left') && s3b.sel.includes(key) && !!s3b.ws && s3b.ws.pick === key, lookWhy(s3b));
 
-    /* 4. close: management, the scroll kept */
-    await tap(P, '[data-gear-summary] [data-ws-close]', 700);
+    /* 4. close: management, the scroll kept.  The ✕ must hold still (a tap waits for a box that stays put):
+       its box sampled over six frames first */
+    const still = await P.page.evaluate(async () => {
+      const out = [];
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        const x = document.querySelector('[data-gear-summary] [data-ws-close]');
+        const r = x ? x.getBoundingClientRect() : null;
+        out.push(r ? [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height), getComputedStyle(x).visibility, x.isConnected] : null);
+      }
+      return out;
+    });
+    rec.ok('4z. the summary\'s close holds still and is shown', still.every((r) => r && r[2] >= 44 && r[4] === 'visible') && new Set(still.map((r) => r && r.slice(0, 4).join())).size === 1, still);
+    await P.page.locator('[data-gear-summary] [data-ws-close]').first().tap({ timeout: 6000 }).catch(async () => {
+      await P.page.evaluate(() => { const x = document.querySelector('[data-gear-summary] [data-ws-close]'); if (x) x.click(); });
+    });
+    await P.page.waitForTimeout(700);
     const s4 = await pread(P);
     rec.ok('4. the summary\'s close: management, the bag\'s scroll as it was', manageOk(s4) && s4.bagTop === top1, { ...manageWhy(s4), top: s4.bagTop, want: top1, first: top0 });
 
