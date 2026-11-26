@@ -6,7 +6,6 @@
    monster telegraphs, chat bubbles, ground splatter, impact rings) and
    marks expired ground loot. `_now` is block-local. Captures: S (param)
    + the two combo constants imported below. S is stateRef.current. */
-import { SWING_COOLDOWN } from '@/data/index.js';
 import { PRINT_TTL_MS } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2654: one TTL, not two */
 
 export function updateStateCleanup(S) {
