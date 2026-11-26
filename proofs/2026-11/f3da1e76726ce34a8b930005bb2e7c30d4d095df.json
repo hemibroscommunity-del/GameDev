@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f3da1e76726ce34a8b930005bb2e7c30d4d095df",
+  "tree": "521a6dfb89638e013a95f97a8dc1b0fa0161ade4",
+  "committedAt": "2026-11-26T08:12:00-08:00",
+  "subject": "Merge pull request #2375 from hemibroscommunity-del/claude/plan-ui2-9b-panels",
+  "files": 8859,
+  "bytes": 999489009,
+  "listingSha256": "a342cf89f06f50405f6f0ccd9f8d4e32ec29b68495dcfaf105c514df5b40751e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
