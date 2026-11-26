@@ -499,9 +499,9 @@ const PANELS = {
   leaderboard:  { title: 'Leaderboards', Component: LeaderboardPanel },
   /* v2.3.6692 (card UI2-ranks): under the frame, Ranks' own pages (dash/RanksLanding.jsx reads which from the
      entry, its `sel` the group or the board; the header's word is dash/rankWords.js ranksTitle's) */
-  ranksGroup:   { title: 'Leaderboards', Component: LeaderboardPanel },
-  ranksPoints:  { title: 'Leaderboards', Component: LeaderboardPanel },
-  ranksBoard:   { title: 'Leaderboards', Component: LeaderboardPanel },
+  ranksGroup:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
+  ranksPoints:  { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
+  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
   /* v2.3.3526: headed as its More tile is labelled -- Party once clans are
      parties (caps.clanparty), Clan under the kill switch (MorePanel
      `labelFor`; v2.3.2038's rule: what you tap and what opens carry one name) */

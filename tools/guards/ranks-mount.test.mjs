@@ -135,8 +135,8 @@ const PLANTS = [
   ['P3', 'both mounted under the frame', swap(PANEL, CHOICE, '  if (ui2FrameOn()) return <><RanksPage boards={boardsIn} want={catRaw} onBoard={setCat} parts={ranksParts(S, side, setSide, fishWant)} /><RanksUi2 boards={boardsIn}')
     && (() => { const o = swap(PANEL, CHOICE, '  if (ui2FrameOn()) return <><RanksPage boards={boardsIn} want={catRaw} onBoard={setCat} parts={ranksParts(S, side, setSide, fishWant)} /><RanksUi2 boards={boardsIn}'); o[PANEL] = o[PANEL].replace("emptyOf: (board) => emptyOf(board, false) }} />;", "emptyOf: (board) => emptyOf(board, false) }} /></>;"); return o; })()],
   ['P4', 'the choice turned round', swap(PANEL, CHOICE, '  if (!ui2FrameOn()) return <RanksUi2 boards={boardsIn}')],
-  ['P5', 'a board page a PANELS row of its own drawing today\'s RanksPage', swap(DASH, "  ranksBoard:   { title: 'Leaderboards', Component: LeaderboardPanel },", "  ranksBoard:   { title: 'Leaderboards', Component: RanksPage },")
-    && (() => { const o = swap(DASH, "  ranksBoard:   { title: 'Leaderboards', Component: LeaderboardPanel },", "  ranksBoard:   { title: 'Leaderboards', Component: RanksPage },"); o[DASH] = "import { RanksPage } from './dash/RanksPage.jsx';\n" + o[DASH]; return o; })()],
+  ['P5', 'a board page a PANELS row of its own drawing today\'s RanksPage', swap(DASH, "  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },", "  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: RanksPage },")
+    && (() => { const o = swap(DASH, "  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },", "  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: RanksPage },"); o[DASH] = "import { RanksPage } from './dash/RanksPage.jsx';\n" + o[DASH]; return o; })()],
 ];
 for (const [id, what, over] of PLANTS) {
   if (!over) { check(`${id} (${what}): its line is found once`, false, 'the plant\'s line moved: update the plant'); continue; }
