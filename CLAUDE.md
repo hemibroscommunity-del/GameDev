@@ -55,7 +55,8 @@ spec. Add a line here only for a new RULE every session must follow.
 - **The code is the truth.** STALE, never a blueprint to change, "fix" or
   "restore" behaviour: `README.md` / `gdd.md` (the old design document, not a
   setup guide: no tooling docs in it), `docs/ARCHITECTURE.md`,
-  `docs/STATE-SCHEMA.md` (its shapes only). `docs/WORLD-DEPTH-PLAN.md` is
+  `docs/STATE-SCHEMA.md` (its shapes only), and everything under
+  `docs/archive/`. `docs/WORLD-DEPTH-PLAN.md` is
   intent: work from `docs/DEPTH-ROADMAP.md`. A system found in the code may be
   dormant (collectibles): ask the owner before building on one.
 - **Current**:
