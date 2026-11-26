@@ -122,13 +122,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(2500);
 
   /* ── 4. the switch and ?hud=0 bring it back whole; off destroys it ── */
-  const builds0 = (await own(A)).builds;
+  const pre = await own(A);   /* the band just before the flip: the same moment's, so only the plate differs */
+  const builds0 = pre.builds;
   await setSw(A, 'ownplate', '1');
   const on1 = await until(A, (o) => o.pill && o.shown && !!o.words);
   rec.ok(`4. ?ownplate=1: your plate is back whole ("${on1 && on1.words}", in its layer ${on1 && on1.inLayer}, shown ${on1 && on1.shown})`,
     !!on1 && on1.drawn && on1.pill && on1.inLayer && on1.shown && /Alpha/.test(on1.words || '') && on1.selfPlate === on1.words, on1);
-  rec.ok(`4. ...and the band did not move (half ${on1 && on1.bandHalf} against ${a1 && a1.bandHalf}; top ${on1 && on1.bandTop} against ${a1 && a1.bandTop})`,
-    !!on1 && !!a1 && on1.bandHalf === a1.bandHalf && on1.bandTop === a1.bandTop, { on: on1 && [on1.bandHalf, on1.bandTop], off: a1 && [a1.bandHalf, a1.bandTop] });
+  /* the top within a pixel: the camera sits on whole device pixels (TRAPS §231), and the figure's place under it moves by less */
+  rec.ok(`4. ...and the band did not move (half ${on1 && on1.bandHalf} against ${pre && pre.bandHalf}; top ${on1 && on1.bandTop} against ${pre && pre.bandTop})`,
+    !!on1 && !!pre && on1.bandHalf === pre.bandHalf && on1.bandTop != null && pre.bandTop != null && Math.abs(on1.bandTop - pre.bandTop) <= 1, { on: on1 && [on1.bandHalf, on1.bandTop], off: pre && [pre.bandHalf, pre.bandTop] });
   await shot(A, 'before-town-upright');
   await setSw(A, 'ownplate', null);
   await A.page.waitForTimeout(800);
