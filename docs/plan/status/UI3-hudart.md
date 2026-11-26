@@ -1,4 +1,4 @@
-card: UI3-hudart (card UI3, PR 8; tag 6787)
+card: UI3-hudart
 branch: claude/plan-ui3-8-hudart
 prs: one draft PR, base claude/plan-ui3-2-hud (opened when the line is done)
 state: working
