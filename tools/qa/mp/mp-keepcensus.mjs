@@ -165,9 +165,12 @@ function tally(reqs, table, familyOf) {
     g.n++; g[c.kind]++; g.files.add(c.address);
     byFamily.set(fam, g);
     if (c.kind === 'hand') {
-      const q = r.url.split('?')[1] || '';
+      /* v2.3.6741: the whole query (a stamped address a loader then joined
+         its own key to reads 'v=<its own>?v=<key>': the card's PR 3) */
+      const q = r.url.includes('?') ? r.url.slice(r.url.indexOf('?') + 1).split('#')[0] : '';
       /* the key's shape, its digits kept only when they name a release */
-      const shape = q.replace(/(^|&)lane=[^&]*/, '').replace(/=[0-9a-f]{10}\b(?![.\d])/g, '=<10 hex>');
+      const shape = q.replace(/(^|&)lane=[^&]*/, '').replace(new RegExp(`^v=${c.want}\\?`), 'v=<its own>?')
+        .replace(/=[0-9a-f]{10}\b(?![.\d])/g, '=<10 hex>');
       const hk = `${f}  ?${shape}`;
       handKeys.set(hk, (handKeys.get(hk) || 0) + 1);
     }
@@ -227,7 +230,9 @@ function markdown({ t, reqs, sha, when, swings, reach }) {
   L.push('');
   L.push('## The hand-kept keys seen (the query\'s shape, by folder)');
   L.push('');
-  L.push('A `<10 hex>` is a value the shape of this card\'s version that is not the file\'s own.');
+  L.push('A `<10 hex>` is a value the shape of this card\'s version that is not the file\'s own. '
+    + '`v=<its own>?v=<key>` (v2.3.6741) is an address the build stamped (PR 2) to which a loader then joined its own hand key: '
+    + 'that loader is the card\'s PR 3.');
   L.push('');
   L.push('| folder and query | requests |');
   L.push('|---|---:|');

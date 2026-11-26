@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /* ═══ v2.3.6740: A FILE'S VERSION, MADE FROM ITS OWN BYTES (card KEEP, PR 1) ═══
  *
  * The owner, 2026-11-26: "Keeping pictures a long time or indefinitely will
@@ -47,7 +46,9 @@
  *   node tools/assets/versions.mjs                  the table's size, by folder
  *   node tools/assets/versions.mjs /ui/x.png ...    each address's version
  *
- * ZERO dependencies: node only (no git: the build reads it too).  Its test is
+ * ZERO dependencies: node only (no git: the build reads it too).
+ * v2.3.6741: no `#!` line: the build bundles vite.config.js and its imports
+ * with esbuild, which refuses one in a file it did not start from.  Its test is
  * tools/guards/asset-versions.test.mjs.
  */
 import { createHash } from 'node:crypto';
