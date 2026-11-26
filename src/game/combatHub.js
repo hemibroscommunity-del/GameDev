@@ -35,7 +35,7 @@
  * (`who`) shows no count of theirs and offers no Spend. */
 import {
   PROG3, prog3Pool, prog3Shared, prog3PoolFor, prog3PoolShared, prog3PoolAny, prog3CharLevel,
-  isProg3SharedEnabled, prog3AtkMeta, prog3AtkPts, prog3StatCap,
+  isProg3SharedEnabled, prog3AtkMeta, prog3AtkPts, prog3StatCap, isStatCapFree,
 } from '../data/prog3.js';
 import { weaponProgress } from './progression.js';
 import { POINTS_ART_DIR, POINTS_ART_V } from '../data/pointsHeadArt.js';
@@ -114,9 +114,11 @@ export function spendPool(stat, pageCat) {
   return Object.prototype.hasOwnProperty.call(PROG3.BODY || {}, k) ? 'shared' : null;
 }
 
-/** A weapon's six attributes as tiles: the game's names and the points each holds of its cap. */
+/** A weapon's six attributes as tiles: the game's names and the points each holds of its cap
+    (cap null with no per-stat cap, caps.nostatcap: the 999 storage bound is no number to show,
+    as the Points window's ptsOf says, v2.3.3578). */
 export function weaponAttributes(rpg, cat) {
   return prog3AtkMeta().map((m) => Object.freeze({
-    key: m.key, label: m.label, art: m.iconSrc, pts: prog3AtkPts(rpg, cat, m.key), cap: prog3StatCap(rpg, m.key),
+    key: m.key, label: m.label, art: m.iconSrc, pts: prog3AtkPts(rpg, cat, m.key), cap: isStatCapFree() ? null : prog3StatCap(rpg, m.key),
   }));
 }

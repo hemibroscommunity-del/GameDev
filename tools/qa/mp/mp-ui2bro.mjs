@@ -181,7 +181,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const k of ['character', 'combat', 'skills', 'feats', 'pets']) {
       await tap(P, `[data-dash-grid="bro"] [data-dest="${k}"]`, 900);
       const G = await read(P);
-      seen.push({ k, title: G.title, back: G.back, combatPoints: G.combatPoints, rows8: G.rows8, title8: G.title8, pages: G.pages, marks: G.marks,
+      seen.push({ k, title: G.title, back: G.back, combatPoints: G.combatPoints, hub: G.hub, rows8: G.rows8, title8: G.title8, pages: G.pages, marks: G.marks,
         pass: k === 'character' ? await readPass(P) : null });
       if (k === 'combat') {
         await bandShot(P, 'ui2-bro-combat.png');

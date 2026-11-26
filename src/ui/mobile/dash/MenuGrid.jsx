@@ -59,6 +59,9 @@ export function doorWord(key) {
     case 'dashFrame.feats': return say(SAY, 'dashFrame.feats');
     case 'dashFrame.pets': return say(SAY, 'dashFrame.pets');
     case 'dashFrame.titles': return say(SAY, 'dashFrame.titles');   /* v2.3.6684: the passport's Titles */
+    case 'dashFrame.sword': return say(SAY, 'dashFrame.sword');   /* v2.3.6685: a weapon's page (card UI2-combat) */
+    case 'dashFrame.bow': return say(SAY, 'dashFrame.bow');
+    case 'dashFrame.staff': return say(SAY, 'dashFrame.staff');
     default: return say(SAY, 'dashFrame.page');
   }
 }

@@ -162,15 +162,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         pool: (document.querySelector('[data-weapon-pool]') || { getAttribute: () => null }).getAttribute('data-weapon-pool'),
         poolText: (document.querySelector('[data-weapon-pool]') || {}).textContent || '',
         q: window.__btWeaponPage,
+        head: (document.querySelector('[data-dash-title]') || {}).textContent || '',
       };
     });
-    rec.ok('2a. Sword\'s page: level 12 and its XP (now / needed), DPS the headline, Damage, Attack speed, Crit chance, Range (no Element), the six attributes',
-      !!S1 && S1.cat === 'sword' && S1.lv === '12' && /^\d+\/\d+$/.test(S1.xp || '') && (S1.xpText || '').includes(S1.xp.replace('/', ' / ') + ' XP')
+    rec.ok('2a. Sword\'s page (its header "Sword"): level 12 and its XP (now / needed), DPS the headline, Damage, Attack speed, Crit chance, Range (no Element), the six attributes',
+      !!S1 && S1.cat === 'sword' && S1.head.trim() === 'Sword' && S1.lv === '12' && /^\d+\/\d+$/.test(S1.xp || '') && (S1.xpText || '').includes(S1.xp.replace('/', ' / ') + ' XP')
       && /^\d+(\.\d+)?$/.test(S1.dps || '') && S1.support.join(',') === 'damage,aspd,crit,range' && S1.attrs.join(',') === 'range,dmg,aspd,luck,special,elem', S1);
     rec.ok('2b. "Attributes" names the Sword pool, the worker\'s count', !!S1 && +S1.pool === W0.sword && S1.poolText.includes(W0.sword + ' Sword points to spend'), S1 && { pool: S1.pool, text: S1.poolText, want: W0.sword });
     const Wp = await readRoom(P, PAGE);
     rec.ok('2c. 390 x 844: level, DPS and the six in view; every press 44 x 44 or more, inside the band, nothing clipped, no scroll, no text under 11 px', Wp && Wp.title === 'broSword' && roomOk(Wp, 7), roomBrief(Wp));
-    rec.ok('2d. no effective-health number on the page', !!Wp && !/effective health|\bEHP\b/i.test(Wp.text));
+    rec.ok('2d. no effective-health number on the page, and no storage bound (999) shown as a cap', !!Wp && !/effective health|\bEHP\b/i.test(Wp.text) && !/\/ ?999/.test(Wp.text));
     await bandShot(P, 'ui2-combat-sword.png');
 
     /* 3. the acceptance task: a weapon point, tentatively; cancel; confirm; pool isolation */

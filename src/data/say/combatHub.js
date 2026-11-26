@@ -29,4 +29,6 @@ export const SAY = Object.freeze({
   'combatHub.lanePoints': '{n} {w} points to spend',
   'combatHub.allStats': 'All stats',
   'combatHub.attrAria': '{stat}: {pts} of {cap} placed. Open its preview',
+  'combatHub.attrAriaFree': '{stat}: {pts} placed. Open its preview',
+  'combatHub.attrPts': '{n} placed',
 });

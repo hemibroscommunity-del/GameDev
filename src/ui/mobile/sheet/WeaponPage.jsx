@@ -170,9 +170,9 @@ export function WeaponPage({ S, cat, who, live }) {
   );
   const tiles = attrs.map((a) => (
     <button key={a.key} type="button" className="u2-raised u2-wp-attr" data-weapon-attr={a.key} data-weapon-attr-pts={a.pts}
-      aria-label={say(SAY, 'combatHub.attrAria', { stat: a.label, pts: a.pts, cap: a.cap })} onClick={() => openAttr(a.key)}>
+      aria-label={a.cap == null ? say(SAY, 'combatHub.attrAriaFree', { stat: a.label, pts: a.pts }) : say(SAY, 'combatHub.attrAria', { stat: a.label, pts: a.pts, cap: a.cap })} onClick={() => openAttr(a.key)}>
       <img className="u2-wp-attr-art" src={a.art} alt="" draggable={false} />
-      <span className="u2-wp-attr-words"><span className="u2-wp-attr-k">{a.label}</span><span className="u2-wp-attr-v">{a.pts + ' / ' + a.cap}</span></span>
+      <span className="u2-wp-attr-words"><span className="u2-wp-attr-k">{a.label}</span><span className="u2-wp-attr-v">{a.cap == null ? say(SAY, 'combatHub.attrPts', { n: a.pts }) : a.pts + ' / ' + a.cap}</span></span>
     </button>
   ));
 

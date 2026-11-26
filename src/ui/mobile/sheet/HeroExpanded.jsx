@@ -35,8 +35,8 @@ import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx';
 import { heroStatPills, heroStatFamilies, HERO_PILL_TONE } from './heroStatPills.js';      /* v2.3.3053: the stat pills */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { overallDps } from './statPreview.js';                 /* v2.3.1766 */
-import { statWindow, POINT_LANES, POINTS_ICONS } from './statWindow.jsx';
-import { combatPools } from '@/game/combatHub.js';   /* v2.3.6685: the pools' one rule */   /* v2.3.6685: the preview, moved whole (card UI2-combat) */
+import { statWindow, POINT_LANES, POINTS_ICONS } from './statWindow.jsx';   /* v2.3.6685: the preview, moved whole (card UI2-combat) */
+import { combatPools } from '@/game/combatHub.js';   /* v2.3.6685: the pools' one rule */
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
