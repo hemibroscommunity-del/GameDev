@@ -161,8 +161,9 @@
  *       the bar mended) it does not start again; back inside, then out: it
  *       starts;
  *   5f. the thumb lifted: it ends ('rim'), the stick at rest;
- *   5g. the mode off (part 2f's page, mode 4): the button drawn as today,
- *       and a thumb far past the left disc's rim sprints nothing;
+ *   5g. the mode off (part 2f's page, mode 4): v2.3.6644 (card PAD part
+ *       9): the button NOT drawn, and a thumb far past the left disc's rim
+ *       walks AND sprints (how 'rim'); lifted, it ends;
  *   5h. `?rimsprint=0` in mode 5 (part 4's page loaded again): the button
  *       back, a thumb past the rim walks at full speed and sprints nothing,
  *       the tour's words without the rim's line.
@@ -325,7 +326,7 @@ const WORDS = (P) => P.page.evaluate(() => {
 const coachIs = (w, m, a, sp) => !!w.coach && (w.coach.move || []).length === 1 && w.coach.move[0] === m && (w.coach.attack || []).length === 2 && w.coach.attack.every((x) => x === a)
   && (w.coach.special || []).length === 2 && w.coach.special.every((x) => x === sp);
 /* today's words (mode 4: no tap lock, so the target step's no-lock words) */
-const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBody'] && w.attack === TOUR['controlsTutorial.attackBody']
+const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBodyEdge']   /* v2.3.6644 (card PAD part 9): a touch screen's usual controls sprint from the stick's edge */ && w.attack === TOUR['controlsTutorial.attackBody']
   && w.targetLabel === TOUR['controlsTutorial.targetLabel'] && w.target === TOUR['controlsTutorial.targetBodyNoLock'] && w.shield === TOUR['controlsTutorial.shieldBody']
   && coachIs(w, 'Drag to move.', 'Hold to attack the nearest enemy.', 'A quick swipe on the Attack button.');
 const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyHold']   /* v2.3.6548: tap and hold's words (attackBodyTwo, targetBodyTwo, attackTwo with `?holdauto=0`) */
@@ -361,7 +362,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errs = [];
   try {
     const used = [];   /* v2.3.6549: the monsters a pass has picked (PICK's skip) */
-    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
+    /* v2.3.6644 (card PAD part 9): `TWO_FROM=2f` skips the two trial passes (parts 1, 2, 3, 5, 6 upright and sideways: most of an hour on
+       a session's box, and a run cut short there never reaches the mode-off page) and plays from 2f, the usual controls (2f, 6b, 3e, 5g, part 4,
+       5h, 6c): a helper's repeat run of the mode-off steps.  Unset, the whole scenario as before. */
+    const passes = process.env.TWO_FROM === '2f' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]];
+    for (const [label, viewport] of passes) {
       const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5&wheelwhole' + (process.env.TWO_Q || '') });   /* v2.3.6542: wheelwhole: every Wheel monster in the arrival's list (server/src/wheelnear.js; mp-blockcost's), for part 2's real monster */
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ': ' + String((e && e.message) || e).slice(0, 200)));
@@ -1236,7 +1241,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
             : off2.at.right === 36 && Math.abs(off2.at.bottom - 72) <= 1 && off2.at.w === 84), { off2, qSock: qSock && qSock.attack, qDisc });
 
         /* 5g (v2.3.6545): the mode off: the sprint button as today, and the
-           left disc pushed far past its rim sprints nothing */
+           left disc pushed far past its rim sprints nothing.  v2.3.6644 (card
+           PAD part 9, the owner: "remove sprint button"): the usual controls
+           sprint by the rim too, the button not drawn (mp-rimsprint plays it) */
         {
           const D4 = await DISC(Q);
           const g0 = await RIMV(Q);
@@ -1251,8 +1258,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
             await tq('touchEnd', [{ x: c4.x - 1.6 * R4, y: c4.y, id: 5 }]);
             await frames(Q, 3);
           }
-          rec.ok(`5g. the mode off: the sprint button drawn as today (${g0.btn && g0.btn.shown}, rim ${g0.btn && g0.btn.rim}); the left disc pushed far past its rim walks (${g1 && g1.sx.toFixed(2)}) and sprints nothing (${g1 && g1.on})`,
-            !!g0.btn && g0.btn.shown === true && g0.btn.rim === false && g0.dom && !!g1 && g1.sx < -0.9 && !g1.on && !g1.ring, { g0, g1 });
+          const g2 = await RIMV(Q);
+          rec.ok(`5g. the mode off (v2.3.6644): no sprint button (${g0.btn && g0.btn.shown}, rim ${g0.btn && g0.btn.rim}, drawn ${g0.dom}); the left disc pushed far past its rim walks (${g1 && g1.sx.toFixed(2)}) and sprints (${g1 && g1.on}, ${g1 && g1.how}); lifted, it ends (${g2.on})`,
+            !!g0.btn && g0.btn.shown === false && g0.btn.rim === true && !g0.dom && !!g1 && g1.sx < -0.9 && g1.on && g1.how === 'rim' && !g1.ring && !g2.on, { g0, g1, g2 });
         }
 
         /* PART 4 (v2.3.6544): the Test panel's row, and the words in each mode */
