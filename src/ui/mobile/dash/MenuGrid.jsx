@@ -64,6 +64,11 @@ export function doorWord(key) {
     case 'dashFrame.staff': return say(SAY, 'dashFrame.staff');
     case 'dashFrame.sharedAttributes': return say(SAY, 'dashFrame.sharedAttributes');   /* v2.3.6686: the Shared page */
     case 'dashFrame.dps': return say(SAY, 'dashFrame.dps');   /* v2.3.6686: the stat tree's layers */
+    /* v2.3.6691 (card UI2-quests): the Quests pages beside a quest's own */
+    case 'dashFrame.questRewards': return say(SAY, 'dashFrame.questRewards');
+    case 'dashFrame.questsDaily': return say(SAY, 'dashFrame.questsDaily');
+    case 'dashFrame.questsDone': return say(SAY, 'dashFrame.questsDone');
+    case 'dashFrame.questsOffers': return say(SAY, 'dashFrame.questsOffers');
     default: return say(SAY, 'dashFrame.page');
   }
 }

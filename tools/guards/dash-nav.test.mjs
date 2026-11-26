@@ -47,7 +47,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  dashNavInit, dashNavStep, dashNavView, dashNavBackTo, dashNavOpen, dashNavKey, dashNavLegacy, isGearRoot,
+  dashNavInit, dashNavStep, dashNavView, dashNavBackTo, dashNavOpen, dashNavKey, dashNavLegacy, isGearRoot, handsOver,
 } from '../../src/game/dashNav.js';
 import { dashGrowOf, dashGrowOrigin, dashGrowTapFrom, DASH_GROW_MS } from '../../src/game/dashGrow.js';
 import { parse } from './lib/writesOf.mjs';
@@ -249,11 +249,26 @@ for (const r of real) check(r.name, r.ok, r.detail);
     && dashNavKey(open, 'more').type === 'menu' && dashNavKey(dashNavStep(open, { type: 'menu' }), 'more').type === 'close'
     && dashNavKey(open, 'hero').type === 'arrive' && dashNavKey(dashNavStep(open, { type: 'arrive', id: 'hero' }), 'hero').type === 'close');
   {
-    let q = dashNavStep(dashNavInit(false), { type: 'arrive', id: 'quests' });
-    q = dashNavStep(q, { type: 'push', id: 'questDetail', replace: true });
-    q = dashNavStep(q, dashNavOpen('quests', q));
-    check('3h a page that hands over (the quest\'s page to the Quests tab) is replaced, its way home kept: Back leaves',
-      ids(q.menu) === 'quests' && dashNavBackTo(q).kind === 'world' && dashNavStep(q, { type: 'back' }).shown === false, ids(q.menu));
+    /* v2.3.6691 (card UI2-quests): the quest's own page is a real page under the frame (QuestPage.jsx), no
+       hand-over: the pinned card's road (open('quests') then push('questDetail') in one breath) lands on it
+       with its way home, and a page opened from it (its Rewards) goes OVER it, so Back returns to the quest
+       and Back again to the world.  The plant: the old hand-over (a page opened from the quest's page takes
+       its place), seen red. */
+    const road3h = (openOf) => {
+      let q = dashNavStep(dashNavInit(false), { type: 'arrive', id: 'quests' });
+      q = dashNavStep(q, { type: 'push', id: 'questDetail', replace: true });
+      const atQuest = ids(q.menu) === 'questDetail' && dashNavBackTo(q).kind === 'world';
+      q = dashNavStep(q, openOf('questRewards', q));
+      const over = ids(q.menu) === 'questDetail,questRewards';
+      const b1 = dashNavStep(q, { type: 'back' });
+      const b2 = dashNavStep(b1, { type: 'back' });
+      return { ok: atQuest && over && b1.shown && ids(b1.menu) === 'questDetail' && b2.shown === false, why: ids(q.menu) + ' | ' + ids(b1.menu) };
+    };
+    const real3h = road3h(dashNavOpen);
+    check('3h the quest\'s page is a real page: the card\'s road lands on it, its Rewards goes over it, Back returns to it, Back again leaves',
+      !handsOver('questDetail') && real3h.ok, real3h.why);
+    const oldHandOver = (id, st) => { const t = st && st.shown ? st[st.ws][st[st.ws].length - 1] : null; return t && t.id === 'questDetail' ? { type: 'push', id, replace: true } : dashNavOpen(id, st); };
+    check('3h plant: the old hand-over (a page opened from the quest\'s page takes its place) turns 3h red', !road3h(oldHandOver).ok);
   }
   const frozen = Object.isFrozen(open) && Object.isFrozen(m.menu) && Object.isFrozen(m.menu[0]);
   check('3g the state is frozen (one transition writes it)', frozen);

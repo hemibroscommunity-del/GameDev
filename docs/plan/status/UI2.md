@@ -1,23 +1,21 @@
 card: UI2
-branch: claude/plan-ui2-grip
-prs: #2368, #2369 and the growing motion's (step 2; merged with sitting 68); the grip's draft PR (ready)
-state: ready
+branch: claude/plan-ui2-11-quests
+prs: the grip's draft #2390 (ready, the base); Quests' draft PR (step 6, tag 6691; base claude/plan-ui2-grip)
+state: working
 
 ## Done
 - v2.3.6680, the build's step 1 (the kit; branch claude/plan-ui2-5-kit): the tokens, the pieces (`src/ui/kit/`), `?uikit=1`, `?ui2shine=0`, `tools/guards/ui2-tokens.test.mjs`, `mp-uikit`, `docs/shots/ui2-kit-*.png`.
-- v2.3.6681, step 2 PR 1 (the frame, ON; `?ui2=0` the way back, remembered as `bt_ui2`): `src/game/dashNav.js` (one state, one transition), `src/game/dashDests.js` (the Menu's eight doors, the Social and Settings hubs, More's fifteen roads), `dashboardPanelBus.js` a thin face over it, `dash/DashHeader.jsx`, `dash/MenuGrid.jsx` (and the Homestead's place), `dash/dashScroll.js` (a page's scroll kept, read at the frame's top), `ui2Frame.js` (the switch), the kit's header given its three roots and the Menu's mark (fixture plate "headers"), `deskKeys.js` (I, O, P...), `H.dashOpen(id)` / `H.dashMenuRoot`, the tests that pressed `[data-nav]` moved to it, `tools/guards/dash-nav.test.mjs` (13 dodges planted, each red), `mp-ui2frame` (25 of 25, twice, on the test box), precheck OK (613 suites), states.mjs's `dash-frame-*`, UI-DESIGN-NOTES "The dashboard" (the owner's 2026-11-25 words; the reversed decisions under "Tried before").
-
-- v2.3.6682, step 2 PR 2 (branch claude/plan-ui2-7b-grow, base claude/plan-ui2-7-frame): the growing motion (`src/game/dashGrow.js`, `dash/DashGrowBox.jsx`, `dash/dashGrow.css`, `dash/dashGrowSwitch.js`; `?dashgrow=0` and reduced motion give none; its switch row); leftover A, the handle hides and keeps both workspaces (dashNav's `fold`, BandGrip.jsx); leftover B, the words and arrows that named a moved button (`src/data/say/dashGuide.js`: the guide arrow, the coach's reward, points and Login Key lessons, the controls tour's two rings). dash-nav.test 78 checks (P14, P15, M1 to M5 planted, each red); mp-ui2frame's steps 12a-g and 13.
-
-- v2.3.6697, card UI2-grip (the owner's request of 2026-11-26; branch claude/plan-ui2-grip): the band's pull handle gone (the owner, 2026-11-26), `?bandgrip=1` the way back; the fold's hook `data-dash-fold` worn by the row's own control (the frame's Gear and Close; CLOSE under ?ui2=0), so no finder moved; the coach's "Tap the handle" only with the handle; `tools/guards/band-grip.test.mjs` (G1 to G6 planted, each red); `mp-bandgrip` (32 of 32 on the test box); UI-DESIGN-NOTES' band section.
+- v2.3.6681, step 2 PR 1 (the frame, ON; `?ui2=0` the way back): dashNav.js, dashDests.js, DashHeader, MenuGrid, dashScroll, `dash-nav.test`, `mp-ui2frame`.
+- v2.3.6682, step 2 PR 2 (the growing motion, the handle's fold, the moved buttons' words).
+- v2.3.6697, card UI2-grip: the band's pull handle gone, `?bandgrip=1` the way back; `band-grip.test`, `mp-bandgrip`.
+- v2.3.6691, card UI2-quests (step 6; branch claude/plan-ui2-11-quests, stacked on claude/plan-ui2-grip): the landing (your quests as rows; Daily, Completed (n), On offer (n) doors; the empty and loading states), a quest's own page (the steps behind, NOW dominant, "The adventure continues", Track, Show on map, the Rewards door; a done quest's whole history and "Next:"; an offer's talk), the frame pages questRewards, questsDaily, questsDone, questsOffers; `questDetail` out of HANDS_OVER (dash-nav 3h rewritten, its plant red); the rules `questLanding`, `journeyToNow`, `questActions`, `questOpens` (src/game/questPages.js); the drawing `dash/questViews.jsx` run in node by `tools/guards/lib/jsxText.mjs`; `tools/guards/quests-ui2.test.mjs` (R1-R12, V1-V6 planted, each red; 81 mutants, 3 equivalent survivors listed); `tools/guards/quests-mount.test.mjs` (P1-P5, D1-D4 red) on `tools/guards/lib/jsxMount.mjs` (gear-mount's follower moved there); `mp-ui2quests`; the older tests moved (mp-trackquest, mp-dailyrewards 7, mp-deskwords 4, mp-ui2frame 8; mp-questpages and mp-questjournal to `?ui2=0`); states `ui2-quest-*`; UI-DESIGN-NOTES "Quests under the new dashboard".
 
 ## Next
-- Nothing: the grip's PR waits for the gatekeeper.  Phone runs on its final code (the test box): questline 187/187, contextbuttons 27/27, bandgrip 32/32, ui2frame 34/34, guidearrow, revealbag, bagunfold green; padskin's rider part 9/9 twice (one earlier sideways 5b/5c red was the rider falling off: a flake).  Main's own reds (the same on main 7ec316e9): oneband 3 (sideways), questguide 7, pointstips 1 ("Tap Menu, then Bro."), dmgsize 4 (the marks' sizes).
+- The Quests PR: the last phone runs on its final code by a helper, then ONE message to the orchestrator.
 
 ## Found
-- mp-pointstips step 6 expects "Tap Bro." but the frame's points lesson says "Tap Menu, then Bro." (main's own red); mp-questguide's pins and mp-dmgsize's mark sizes red on main too.
-- (mended in PR 2) the guide arrow's "Tap Bro" on the Menu button; ControlsTutorial's rings; the handle that reset Gear's pages.
-- The points' flight (src/game/questFly.js QUEST_FLY_TARGETS.points) lands on the Menu button under the frame (it wears [data-nav="hero"]): the road to Bro, left as it is (server/test/points-fly.test pins the list; a file there deploys the worker).
+- mp-pointstips step 6, mp-questguide's pins, mp-dmgsize's mark sizes, mp-oneband 3 sideways: main's own reds (the grip's status).
+- (UI2-quests) the frame's PANELS pages carry no `.ui2` root: each new page wears `ui2RootClass()` itself, as Bro's and Combat's do.
 
 ## Needs
-- Nothing.  Answered by the orchestrator (part 20, 00:38 UTC 11-26, "go"): the Social and Settings hubs, and Journey in the Settings hub for this step only ("moves under Bro at step 3").
+- Nothing.

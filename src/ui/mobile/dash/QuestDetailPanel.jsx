@@ -9,6 +9,8 @@ import { SAY } from '@/data/say/questDetail.js';   /* v2.3.6350: its words, in t
 import { say } from '@/game/say.js';
 import { QUEST_PAGES, openQuestOnPages } from './QuestPages.jsx';   /* v2.3.6620: the Quests tab in pages (card QP) */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { QuestPage } from './QuestPage.jsx';   /* v2.3.6691: the frame's quest page (card UI2-quests) */
+import { ui2FrameOn } from '../ui2Frame.js';
 
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed into
    the sheet from any quest row (and, since F1, from the pinned quest card).
@@ -36,7 +38,7 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
      only while the quest is on offer (v2.3.1710 hid it once taken, so the
      page forgot the sword and shield the moment you had them). */
 
-const OldQuestDetailPanel = () => {
+const OldQuestDetailPanel = ({ getS }) => {
   const [, force] = useState(0);
   const tap = useJournalTap();
   useEffect(() => {
@@ -45,7 +47,7 @@ const OldQuestDetailPanel = () => {
   }, []);
 
   const qid = questDetailBus.selected();
-  const S = getState();
+  const S = getS();   /* v2.3.6691: handed by QuestDetailPanel, the file's one reader of the game (grand plan 5.7) */
   const page = questById(qid) ? questJournalPage(S, qid) : null;
 
   if (!page) {
@@ -104,4 +106,7 @@ const QuestDetailToPages = () => {
   return null;
 };
 
-export const QuestDetailPanel = QUEST_PAGES ? QuestDetailToPages : OldQuestDetailPanel;
+/* v2.3.6691 (card UI2-quests): under the new dashboard the quest's own page (QuestPage.jsx: the journey up to
+   NOW), a real page, no hand-over; under `?ui2=0` as before.  Chosen at render, by the frame's ONE switch */
+const TodaysQuestDetail = QUEST_PAGES ? QuestDetailToPages : OldQuestDetailPanel;   /* ?ui2=0: as before (v2.3.6620) */
+export const QuestDetailPanel = () => (ui2FrameOn() ? <QuestPage getS={getState} /> : <TodaysQuestDetail getS={getState} />);

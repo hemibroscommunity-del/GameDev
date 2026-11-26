@@ -863,8 +863,27 @@ townsfolk's dialogue busts are not this and stay Hemi Bros.
 
 Sources: docs/specs/hemi-portrait.md, docs/specs/npc-creator-looks.md, src/rendering/hemiBust.js, src/rendering/hemiLook.js, src/rendering/hemiBustCore.js
 
+## Quests under the new dashboard (v2.3.6691, card UI2-quests)
+Screens: ui2-quest-landing, ui2-quest-page, ui2-quest-rewards, ui2-quest-road
+
+**What it is for:** open Quests and see the quests you are on; tap one and see what you have done and what to do NOW, with Track and Show on map beside it, and nothing of what is still to come. The owner, 2026-11-25, the master specification's part 6: *"Landing page shows **active quests first**, as direct selectable rows/destinations. No tiny dropdown or three-dot pagination. Daily quests and Completed quests are secondary destinations. Keep long lists scrollable within the dashboard."*; *"Individual quest shows **journey first**, with completed steps and the current objective visually dominant. Current task includes relevant progress and contextual actions such as Track or Locate when supported. Future journey is open-ended: do not reveal future steps, total step count, or whole-quest completion percentage. A neutral indication that the adventure continues is sufficient for an ongoing quest. Completed quests show actual completed history. Story and Rewards are separate accessible destinations. Preserve existing quest logic and data; do not rewrite quest narratives based on wireframe examples."* Their standing rule: *"Yeah my game content over the mockup stuff"*.
+
+**Decisions, and why (dash/QuestsLanding.jsx, dash/QuestPage.jsx, drawn by dash/questViews.jsx; the rules src/game/questPages.js questLanding, journeyToNow, questActions, questOpens):**
+- **The landing is rows**, under the one header ("Quests"): the giver's face, the quest's name, its count ("0/4") where it counts, a green "Ready" once it can be handed in, the gold star on the one you track, which comes first (the journal's own order). The rows scroll inside their zone; the doors under them never scroll away: **Daily** (only when the game shows its daily rewards card today), **Completed (n)**, and **On offer (n)** when someone has a quest for you (today's picker's second half: nothing is lost). No tabs, no page marks, no picker (card QP's tabs and three marks are what part 6 rules out).
+- **Nothing in hand** is the kit's empty state with the game's own line, and the same doors; the worker's answer not in yet is the kit's placeholder rows, never "no quest" (Q84).
+- **A quest's page** (header "Quest"): the giver's face, the name and its state; the steps behind you (a green tick, their words, what the giver handed over) in a zone that scrolls and opens on the last; then **NOW**, framed in gold and never behind a scroll: the thing's picture, what to do, its count and bar, the place; then one quiet line, **"The adventure continues"**. A step still to come is never drawn; the hand-in is not drawn until the quest is ready, and then it IS the now; there is no "Then: ..." line, no count of steps, no percent.
+- **Its actions** sit at the bottom: **Track** (a quest in hand only; at once, no confirmation, no pending mark: it is the phone's own; turned on, the quiet line says for five seconds what it does, "Your map's gold star follows this quest") and **Show on map** (only where the game can show the road; absent, never greyed, where it cannot). **Rewards** is a raised door beside them, not an action: its page shows the completion rewards as the game's tiles. **Story is left out**: the game has no story text for a quest, and the door comes with the text.
+- **A done quest** (from Completed) is its whole history: every step done, the hand-in done, its Rewards door and the journal's own "Next: ..." line (what to do now after it); no Track, no map. **An offer** (from On offer): NOW is the talk to its giver, Show on map where the game maps it, nothing past the talk.
+- **Back follows the history**: Rewards goes over the quest's page, so Back returns to the quest and Back again to the landing at its scroll. The pinned quest card's road lands on the quest's own page with its way home ("World"): the quest's page no longer hands over to the tab (dashNav.js HANDS_OVER is empty).
+- **Sideways** (about 63 px of page) the landing's doors sit at the rows' end, and a quest's name and steps stand on the left with NOW and its actions beside them. A computer plays the upright layout.
+- **Under `?ui2=0`** today's pages (card QP's QuestPages.jsx; `?ui2=0&questpages=0` the older list beside the quest), unchanged.
+
+**Flagged for the owner:** the game has no story text for a quest (writing it is content); "Daily quests" in the specification is the game's daily rewards card (the door says "Daily"); the quest that comes next ("Then: talk to ... for ...") is read as future journey and hidden while a quest is in hand.
+
 ## The quest log
-Screens: dash-quests, dash-quest-journey, dash-quest-rewards, dash-quest-detail
+Screens: ui2-quest-landing, ui2-quest-page
+
+_v2.3.6691: the history of the Quests screens before the new dashboard (under `?ui2=0` today's pages, played by mp-questpages); the new pages are the section above._
 
 **What it is for:** The quest journal (v2.3.3944). It answers, at a glance, which quest you are on, what it asks, where to go, who you have talked to, what you were handed and will be paid, and what to do after it. Taking a quest and handing it in happen only with its giver, in the world.
 

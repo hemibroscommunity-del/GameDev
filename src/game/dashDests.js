@@ -75,6 +75,12 @@ export const FRAME_PAGES = Object.freeze({
   broShared: 'dashFrame.sharedAttributes',
   broTree0: 'dashFrame.dps', broTree1: 'dashFrame.dps', broTree2: 'dashFrame.dps', broTree3: 'dashFrame.dps',
   broTree4: 'dashFrame.dps', broTree5: 'dashFrame.dps', broTree6: 'dashFrame.dps',
+  /* v2.3.6691 (card UI2-quests): the Quests pages beside a quest's own (src/game/questPages.js
+     QUEST_FRAME_PAGES): a quest's Rewards, and the landing's Daily, Completed and On offer doors */
+  questRewards: 'dashFrame.questRewards',
+  questsDaily: 'dashFrame.questsDaily',
+  questsDone: 'dashFrame.questsDone',
+  questsOffers: 'dashFrame.questsOffers',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:

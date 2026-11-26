@@ -39,8 +39,10 @@ export const PACKETS = [
   { slug: 'ui2-kit', title: 'The new dashboard kit (?uikit=1: its pieces and two samples)', screens: ['ui2-kit'] },
   /* v2.3.6683 (card UI2-bro) */
   { slug: 'ui2-bro', title: 'Bro under the new dashboard: six doors, Combat, Character (the passport) and its Titles', screens: ['ui2-bro-landing', 'ui2-bro-combat', 'ui2-bro-character', 'ui2-bro-titles'] },   /* v2.3.6684: the passport, its Titles */
+  /* v2.3.6691 (card UI2-quests): the Quests pages under the new dashboard (today's under ?ui2=0 only) */
+  { slug: 'ui2-quests', title: 'Quests under the new dashboard: your quests as rows, a quest\'s journey up to now, its Rewards', screens: ['ui2-quest-landing', 'ui2-quest-page', 'ui2-quest-rewards', 'ui2-quest-road'] },
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
-    screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
+    screens: ['dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   /* v2.3.4172: the rare fish's weigh-in card and Ranks' Biggest fish
      (v2.3.4036), a packet of their own: the two dashboard packets are full */
   { slug: 'dashboard-fish', title: 'Dashboard: the Leaderboards and the rare fish',

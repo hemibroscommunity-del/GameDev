@@ -66,8 +66,10 @@ async function trackByTaps(P, qid, want) {
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Quests');
   /* v2.3.6620 (card QP): in the pages your quests are picked from the head's picker (the old page's list
-     was always on screen); the row, its tap and Track are as they were */
-  await P.page.waitForSelector('[data-quests-page]', { timeout: 8000 }).catch(() => {});
+     was always on screen); the row, its tap and Track are as they were.
+     v2.3.6691 (card UI2-quests): under the new dashboard the landing's row opens the quest's own page,
+     its Track in the action row (the same marks); the pages' picker only under ?ui2=0 */
+  await P.page.waitForSelector('[data-quests-page], [data-quests-ui2="landing"]', { timeout: 8000 }).catch(() => {});
   if (!(await P.page.locator(`[data-quest-row="${qid}"]`).first().isVisible().catch(() => false)) && await P.page.$('[data-quest-picker="open"]')) {
     await P.page.locator('[data-quest-picker="open"]').first().click();
   }

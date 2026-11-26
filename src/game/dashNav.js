@@ -229,12 +229,14 @@ export function isGearRoot(id) { return Object.prototype.hasOwnProperty.call(GEA
 /** What the old `open(id)` asks: Gear's root for the bag; the Menu's root for
     'more' (More's page is the directory now); the Menu resumed for 'menu';
     any other page an arrival (from the world, a key, a toast). */
-/* A page that hands over to another as it opens: the quest's own page gives
-   the quest to the Quests tab and opens the tab (QuestDetailPanel.jsx
-   QuestDetailToPages, v2.3.6620).  The tab TAKES ITS PLACE (and its way
+/* A page that hands over to another as it opens TAKES ITS PLACE (and its way
    home), never goes over it: over it, Back would land on the page that hands
-   over again, which opens the tab again -- a Back that never leaves. */
-const HANDS_OVER = { questDetail: 1 };
+   over again, which opens the other again -- a Back that never leaves.
+   v2.3.6691 (card UI2-quests): none now.  The quest's own page handed the
+   quest to the Quests tab (QuestDetailPanel.jsx QuestDetailToPages,
+   v2.3.6620); under the frame it is a real page (QuestPage.jsx), and a push
+   from it (its Rewards) goes OVER it, so Back returns to the quest. */
+const HANDS_OVER = Object.freeze(Object.create(null));
 export function handsOver(id) { return Object.prototype.hasOwnProperty.call(HANDS_OVER, String(id)); }
 
 export function dashNavOpen(id, s) {

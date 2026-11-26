@@ -41,6 +41,11 @@ export const SAY = Object.freeze({
   'dashFrame.sword': 'Sword',
   'dashFrame.sharedAttributes': 'Shared Attributes',   /* v2.3.6686 */
   'dashFrame.dps': 'DPS',   /* v2.3.6686: the stat tree's layers */
+  /* v2.3.6691 (card UI2-quests): the Quests pages beside a quest's own */
+  'dashFrame.questRewards': 'Rewards',
+  'dashFrame.questsDaily': 'Daily',
+  'dashFrame.questsDone': 'Completed',
+  'dashFrame.questsOffers': 'On offer',
   'dashFrame.bow': 'Bow',
   'dashFrame.staff': 'Staff',
 });
