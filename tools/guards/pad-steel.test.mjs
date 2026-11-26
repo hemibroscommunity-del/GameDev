@@ -19,10 +19,18 @@
  *      glow's colour less bright against the steel than the gold it replaced
  *      (WCAG contrast on the rim's side and its dark); PadSkin not reading
  *      padAccent with the switch;
- *   3. A FULL ENERGY BLOCK EQUAL TO AN EMPTY ONE: (part 11's question to the
- *      orchestrator: the blocks are a painted strip; see the status file);
+ *   3. A FULL ENERGY BLOCK EQUAL TO AN EMPTY ONE: the five blocks are the
+ *      owner's painted strip, so the steel is its twin
+ *      (public/icons/ui/blocks-stam-steel.webp, tools/art/steel-strip.mjs;
+ *      the orchestrator's yes, 2026-11-26): read from its palette twin with
+ *      the game's own reader, a full block against an empty one at least as
+ *      far apart as the gold strip's (WCAG contrast of their mean colours),
+ *      the full one the steel's light and the empty its dark; fxStrips.js
+ *      loading the steel by default and the gold only under the switch, one
+ *      file; its twin listed (p256Files.js) and wanted (p256.js);
  *   4. A GOLD HEX LEFT in the three places under the default (the accents,
- *      the ring's stops, the steel rules of game.css);
+ *      the ring's stops, the steel rules of game.css, a pixel of the steel
+ *      strip);
  *   5. THE SWITCH: `?padgold=1` throws it, absent or `=0` does not, and
  *      `?padskin=0` (what it needs) throws it too.
  *
@@ -31,6 +39,10 @@
 import fs from 'node:fs';
 import { PAD_STEEL, PAD_STEEL_RING, PAD_ACCENT, PAD_GOLD, padAccent, padMetal, padFace } from '../../src/game/padSkin.js';
 import { readerFor } from '../../src/game/switches.js';
+import { inflateSync } from 'node:zlib';
+import { decodePng8 } from '../../src/rendering/png8Decode.js';
+import { blockMean, contrastOf } from '../art/steel-strip.mjs';
+import { P256_FILES } from '../../src/data/p256Files.js';
 
 let failures = 0, passes = 0;
 const check = (name, ok, detail) => {
@@ -60,6 +72,7 @@ function lum(hex) {
   const v = [m[1], m[2], m[3]].map((h) => { const x = parseInt(h, 16) / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
   return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
 }
+const lumOfHex = (hex) => lum(hex);
 const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 
 const css = read('src/styles/game.css');
@@ -117,6 +130,42 @@ for (const n of ['attack', 'special']) {
 }
 check('2e. PadSkin reads the accent through padAccent with the switch',
   /var acc = padAccent\(name, sw\('padgold'\)\);/.test(skin) && !/PAD_ACCENT\[name\]/.test(skin));
+
+/* 3. the energy blocks */
+async function rgbaOf(rel) {
+  const p = await decodePng8(new Uint8Array(fs.readFileSync(new URL('../../' + rel, import.meta.url))), async (z) => new Uint8Array(inflateSync(z)));
+  if (!p) return null;
+  const d = new Uint8Array(p.w * p.h * 4);
+  for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) {
+    const i = p.idx[y * p.stride + x], o = (y * p.w + x) * 4;
+    d[o] = p.rgb[i * 3]; d[o + 1] = p.rgb[i * 3 + 1]; d[o + 2] = p.rgb[i * 3 + 2]; d[o + 3] = p.alpha[i];
+  }
+  return { d, w: p.w, h: p.h };
+}
+const hexOfRgb = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+const goldStrip = await rgbaOf('public/icons/ui/blocks-stam.p256.png');
+const steelStrip = await rgbaOf('public/icons/ui/blocks-stam-steel.p256.png');
+check('3a. both strips read by the game\'s reader, the steel the gold\'s size',
+  !!goldStrip && !!steelStrip && steelStrip.w === goldStrip.w && steelStrip.h === goldStrip.h);
+if (goldStrip && steelStrip) {
+  const gE = blockMean(goldStrip.d, goldStrip.w, goldStrip.h, 0), gF = blockMean(goldStrip.d, goldStrip.w, goldStrip.h, 5);
+  const sE = blockMean(steelStrip.d, steelStrip.w, steelStrip.h, 0), sF = blockMean(steelStrip.d, steelStrip.w, steelStrip.h, 5);
+  const g = contrastOf(gE, gF), st = contrastOf(sE, sF);
+  check('3b. a full steel block against an empty one at least as far apart as the gold\'s (steel ' + st.toFixed(2) + ' ' + hexOfRgb(sF) + ' on ' + hexOfRgb(sE) + ', gold ' + g.toFixed(2) + ')',
+    st >= g && st > 3);
+  check('3c. full is the steel\'s light, empty its dark, neither gold',
+    isSteel(hexOfRgb(sF)) && isSteel(hexOfRgb(sE)) && !isGold(hexOfRgb(sF)) && !isGold(hexOfRgb(sE)) && lumOfHex(hexOfRgb(sF)) > 0.5 && lumOfHex(hexOfRgb(sE)) < 0.08,
+    [hexOfRgb(sF), hexOfRgb(sE)]);
+  let goldPx = 0;
+  for (let i = 0; i < steelStrip.d.length; i += 4) if (steelStrip.d[i + 3] > 128 && isGold(hexOfRgb([steelStrip.d[i], steelStrip.d[i + 1], steelStrip.d[i + 2]]))) goldPx++;
+  check('4e. no gold pixel left in the steel strip (' + goldPx + ')', goldPx === 0);
+}
+const fx = read('src/rendering/fxStrips.js'), p256 = read('src/rendering/p256.js');
+check('3d. fxStrips loads ONE stamina strip: the steel by default, the gold under ?padgold=1',
+  /stamina: \{ frames: \[\], url: sw\('padgold'\) \? '\/icons\/ui\/blocks-stam\.webp\?v=2\.3\.2300' : '\/icons\/ui\/blocks-stam-steel\.webp\?v=2\.3\.6646' \},/.test(fx));
+check('3e. its twin listed (p256Files.js) and wanted (p256.js UPLOAD_ICONS)',
+  !!P256_FILES['/icons/ui/blocks-stam-steel.webp'] && P256_FILES['/icons/ui/blocks-stam-steel.webp'].twin === '/icons/ui/blocks-stam-steel.p256.png'
+  && /blocks-\(\?:mp\|stam\|stam-steel\)/.test(p256));
 
 /* 4. no gold under the default */
 check('4a. Attack\'s and Special\'s accents are the steel\'s cold light, not gold',
