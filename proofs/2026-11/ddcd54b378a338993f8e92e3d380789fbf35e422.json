@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ddcd54b378a338993f8e92e3d380789fbf35e422",
+  "tree": "3204bcd601a772e13fa0c32b7fee8baca9809b0e",
+  "committedAt": "2026-11-25T16:25:15-08:00",
+  "subject": "Merge pull request #2360 from hemibroscommunity-del/claude/plan-ui2-1-audit",
+  "files": 8626,
+  "bytes": 968902880,
+  "listingSha256": "856ddb4fa475c0c4cd19b1a197e1b061a712d93248842d63378f8b9a35c72352",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
