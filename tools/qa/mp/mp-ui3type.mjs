@@ -7,8 +7,8 @@
  * links (tools/guards/menu-font.test.mjs holds the sheets).  In the Wheel's
  * BroTown, a character with the dev kit's weapons:
  *
- *   upright phone (390 x 844, touch), the words of the dashboard's frame (on a
- *   computer the band also holds the controls' key caps: not a menu), on the Menu, Bro, Character, Combat, a
+ *   upright phone (390 x 844, touch), the band's words (on a computer the band
+ *   also holds the controls' key hints: not a menu, left out), on the Menu, Bro, Character, Combat, a
  *   weapon page (the sword's), Gear, an item page (the worn sword's) and the
  *   Account page:
  *     1. the COMPUTED family of every word under the band starts with
@@ -101,16 +101,16 @@ function wordsRead() {
   const out = { band: true, frame: (document.querySelector('[data-dash-frame]') || { getAttribute: () => null }).getAttribute('data-dash-frame'),
     title: ((document.querySelector('[data-dash-frame] [data-u2="title"]') || {}).textContent || '').trim(), n: 0, fams: {}, wrong: [], cut: [], small: [] };
   const seen = new Set();
-  /* the menu itself: the new frame (on a computer the band also holds the controls' key caps, 10 px
-     by their own design and not a menu); the band where there is no frame */
-  const root = document.querySelector('[data-dash-frame]') || band;
-  out.root = root === band ? 'band' : 'frame';
+  /* the band's words (its header row is [data-dash-frame], the page under it a sibling); on a computer the
+     band also holds the controls' key hints, 10 px by their own design and not a menu: left out */
+  const root = band;
+  out.root = document.querySelector('[data-dash-frame]') ? 'frame' : 'band';
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let t = walker.nextNode(); t; t = walker.nextNode()) {
     const text = t.textContent.trim();
     if (!text || !/[A-Za-z0-9]/.test(text)) continue;   /* a word: an icon's glyph alone is not one */
     const el = t.parentElement;
-    if (!el || seen.has(el)) continue;
+    if (!el || seen.has(el) || el.closest('[data-band-keys], [data-desk-keys]')) continue;
     seen.add(el);
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) continue;
@@ -133,7 +133,7 @@ function wordsRead() {
   return out;
 }
 const words = (P) => P.page.evaluate(wordsRead);
-const wordsOk = (w) => w.band && w.root === 'frame' && w.n >= 3 && w.wrong.length === 0 && w.cut.length === 0 && w.small.length === 0;
+const wordsOk = (w) => w.band && w.root === 'frame' && w.n >= 8 && w.wrong.length === 0 && w.cut.length === 0 && w.small.length === 0;
 const wordsWhy = (w) => ({ root: w.root, frame: w.frame, title: w.title, n: w.n, fams: w.fams, wrong: (w.wrong || []).slice(0, 8), cut: (w.cut || []).slice(0, 8), small: (w.small || []).slice(0, 8) });
 
 /* yesterday's letters, put back in the page (for the BEFORE pictures only) */
