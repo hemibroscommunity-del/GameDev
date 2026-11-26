@@ -103,7 +103,8 @@ export function readPassport(S) {
     party: S ? S._party : null,
     oldClan: S && S._clanData && S._clanData.tag ? { tag: S._clanData.tag, name: S._clanData.name || null } : null,
     ap,
-    quests: cs && typeof cs === 'object' ? cs.questsCompleted : null,
+    /* the phone's own count: no counter yet on a record that has played no quest is 0, not "on its way" */
+    quests: S && S.rpg ? ((cs && typeof cs === 'object' && Number(cs.questsCompleted)) || 0) : null,
   };
 }
 
@@ -234,10 +235,11 @@ export function CharacterPage({ S, who, onWeapon }) {
       <span className="u2-pass-lv">{lvl == null ? <span className="u2-pass-wait" data-u2-loading="" aria-hidden="true" /> : lvl}</span>
     </Ui2Group>
   );
+  /* on the narrowest sideways page the title line is the Titles door's (its picture) */
   const nameBlock = (
     <span className="u2-pass-id">
       <span className="u2-pass-name" data-char-name="" style={{ fontSize: short ? Math.min(15, nmSize) : nmSize }}>{name}</span>
-      <span className={'u2-pass-title' + (P.title ? '' : ' is-none')} data-char-title={P.title ? P.title.id : ''} aria-label={say(SAY, 'charPage.titleAria', { t: titleWords })}>{titleWords}</span>
+      {narrow ? null : <span className={'u2-pass-title' + (P.title ? '' : ' is-none')} data-char-title={P.title ? P.title.id : ''} aria-label={say(SAY, 'charPage.titleAria', { t: titleWords })}>{titleWords}</span>}
     </span>
   );
   const whose = P.whose ? (
@@ -253,7 +255,8 @@ export function CharacterPage({ S, who, onWeapon }) {
       onOpen={() => { if (onWeapon) onWeapon(w.cat); }} />
   ));
   const line = (s) => (s.v != null ? (s.id === 'ap' ? fmt(s.v) : s.id === 'quests' ? fmt(s.v) : String(s.v)) : s.key ? word(s.key, s.n) : null);
-  const iconFor = (id) => narrow && (id === 'clan' || id === 'guilds');
+  /* sideways the lines that cannot hold their words become their pictures' doors (never smaller text) */
+  const iconFor = (id) => narrow && (id === 'clan' || id === 'guilds' || id === 'quests');
   const summary = P.summary.map((s) => (s.opens ? (
     <PassDoor key={s.id} id={s.id} art={short ? ART[s.id] : null} k={word(s.k)} v={line(s)} none={s.none} loading={s.loading}
       iconOnly={iconFor(s.id)} aria={(s.id === 'ap' ? say(SAY, 'charPage.apAria') : word(s.k)) + ': ' + (s.loading ? '…' : line(s))}
@@ -264,14 +267,14 @@ export function CharacterPage({ S, who, onWeapon }) {
     </Ui2Group>
   )));
   const doors = P.doors.map((d) => (
-    <PassDoor key={d.id} id={d.id} art={ART[d.id]} k={word(d.k)} iconOnly={narrow} aria={word(d.k)} onOpen={() => go(d.opens)} />
+    <PassDoor key={d.id} id={d.id} art={ART[d.id]} k={word(d.k)} iconOnly={short} aria={word(d.k)} onOpen={() => go(d.opens)} />
   ));
 
   if (short) {
     return (
       <div ref={ref} className={ui2RootClass() + ' u2-pass is-short'} data-char-page={P.self ? 'self' : 'other'} data-char-shape={narrow ? 'narrow' : 'short'}>
         <Ui2Zones style={{ flexDirection: 'row', gap: 4 }}
-          identity={<div className="u2-pass-row">{face}{combat}{nameBlock}</div>}
+          identity={<div className="u2-pass-row">{face}<span className="u2-pass-idcol">{nameBlock}{combat}</span></div>}
           summary={<div className="u2-pass-row">{weapons}</div>}
           doors={<div className="u2-pass-row">{summary}{doors}{whose}</div>} />
       </div>
@@ -290,7 +293,7 @@ export function CharacterPage({ S, who, onWeapon }) {
           </div>
         )}
         summary={<div className="u2-pass-row is-44">{weapons}</div>}
-        doors={<div className="u2-pass-row is-44">{summary}</div>} />
+        doors={<div className="u2-pass-row is-44 is-sum">{summary}</div>} />
     </div>
   );
 }

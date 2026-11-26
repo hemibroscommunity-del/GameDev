@@ -107,6 +107,7 @@ export function broCols(w) {
    too is kept across the Points window and a page pushed under Bro, and a
    fresh visit opens the Overview */
 let _pick = null;
+let _askWeapon = null;   /* v2.3.6684: the passport's weapon door, taken by the Combat page (open or not) */
 dashboardPanelBus.subscribe(() => { if (dashboardPanelBus.state.mode === 'bar') _pick = null; });
 
 /* the explainer a stat's row opens (the Equipment window's own) */
@@ -171,6 +172,7 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   });
   /* v2.3.6600: the ONE transition (broPages.js broPageTo); the card's weapon is the pages' */
   const move = (a) => setBp((prev) => { const next = broPageTo(prev, a); _pick = next; return next; });
+  useEffect(() => { if (door === 'combat' && _askWeapon) { const c = _askWeapon; _askWeapon = null; move({ to: 'combat', weapon: c }); } });
   const weapon = bp.weapon;
   const setWeapon = (c) => move({ weapon: c });
   /* v2.3.4172: the skill tile showing its XP (one at a time), back to its
@@ -284,7 +286,7 @@ export const BroCard = ({ points, onPoints, door, who }) => {
     return <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear} />;
   }
   /* v2.3.6684 (card UI2-bro PR 2): the passport (CharacterPage.jsx); a weapon's door, today's Combat page on it */
-  const onWeapon = (cat) => { _pick = broPageTo(_pick || broPagesStart(cat), { to: 'combat', weapon: cat }); go('broCombat'); };
+  const onWeapon = (cat) => { _askWeapon = cat; go('broCombat'); };
   if (door === 'character') return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
 

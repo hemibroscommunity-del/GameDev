@@ -19,9 +19,9 @@
 .ui2 .u2-pass-title.is-none { color: var(--ui2-text-muted); }
 .ui2 .u2-pass-combat { display: flex; align-items: center; justify-content: space-between; gap: var(--ui2-space-m); padding: var(--ui2-space-xs) var(--ui2-space-l); }
 .ui2 .u2-pass-lv { font-size: var(--ui2-fs-big); font-weight: 700; line-height: 1.05; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; }
-.ui2.u2-pass.is-short .u2-pass-combat { flex: 0 0 auto; flex-direction: column; justify-content: center; gap: 0; padding: var(--ui2-space-xs) var(--ui2-space-m); }
-.ui2.u2-pass.is-short .u2-pass-lv { font-size: 20px; }
-.ui2.u2-pass.is-short .u2-pass-id { flex: 0 1 auto; }
+.ui2.u2-pass.is-short .u2-pass-idcol { flex: 0 0 auto; justify-content: center; gap: var(--ui2-space-xs); }
+.ui2.u2-pass.is-short .u2-pass-combat { padding: 0 var(--ui2-space-m); }
+.ui2.u2-pass.is-short .u2-pass-lv { font-size: var(--ui2-fs-title); }
 
 /* a door: raised, its picture, its label over its value */
 .ui2 .u2-pass-door {
@@ -29,7 +29,9 @@
   padding: var(--ui2-space-xs) var(--ui2-space-l); border-radius: var(--ui2-radius-button); font-family: inherit; text-align: left; cursor: pointer;
 }
 .ui2 .u2-pass-row:not(.is-44) > .u2-pass-door { flex: 0 0 60px; flex-direction: column; justify-content: center; gap: var(--ui2-space-xs); padding: var(--ui2-space-xs); text-align: center; }
-.ui2.u2-pass.is-short .u2-pass-row > .u2-pass-door { flex: 1 1 0; flex-direction: row; padding: var(--ui2-space-xs) var(--ui2-space-m); gap: var(--ui2-space-s); text-align: left; }
+.ui2 .u2-pass-row.is-sum > .u2-pass-door { flex: 1 1 auto; padding: var(--ui2-space-xs) var(--ui2-space-m); }
+.ui2.u2-pass.is-short .u2-pass-row > .u2-pass-door { flex: 0 0 auto; min-width: var(--ui2-size-touch); flex-direction: row; padding: var(--ui2-space-xs) var(--ui2-space-m); gap: var(--ui2-space-s); text-align: left; }
+.ui2.u2-pass.is-short .u2-pass-art { width: 20px; height: 20px; }
 .ui2.u2-pass.is-short .u2-pass-row > .u2-pass-door.is-icon, .ui2 .u2-pass-door.is-icon { flex: 0 0 var(--ui2-size-touch); justify-content: center; padding: var(--ui2-space-xs); }
 .ui2 .u2-pass-art { width: 24px; height: 24px; object-fit: contain; flex: 0 0 auto; }
 .ui2 .u2-pass-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
