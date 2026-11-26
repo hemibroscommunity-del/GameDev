@@ -58,7 +58,7 @@ function frame() {
     outside: ctls.filter((c) => c.out),
     rail: document.querySelectorAll('.bt-navrail [data-nav]').length,
     nav: nv ? { ws: nv.ws, shown: nv.shown, menu: nv.menu.map((e) => e.id), gear: nv.gear.map((e) => e.id) } : null,
-    map: !!document.querySelector('[data-world-map-open]'),
+    map: !!(window.__btWorldMap && window.__btWorldMap.open),
   };
 }
 const read = (P) => P.page.evaluate(frame);
@@ -191,7 +191,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const word = F.back;
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
     const G8 = await read(P);
-    rec.ok('8. the quest card\'s page alone, Back saying World and closing the dashboard again', F.page === 'questDetail' && /World/.test(word || '') && G8.kind === 'closed' && G8.nav.menu.indexOf('quests') < 0, { page: F.page, word, after: G8.kind, nav: G8.nav });
+    rec.ok('8. the quest card\'s road (its page hands the quest to the Quests tab, which takes its place): Back says World and closes the dashboard again', F.page === 'quests' && /World/.test(word || '') && G8.kind === 'closed' && G8.nav.menu.indexOf('quests') < 0 && G8.nav.menu.indexOf('questDetail') < 0, { page: F.page, word, after: G8.kind, nav: G8.nav });
+    /* a page from the world on its own (a fish's weigh-in card opens the Ranks) */
+    await P.page.evaluate(() => window.__broDashPanelBus.open('leaderboard'));
+    await P.page.waitForTimeout(800);
+    const F8 = await read(P);
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
+    const G8b = await read(P);
+    rec.ok('8b. a page opened from the world alone: Back says World and closes again', F8.page === 'leaderboard' && /World/.test(F8.back || '') && G8b.kind === 'closed', { page: F8.page, back: F8.back, after: G8b.kind });
     /* 9. the other shapes */
     for (const s of [{ w: 375, h: 667, band: 235, rows: 2, tag: '375x667' }, { w: 844, h: 390, band: 130, rows: 1, tag: '844x390' }]) {
       await P.page.setViewportSize({ width: s.w, height: s.h });
@@ -211,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
   } finally {
-    await P.close().catch(() => {});
+    await P.ctx.close().catch(() => {});
   }
 
   /* 10. a computer */
@@ -240,7 +247,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await bandShot(D, 'ui2-frame-page-computer.png');
     }
   } finally {
-    await D.close().catch(() => {});
+    await D.ctx.close().catch(() => {});
   }
 
   /* 11. ?ui2=0: today's row, remembered; ?ui2=1 the frame again */
@@ -259,6 +266,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('11c. ?ui2=1 clears it (the frame comes back on the next load)', back === null, back);
     }
   } finally {
-    await O.close().catch(() => {});
+    await O.ctx.close().catch(() => {});
   }
 }

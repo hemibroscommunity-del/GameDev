@@ -157,7 +157,7 @@ function arrive(a) {
   }
 }
 const face = {
-  fopen(id) { arrive(dashNavOpen(id)); },
+  fopen(id) { arrive(dashNavOpen(id, nav())); },
   fpush(id, opts) {
     const t = dashNavView(nav()).top;
     const replace = _opener != null && !!t && t.key === _opener && nav().shown;

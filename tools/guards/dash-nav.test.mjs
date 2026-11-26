@@ -210,6 +210,13 @@ for (const r of real) check(r.name, r.ok, r.detail);
     dashNavKey(dashNavInit(false), 'dashboard').type === 'gear' && dashNavKey(open, 'dashboard').type === 'close'
     && dashNavKey(open, 'more').type === 'menu' && dashNavKey(dashNavStep(open, { type: 'menu' }), 'more').type === 'close'
     && dashNavKey(open, 'hero').type === 'arrive' && dashNavKey(dashNavStep(open, { type: 'arrive', id: 'hero' }), 'hero').type === 'close');
+  {
+    let q = dashNavStep(dashNavInit(false), { type: 'arrive', id: 'quests' });
+    q = dashNavStep(q, { type: 'push', id: 'questDetail', replace: true });
+    q = dashNavStep(q, dashNavOpen('quests', q));
+    check('3h a page that hands over (the quest\'s page to the Quests tab) is replaced, its way home kept: Back leaves',
+      ids(q.menu) === 'quests' && dashNavBackTo(q).kind === 'world' && dashNavStep(q, { type: 'back' }).shown === false, ids(q.menu));
+  }
   const frozen = Object.isFrozen(open) && Object.isFrozen(m.menu) && Object.isFrozen(m.menu[0]);
   check('3g the state is frozen (one transition writes it)', frozen);
 }
