@@ -857,14 +857,29 @@ export const STATES = [
   { id: 'dash-frame-homestead', group: 'Dashboard', title: 'Homestead', about: 'The Menu\'s Homestead tile: the farm\'s picture and what the Bro row says today (plots ready to harvest, and that the farm is reached from the Feed & Seed); nothing to manage from here.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
   /* v2.3.6687: the one item page (card UI2-gear PR 1): Gear's worn sword, its Details */
-  { id: 'dash-item-page', group: 'Dashboard', title: 'The one item page', about: 'Gear\'s picked sword, its picture and name pressed (the "\u203a" door): the one item page on Gear\'s stack under the header [\u2039 Gear] Sword [Menu] [\u2715]; the picture in its grade\'s outline with its stars, the name, the grade\'s word and "Worn"; the facts three across (Damage, DPS, Attack speed, Range, Hardness...); Unequip full width at the foot with Pin beside it.',
+  { id: 'dash-item-page', group: 'Dashboard', title: 'The one item page', about: 'Gear\'s worn sword, its summary\'s Details pressed (v2.3.6688): the one item page on Gear\'s stack under the header [\u2039 Gear] Sword [Menu] [\u2715]; the picture in its grade\'s outline with its stars, the name, the grade\'s word and "Worn"; the facts three across (Damage, DPS, Attack speed, Range, Hardness...); Unequip full width at the foot with Pin beside it.',
     run: async ({ P }) => {
       await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
       await wait(P, 400);
-      const e = await tapSel(P, '[data-gear-cell="sword"]');
+      const e = await tapSel(P, '[data-gear-cell="sword"] [role="button"]');   /* v2.3.6688: the worn sword's summary, then its Details */
       if (e) return e;
       await wait(P, 400);
-      return tapSel(P, '[data-gear-details]');
+      return tapSel(P, '[data-gear-summary] [data-gear-details]');
+    } },
+  /* v2.3.6688: Gear's two panels (card UI2-gear PR 2): management, a look from the bag, a look from the worn cells */
+  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); }); } },
+  { id: 'dash-gear-look-bag', group: 'Dashboard', title: 'Gear: a look from the bag', about: 'A bag square tapped: the Inventory stays left, the square pushed in; the Equipped panel\'s place is its summary (a piece you could wear: your DPS or Damage cut now and if equipped, the change, Details and Equip).',
+    run: async ({ P }) => {
+      await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); });
+      await wait(P, 400);
+      return tapSel(P, '[data-gear-bag] [data-bag-key^="stash"], [data-gear-bag] [data-bag-key]');
+    } },
+  { id: 'dash-gear-look-worn', group: 'Dashboard', title: 'Gear: a look from what you wear', about: 'The worn sword tapped: Equipped stays right, the cell pushed in; the Inventory\'s place is its summary ("Worn", its DPS on you, Details and Unequip).',
+    run: async ({ P }) => {
+      await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); });
+      await wait(P, 400);
+      return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
     } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --

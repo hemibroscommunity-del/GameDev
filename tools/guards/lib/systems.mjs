@@ -314,7 +314,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests') /* v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests') /* v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */, f('src/game', 'compare|equipProject|workspace') /* v2.3.6688: Gear's comparison, its projection, the two-panel workspace (card UI2-gear PR 2) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],
