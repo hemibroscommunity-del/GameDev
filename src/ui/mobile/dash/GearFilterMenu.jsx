@@ -7,6 +7,8 @@ import { COL } from './common.js';
 import { GEAR_FILTER_GROUPS, GEAR_FILTERS } from './itemCategory.js';
 import { gearTabBus } from './gearTabBus.js';
 import { WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
+import { SAY } from '@/data/say/gearPanels.js';   /* v2.3.6688: its words in the table */
+import { say } from '@/game/say.js';
 
 export const GearFilterMenu = ({ fid, allEntries, counts, weaponsHeld, box }) => (
     <div data-gear-menu="" style={{
@@ -15,17 +17,17 @@ export const GearFilterMenu = ({ fid, allEntries, counts, weaponsHeld, box }) =>
       boxShadow: '0 8px 18px rgba(4,7,9,.45)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
       <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 8px', borderBottom: `1px solid ${COL.divider}` }}>
-        <span style={{ flex: 'none', fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: COL.muted }}>Show</span>
+        <span style={{ flex: 'none', fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: COL.muted }}>{say(SAY, 'gearPanels.show')}</span>
         {/* the weapon bag's fill -- no cap on the bag (only the weapon bag has one) */}
         <span data-gear-fill="" style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 10, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>
-          weapons {weaponsHeld}/{WEAPON_STASH_MAX}
+          {say(SAY, 'gearPanels.weaponsHeld', { held: weaponsHeld, max: WEAPON_STASH_MAX })}
         </span>
-        <button type="button" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the filter menu"
+        <button type="button" data-esc="" data-key="Esc" data-key-at="hang" aria-label={say(SAY, 'gearPanels.closeMenu')}
           onClick={(e) => { e.stopPropagation(); gearTabBus.setMenu(false); }}
           style={{ position: 'relative', flex: 'none', width: 34, height: 32, padding: 0, border: 'none', background: 'transparent', color: COL.text, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>{'✕'}</button>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', padding: 3 }}>
-        {[{ id: 'all', label: 'All items', rows: ['all'] }].concat(GEAR_FILTER_GROUPS).map((g) => {
+        {[{ id: 'all', label: say(SAY, 'gearPanels.allItems'), rows: ['all'] }].concat(GEAR_FILTER_GROUPS).map((g) => {
           const n = g.rows.reduce((a, id) => a + (id === 'all' ? allEntries.length : (counts[id] || 0)), 0);
           const multi = g.rows.length > 1;
           return (
@@ -33,7 +35,7 @@ export const GearFilterMenu = ({ fid, allEntries, counts, weaponsHeld, box }) =>
               {multi && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, padding: '5px 6px 2px' }}>{g.label}</div>}
               {g.rows.map((id) => {
                 const c = id === 'all' ? allEntries.length : (counts[id] || 0);
-                const word = id === 'all' ? 'All items' : multi ? GEAR_FILTERS[id].pill : g.label;
+                const word = id === 'all' ? say(SAY, 'gearPanels.allItems') : multi ? GEAR_FILTERS[id].pill : g.label;
                 const cur = fid === id;
                 return (
                   <button type="button" key={id} data-gear-filter-row={id} data-count={c}

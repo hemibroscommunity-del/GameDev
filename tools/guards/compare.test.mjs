@@ -48,7 +48,7 @@ import { compareRow, compareSet, compareSubjects, metricDef, tradeoffLine, COMPA
 import { projectEquip, weaponNumbers, cutNumbers, wornNumbers, projectKind } from '../../src/game/equipProject.js';
 import { inspectItem, itemSummary } from '../../src/game/itemInspect.js';
 import { SAY } from '../../src/data/say/compare.js';
-import { calcDisplayDps, calcDisplayDmgRange, calcBlockReduction, getEquipReqLabel } from '../../src/data/gameSystems.js';
+import { calcDisplayDps, calcDisplayDmgRange, calcBlockReduction, getEquipReqLabel } from '../../src/data/index.js';   /* the data's door (src/data/index.js re-exports the game's systems): no big file by its path (tests-by-system) */
 import { getShieldStats } from '../../src/data/items.js';
 import { autoSwingMs } from '../../src/ui/mobile/sheet/statSim.js';
 

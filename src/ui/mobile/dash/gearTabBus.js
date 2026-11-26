@@ -26,8 +26,8 @@
  * mockup, and their localStorage key, are gone).
  */
 import { gearCell } from './itemCategory.js';
-import { dashMinBus } from '../dashMinBus.js';
-import { wsStart, wsStep } from '@/game/workspace.js';   /* v2.3.6688: the two panels' one state (card UI2-gear PR 2) */   /* v2.3.4353: the band folding resets this tab */
+import { dashMinBus } from '../dashMinBus.js';   /* v2.3.4353: the band folding resets this tab */
+import { wsStart, wsStep } from '../../../game/workspace.js';   /* v2.3.6688: the two panels' one state (card UI2-gear PR 2); relative, as node tests read this bus */
 
 const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false, ws: wsStart() };
 /* v2.3.6688 (card UI2-gear PR 2): `ws`, the two panels' workspace (src/game/workspace.js: management, a

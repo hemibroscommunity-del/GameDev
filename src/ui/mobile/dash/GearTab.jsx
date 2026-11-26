@@ -434,13 +434,15 @@ const GearCellView = ({ c, R, slots, selCell, hand, t }) => {
 /* ═══ v2.3.6688: UNDER THE NEW FRAME, GEAR IS TWO PANELS (card UI2-gear PR 2) ═══
    Inventory left, Equipped right in a body's shape, the quick look in the panel opposite the source, no middle
    column: dash/GearPanels.jsx.  `?ui2=0` (the frame's way back) keeps today's three panels below, whole. */
-export const GearTab = (props) => {
+const GearTabChoice = (props) => {
   const frameOn = (() => { try { return ui2FrameOn(); } catch (e) { return false; } })();
   if (frameOn) return <GearPanels R={props.R} />;
-  return <GearTabToday {...props} />;
+  return <GearTab {...props} />;
 };
+export { GearTabChoice as GearTab };
 
-const GearTabToday = ({ R: Rin, desk }) => {
+/* today's Gear: its own name kept (the layout reads' list names its reads by it) */
+const GearTab = ({ R: Rin, desk }) => {
   const R = Rin || {};
   const [rootRef, box] = useMeasure();
   const [, tick] = React.useReducer((n) => (n + 1) % 1000000, 0);

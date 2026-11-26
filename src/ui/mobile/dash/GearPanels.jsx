@@ -186,7 +186,7 @@ function EquippedBody({ R, ws, geo }) {
   const tw = geo.torsoW;
   return (
     <div className="u2-body" data-gear-body="figure"
-      style={{ gridTemplateColumns: `${s}px ${tw}px ${s}px`, gridTemplateRows: `repeat(3, ${s}px)`, columnGap: BODY_G, rowGap: BODY_G }}>
+      style={{ gridTemplateColumns: `${s}px ${tw}px ${s}px`, gridTemplateRows: [s, s, s].map((x) => x + 'px').join(' '), columnGap: BODY_G, rowGap: BODY_G }}>
       <span className="u2-body-line" aria-hidden="true" style={{ width: Math.round(tw * 0.62), marginLeft: -Math.round(tw * 0.31) }} />
       {GEAR_CELLS.map((c) => {
         const [col, row] = BODY[c.id] || [0, 0];
@@ -361,7 +361,7 @@ export function GearPanels({ R: Rin }) {
 
   const inventory = entries.length === 0 && fid !== 'all' ? (
     <div className="u2-gp-none" data-gear-empty={fid}>
-      <span>{say(SAY, 'gearPanels.noneOf', { what: (GEAR_FILTERS[fid] || {}).none || 'items' })}</span>
+      <span>{say(SAY, 'gearPanels.noneOf', { what: (GEAR_FILTERS[fid] || {}).none || say(SAY, 'gearPanels.items') })}</span>
       <Ui2Action c="silver" label={say(SAY, 'gearPanels.showAll')} onClick={() => gearTabBus.clearFilter()} data-gear-showall="" />
     </div>
   ) : (

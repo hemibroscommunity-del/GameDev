@@ -15,4 +15,8 @@ export const SAY = Object.freeze({
   'gearPanels.empty': '{slot}, empty',
   'gearPanels.inHand': '{slot}: {name}, in your hand',
   'gearPanels.cell': '{slot}: {name}',
+  'gearPanels.items': 'items',
+  'gearPanels.show': 'Show',
+  'gearPanels.weaponsHeld': 'weapons {held}/{max}',
+  'gearPanels.closeMenu': 'Close the filter menu',
 });
