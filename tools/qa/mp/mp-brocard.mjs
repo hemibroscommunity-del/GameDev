@@ -221,7 +221,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r1.words !== 'icon' && r1.btns.every((b) => b.word === WORDS[b.id] && !b.cut && b.wordPx >= 11), r1.btns);
     rec.ok(`...every button at least 44 x 44 (${r1.btns.map((b) => b.w + 'x' + b.h).join(' ')}; CLOSE ${r1.close && r1.close.w}x${r1.close && r1.close.h}), touch-action: manipulation`,
       !!r1.close && r1.btns.every((b) => b.w >= 44 && b.h >= 44 && b.ta === 'manipulation') && r1.close.w >= 44 && r1.close.h >= 44 && r1.close.ta === 'manipulation', r1);
-    rec.ok('...and the grip still on the band\'s edge ([data-dash-fold])', r1.grip === 'open', r1.grip);
+    rec.ok('...and the fold control still worn ([data-dash-fold]; v2.3.6697: the row\'s own, the handle gone)', r1.grip === 'open', r1.grip);
 
     /* ── 2. the card ── */
     await H.dashOpen(P, 'hero');

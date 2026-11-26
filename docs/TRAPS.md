@@ -3715,7 +3715,7 @@ through `window.__btDispatch` at a seeded threshold and prints two rows — a
 prog3 character (crossed, level unmoved, **nothing shown**) and a legacy one
 (crossed, level unmoved, banner reading `SKILL UP! / Melee Level 24`). The
 before, captured on `origin/main` in a worktree, is in
-`docs/triage-2026-09-17/level-up-followup.md`.
+`docs/archive/triage-2026-09-17/level-up-followup.md`.
 
 **Related:** §61 (both rows are about ABSENCE, which no single screenshot can
 assert); §81 (the whitelist that encodes the asks you have already had); §87 —
@@ -9268,6 +9268,14 @@ the "phone-only" ones included, and each deploy briefly disconnects players.
 when it merges: say "this deploys" in its body. The deploy queue keeps only the
 newest waiting run (its `concurrency` group), so merge a batch together, in a
 quiet hour, and players are dropped once or twice, not twenty times.
+
+**Narrowed (v2.3.6700).** The deploy's filter now leaves out `server/test/**`
+and `server/README.md` (the owner's word, 2026-11-26): a merge whose only
+files under `server/` are tests deploys nothing, and its body may say so.
+Every other file under `server/` (`src/`, `wrangler.toml`, `package.json` and
+its lock) still deploys, and the rule above stands for those. The filter is a
+`!` pattern in the workflow's one `paths` list: GitHub refuses `paths` and
+`paths-ignore` together on one event.
 
 ## 278. "Clear the phone's copy at state_sync" (v2.3.4381)
 

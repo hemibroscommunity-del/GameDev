@@ -1002,7 +1002,7 @@ import {
   BT_AUDIO, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
   PVP_THREAT_DURATION,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
-  discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
+  discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX,
   getEvasionPts, resolveCollision, rollPassiveDodge, staffAoeMult,
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   BOW_RANGE_PX, /* v2.3.2448: the arrow's plant cap, shared with the sight stream */
@@ -1011,7 +1011,7 @@ import {
   STAFF_BIG_BOLT_BLAST_PX, /* v2.3.2849: how far its explosion reaches */
   bossSizeK, /* v2.3.3556: a dungeon boss's drawn size */
 } from '@/data/index.js';
-import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2511: arrows sound like what they hit */, hitSoundOf /* v2.3.3001: ...in its material's voice */, isIntangible /* v2.3.2224 */, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterHitSfx, shotEndSfx } from '@/game/hitSounds.js'; /* v2.3.3001: hits and monster balls sound like their material */
 import { mcHitPitch, mcPerfectOn } from '@/game/manualCombat.js'; /* v2.3.4615: the free-swing trial's rising pitch, and its arrows named */
 import { staffSw, staffFeelImpact } from '@/game/staffFeel.js'; /* v2.3.4803: a gathered bolt names its shot, and its ring of force is drawn */
@@ -1862,9 +1862,9 @@ export function updateArrows(S, deps) {
                  the feet.  See hitShapeOf. */
               /* v2.3.2473: the radius table moved to monsterProjRadius (top of
                  file) so the bow's sight gate can ask the same question this
-                 test answers.  `_archProj` is still needed below for the body
-                 centre, which is a different table. */
-              var _archProj = hitShapeOf(m.archetype || m.type);
+                 test answers.
+                 v2.3.6702: the `_archProj` once kept here for the body centre
+                 was read by nothing; its unused name is deleted (card TD PR 3). */
               var _hitR = monsterProjRadius(m, S, a);
               /* v2.3.1111: hit-test against the RENDERED position when the
                  monster is interpolating (server-driven monsters draw at
