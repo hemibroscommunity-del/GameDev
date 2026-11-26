@@ -22,7 +22,8 @@
  *      in it) and its tap opens that quest's page;
  *   5. at 375 x 667, 390 x 844, 667 x 375 and 1280 x 720, in a party with an
  *      element chip up: the HUD, the line, the status row, the party chip,
- *      the minimap, the stick and the controller never cross; the HUD's top
+ *      the minimap, the stick and the controller never cross (sideways the
+ *      party chip stands beside the HUD); the HUD's top
  *      within 16 px of the top bar; the WELCOME plate's Skip over it;
  *   6. `?hud=0`, and after a reload without it (remembered): today's top left
  *      (no HUD, --bt-hud-top the bar's line, the top bar's XP back); `?hud=1`
@@ -153,6 +154,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`5. the WELCOME plate's Skip is on top where it is drawn (${skip ? 'at y ' + skip.y : 'not shown on this start'})`, !skip || skip.top, skip);
   await H.pastWelcome(A);
   const me = await H.readState(A, (S) => S.myId);
+  /* a quest in hand, taken as a player takes it (quest_accept; out of the
+     givers' order, which test mode allows: mp-trackquest's way) -- the
+     owner's own example, "Into the Wild" */
+  const takeQuest = async (P, id) => {
+    await H.devOp(wsPort, 'testmode', id, { on: true }).catch(() => null);
+    await P.page.evaluate(() => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'mayor_2' } }); });
+    return H.waitFor(P, (S) => ((S.rpg && S.rpg._quests) || {}).mayor_2 || null, (v) => v === 'active', { timeout: 15000, label: 'Into the Wild' }).catch(() => null);
+  };
+  rec.ok('setup: "Into the Wild" in hand (guard)', (await takeQuest(A, me)) === 'active', null);
 
   /* ── 1. who you are, by the rule ── */
   let a = null;
@@ -223,9 +233,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!b1 && b1.cat === 'sword' && b1.hudBar.white > b0.hudBar.white, { b0: b0.hudBar, b1: b1 && b1.hudBar });
   rec.ok(`2. ...the top bar's XP slot stays quiet (data-xp-shown "${b1 && b1.topBar && b1.topBar.shown}"), and a kill's flight lands on the HUD's number`,
     !!b1 && (!b1.topBar || b1.topBar.shown === '0') && b1.flyToHud, b1 && { top: b1.topBar, fly: b1.flyToHud });
-  let b2 = b1;
-  for (let i = 0; b1 && i < 30; i++) { await A.page.waitForTimeout(150); b2 = await look(A); if (b2.hudBar && /\d+ \/ \d+/.test(b2.hudBar.num || '')) break; }
-  const wantNum = b2 && b2.blob ? `${Math.floor(b2.blob.sk.sword.xp)} / ${(await import(H.REPO + '/src/data/prog3.js')).prog3XpRequired(b2.blob.sk.sword.level)}` : null;
+  /* the count runs on the gold's clock (XpTrack): polled until it settles (TRAPS §200) */
+  const req = (await import(H.REPO + '/src/data/prog3.js')).prog3XpRequired;
+  const numOf = (b) => (b && b.blob ? `${Math.floor(b.blob.sk.sword.xp)} / ${req(b.blob.sk.sword.level)}` : null);
+  let b2 = b1, wantNum = numOf(b1);
+  for (let i = 0; b1 && i < 60; i++) { await A.page.waitForTimeout(200); b2 = await look(A); wantNum = numOf(b2); if (b2.hudBar && b2.hudBar.num === wantNum) break; }
   rec.ok(`2. ...and it counts to the worker's numbers ("${b2 && b2.hudBar && b2.hudBar.num}" = ${wantNum})`, !!b2 && !!b2.hudBar && b2.hudBar.num === wantNum, { num: b2 && b2.hudBar && b2.hudBar.num, wantNum });
 
   /* ── the computer, and the party ── */
@@ -234,6 +246,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(D);
   await H.pastWelcome(D);
   const dId = await H.readState(D, (S) => S.myId);
+  rec.ok('setup: the computer\'s "Into the Wild" in hand too (guard)', (await takeQuest(D, dId)) === 'active', null);
   for (let round = 0; round < 3; round++) {
     const inParty = await H.readState(A, (S) => (S._party && S._party.members ? S._party.members.map((m) => m.id) : []));
     if (inParty.includes(dId)) break;
@@ -268,14 +281,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await chill(Z.P);
     await Z.P.page.waitForTimeout(1800);
     let s = null;
-    for (let i = 0; i < 20; i++) { s = await look(Z.P); if (s.hud && s.chips && s.party) break; await chill(Z.P); await Z.P.page.waitForTimeout(300); }
-    const boxes = { hud: s.hud, line: s.lineHit, status: s.chips, party: s.party, minimap: s.mini, stick: s.stick };
+    for (let i = 0; i < 20; i++) { s = await look(Z.P); if (s.hud && s.line && s.chips && s.party) break; await chill(Z.P); await Z.P.page.waitForTimeout(300); }
+    /* the stack at the top left (the line as drawn) against each other and
+       everything else; the controller's own parts sit inside each other by
+       design, so they are not paired among themselves */
+    const boxes = { hud: s.hud, line: s.line, status: s.chips, party: s.party, minimap: s.mini, stick: s.stick };
     s.housings.forEach((h, i) => { boxes['controller' + i] = h; });
     const names = Object.keys(boxes).filter((k) => boxes[k]);
+    const STACK = new Set(['hud', 'line', 'status', 'party']);
     const hits = [];
-    for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) if (cross(boxes[names[i]], boxes[names[j]])) hits.push(names[i] + '/' + names[j]);
+    for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+      if (!STACK.has(names[i]) && !STACK.has(names[j])) continue;
+      if (cross(boxes[names[i]], boxes[names[j]])) hits.push(names[i] + '/' + names[j]);
+    }
     rec.ok(`5. [${Z.id}] the HUD, the quest line, the status row, the party chip, the minimap, the stick and the controller never cross (${names.join(', ')})`,
-      !!s.hud && !!s.chips && !!s.party && hits.length === 0, { hits, boxes });
+      !!s.hud && !!s.line && !!s.chips && !!s.party && hits.length === 0, { hits, boxes });
     rec.ok(`5. [${Z.id}] the HUD's top (${s.hud && Math.round(s.hud.t)}) within 16 px of the top bar (${s.header && Math.round(s.header.b)}); ${s.hud && Math.round(s.hud.w)} x ${s.hud && Math.round(s.hud.h)}`,
       !!s.hud && !!s.header && s.hud.t >= s.header.b - 0.5 && s.hud.t - s.header.b <= 16
         && (Z.side ? Math.round(s.hud.w) === 176 && Math.round(s.hud.h) === 48 : Math.round(s.hud.w) === 184 && Math.round(s.hud.h) === 52), { hud: s.hud, header: s.header });

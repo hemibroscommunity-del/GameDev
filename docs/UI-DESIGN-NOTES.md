@@ -398,7 +398,7 @@ Screens: charhud, charhud-side, charhud-desk
 - The weapon's XP moves in the HUD's bar now, so the top bar's passing XP slot is quiet while the HUD is up (it only ever showed weapon XP): never both. A gain on another weapon shows only its "+N XP" with its small picture over the bar's end; the bar stays on its weapon. A kill's "+N XP" flies to the HUD's number.
 - The whole HUD is one button: a tap (a click on a computer, which never swings) opens Bro, the Menu's Bro page.
 - The tracked quest is ONE line under it, "title · count · objective" (the owner's own "[Into the Wild · 3/5 · Defeat 5 monsters]"), never wrapping; between quests "Next: <quest> · Talk to <giver>" and "+n more". Its tap opens that quest. The fold of v2.3.4207 gives way to it: the one line is the folded form.
-- The status chips (the snowflake, the flame, the buffs) and the party chip move down under the stack by the HUD's height; nothing crosses at 375 x 667 or 667 x 375.
+- The status chips (the snowflake, the flame, the buffs) and the party chip move down under the stack by the HUD's height. Sideways the room above the controller is short (about 140 px at 667 x 375), so there the status chips sit just under the quest line and the party chip stands BESIDE the HUD, under the top bar; nothing crosses at 375 x 667 or 667 x 375 (on the test box).
 - `?hud=0` (remembered on the device; `?hud=1` forgets) gives back the old top left exactly: the full quest card with its fold, the top bar's XP, the chips where they were.
 
 **Tried before, and changed:**

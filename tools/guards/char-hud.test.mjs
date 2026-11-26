@@ -389,7 +389,7 @@ check('9f PartyHUD\'s chip and list stand at --bt-party-top (92 as before under 
   check('9g game.css: the base, the top built on it, and the stack variables set only while the HUD is up',
     /html\{--bt-hud-base:calc\(56px \+ var\(--bt-bar-grow,0px\) \+ env\(safe-area-inset-top,0px\)\);\s*--bt-hud-top:calc\(var\(--bt-hud-base\) \+ var\(--bt-charhud-h,0px\)\)\}/.test(css)
       && /html\[data-charhud="1"\]\{--bt-charhud-h:56px;\s*--bt-status-top:calc\(var\(--bt-hud-top\) \+ 44px\);\s*--bt-party-top:calc\(var\(--bt-status-top\) \+ 48px\)\}/.test(css)
-      && /@media \(max-height:480px\)\{html\[data-charhud="1"\]\{--bt-charhud-h:52px\}\}/.test(css));
+      && /@media \(max-height:480px\)\{html\[data-charhud="1"\]\{--bt-charhud-h:52px;\s*--bt-status-top:calc\(var\(--bt-hud-top\) \+ 34px\);\s*--bt-party-top:var\(--bt-hud-base\);--bt-party-left:192px\}\}/.test(css));
 }
 
 /* ── 10. the dodges: each planted, each red ── */
@@ -422,8 +422,8 @@ plantSrc('xpOn asking it the wrong way round', zhSrc, 'const xpOn = !charHudOn()
 check('10 plant red: a second portrait bake under src/ui/hud/',
   portraitImports([...hudFiles(), ['src/ui/hud/Face.jsx', "import { portraitDataUrl } from '@/rendering/characterPortrait.js';\n"]]).length === 1);
 plantSrc('the line without nowrap', qcSrc, "whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };", "overflow: 'hidden', textOverflow: 'ellipsis' };", lineNoWrap);
-plantSrc('the party chip still at top: 92 under the HUD', phSrc, "position: 'absolute', top: 'var(--bt-party-top, 92px)', left: 8, zIndex: 16, height: 32,",
-  "position: 'absolute', top: 92, left: 8, zIndex: 16, height: 32,", (s) => { const t = partyTops(s); return t.n92 === 0 && t.nVar === 2; });
+plantSrc('the party chip still at top: 92 under the HUD', phSrc, "position: 'absolute', top: 'var(--bt-party-top, 92px)', left: 'var(--bt-party-left, 8px)', zIndex: 16, height: 32,",
+  "position: 'absolute', top: 92, left: 'var(--bt-party-left, 8px)', zIndex: 16, height: 32,", (s) => { const t = partyTops(s); return t.n92 === 0 && t.nVar === 2; });
 plantSrc('a face that acts on pointerup', hudSrc, '      onClick={open}\n', '      onPointerUp={open}\n      onClick={open}\n',
   (s) => { const p = hudPress(s); return p.click && p.hero && p.stopDown && p.stopMouse && p.up.length === 0; });
 plantSrc('a face that does not stop the press (a click on a computer swings)', hudSrc, '      onMouseDown={stop}\n', '',
