@@ -195,7 +195,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
        The four viewports are the pre-existing set too: the rewrite had cut
        them to two, which quietly dropped the 360-wide coverage. */
     const P = await H.newPlayer(browser, { name: who, wsPort, webPort,
-      viewport: land ? { width: 390, height: 844 } : vp, touch: true, world: 'wheel' });   /* v2.3.3577: in the world (written for the retired map) */
+      viewport: land ? { width: 390, height: 844 } : vp, touch: true, world: 'wheel',
+      query: 'ui2=0' });   /* v2.3.3577: in the world (written for the retired map); v2.3.6686 (card UI2-bro, tests part): this check is about the OLD Bro card's Points grid (its thirteen cells, heads and badges), which ships under ?ui2=0 until the build's step 10; the new Combat and Shared pages are mp-ui2combat's */
     await H.enterWorld(P);
     await P.page.waitForTimeout(2400);
     if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }

@@ -17,6 +17,10 @@
  *   5. a computer playing wide: they land on its Character button, inside
  *      the game's column;
  *   6. no page errors.
+ *   7. (v2.3.6686, card UI2-bro tests part) the NEW frame, the default: the same phone level-up sends its bubbles to
+ *      the Bro button (the hook `[data-nav="hero"]`, worn by the Menu button under the frame), and with Combat's hub
+ *      open (no Points tab there) a weapon's level-up lands on it too.  Parts 1-6 stay under ?ui2=0 (the old row of
+ *      buttons and the old card's Points tab, which have no twin in the new pages).
  */
 import * as H from './harness.mjs';
 export const lane = 'full';
@@ -47,8 +51,46 @@ async function landed(P, t0, ms = 20000, skill = null) {
   }
   if (process.env.PF_DEBUG) console.log('PFDBG', JSON.stringify({ ...f, seenBurst }));
   return { ...f, seenBubble, bubbleLook, seenBurst };
-}
 
+  /* ── 7. the new frame (v2.3.6686) ── */
+  const N = await H.newPlayer(browser, { name: 'Pointframe', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
+  const nerr = [];
+  N.page.on('pageerror', (e) => nerr.push(String((e && e.message) || e).slice(0, 200)));
+  const stopN = H.keepAlive(N, 15000);
+  try {
+    await H.enterWorld(N);
+    await H.waitFor(N, (S) => S.currentZone, (z) => z === 'wheel', { timeout: 150000, label: 'the world' });
+    const frame = await N.page.evaluate(() => !!document.querySelector('[data-dash-frame]'));
+    rec.ok('7. the page plays the new frame (guard)', frame);
+    const nid = await H.readState(N, (S) => S.myId);
+    const tn = await N.page.evaluate(() => Date.now());
+    const nb = await fly(N);
+    await H.devOp(wsPort, 'kit', nid, { what: 'levels' });
+    const na = await landed(N, tn);
+    const np = na.last.filter((x) => x.kind === 'points');
+    const nn = na.pf ? na.pf.sent : 0;
+    rec.ok(`7a. under the frame a level-up sends its bubbles (${nn}) and every one lands on the Bro button (${np.slice(-nn).map((x) => x.to).join(', ')})`,
+      nn >= 5 && nn <= 7 && na.landed - nb.landed >= nn && np.length >= nn && np.slice(-nn).every((x) => x.to === 'hero'), { np, nb, na });
+    for (let i = 0; i < 80; i++) {
+      const busy = await N.page.evaluate(() => document.querySelectorAll('[data-levelup-kind]').length + document.querySelectorAll('.bt-qw-bubble').length);
+      if (!busy) break;
+      await N.page.waitForTimeout(250);
+    }
+    await H.dashOpen(N, 'broCombat');
+    await N.page.waitForTimeout(1200);
+    const hub = await N.page.evaluate(() => !!document.querySelector('[data-combat-hub]'));
+    const nsk = await H.readState(N, (S) => ((S.rpg.prog3 || {}).sk || {}).bow || { level: 1 });
+    const t2 = await levelFrame(N, 'bow', (nsk.level || 1) + 1);
+    const nc = await landed(N, t2, 20000, 'bow');
+    const np2 = nc.last.filter((x) => x.kind === 'points').slice(-(nc.pf ? nc.pf.sent : 0));
+    rec.ok(`7b. Combat's hub open: a bow level-up still flies and lands (${np2.map((x) => x.to).join(', ')})`,
+      hub && !!nc.pf && nc.pf.at >= t2 && np2.length >= 5, { hub, pf: nc.pf, np2 });
+    rec.ok('7c. no page errors under the frame', nerr.length === 0, nerr.slice(0, 4));
+  } finally {
+    stopN();
+    await N.ctx.close().catch(() => {});
+  }
+}
 const levelFrame = (P, skill, level) => P.page.evaluate(([s, l]) => {
   window.__btWsEvent({ type: 'prog3_level', payload: { skill: s, level: l, charLevel: l, shared: 0 } });
   return Date.now();
