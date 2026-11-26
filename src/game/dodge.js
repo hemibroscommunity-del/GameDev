@@ -12,7 +12,7 @@
 import { staffOrbLife, bowRangeMult, BOW_RANGE_PX /* v2.3.3501 */ } from '@/data/gameSystems.js'; /* v2.3.2387; v2.3.2592: × the RANGE stat */
 import { ZONES } from '@/data/zones.js';   /* v2.3.2790; v2.3.3266: + whether the zone is safe (peerShots.js) */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player the retreat shot is aimed at, for the others' screens */
-import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
+import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, RETREAT_SHOT_DAMAGE_MULT, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */, shotGroundDy /* v2.3.3206 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
@@ -207,7 +207,6 @@ export var doLunge = function (S, R, ang) {
     masteryEarnCert('first-lunge');
     var P = S.player;
     var tdx = lt.x - P.x, tdy = lt.y - P.y;
-    var tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
     var dirAng = Math.atan2(tdy, tdx);
     /* Reuse the dodge-roll state for visual + i-frames; mark as a lunge so
        the post-dash hit fires on landing. */

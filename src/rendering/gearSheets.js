@@ -10,7 +10,7 @@
  * playerSkins.buildBodySheet).  Mirroring of west/nw/se is handled by the caller
  * copying the body sprite's (negative) scale.x, so we always load the BASE dir.
  *
- * See gear-layer-spec.md.
+ * See docs/archive/root/gear-layer-spec.md.
  */
 
 import { Cache, Rectangle, Texture } from 'pixi.js';
