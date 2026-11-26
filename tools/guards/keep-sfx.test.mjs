@@ -91,6 +91,11 @@ export const LEFT = [
   { file: 'InventoryPanel.jsx', value: '/icons/items/bow.webp', why: 'built', holder: 'server/test/owner-icons.test.mjs 8g reads the line' },
   { file: 'InventoryPanel.jsx', value: '/icons/items/', why: 'built', holder: 'server/test/bag-icons.test.mjs 5c reads the line' },
   { file: 'ItemDetailPopup.jsx', value: '/icons/items/bow.webp', why: 'built', holder: 'server/test/owner-icons.test.mjs 8g reads the line' },
+  /* v2.3.6744: two that came with main (eb90c6fd) after PR 3b, in the menu
+     sessions' files (CLAUDE: never side by side): /icons is not kept yet,
+     so they ask a day-old picture at worst, never a year-old one */
+  { file: 'UiKitPage.jsx', value: '/icons/items/', why: 'built', holder: 'the menu sessions (src/ui/kit/): the kit\'s fixture, v2.3.6688' },
+  { file: 'GearPanels.jsx', value: '/icons/bag/equip-', why: 'hand', holder: 'the menu sessions (src/ui/mobile/): the empty slot\'s ghost, ?v=2.3.4199' },
 ];
 
 let failed = 0;
