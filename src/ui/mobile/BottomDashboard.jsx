@@ -72,6 +72,7 @@ import { AccountPanel }      from './dash/AccountPanel.jsx';
 import { NotificationsPanel } from './dash/NotificationsPanel.jsx';   /* v2.3.4172: the bell's page */
 import { notifUnread } from './notifBus.js';                         /* v2.3.4172: the bell's unread count on More */
 import { BandGrip, BandClose } from './dash/BandGrip.jsx';           /* v2.3.4172: the slim handle on the band's edge, and CLOSE at the row's left */
+import { bandGripOn, foldHook } from './dash/bandGripSwitch.js';  /* v2.3.6697: the handle gone (?bandgrip=1 brings it back); the fold's hook on the row's own control */
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
@@ -1629,8 +1630,12 @@ export const BottomDashboard = () => {
     >
       {/* v2.3.4172: the fold's grip on the band's top edge (dash/BandGrip.jsx).
           Upright only: sideways the band is not drawn (the fold chip is in
-          the dock), and a computer plays sideways. */}
-      {!land ? <BandGrip min={dashMin} expanded={mode === 'expanded'} /> : null}
+          the dock), and a computer plays sideways.
+          v2.3.6697: GONE by default (the owner, 2026-11-26: "remove the pull
+          handle on the dashboard.  It has an open button making pull handle
+          redundant"): the band's top edge carries nothing, and the row's own
+          control folds it (bandGripSwitch.js).  `?bandgrip=1` draws it again. */}
+      {!land && bandGripOn() ? <BandGrip min={dashMin} expanded={mode === 'expanded'} /> : null}
       {/* v2.3.4263: the short key list in the band's empty right side, on a computer (CSS shows it only there) */}
       {!land ? <BandKeys /> : null}
       {/* v2.3.1307/1311: the top-edge drag handle is gone — band-wide
@@ -1997,9 +2002,10 @@ export const BottomDashboard = () => {
             fixed nav dock so the side container can enclose them (owner:
             "included in that container on that whole right side"). */}
         {/* v2.3.6681: the new frame's one header in the row's place (dash/DashHeader.jsx) */}
-        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={marks ? marks.menu : null} />}
+        {/* v2.3.6697: with the handle gone the header's Gear (folded) and Close (shown) wear the fold's hook (foldHook) */}
+        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={marks ? marks.menu : null} foldHook={!land && !bandGripOn()} />}
         {!land && !ui2 && (
-          <BandClose min={dashMin} expanded={mode === 'expanded'}
+          <BandClose min={dashMin} expanded={mode === 'expanded'} hook={foldHook(dashMin, land)}
             h={navButtonSize(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844).h} />
         )}
         {/* v2.3.4182: on a tablet or a computer the five fill the block's

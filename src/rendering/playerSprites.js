@@ -150,7 +150,7 @@ const POSE_DIRS = {
    red-wristband/cyan-boot limb-marker reference, markers scrubbed in post).
    Replaces the v68 half-cycle stopgap for NE; correct limb alternation is
    in the art itself.  Steel chest/legs re-painted by ChatGPT on the new
-   frames (green-mannequin flow per gear-armor-separation-recipe.md), chain
+   frames (green-mannequin flow per docs/archive/root/gear-armor-separation-recipe.md), chain
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
