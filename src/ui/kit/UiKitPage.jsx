@@ -333,7 +333,9 @@ function CollectionPlate({ room }) {
   const [shelf, setShelf] = useState('monsters');
   const pic = (src, dim) => <img src={src} alt="" draggable={false} style={{ width: 44, height: 44, objectFit: 'contain', opacity: dim ? 0.35 : 1 }} />;
   return (
-    <Ui2Collection shelves={SAMPLE_SHELVES} shelf={shelf} onShelf={setShelf} side={room.wide} head={shelf === 'monsters' ? '2 of 3 met' : null}>
+    /* sideways the kinds' column scrolls in the real page; the plate's 63 px box holds its first one (and the count
+       line is not drawn there) */
+    <Ui2Collection shelves={room.wide ? SAMPLE_SHELVES.slice(0, 1) : SAMPLE_SHELVES} shelf={shelf} onShelf={setShelf} side={room.wide} head={shelf === 'monsters' && !room.wide ? '2 of 3 met' : null}>
       {shelf === 'monsters' ? (
         <>
           <Ui2CollectionCard art={pic(KIT_ART.pets)} name="Snowman" sub="Frost · Frost Ridge" line="3 defeated" mark="NEW" onClick={() => {}} />
@@ -349,7 +351,7 @@ function ShowcasePlate({ room }) {
   return (
     <Ui2Showcase short={room.wide}
       figure={<img src={KIT_ART.pets} alt="" draggable={false} style={{ width: room.wide ? 56 : 84, height: room.wide ? 56 : 84, objectFit: 'contain' }} />}
-      doors={[door('combat', 'Combat', 'The Lunge'), door('loot', 'Loot', '8 drops'), door('habitat', 'Habitat', 'Flame Fields · Lv 1–40'), door('story', 'Story', 'Its tale, and the Cinder Goblin')]}
+      doors={[door('combat', 'Combat', 'The Lunge'), door('loot', 'Loot', '8 drops'), door('habitat', 'Habitat', 'Flame Fields'), door('story', 'Story', 'Cinder Goblin')]}
       facts={[{ id: 'levels', k: 'Levels', v: 'Lv 1–40' }, { id: 'element', k: 'Element', v: 'Flame' }, { id: 'type', k: 'Type', v: 'Humanoid' }, { id: 'kills', k: 'Defeated', v: '12' }, { id: 'strength', k: 'Strength', v: 'By level' }]} />
   );
 }
