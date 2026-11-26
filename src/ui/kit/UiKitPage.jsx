@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
   Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass,
+  Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm,
 } from './index.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
 import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/sheet/sheetGeometry.js';
@@ -233,6 +234,45 @@ function CharacterSample({ room, me }) {
   );
 }
 
+/* ── v2.3.6683 (card UI2-bro): a screen's pieces ── */
+/* the zones: identity, summary and actions drawn, the doors' zone empty and its room given back;
+   the row of actions in fixed slots: Equip on, Sell off with its own rule's reason, slot 1 empty
+   (nobody moves over), Drop pending, Trade waiting with its outcome unknown */
+function ZonesPlate({ room }) {
+  const acts = [
+    { id: 'equip', slot: 0, cost: 'routine', label: 'Equip', c: 'gold', check: () => null, onPress: () => {} },
+    { id: 'sell', slot: 2, cost: 'costly', label: 'Sell', c: 'gold', check: () => 'Not at a shop' },
+    { id: 'drop', slot: 3, cost: 'irreversible', label: 'Drop', c: 'red', check: () => null },
+  ];
+  return (
+    <Ui2Zones
+      identity={<div style={row({ alignItems: 'center' })}><img src={KIT_ART.character} alt="" style={{ width: 40, height: 40 }} /><Ui2Group k="Identity" style={{ flex: 1 }}><Ui2Value v="A name, a title, a level" /></Ui2Group></div>}
+      summary={<Ui2Group k="Summary"><Ui2Value v="Facts that open nothing are recessed" /></Ui2Group>}
+      doors={[]}
+      actions={<Ui2Actions actions={acts} marks={{ drop: 'out' }} />} />
+  );
+}
+function EmptyPlate({ room }) {
+  return (
+    <div style={col({ height: '100%' })}>
+      <Ui2Empty kind="absent" art={KIT_ART.pets} title="No pet yet" why="You have no companion." how="Pets are found in the world." />
+      <Ui2Empty kind="locked" art={KIT_ART.pets} title="Pets" why="Not open on this server yet." />
+      <Ui2Empty kind="loading" rows={1} />
+    </div>
+  );
+}
+function ConfirmPlate({ room }) {
+  const drop = { id: 'drop', slot: 0, cost: 'irreversible', label: 'Drop', c: 'red' };
+  const equip = { id: 'equip', slot: 0, cost: 'routine', label: 'Equip', c: 'gold' };
+  return (
+    <div style={col({ justifyContent: 'center', height: '100%' })}>
+      <Ui2Confirm action={drop} words="Drop the Copper Sword? It cannot be undone." onYes={() => {}} onNo={() => {}} />
+      <Ui2Group k="A routine action (Equip)"><Ui2Value v={Ui2Confirm({ action: equip }) === null ? 'never asks: it goes at once' : 'asks (wrong)'} /></Ui2Group>
+      <Ui2Actions actions={[{ id: 'title', slot: 0, cost: 'routine', label: 'Equip title', c: 'gold', check: () => null }]} marks={{ title: 'unknown' }} />
+    </div>
+  );
+}
+
 export function UiKitPage() {
   const [room, setRoom] = useState(() => kitRoom(winVw(), winVh(), computerFrame()));
   const [me, setMe] = useState(null);
@@ -282,6 +322,10 @@ export function UiKitPage() {
         <Plate id="actions" room={room} title="Actions" caption="The five action colours, one dark label: default, then pressed"><ActionsPlate room={room} /></Plate>
         <Plate id="use" room={room} title="Actions" caption="An action with its price; disabled with its reason; pending; focused; dismiss"><ActionUsePlate room={room} /></Plate>
         <Plate id="info" room={room} title="Information" caption="Stat headlines (default, pressed, selected), progress, recessed information"><InfoPlate room={room} /></Plate>
+        {/* v2.3.6683 (card UI2-bro): a screen's pieces */}
+        <Plate id="zones" room={room} title="A screen" caption="Zones: identity, summary, actions (the empty doors' zone gives its room back); actions in fixed slots: on, off with its reason, an empty slot, pending"><ZonesPlate room={room} /></Plate>
+        <Plate id="empty" room={room} title="Empty states" caption="Empty states: absent (what, why, how), locked (why), loading (never a 0)"><EmptyPlate room={room} /></Plate>
+        <Plate id="confirm" room={room} title="Confirm" caption="The one confirmation: only for the costly or irreversible; a routine action never asks; an outcome not confirmed yet"><ConfirmPlate room={room} /></Plate>
         <Plate id="slots" room={room} title="Items" caption="Rarity slots (Normal, Rare, Elite, Godly; selected; focused; empty), a count, a dot, still loading"><SlotsPlate room={room} /></Plate>
       </div>
     </div>

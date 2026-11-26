@@ -16,3 +16,8 @@ export { Ui2Progress } from './Progress.jsx';
 export { Ui2Badge } from './Badge.jsx';
 export { Ui2Loading } from './Loading.jsx';
 export { ui2RootClass } from './shine.js';
+/* v2.3.6683 (card UI2-bro): a screen's pieces -- its zones, its row of actions, its empty state, its one confirmation */
+export { Ui2Zones } from './Zones.jsx';
+export { Ui2Actions } from './ActionRow.jsx';
+export { Ui2Empty } from './EmptyState.jsx';
+export { Ui2Confirm } from './Confirm.jsx';

@@ -23,6 +23,8 @@ import { say, sayPieces } from '@/game/say.js';
 import { sw } from '@/game/switches.js';
 import { broPagesStart, broPageTo, broPagesLayout, broOpen } from '@/game/broPages.js';   /* v2.3.6600: the pages' rules */
 import { BroPages } from './BroPages.jsx';   /* v2.3.6600 (card BRO): the Bro tab in pages */
+import { BroLanding } from './BroLanding.jsx';   /* v2.3.6683 (card UI2-bro): six doors under the new frame */
+import { heroSectionBus } from './heroSectionBus.js';   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
 /* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
    to be displayed together (instead of scrolling little by little)"): the Bro tab is three pages
@@ -151,7 +153,11 @@ function Row({ id, icon, title, sub, n, live, dot, chevron = true, onTap, extra 
   );
 }
 
-export const BroCard = ({ points, onPoints }) => {
+/* v2.3.6683 (card UI2-bro): `door` is one of Bro's own frame pages (src/game/broHub.js
+   BRO_HUB_PAGES: 'character', 'combat'), today's pages under the header until their steps;
+   with none, under the new frame (dashboardPanelBus.frameOn; `?ui2=0` the one way back) the
+   page is Bro's landing, six doors.  `who` whose page (null: yours; step 9 sets another's). */
+export const BroCard = ({ points, onPoints, door, who }) => {
   const S = getState();
   const R = (S && S.rpg) || {};
   const n = Math.max(0, Math.floor(Number(points) || 0));
@@ -162,7 +168,11 @@ export const BroCard = ({ points, onPoints }) => {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const cols = broCols(size.w);
   const L = broPagesLayout(size.w, size.h);
-  const [bp, setBp] = useState(() => _pick || broPagesStart(broStartWeapon(R)));
+  const [bp, setBp] = useState(() => {
+    const b = _pick || broPagesStart(broStartWeapon(R));
+    /* v2.3.6683: Combat's door is today's Combat page alone; Character's opens on the Overview */
+    return door === 'combat' ? broPageTo(b, { to: 'combat' }) : door === 'character' ? broPageTo(b, { to: 'overview' }) : b;
+  });
   /* v2.3.6600: the ONE transition (broPages.js broPageTo); the card's weapon is the pages' */
   const move = (a) => setBp((prev) => { const next = broPageTo(prev, a); _pick = next; return next; });
   const weapon = bp.weapon;
@@ -272,6 +282,12 @@ export const BroCard = ({ points, onPoints }) => {
   /* ═══ v2.3.6600 (card BRO): THE PAGES ═══
      The same readings as the card below, laid out as three pages (BroPages.jsx); what a tap opens
      is broPages.js's word, acted on with today's own roads. */
+  /* ═══ v2.3.6683 (card UI2-bro): BRO'S LANDING ═══
+     Six doors and nothing else (sheet/BroLanding.jsx; the rules src/game/broHub.js). */
+  if (!door && dashboardPanelBus.frameOn()) {
+    return <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear} />;
+  }
+
   if (BRO_PAGES_ON) {
     const held = broStartWeapon(R);
     const open = (word) => {
@@ -301,7 +317,8 @@ export const BroCard = ({ points, onPoints }) => {
         data-bro-wide={L.wide ? 1 : 0} data-bro-dense={L.dense ? 1 : 0}>
         <BroPages d={d} n={n} held={held} bp={bp} move={move} open={open} explain={explain}
           statsHeld={held === stats.cat ? stats : broWeaponStats(R, held)} statsPick={stats} skills={tiles}
-          wide={L.wide} dense={L.dense} />
+          wide={L.wide} dense={L.dense}
+          only={door === 'combat' ? 'combat' : undefined} pointsDoor={door === 'combat' ? { n, open: () => open('points') } : undefined} />
       </div>
     );
   }
@@ -445,5 +462,22 @@ export const BroCard = ({ points, onPoints }) => {
     </div>
   );
 };
+
+/* v2.3.6683 (card UI2-bro): Bro's Character and Combat frame pages (dashDests.js FRAME_PAGES
+   broCharacter, broCombat), drawn by the frame with the points it already counts.  Points here
+   opens the Bro page's own Points window (HeroExpanded's 'Build'), pushed over this page so the
+   header's Back returns to it. */
+export function BroDoorPage({ id, points, who }) {
+  const door = id === 'broCombat' ? 'combat' : 'character';
+  const onPoints = () => { heroSectionBus.request('Build'); dashboardPanelBus.push('hero'); };
+  /* the Bro page remembers its last window (HeroExpanded's section): coming back here from the
+     Points window, the Bro page under this one is asked to come back as its landing, not as Points */
+  useEffect(() => { heroSectionBus.request('Card'); }, []);
+  return (
+    <div data-bro-door-page={door} style={{ height: '100%', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <BroCard door={door} who={who} points={points} onPoints={onPoints} />
+    </div>
+  );
+}
 
 export default BroCard;

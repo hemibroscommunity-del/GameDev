@@ -1363,6 +1363,7 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
 const DEST_BY_LABEL = { Bro: 'hero', Gear: 'dashboard', Quests: 'quests', Codex: 'encyclopedia', More: 'more', Ranks: 'leaderboard', Leaderboards: 'leaderboard', Social: 'social', Settings: 'settings', Map: 'map', Homestead: 'homestead' };
 const MENU_DOOR = { hero: 'hero', quests: 'quests', socialHub: 'social', leaderboard: 'leaderboard', encyclopedia: 'encyclopedia', homestead: 'homestead', map: 'map', settingsHub: 'settings' };
 const OLD_MORE_WORD = { skills: 'Life Skills', social: 'Social', clan: 'Party', guild: 'Guild', settings: 'Settings', account: 'Account', map: 'Map', notifications: 'Notifications', feedback: 'Feedback', about: 'About', journey: 'Journey', pets: 'Pets', achievements: 'Achievements' };
+const BRO_DOOR_OF = { broCharacter: 'character', broCombat: 'combat', skills: 'skills', achievements: 'feats', pets: 'pets' };   /* v2.3.6683 */
 const HUB_OF = { social: 'socialHub', clan: 'socialHub', guild: 'socialHub', settings: 'settingsHub', notifications: 'settingsHub', account: 'settingsHub', feedback: 'settingsHub', about: 'settingsHub', journey: 'settingsHub' };
 async function frameUp(P) {
   return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
@@ -1401,6 +1402,16 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
   }
   await dashMenuRoot(P, { timeout });
   if (id === 'more' || id === 'menu') return true;
+  /* v2.3.6683 (card UI2-bro): Bro's own pages through Bro's six doors (src/game/broHub.js):
+     Character and Combat (today's pages under the header), Life Skills, Feats, Pets */
+  const bro = BRO_DOOR_OF[id];
+  if (bro) {
+    await tapTop(P.page, '[data-dash-grid="menu"] [data-dest="hero"]', timeout);
+    await P.page.waitForTimeout(350);
+    await tapTop(P.page, `[data-dash-grid="bro"] [data-dest="${bro}"]`, timeout);
+    await P.page.waitForTimeout(350);
+    return true;
+  }
   const hub = HUB_OF[id];
   const door = hub ? MENU_DOOR[hub] : (MENU_DOOR[id] || id);
   await tapTop(P.page, `[data-dash-grid="menu"] [data-dest="${door}"]`, timeout);
