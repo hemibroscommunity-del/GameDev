@@ -135,7 +135,10 @@ const saloon = (P) => P.page.evaluate(() => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `alliance-${name}.png`) }).catch(() => {});
-  const A = await H.newPlayer(browser, { name: 'Leader', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  /* v2.3.6788: ?ownplate=1 -- this phone reads its OWN plate's words ([TAG] Name,
+     __btSelfPlate), and that plate is drawn only with the switch now that the
+     character HUD says your name (game/ownPlate.js) */
+  const A = await H.newPlayer(browser, { name: 'Leader', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, query: 'ownplate=1' });
   const errs = [];
   A.page.on('pageerror', (e) => errs.push('A: ' + String(e && e.message || e)));
   await H.enterWorld(A);

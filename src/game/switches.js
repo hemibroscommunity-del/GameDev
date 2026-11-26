@@ -221,6 +221,7 @@ const FORMS = {
   'onepicnear': '*',
   'orebreakms': '*',
   'owedrebuild': '0',
+  'ownplate': '1',
   'p256': '*',
   'p3colour': '0',
   'p3cols': '1',
