@@ -1962,6 +1962,38 @@ Screens: harvest-near, harvest-windup, harvest-ready
 
 Sources: docs/specs/gathering-hits.md, docs/specs/gesture-cue.md, docs/specs/desktop-harvest.md, docs/specs/wheel-resources.md, docs/specs/gathering-look.md, docs/specs/hit-ladder.md, docs/specs/harvest-ink.md, docs/specs/tier-trees.md, docs/specs/tier-ore.md, docs/specs/control-redesign.md, docs/LANTERN-SLATE-SPEC.md, docs/TRAPS.md, CLAUDE.md, src/ui/BroTown.jsx, src/ui/panels/TouchControls.jsx
 
+## The controller (the touch controls' look, `?padskin=0` the old)
+Screens: pad-controller
+
+**What it is for:** The owner, 2026-11-25, first with a mockup and four sheets ("Also want a redesign of the controls area to be more like a controller": part 1, v2.3.6640), then, after trying it on their iPhone, a redesign: *"The controller is too large and doesn't connect in a seamless way to the dashboard. The shape also doesn't make much sense. Here's a redesign showing how it should attach to the dashboard. Make the jump button turn into the shield button while in combat. Tapping attack button or shield button again lowers it"* (part 3, v2.3.6641; `docs/plan/cards/PAD-part3.md`). The touch controls read as ONE object that belongs to the dashboard.
+
+**Decisions, and why:**
+- **One shell** (v2.3.6641): the owner's `housing.png` is the only backing: the stick's lobe at the left, a low rail in the middle, the taller lobe at the right, its gold outline unbroken, as wide as the play column, its bottom edge ON the band's top edge with the band open or folded. Drawn as three cuts of the one picture (CSS border-image: the lobes at their shape, the rail stretched), so any width keeps the outline whole. Its empty space takes no touch: the world's taps get through.
+- **As wide as the WORLD, not the window** (v2.3.6641, part 4): sideways under the one band the world keeps a capped width between two bars (844 x 390 folded: 752 between two 46 px bars), so the shell is laid out at the canvas's width as the game's resize gave it (`padSkin.js padWidthOf`, told, never measured), and each control redraws when that width moves (a fold, a turn: `padSpot.js usePadWidth`). Laid out at the window's 844 it ran past the world's edge and the right lobe's buttons sat 92 px left of their wells. A top-row touch box (44 px) that rises off the big buttons' boxes keeps its ART in its well: the face is drawn that much lower in its box (`padSpot` dy). Never on a computer (a mouse the main pointer): there the weapon pill and the skateboard's button keep today's places.
+- **The owner's sizes** (layout.json, a 920 x 280 reference, scaled to the column and capped at the owner's 430 px phone, never larger): the shell 131 px tall, Attack and the big left button 65, the small wells 37, the weapon wells 40, the stick's base 83. A wider column (sideways) stretches the rail; the lobes and their wells keep to their ends.
+- **Touch boxes are not the art**: each at least 44 x 44 px, holding its art, none over another. Under 430 px the art shrinks with the column and the boxes do not, so where two would touch their wells are spread to 45 px between centres and a top-row box rises off the big buttons'. Under about 390 px the lobe cannot hold three 44 px boxes in its top row with the owner's art at its size: that row's art shrinks (to 0.8 at the least) and its boxes stay 44 (what gives on a narrow phone).
+- **The wells**: the stick (base always drawn, the thumb at its middle at rest, moved by today's stick code); the rail's three weapon wells in today's order, the same taps and rules as the pill they replace; the right lobe's top row Mobility (Skate or Charge by the game's own rules, never both), the middle well, Special; its bottom row the big left button and Attack (the face of the weapon in hand: sword, bow, staff).
+- **Jump becomes the shield in a fight** (the owner's words): the big left button is Block, wearing the shield, exactly when the Block button shows today (ShieldButton blockLive, one rule); Jump moves to the middle well, small, so nothing is lost (where Jump goes was chosen for the owner by the orchestrator). Out of a fight the middle well is empty.
+- **The shield is a tap**: it already was (v2.3.2242, game/shieldToggle.js: a tap raises it, a tap lowers it, the guard door its one writer); Attack lowers it (playerActions.js), as do a break, the stamina, death, riding and the rest, unchanged. A guard still up when the fight's rule ends keeps Block shown (shieldButtonLive), so it can always be lowered; then the big button is Jump again.
+- **States in CSS, no filter**: pressed (the face 0.96 for 100 ms), cooldown (a dark sector over the face inside its ring, never the rim), unavailable (the face dimmed; the sword's own dim face), active (a quiet ring, opacity only), a control hidden right now its EMPTY WELL (action_socket). No number on a cooldown (the game has none).
+- **Whirlwind and Shield Bash in a tier over the right lobe** (v2.3.6642, part 6; the gatekeeper: "Whirlwind and Shield Bash in their old places beside the new Special socket"): the housing as drawn has no free place for a 44 px box (the rail is the three weapon wells end to end, the lobe's top row is full, the stick fills its lobe), so while either shows the right lobe is drawn about 42 px taller (the same `housing.png`, the steep band of its left wall stretched: no new picture) and the two sit in that row: Whirlwind over Special, Shield Bash over the mobility well (over the shield, the big well, whenever Bash shows: the guard is up). Each the top row's size, its box 44, its face the old button's own (the tornado, the bash). Who shows is the old buttons' one rule (abilityStatus: Whirlwind the sword's in a fight, Bash the raised shield's with any weapon); the tier's height and both places are fixed, so nothing moves as one comes or goes, and when neither shows the tier is not drawn (`padSkin.js specialLayout`).
+- **The art law**: the owner's eighteen pieces kept byte for byte (assets/icons-source/owner-2026-11-25-pad3/); tools/art/cut-pad.mjs takes each to 2 px a CSS px at its biggest, 128 colours, 174 kB in all, warmed on the loading screen. Part 1's sheets and pieces are gone.
+
+**Tried before, and changed:**
+- The gold-ringed drawn buttons of v2.3.3018, each placed on its own: `?padskin=0`.
+- Part 1's two grips (v2.3.6640), a left one for the stick and a right one for five buttons, the middle open: the owner found them too large, not joined to the dashboard, the shape wrong.
+
+**Please don't suggest:**
+- Changing the dashboard's height for the shell (the owner said no).
+- Scaling the controller up on bigger screens (the owner's "too large").
+- Baking states into more pictures where the style sheet can draw them.
+
+**Still open:**
+- Buttons with no well (Sprint, Quick eat, the trap, Element Burst, the TALK/CHOP button) keep their old places and looks; the owner's call where they go.
+- The tier (part 6) is the orchestrator's choice for the owner: the other ways were the two floating over the shell in their old places, or new art. The owner may prefer the tier always drawn for a sword (empty wells out of a fight) to a lobe that grows in a fight.
+- A phone narrower than about 390 px draws the top row's art a little smaller (above).
+- The mockup's tab row with icons, the top bar and the minimap (out of this card).
+
 ## The two-button controls (a trial, `?manual=5`)
 Screens: two-buttons, two-buttons-sighted, two-buttons-hold, two-buttons-reach, two-buttons-ctx-tree, two-buttons-ctx-talk
 

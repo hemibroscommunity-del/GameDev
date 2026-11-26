@@ -1,0 +1,67 @@
+{
+  "referenceWidth": 920,
+  "referenceHeight": 280,
+  "coordinates": "center x, center y, visual width, visual height in reference pixels",
+  "slots": {
+    "joystick_base": [
+      118,
+      159,
+      178,
+      178
+    ],
+    "joystick_thumb": [
+      118,
+      159,
+      86,
+      86
+    ],
+    "weapon_1": [
+      295,
+      207,
+      88,
+      88
+    ],
+    "weapon_2": [
+      396,
+      207,
+      86,
+      86
+    ],
+    "weapon_3": [
+      491,
+      207,
+      86,
+      86
+    ],
+    "mobility": [
+      634,
+      62,
+      80,
+      80
+    ],
+    "shield": [
+      735,
+      62,
+      80,
+      80
+    ],
+    "special": [
+      835,
+      62,
+      80,
+      80
+    ],
+    "jump": [
+      638,
+      183,
+      140,
+      140
+    ],
+    "attack": [
+      809,
+      183,
+      140,
+      140
+    ]
+  }
+}

@@ -7,6 +7,7 @@ import { fightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { specialsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6549: in reach, not at the sighting (card CT part 16) */   /* v2.3.6543: in the two buttons, the specials come with the sight (card CT PR 4) */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
+import { padAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6640: its socket in the controller (card PAD) */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
 import { Skin, AbilityFace, SpecialFace, specialArtKind, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3336: the owner's special for each weapon */
@@ -182,6 +183,7 @@ export function specialButtonLive(S, perimeterPx) {
 }
 
 export function SpecialButton(props) {
+  usePadWidth();   /* v2.3.6641: redrawn when the world's width moves (padSpot.js; card PAD part 4) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   /* Same 200ms poll as ShieldButton and AbilityButtons: the cooldown sweep and
@@ -221,7 +223,9 @@ export function SpecialButton(props) {
      the slot height -- one rule for this button and Whirlwind beside it. */
   var col = rightCluster(isLandscape);
   var arc = thumbAnchor('special', isLandscape);   /* v2.3.6549: on the thumb's arc in the two buttons */
-  var size = arc ? arc.size : col.size;
+  /* v2.3.6640: in the controller, its socket (padSpot.js; today's box kept when bigger) */
+  arc = padAnchor('special', isLandscape, arc || { size: col.size, right: col.rightPx(RCTL_SLOT.special), bottomPx: col.bottomPx(RCTL_SLOT.special) });
+  var size = arc.size;
 
   var cdLeft = Math.max(0, SPECIAL_CD_MS - (Date.now() - (S._lastSwipe || 0)));
   var cdFrac = cdLeft / SPECIAL_CD_MS;
@@ -299,8 +303,8 @@ export function SpecialButton(props) {
     onContextMenu: function (e) { e.preventDefault(); },
     style: {
       position: 'fixed',
-      right: arc ? arc.right : col.rightPx(RCTL_SLOT.special),
-      bottom: ctlBottom(arc ? arc.bottomPx : col.bottomPx(RCTL_SLOT.special)),
+      right: arc.right,
+      bottom: ctlBottom(arc.bottomPx),
       width: size, height: size, borderRadius: '50%',
       /* Above [data-joyzone="R"] (z6) and the attack disc's corner box (z30),
          the same rung ShieldButton and AbilityButtons sit on. */
@@ -315,6 +319,7 @@ export function SpecialButton(props) {
   },
   React.createElement(Skin, {
     size: size, tone: 'slate', state: skinState,
+    pad: arc.pad ? 'special' : null, face: arc.face, dy: arc.dy,   /* v2.3.6640 */
     progress: cdLeft > 0 ? 1 - cdFrac : null,
     flash: flash && skinState === 'normal',
   }, specKind
