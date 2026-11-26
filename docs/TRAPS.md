@@ -10416,3 +10416,32 @@ hook (`data-more-tile`, `data-bro-row`, ...) and the version comment where it
 went: if it moved, the test goes the new way, as another test that already
 does (`mp-achievements` opens Achievements through Bro). A door that is truly
 gone with no new way is the owner's question (TRAPS §305), not a fix.
+
+## 343. "Keep the last answer: the player is only ever in one place" (v2.3.6720)
+
+**The plausible move.** A question whose answer depends on where the player
+stands (which land, which cell, which piece of ground) is asked every frame
+by several parts of the game, so the natural cache is one slot: the last
+place asked and its answer. Two askers in a frame get the same answer for
+one question to the worker.
+
+**Why it is wrong.** In one frame the player is in TWO places. Since
+v2.3.3469 the renderer moves `S.player` a fraction of a pixel for the
+world's passes (the camera sits on whole device pixels: "YOU STAY WHERE YOU
+WERE ON SCREEN", pixiRenderer.js) and puts it back before the minimap. Where
+a boundary lies between the two (the town's arrival point is exactly a
+cell's corner: 87168 and 87456 are multiples of 24), the askers inside the
+shifted span and the askers outside it name different cells. A one-slot
+cache then throws its answer away twice a frame: `wheelHere` asked its
+worker on every frame for as long as you stood there, 60 or 120 messages
+each way a second on a phone, at the place every player arrives
+(card PRT; counted by `mp-idlecensus`). Nothing was slow enough for the
+held sweep to name it.
+
+**The rule.** A cache keyed by the player's cell keeps the last few cells,
+never one (`src/game/hereCells.js`, four: the cells round a corner). The
+same holds for anything a frame derives from the player's place twice. And
+a new thing that runs every frame when nothing is happening is counted
+before it is trusted: `node tools/qa/mp/run.mjs idlecensus`.
+
+Held by: tools/guards/here-cells.test.mjs; tools/qa/mp/mp-idlecensus.mjs.

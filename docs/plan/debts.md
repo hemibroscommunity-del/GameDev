@@ -387,6 +387,58 @@ stays with that PR until it lands, and is marked (held).
   it) red on `main` and on the head alike: waits for the owner's verdict
   (65).
 
+## KEEP (69)
+
+- Next jobs (not holds; the purpose review of #2385/#2388/#2389 on
+  87b08b1b, every card dodge for `/sfx` RED): `tools/guards/keep-sfx.test.mjs`
+  scans only strings that start `/sfx/`, so a folder constant
+  (`const VOICE='/sfx/voice/'; playFile(VOICE+n+'.mp3')`), a template on
+  `SFX='/sfx'`, a `.join` of parts, or a `.replace` on a stamped address
+  (it carries the OLD `?v=`) stays GREEN: make `loadSample`/`playFile`/`fetch`
+  the only ways a sound is fetched and judge those calls' arguments.
+- `tools/assets/keepVersions.mjs:51`: with `KEEP_STAMP=0` nothing is
+  stamped but `public/_headers` still ships the one-year `/sfx/*` block:
+  drop the kept blocks from `dist/_headers` when the stamp is off, or fail
+  the build when `CF_PAGES` is set (nothing in the repository sets the
+  variable today; the Pages build is a plain `vite build`).
+- `public/tools/ground/app.js:838`: the Ground Studio fetches the bare
+  footstep addresses of `clips.json`; under the year's block the owner's
+  own browser keeps an old footstep there for a year (a studio, not the
+  game: the card's scope to say).
+- The card's own PR 4 plant "a `_headers` block for a folder whose count
+  is not 0" is GREEN on this stack (no guard yet): PR 4 holds to it.
+
+## PRT (69)
+
+- Next jobs (not holds; #2384 f2e58e9c, the card's break proofs all RED):
+  `tools/guards/here-cells.test.mjs` never plays `src/game/wheelTrial.js`
+  `wheelHere`, so `wheelTrial` never calling `_hereKept.put`, or passing
+  float keys (`x/cell`), stays GREEN; `tools/guards/draw-on-change.test.mjs`
+  never plays `ElementBurstButton.jsx` `burstView`, so the element or the
+  flash dropped from the burst key (a button frozen in its old colour after
+  a weapon swap) stays GREEN: export `burstView` and play its key.
+
+## LOAD (69)
+
+- Next jobs (not holds; #2386 b29cda8a, no behaviour change found):
+  `src/game/loadTimes.js` markLift reads `window.__btMaskedCoverage` for
+  EVERY player at every lift (about 6 ms, the page's thread; not in
+  `tools/qa/mp/held-budget.mjs`): read it only while the readout is open;
+  that read's non-look path calls `getBodyFrame` (entityRenderer.js:3024),
+  which can start `buildBodySheet` when the 20 s cap lifted before the
+  preload's bake (the same sheets, sooner). `docs/plan/status/LOAD.md` on
+  the head still says `working` and "open the draft PR": stale.
+
+## TD (69)
+
+- #2380 changes `.github/workflows/deploy-worker.yml`: it merges only
+  with the owner's own Approve (CODEOWNERS); the stack #2381 to #2383 sits
+  on it and waits with it. Once #2380 is on `main`, Found's first line
+  (a `server/test/` merge deploys) is mended: strike it then (sitting 70).
+- Reviewed #2382's deletions (16 files of `src/game`): none had an effect;
+  the module load order is identical over 964 modules. `czMX` stays under
+  its disable line (its read can throw): the owner's call in TD's Needs.
+
 ## Found (no card's debt)
 
 - A merge that adds or changes a file in `server/test/` deploys the worker
