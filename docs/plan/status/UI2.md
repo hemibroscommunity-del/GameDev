@@ -10,6 +10,7 @@ state: ready
 - Nothing: the PR waits for the gatekeeper.
 
 ## Found
+- Part 1's (the audit's, 6401) four facts stand: `git show 06a11e09:docs/plan/status/UI2.md` (main's copy, merged here), and its documents in docs/design/.
 - `tools/qa/ui-review/capture.mjs --check-notes` already fails on main: 18 screens in no ChatGPT packet and two packets over 9 pictures (`tools/qa/ui-review/packets.mjs`); this PR adds its own screen to a packet of its own, so the count stays 18.
 
 ## Needs

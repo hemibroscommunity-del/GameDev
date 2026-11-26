@@ -68,6 +68,9 @@ spec. Add a line here only for a new RULE every session must follow.
   - UI: `docs/UI-BIBLE.md`, `docs/LANTERN-SLATE-SPEC.md` (the visual system;
     supersedes UI-BIBLE part 2), `docs/UI-DESIGN-NOTES.md` (why each screen is
     as it is: read the section before changing a screen);
+  - the dashboard's direction: `docs/design/UI_ARCHITECTURE_V2.md` (the
+    owner's document, 2026-11-25: its confirmed decisions are requirements,
+    its wireframes structure only; its audit and phases beside it; v2.3.6401);
   - plans: `docs/GRAND-PLAN.md` (the order of the open work and its finish
     lines; a session of it works from its card in `docs/plan/cards/`;
     v2.3.5020),

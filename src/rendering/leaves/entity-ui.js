@@ -12,7 +12,7 @@ import { PLAYER_SIZE_MULT } from '../tables/look.js';
 import { PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { RES_BAR_H, RES_BAR_W, RES_BLOCK_W, RES_GHOST_HEX, RES_SPENT_GAP } from '../tables/ui.js';
 import { xpDecayMult } from '@/data/xpDecay.js';
-import { Sprite } from 'pixi.js';
+import { Sprite, Texture } from 'pixi.js';
 
 /* ── v2.3.6200: level 0 ── */
 /* v2.3.1193: threat-skull phase (docs/specs/threats.md, "Skull
@@ -306,6 +306,18 @@ export function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
       sprite.alpha = alpha;
       sprite.visible = true;
 
+      /* ═══ v2.3.6206: THE FRAME GETS ITS PICTURES HERE, AS THE BLOCKS DO ═══
+         The owner, 2026-11-25 (iPhone 14 Pro): "They look like they have holes
+         in them instead of a full pill shape like the original."  The cap,
+         middle and cap were handed their pictures ONCE, when the bar was made
+         (entityRenderer mkBlocks: `parts && parts.capL`), and a bar made
+         before the sheet was cut kept Texture.EMPTY for good: five loose
+         blocks with the ground between them.  The blocks never broke because
+         they are given theirs every draw, below.  So the frame is too: a
+         reference compare a frame, and a swap once. */
+      if (sprite._capL.texture !== parts.capL) sprite._capL.texture = parts.capL;
+      if (sprite._mid.texture !== parts.mid) sprite._mid.texture = parts.mid;
+      if (sprite._capR.texture !== parts.capR) sprite._capR.texture = parts.capR;
       const capW = BLOCK_GEOM.cap * k;
       sprite._capL.x = L;            sprite._capL.width = capW;  sprite._capL.height = RES_BLOCK_H;
       sprite._mid.x = L + capW;      sprite._mid.width = Math.max(0, W - capW * 2); sprite._mid.height = RES_BLOCK_H;
@@ -337,4 +349,29 @@ export function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
     }
   }
   return alpha;
+}
+
+/* ── v2.3.6206 (card EN): where the two bars' pieces are drawn ──
+   For mp-resbars only, called by its probe (window.__btResBarBoxes), never in
+   a frame: each piece's box on the stage and whether it holds a picture of the
+   sheet (Texture.EMPTY is the blank a piece was made with before its sheet
+   was cut: the owner's "holes", 2026-11-25). */
+export function resBarBoxes(d) {
+  /* a piece's two corners carried to the stage (every piece is anchored at
+     (0, 0), so its own space runs from 0 to its picture's size) */
+  const box = (q) => {
+    if (!q || q.destroyed) return null;
+    const t = q.texture;
+    const o = (t && t.orig) || { width: 0, height: 0 };
+    const a = q.toGlobal({ x: 0, y: 0 }), z = q.toGlobal({ x: o.width, y: o.height });
+    return { x: Math.min(a.x, z.x), y: Math.min(a.y, z.y), w: Math.abs(z.x - a.x), h: Math.abs(z.y - a.y), visible: !!q.visible,
+      pic: !!(t && t !== Texture.EMPTY && t.source && !t.source.destroyed && o.width > 1) };
+  };
+  const one = (sp) => {
+    if (!sp || sp.destroyed) return null;
+    return { visible: !!sp.visible, alpha: sp.alpha, noCast: sp._castsNoShadow === true,
+      capL: box(sp._capL), mid: box(sp._mid), capR: box(sp._capR),
+      cells: (sp._cells || []).filter((c) => c.visible).map(box) };
+  };
+  return { mp: one(d && d._resMpBlocks), en: one(d && d._resEnBlocks) };
 }
