@@ -330,15 +330,19 @@ async function armForFight(P, wsPort, myId) {
   }
 }
 
-/* v2.3.5503: a board on the Ranks page: its tab, the picker, the board in the list */
-async function pickBoard(P, tab, id) {
-  const e = await tapSel(P, '[data-lb-tab="' + tab + '"]');
+/* v2.3.6692 (card UI2-ranks): Ranks under the new dashboard, to a group and (optionally) one of its boards */
+async function rankTo(P, group, board) {
+  const e = await bus(P, 'open', 'leaderboard');
   if (e) return e;
-  await wait(P, 300);
-  const e2 = await tapSel(P, '[data-lb-picker]');
-  if (e2) return e2;
-  await wait(P, 300);
-  return tapSel(P, '[data-lb-menu] [data-lb-cat="' + id + '"]');
+  await wait(P, 500);
+  const e1 = await tapSel(P, '[data-ranks-ui2="landing"] [data-rank-tile="' + group + '"]');
+  if (e1) return 'no ' + group + ' door (' + e1 + ')';
+  await wait(P, 500);
+  if (!board) return null;
+  const e2 = await tapSel(P, '[data-rank-tile="' + board + '"]');
+  if (e2) return 'no ' + board + ' board (' + e2 + ')';
+  await wait(P, 900);
+  return null;
 }
 
 export const STATES = [
@@ -919,41 +923,53 @@ export const STATES = [
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the
      table */
-  dash('leaderboard', 'Leaderboards', 'The Ranks page (v2.3.5503, the owner\'s 2026-11-25 mockup): four tabs across the top, each its picture and word, the open one gold (Power, Stats, Records, Skills); under them one row -- the picker naming the open board (Overall first), "RANKS" between two laurels, the tag "All-time leaderboard"; the heads #, Player, a "?" on Overall (what the Power rating means), Lv and Power; the rows, the only part that scrolls: 1-3 on the gold, silver and bronze bars with the laurel medals and a crown by the leader, 4 on the plain number, each a face, the name, an Lv chip and the value in big numerals; your own row pinned at the foot, framed in gold ("Rank #N", or "Rank #\u2014" off the board). ?rankstyle=0 gives back the list-and-podium page.'),
+  /* v2.3.6692 (card UI2-ranks): under the new dashboard Ranks is three group doors, a group's boards and a
+     board's standings (dash/RanksLanding.jsx, RankStandings.jsx); today's Ranks page (its tabs, its picker)
+     only under ?ui2=0, which mp-ranksstyle, mp-boards and mp-boardslook play, so the four states that showed
+     it are the new pages' */
   {
-    id: 'leaderboard-skill', group: 'Dashboard', title: 'Leaderboards: a skill',
-    about: 'The Ranks page, the Skills tab, Fishing (picked in the picker\'s list): #, Player, Lv and the skill\'s level under its name (one "Lv" a row), your row pinned at the foot; or, with nobody on it, one line saying so.',
+    id: 'ui2-ranks-landing', group: 'Dashboard', title: 'Ranks: Combat, Life Skills, Feats',
+    about: 'The Menu\'s Ranks tile (v2.3.6692, card UI2-ranks; the owner\'s specification part 7, "Mirror character inspection categories"): under the one header (‹ Menu, Leaderboards, Close) three equal doors, Combat, Life Skills and Feats, each with the picture of Bro\'s door of that name. No Equipment (the game keeps no gear board). Sideways one row.',
     run: async ({ P }) => {
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
-      await wait(P, 500);
-      const e2 = await pickBoard(P, 'skills', 'fishing');
-      if (e2) return 'no Fishing board (' + e2 + ')';
-      await wait(P, 900);
+      await wait(P, 600);
+      if (!(await has(P, '[data-ranks-ui2="landing"]'))) return 'the landing did not open';
     },
   },
   {
-    id: 'leaderboard-picker', group: 'Dashboard', title: 'Leaderboards: the picker open',
-    about: 'The Ranks page with its picker open (v2.3.5503): the list of the open tab\'s boards over the table, each a 44 px row on the sheet\'s pill bar with its picture, the open one gold, a \u2715 (Escape on a computer) at its head.',
+    id: 'ui2-ranks-group', group: 'Dashboard', title: 'Ranks: Combat\'s boards',
+    about: 'Ranks, Combat (header "Combat", ‹ Leaderboards): its boards as doors, each the board\'s picture and word -- Overall, Sword, Bow, Staff, Combat level -- and one door, Points placed, to the eight stat boards. Upright five across; sideways one row.',
     run: async ({ P }) => {
-      const e = await bus(P, 'open', 'leaderboard');
+      const e = await rankTo(P, 'combat');
       if (e) return e;
-      await wait(P, 500);
-      const e2 = await tapSel(P, '[data-lb-picker]');
-      if (e2) return 'no picker (' + e2 + ')';
-      await wait(P, 500);
     },
   },
   {
-    id: 'leaderboard-spin', group: 'Dashboard', title: 'Leaderboards: Daily spin',
-    about: 'The Ranks page, the Records tab, Daily spin: Biggest wins / Biggest losses on the board\'s first line, then the ten biggest pots taken from the daily spin (or lost to double or nothing), one row a player: face, name, the level pill, how many doubles, the gold; your row pinned at the foot. A deleted character\'s record stays as a grey row with DELETED across its face.',
+    id: 'ui2-ranks-board', group: 'Dashboard', title: 'Ranks: Woodcutting, your row',
+    about: 'Life Skills, Woodcutting (header "Woodcutting", ‹ Life Skills): the heads Rank, Player, Level; one row a player, at least 44 px each, every row the same surface -- 1, 2 and 3 told by the game\'s gold, silver and bronze medal only, no bars, no gradients, no laurels -- the face, the name and the one value; no level beside the name (part 7: "No unrelated combat level"). Your own row edged in brass with "You" by the name wherever it stands, and pinned at the foot only while the real one is out of view. Off the board: "Not ranked on this board" at the foot. Each row opens that player.',
     run: async ({ P }) => {
-      const e = await bus(P, 'open', 'leaderboard');
+      const e = await rankTo(P, 'life', 'woodcutting');
       if (e) return e;
-      await wait(P, 500);
-      const e2 = await pickBoard(P, 'records', 'spin');
-      if (e2) return 'no Daily spin board (' + e2 + ')';
-      await wait(P, 900);
+    },
+  },
+  {
+    id: 'ui2-ranks-spin', group: 'Dashboard', title: 'Ranks: Daily spin',
+    about: 'Feats, Daily spin: Biggest wins and Biggest losses on the board\'s top line (the choice kept on Back), then the biggest pots taken from the daily spin, one row a player: the medal or place, the face, the name, the gold. A deleted character\'s row is flat and quiet, "Deleted character", and opens nothing.',
+    run: async ({ P }) => {
+      const e = await rankTo(P, 'feats', 'spin');
+      if (e) return e;
+    },
+  },
+  {
+    id: 'ui2-ranks-points', group: 'Dashboard', title: 'Ranks: Points placed',
+    about: 'Combat, Points placed (header "Points placed", ‹ Combat): the eight stat boards as doors (Defense ... Damage), each its stat\'s own picture and word, as many as the worker ranks. Under ?ui2=0 today\'s Ranks page keeps its picker (mp-ranksstyle plays it).',
+    run: async ({ P }) => {
+      const e = await rankTo(P, 'combat');
+      if (e) return e;
+      const e2 = await tapSel(P, '[data-rank-tile="points"]');
+      if (e2) return 'no Points placed door (' + e2 + ')';
+      await wait(P, 600);
     },
   },
   /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
@@ -1179,11 +1195,10 @@ export const STATES = [
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
       await wait(P, 500);
-      const e2 = await pickBoard(P, 'records', 'fish');   /* v2.3.5503: the Ranks page's Records tab */
+      const e2 = await rankTo(P, 'feats', 'fish');   /* v2.3.6692: Ranks under the new dashboard, Feats */
       if (e2) return 'no Biggest fish board (' + e2 + ')';
-      await wait(P, 500);
-      await tapSel(P, '[data-fish-board-sp="trout"]');
-      await P.page.waitForSelector('[data-fish-board-row]', { timeout: 6000 }).catch(() => {});
+      await tapSel(P, '[data-rank-fish="trout"]');
+      await P.page.waitForSelector('[data-rank-board="fish"] [data-rank-row]', { timeout: 6000 }).catch(() => {});
     },
   },
 
