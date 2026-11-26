@@ -10,7 +10,7 @@
  * size, what Skin draws), or today's anchor untouched when the controller is
  * off or the control has no socket (it keeps today's place).
  */
-import { padOn, padLayout, padSpot, padWidthOf } from '@/game/padSkin.js';
+import { padOn, padLayout, padSpot, padWidthOf, specialSpot, clearOfTier } from '@/game/padSkin.js';
 import { sw } from '@/game/switches.js';
 import { fineInput } from '@/game/deviceProfile.js';
 import { playVw } from '@/ui/mobile/playViewport.js';
@@ -57,4 +57,22 @@ export function padAnchor(name, isLandscape, today, fight) {
   const s = L && padSpot(name, L, today && today.size, fight === true);
   if (!s) return today;
   return { size: s.size, right: s.edge, bottomPx: s.bottom, face: s.face, pad: true, well: s.well, dy: s.dy };
+}
+
+/** v2.3.6642 (card PAD part 6): Whirlwind's or Shield Bash's place in the
+ *  right lobe's tier (padSkin.js specialLayout), `shown` the pair the old
+ *  rule shows now; null when the controller is off or that one is not shown
+ *  (the caller keeps its old anchor).  { size, right, bottomPx, face, dy } */
+export function padSpecialAnchor(kind, isLandscape, shown) {
+  const L = padNow(isLandscape);
+  const s = L && specialSpot(kind, L, shown);
+  if (!s) return null;
+  return { size: s.size, right: s.edge, bottomPx: s.bottom, face: s.face, dy: s.dy, pad: true };
+}
+
+/** v2.3.6642: a control with no well kept clear of the right lobe's tier
+ *  (padSkin.js clearOfTier); today's anchor untouched with the controller off */
+export function padClear(isLandscape, today) {
+  const L = padNow(isLandscape);
+  return L ? clearOfTier(L, today) : today;
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { sprintAnchor, ctlBottom } from './ShieldButton.jsx';
+import { padClear, usePadWidth } from './padSpot.js';   /* v2.3.6642: clear of the controller's tier (card PAD part 6) */
 import { sprintSupported, sprintArmed, isSprinting, toggleSprint, SPRINT_MIN_START } from '@/game/sprint.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -107,6 +108,7 @@ export function sprintTiredSay(s, now) {
 function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
 
 export function SprintButton(props) {
+  usePadWidth();   /* v2.3.6642: redrawn when the world's width moves (padSpot.js) */
   var stateRef = props.stateRef;
   var isLandscape = props.isLandscape;
   var _t = React.useState(0);
@@ -150,7 +152,7 @@ export function SprintButton(props) {
   if (!view) return null;
   if (rimSprintLive()) return null;   /* v2.3.6545: the two buttons sprint from the stick's rim (`?rimsprint=0` gives the button back); the poll above still decides */
 
-  var anchor = sprintAnchor(isLandscape);
+  var anchor = padClear(isLandscape, sprintAnchor(isLandscape));   /* v2.3.6642: in the controller, over the right lobe's tier (Whirlwind's and Shield Bash's row), never in it */
   var size = anchor.size;
 
   var tap = function () {

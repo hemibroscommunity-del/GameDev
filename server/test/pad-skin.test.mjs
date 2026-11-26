@@ -14,7 +14,10 @@
  *      dark inside (insideShell), at every screen; the top row's art never
  *      under 0.8 of its scale.
  *   3. TOUCH BOXES: each at least 44 px, holding its art, inside the screen
- *      and over the band, and no two over each other.
+ *      and over the band, and no two over each other.  v2.3.6642: Whirlwind and
+ *      Shield Bash too, in the right lobe's tier while either shows (3c,
+ *      3f-3p: inside its outline, clear of every socketed box, 44 px, only
+ *      when shown, nothing moved by their coming).
  *   4. THE WELLS AND THE FIGHT: Jump the big well out of a fight and the
  *      middle one in it, Block the other way round; Skate and Charge the one
  *      mobility well, never two; a control's spot is the screen's and the
@@ -33,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 import {
   PAD, REF, REF_SLOTS, WELLS, PAD_ACCENT, padLayout, wellOf, padSpot, ctxFor, padFace, attackFace, attackWeapon,
   PAD_ATTACK_ICONS, weaponWell, insideShell, padOn, padPictures, padWidthOf, pressGate, PRESS_GHOST_MS,
+  SPECIAL_KINDS, SPECIAL_COLS, TIER_BAND, specialLayout, specialSpot, clearOfTier, TIER_AIR,
 } from '../../src/game/padSkin.js';
 import { PAD_ART, PAD_ART_BYTES } from '../../src/data/padArt.js';
 
@@ -101,29 +105,146 @@ const near = (a, b, e) => Math.abs(a - b) <= e;
   check('2e. no shell inside, no answer', insideShell(L, 10, 10, 1, 0, {}) === false && insideShell(null, 10, 10, 1, 0) === false);
 }
 
-/* ── 3. touch boxes ── */
+/* ── 3. touch boxes ── v2.3.6642 (card PAD part 6): EVERY control the old
+   layout draws in the controller, not only the socketed ones: Whirlwind and
+   Shield Bash in the right lobe's tier (specialLayout) with both shown */
+const ALL = (L) => {
+  const T = specialLayout(L, { bash: true, whirl: true });
+  const w = Object.assign(Object.create(null), L.wells);
+  for (const k of SPECIAL_KINDS) w[k] = T.wells[k];
+  return { wells: w, names: WELLS.concat(SPECIAL_KINDS), rise: T.rise };
+};
 {
   const small = [], over = [], out = [], hold = [];
   for (const [land, vw] of SCREENS) {
-    const L = padLayout(land, vw);
-    for (const n of WELLS) {
-      const b = L.wells[n].box, w = L.wells[n];
+    const L = padLayout(land, vw), A = ALL(L);
+    for (const n of A.names) {
+      const b = A.wells[n].box, w = A.wells[n];
       if (b.size < PAD.BOX || b.size < w.d - 1e-9) small.push([vw, n, b.size]);
       if (b.x - b.size / 2 < 0 || b.x + b.size / 2 > vw || b.y - b.size / 2 < 0) out.push([vw, n]);
       if (Math.abs(b.x - w.x) > (b.size - w.d) / 2 + 1e-9 || Math.abs(b.y - w.y) > (b.size - w.d) / 2 + 1e-9) hold.push([vw, n]);
     }
-    for (let i = 0; i < WELLS.length; i++) for (let j = i + 1; j < WELLS.length; j++) {
-      const a = L.wells[WELLS[i]].box, c = L.wells[WELLS[j]].box;
-      if (Math.abs(a.x - c.x) < (a.size + c.size) / 2 && Math.abs(a.y - c.y) < (a.size + c.size) / 2) over.push([vw, WELLS[i], WELLS[j]]);
+    for (let i = 0; i < A.names.length; i++) for (let j = i + 1; j < A.names.length; j++) {
+      const a = A.wells[A.names[i]].box, c = A.wells[A.names[j]].box;
+      if (Math.abs(a.x - c.x) < (a.size + c.size) / 2 && Math.abs(a.y - c.y) < (a.size + c.size) / 2) over.push([vw, A.names[i], A.names[j]]);
     }
   }
   check('3a. every touch box at least 44 px and never smaller than its art', small.length === 0, small);
   check('3b. no two touch boxes over each other, at every screen', over.length === 0, over);
-  check('3c. every touch box inside the screen and over the band', out.length === 0, out);
+  check('3c. every touch box inside the screen and over the band (Whirlwind and Shield Bash too)', out.length === 0, out);
   check('3d. every touch box holds its own art', hold.length === 0, hold);
   const L = padLayout(false, 375);
   check('3e. on a narrow phone a top-row box rises off the big buttons\' (375: Mobility\'s box over its art\'s centre)',
     L.wells.mobility.box.y > L.wells.mobility.y);
+}
+
+/* ── 3f-3n. v2.3.6642 (card PAD part 6): WHIRLWIND AND SHIELD BASH, the
+   tier over the right lobe.  The gatekeeper (debts.md 66): "pad-skin.test 3c
+   checks only socketed controls".  Each dodge planted and seen red:
+   outside the housing (3f), over a socketed control (3b above, 3g), under
+   44 (3a above, 3h), drawn though not shown (3i), the layout moving when
+   one comes (3j, 3k). ── */
+{
+  const outside = [], bare = [], clash = [], tiny = [];
+  for (const [land, vw] of SCREENS) {
+    const L = padLayout(land, vw), T = specialLayout(L, { bash: true, whirl: true });
+    for (const k of SPECIAL_KINDS) {
+      const w = T.wells[k];
+      /* its art inside the TIER's housing (the shell drawn `rise` taller) */
+      if (!insideShell(Object.assign({}, L, { rise: T.rise }), w.x, w.y, w.d / 2, 0)) outside.push([vw, k, T.rise]);
+      /* ...and the shell as drawn without the tier has no room for it (why the tier) */
+      if (insideShell(L, w.x, w.y, w.d / 2, 0)) bare.push([vw, k]);
+      for (const n of WELLS) {
+        const a = w.box, c = L.wells[n].box;
+        if (Math.abs(a.x - c.x) < (a.size + c.size) / 2 && Math.abs(a.y - c.y) < (a.size + c.size) / 2) clash.push([vw, k, n]);
+      }
+      if (w.box.size < PAD.BOX || w.d < 0.8 * 80 * L.s - 1e-6) tiny.push([vw, k, w.box.size, w.d]);
+    }
+  }
+  check('3f. Whirlwind\'s and Shield Bash\'s art inside the tier\'s gold outline, at every screen', outside.length === 0, outside);
+  check('3f2. the housing without the tier holds neither (no free place: the tier is the room)', bare.length === 0, bare);
+  check('3g. neither box over a socketed control\'s (Attack, the big well, the top row, the weapon wells, the stick)', clash.length === 0, clash);
+  check('3h. each box 44 px at least, its art the top row\'s size (0.8 of the scale at the least)', tiny.length === 0, tiny);
+  const L = padLayout(false, 430);
+  const none = specialLayout(L, {}), onlyBash = specialLayout(L, { bash: true }), onlyWhirl = specialLayout(L, { whirl: true, bash: 1 });
+  check('3i. drawn only when shown (`true`): none shown is no tier; one shown is that one alone; a truthy stand-in is not shown',
+    none === null && specialLayout(L, null) === null && specialLayout(null, { bash: true }) === null
+    && !!onlyBash && Object.keys(onlyBash.wells).join() === 'bash' && !!onlyWhirl && Object.keys(onlyWhirl.wells).join() === 'whirl'
+    && specialSpot('whirl', L, { bash: true }) === null && specialSpot('bash', L, { whirl: true }) === null && !!specialSpot('bash', L, { bash: true }));
+  const both = specialLayout(L, { bash: true, whirl: true });
+  check('3j. nothing shifts as one comes or goes: each one\'s place and the tier\'s height the same whichever shows',
+    JSON.stringify(onlyBash.wells.bash) === JSON.stringify(both.wells.bash) && JSON.stringify(onlyWhirl.wells.whirl) === JSON.stringify(both.wells.whirl)
+    && onlyBash.rise === both.rise && onlyWhirl.rise === both.rise);
+  const before = JSON.stringify(padLayout(false, 390));
+  const L2 = padLayout(false, 390); specialLayout(L2, { bash: true, whirl: true }); specialSpot('whirl', L2, { whirl: true });
+  check('3k. the socketed controls never move for them (the layout untouched by the tier)', JSON.stringify(L2) === before);
+  check('3l. Whirlwind over Special and Shield Bash over the mobility well (the shield, the big well, under it), above the top row',
+    SPECIAL_COLS.whirl === 'special' && SPECIAL_COLS.bash === 'mobility'
+    && near(both.wells.whirl.x, L.wells.special.x, 1e-9) && near(both.wells.bash.x, L.wells.mobility.x, 1e-9)
+    && both.wells.whirl.box.y - both.wells.whirl.box.size / 2 > L.wells.special.box.y + L.wells.special.box.size / 2);
+  /* the tier is modest: one row of the top row's size (the owner: "too large") */
+  const rises = SCREENS.map(([l, vw]) => { const P = padLayout(l, vw); return [vw, specialLayout(P, { whirl: true }).rise, P.shell.h]; });
+  check('3m. the tier is one row: the right lobe at most 45 px taller (a third of the shell), never shorter than needed',
+    rises.every(([vw, r, h]) => r > 0 && r <= 45 && r <= h / 2.5), rises);
+  const S0 = specialSpot('whirl', L, { whirl: true }), w0 = both.wells.whirl;
+  check('3n. a spot is its well: the box\'s edge from the right, its bottom over the band, the face the well\'s size, drawn `dy` lower',
+    !!S0 && S0.size === Math.round(w0.box.size) && S0.edge === Math.round(430 - w0.box.x - S0.size / 2) && S0.bottom === Math.round(w0.box.y - S0.size / 2)
+    && S0.face === Math.round(w0.d) && near(S0.dy, S0.bottom + S0.size / 2 - w0.y, 0.06) && S0.dy > 0, { S0, w0 });
+  /* the tier's height as PadHousings draws it: rows over TIER_BAND lifted by
+     the rise, the band stretched, the rows under it where they were */
+  const R = Object.assign({}, L, { rise: 40 }), x = 430 - 60;
+  const flat = (t) => insideShell(R, x, (280 - t) * L.s + 40 - 3, 2, 0);
+  check('3o. the tier\'s inside: the lobe\'s top lifted by the rise, no further; the left lobe and the rail unmoved',
+    flat(24) === true && insideShell(R, x, (280 - 24) * L.s + 40 + 3, 2, 0) === false
+    && insideShell(R, L.wells.stick.x, (280 - 52) * L.s + 3, 1, 0) === false
+    && insideShell(R, 200, (280 - 168) * L.s + 3, 2, 0) === false && TIER_BAND.top < TIER_BAND.bottom);
+  /* inside the band the shoulder is stretched, not lifted: at its column
+     (ref x 575, its top about row 97) the inside reaches the stretched
+     height, under the lifted one */
+  const xs = 430 - (920 - 575) * L.s;
+  check('3o2. in the stretched band the shoulder is stretched (under the lifted height), over it the rows lifted whole',
+    insideShell(R, xs, 90, 0.5, 0) === true && insideShell(L, xs, 90, 0.5, 0) === false && insideShell(R, xs, 110, 0.5, 0) === false);
+  /* the band is where the right lobe's left wall is steep, so stretched it
+     stays a wall: over it the outline's corner, under it the shoulder bends
+     into the rail (the wall's column, housing.png's measure, moves under 15
+     of the reference over the band) */
+  const ins = PAD_ART.housing.inside;
+  const wallAt = (row) => { for (let x = 520; x <= 700; x += ins.step) { const t = ins.top[x / ins.step]; if (t != null && t <= row) return x; } return null; };
+  const walls = []; for (let r = TIER_BAND.top; r <= TIER_BAND.bottom; r += 5) walls.push(wallAt(r));
+  check('3o3. the stretched band is the steep wall (its column moves under 15 reference px; the right wall straight there)',
+    walls.every((w) => w != null) && Math.max(...walls) - Math.min(...walls) < 15 && TIER_BAND.top >= 60
+    && ins.top.slice(-4).filter((t) => t != null).every((t) => t <= TIER_BAND.top), walls);
+  /* who is shown is the old buttons' own rule, never a second one: the
+     tier is told from AbilityButtons' list (abilityStatus: Whirlwind the
+     sword's, Bash the raised shield's), and each button anchors from it */
+  const AB = fs.readFileSync(path.join(REPO, 'src/ui/panels/AbilityButtons.jsx'), 'utf8');
+  const AS = fs.readFileSync(path.join(REPO, 'src/game/abilities.js'), 'utf8');
+  check('3p. the tier shows what the old buttons show: told from their one list (abilityStatus, visible and engaged), the sword\'s Whirlwind, the raised shield\'s Bash',
+    /var live = liveSpecials\(S\) \|\| \[\];/.test(AB) && /var tierKey = live\.map\(/.test(AB) && /padTierBus\.set\(tierKey \?/.test(AB)
+    && /if \(st\.visible && st\.engaged !== false\) live\.push/.test(AB) && /padSpecialAnchor\(kind, isLandscape, shownPair\)/.test(AB)
+    && /needsMelee \|\| \(prog3ActiveCat\(R\) === 'sword'/.test(AS) && /needsHeld \|\| \(!!R\.shield && !!\(S && S\._shieldUp\)\)/.test(AS));
+}
+
+/* ── 3q. v2.3.6642: a control with no well (Sprint) clear of the tier,
+   always (never a jump as a fight starts); mp-padskin 8b found Sprint's old
+   place 10 px into it upright ── */
+{
+  const bad = [];
+  for (const [land, vw] of SCREENS) {
+    const L = padLayout(land, vw), T = specialLayout(L, { bash: true, whirl: true }), top = L.shell.h + T.rise;
+    const into = { right: 30, bottomPx: Math.round(top - 10), size: 48 };
+    const up = clearOfTier(L, into);
+    if (!(up.bottomPx >= top + TIER_AIR && up.bottomPx < top + TIER_AIR + 1 && up.right === 30 && up.size === 48)) bad.push([vw, 'lift', up]);
+    const high = { right: 30, bottomPx: Math.ceil(top + 20), size: 48 };
+    if (clearOfTier(L, high) !== high) bad.push([vw, 'high moved']);
+    const beside = { right: Math.ceil(L.shell.cutR) + 1, bottomPx: 20, size: 48 };
+    if (clearOfTier(L, beside) !== beside) bad.push([vw, 'beside moved']);
+    const edge = { right: Math.floor(L.shell.cutR) - 1, bottomPx: 20, size: 48 };
+    if (clearOfTier(L, edge).bottomPx < top + TIER_AIR) bad.push([vw, 'edge kept']);
+    if (clearOfTier(L, up).bottomPx !== up.bottomPx) bad.push([vw, 'twice']);
+  }
+  check('3q. a control with no well over the right lobe stands TIER_AIR over the tier\'s top, the tier drawn or not; one beside the lobe or above it unmoved',
+    bad.length === 0 && clearOfTier(null, { right: 1 }).right === 1, bad);
 }
 
 /* ── 4. the wells and the fight ── */

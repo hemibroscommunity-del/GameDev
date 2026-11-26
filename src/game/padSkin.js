@@ -294,10 +294,118 @@ export function insideShell(layout, x, y, r, clear, art) {
   for (let dx = -r; dx <= r; dx += 0.5) {
     const t = topAt(toRef(x + dx));
     if (t == null) return false;
-    const ceil = (REF.H - t) * s - c;
+    const ceil = tierHeight(layout, x + dx, t) - c;
     if (y + Math.sqrt(Math.max(0, r * r - dx * dx)) > ceil) return false;
   }
   return true;
+}
+
+/* ═══ v2.3.6642: WHIRLWIND AND SHIELD BASH, A TIER OVER THE RIGHT LOBE (card PAD part 6) ═══
+ * The gatekeeper (debts.md 66, 67): "Whirlwind and Shield Bash in their old
+ * places beside the new Special socket".  Part 3 gave them no well: they
+ * floated in today's places (ShieldButton rightCluster, ctlColumn) over and
+ * beside the shell.  The housing as drawn holds no free place for a 44 px
+ * box: upright the rail is the three weapon wells end to end, the right
+ * lobe's top row is Mobility, the middle well and Special, and the stick
+ * fills its lobe.  So, with no new picture, the right lobe GROWS a tier
+ * while either shows: the same housing.png's right lobe drawn taller, the
+ * band between its top row and its outline's top (TIER_BAND, reference
+ * rows) stretched (PadHousings.jsx), and the two sit in it, each over a
+ * column of the top row:
+ *   Whirlwind over SPECIAL (the sword's special beside the sword's special:
+ *     the gatekeeper's "beside the new Special socket"),
+ *   Shield Bash over the MOBILITY well (over the big well, which is Block,
+ *     the shield, whenever Bash shows: the guard is up),
+ * each the top row's art size, its touch box 44 at least, 1 px over the top
+ * row's boxes.  Nothing socketed moves (the tier is above them); when
+ * neither shows the tier is not drawn and nothing shifts.  Whether one
+ * shows is the old buttons' own rule (game/abilities.js abilityStatus:
+ * Whirlwind the sword's, in a fight; Bash the raised shield's, any weapon),
+ * handed in as `shown`: never a second rule here.  Their faces are the old
+ * buttons' own (controlSkin Skin, the tornado and the bash), drawn at the
+ * well's size: no new art. */
+export const SPECIAL_KINDS = Object.freeze(['bash', 'whirl']);
+export const SPECIAL_COLS = Object.freeze({ bash: 'mobility', whirl: 'special' });
+/* the reference rows of the right lobe stretched to make the tier: under
+   the outline's top corners (the right wall is straight from row 60) and
+   over the rail's shoulder (housing.png's own measure: the left wall runs
+   from x 568 to 556 over these rows, steep, so it stays a wall) */
+export const TIER_BAND = Object.freeze({ top: 70, bottom: 110 });
+
+/** The tier's two wells: `shown` { bash, whirl } (each `true` when the old
+ *  rule shows it).  Null when neither shows (nothing drawn, nothing moved).
+ *  { rise, wells }: `rise` px the right lobe is drawn taller; each shown
+ *  kind's well { x, y, d, box } in padLayout's terms. */
+export function specialLayout(layout, shown) {
+  if (!layout || !layout.wells || !shown) return null;
+  const kinds = SPECIAL_KINDS.filter((k) => shown[k] === true);
+  if (!kinds.length) return null;
+  const W = layout.wells;
+  const topBox = Math.max(...['mobility', 'mid', 'special'].map((n) => W[n].box.y + W[n].box.size / 2));
+  /* both places are worked out whichever shows, so neither one's coming or
+     going moves the other or the tier's height: "nothing shifts" */
+  const all = Object.create(null);
+  for (const k of SPECIAL_KINDS) {
+    const col = W[SPECIAL_COLS[k]];
+    const d = col.d;
+    const size = Math.max(PAD.BOX, d);
+    const by = topBox + 1 + size / 2;
+    /* the art as low in its box as the box still holds it: the least rise */
+    all[k] = { x: col.x, y: by - (size - d) / 2, d, box: { x: col.x, y: by, size } };
+  }
+  /* the least rise (half px steps) that puts both wells' art inside */
+  let rise = 0;
+  const fits = (r) => SPECIAL_KINDS.every((k) => insideShell(Object.assign({}, layout, { rise: r }), all[k].x, all[k].y, all[k].d / 2, 0));
+  while (!fits(rise) && rise < 200) rise += 0.5;
+  const wells = Object.create(null);
+  for (const k of kinds) wells[k] = all[k];
+  return { rise, wells };
+}
+
+/** v2.3.6642: a control with no well (Sprint) kept clear of the tier: its
+ *  box { right, bottomPx, size } (px from the column's right edge, over the
+ *  band) lifted to TIER_AIR over the tier's top where it stands over the
+ *  right lobe and under that line; else unmoved.  The tier as when both
+ *  show, whether it is drawn or not: the button sits there always, never
+ *  jumping as a fight starts.  Upright, Sprint's old place sat 10 px into
+ *  it (mp-padskin 8b: Whirlwind's box over Sprint's). */
+export const TIER_AIR = 4;
+export function clearOfTier(layout, box) {
+  if (!layout || !box) return box;
+  const T = specialLayout(layout, { bash: true, whirl: true });
+  if (!T) return box;
+  const top = layout.shell.h + T.rise;
+  const left = box.right + box.size;   /* its left edge, from the right */
+  if (left <= 0 || box.right >= layout.shell.cutR) return box;   /* clear of the lobe sideways */
+  if (box.bottomPx >= top + TIER_AIR) return box;
+  return Object.assign({}, box, { bottomPx: Math.ceil(top + TIER_AIR) });
+}
+
+/** v2.3.6642: one of the tier's controls as padSpot gives a socketed one:
+ *  { edge, bottom, size, face, dy }, or null when it is not shown */
+export function specialSpot(kind, layout, shown) {
+  const T = specialLayout(layout, shown);
+  const w = T && T.wells[kind];
+  if (!w) return null;
+  const size = Math.round(w.box.size);
+  const bottom = Math.round(w.box.y - size / 2);
+  return {
+    edge: Math.round(layout.shell.w - w.box.x - size / 2), bottom, size, face: Math.round(w.d),
+    dy: Math.round((bottom + size / 2 - w.y) * 10) / 10,
+  };
+}
+
+/* v2.3.6642: the inside's height (px over the band) at a column whose top
+   is reference row `t`: the shell's own, or in the right lobe while the tier
+   is drawn (`layout.rise`), the same rows moved as PadHousings draws them:
+   over TIER_BAND up by the rise, inside it stretched, under it unmoved */
+function tierHeight(layout, px, t) {
+  const { s, shell } = layout;
+  const rise = layout.rise > 0 ? layout.rise : 0;
+  if (!rise || px < shell.w - shell.cutR || t >= TIER_BAND.bottom) return (REF.H - t) * s;
+  if (t <= TIER_BAND.top) return (REF.H - t) * s + rise;
+  const band = TIER_BAND.bottom - TIER_BAND.top;
+  return (REF.H - TIER_BAND.bottom) * s + (TIER_BAND.bottom - t) / band * (band * s + rise);
 }
 
 /** `?padskin=0`: today's look.  `thrown` the switch's (switches.js
