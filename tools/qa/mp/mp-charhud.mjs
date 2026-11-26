@@ -276,8 +276,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { P: A, id: '667x375', vp: { width: 667, height: 375 }, side: true, shot: 'ui3-hud-sideways.png' },
     { P: D, id: '1280x720', vp: null, shot: 'ui3-hud-computer.png' },
   ];
+  /* the phone sat idle while the computer played: back from away, so the pictures show the world */
+  const back = (P) => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button')).find((x) => /I.m back/.test(x.textContent || '')); if (b) b.click(); }).catch(() => {});
   for (const Z of SIZES) {
     if (Z.vp) await Z.P.page.setViewportSize(Z.vp);
+    await back(Z.P);
     await chill(Z.P);
     await Z.P.page.waitForTimeout(1800);
     let s = null;
