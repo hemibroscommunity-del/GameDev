@@ -85,6 +85,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* B a step aside, so the pictures show both figures, not one over the other */
   const aAt = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
   await H.hopTo(B, aAt.x + 110, aAt.y + 10, { tries: 20 }).catch(() => null);
+  await H.closeDest(A).catch(() => {});   /* the band's window down, for the pictures */
   await A.page.waitForTimeout(1500);
 
   /* ── 1. yours not built, theirs drawn, on both phones ── */
@@ -185,6 +186,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const hp = await H.readState(A, (S) => (S.rpg ? { hp: S.rpg.hp, max: S.rpg.maxHp } : null));
   rec.ok(`6. in a fight: A's HP bar shows over the bro (${hp && hp.hp}/${hp && hp.max}) and no plate is built (pill ${f6 && f6.pill})`,
     !!f6 && f6.hpBar === true && f6.pill === false, { f6, hp });
+  /* a step north, out from under the trees, while the bar holds (2.5 s) */
+  const fAt = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
+  await H.hopTo(A, fAt.x, fAt.y - 140, { tries: 4 }).catch(() => null);
+  await A.page.waitForTimeout(250);
   await shot(A, 'after-fight-upright');
   await setSw(A, 'ownplate', '1');
   const f6on = await until(A, (o) => o.pill);
