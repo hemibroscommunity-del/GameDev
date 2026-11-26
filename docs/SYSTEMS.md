@@ -362,7 +362,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
 - **Files**: `src/rendering/tables/`: render
-- **Files**: `src/game/`: poseHides
+- **Files**: `src/game/`: poseHides, cameraFollow
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)

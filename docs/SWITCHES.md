@@ -471,6 +471,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?bladesoft` | page | value | v2.3.2927 |  | a number, off or on | logic |  | no | Sets how soft a blade's edge is drawn. |
 | `?boardroll` | page | switch | v2.3.3855 | 2026-10-29 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
 | `?burnfire` | page | switch | v2.3.3878 | 2026-10-29 | =0 | logic |  | no | A burn draws its old flames, not the building's fire. |
+| `?camfollow` | page | switch | v2.3.6660 | 2026-11-25 | =0 | logic |  | no | The view chases a point ahead of you again, as before card GR: on the skateboard it slides forward with each push and back as you roll off, and a jog sits a little behind the middle of the screen. |
 | `?camsnap` | page | switch | v2.3.3469 | 2026-10-18 | =0 | chip |  | no | The camera is not snapped to whole device pixels. |
 | `?capehood` | page | switch | v2.3.5564 | 2026-11-16 | =0 | memory |  | no | A cape hood's hair masks are drawn from their pictures, as before, not from their 256-colour twins. |
 | `?caustics` | page | value | v2.3.3021 |  | a number, 0 to 2 | logic |  | no | The water's light web this many times as bright. |
