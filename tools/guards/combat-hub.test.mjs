@@ -196,7 +196,9 @@ const CHECKS = {
   C9: (X) => {
     const ALLOW = {
       hub: new Set(['@/game/combatHub.js:combatHubDoors', '@/game/combatHub.js:combatPools', '@/game/combatHub.js:combatLevel']),
-      page: new Set(['@/game/combatHub.js:combatPools', '@/game/combatHub.js:pointsWords', '@/game/combatHub.js:spendPool', '@/game/combatHub.js:weaponAttributes', '../../../data/prog3.js:prog3AtkMeta']),
+      page: new Set(['@/game/combatHub.js:combatPools', '@/game/combatHub.js:pointsWords', '@/game/combatHub.js:spendPool', '@/game/combatHub.js:weaponAttributes', '../../../data/prog3.js:prog3AtkMeta',
+        /* v2.3.6686: DPS opens the stat tree's layer 0 (a page id and its entry's words, no count) */
+        '@/game/combatHub.js:TREE_PAGES', '@/game/combatHub.js:treeSel']),
     };
     const FORBID = ['POINTS_PER_LEVEL', 'SHARED_POINTS_PER_LEVEL', 'poolBy', 'shared_', 'prog3Pool', 'prog3PoolBy', 'prog3PoolAny', 'prog3PoolFor', 'prog3PoolShared', 'prog3Shared', 'unspentPointsTotal', 'buildSkillUnspent', 'prog3CharLevel', 'prog3SkillLevel'];
     for (const k of ['hub', 'page']) {

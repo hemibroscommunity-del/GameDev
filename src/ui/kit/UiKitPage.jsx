@@ -18,7 +18,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
-  Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass,
+  Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass, Ui2TwoPanel, Ui2ItemGrid,
   Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm,
 } from './index.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
@@ -120,6 +120,26 @@ function InfoPlate({ room }) {
     </div>
   );
   return <div style={room.wide ? row({ height: '100%' }) : col()}>{stats}{bars}{vals}</div>;
+}
+
+/* v2.3.6688: the two panels and the one grid of item cells (card UI2-gear PR 2): a look from the
+   left panel (a cell selected, pushed in), the summary in the right panel's place; default and empty cells */
+function WorkspacePlate({ room }) {
+  const art = '/icons/items/';
+  const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
+  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: art + pics[i], label: g }));
+  /* v2.3.6688 (the mends; mp-uikit 1b, 1c): the fixture holds what its panel shows without a scroll, so the kit's
+     audit reads every cell (a storage grid scrolls by intent in the game, which the audit would count as cut):
+     upright two rows of three; sideways (a 46 px panel) ONE row of 44 px cells, and the summary's one stat
+     without its group's label line. */
+  const s = room.wide ? UI2_SIZE.touch : Math.max(UI2_SIZE.touch, Math.min(52, Math.floor((room.cw / 2 - 3 * G) / 3)));
+  const cols = room.wide ? Math.max(4, Math.min(8, Math.floor((room.cw / 2 - 3 * G) / (s + 3)))) : 3;
+  const stat = <Ui2Stat k="Now → If equipped" v="7.5 → 9.4" />;
+  return (
+    <Ui2TwoPanel height={room.ch}
+      left={{ label: 'Inventory', kind: 'storage', children: <Ui2ItemGrid cells={cells} cols={cols} size={s} selectedKey="k1" fill={room.wide ? cols : 6} onPick={() => {}} /> }}
+      right={{ label: 'Summary', kind: 'summary', children: room.wide ? stat : <Ui2Group k="DPS">{stat}</Ui2Group> }} />
+  );
 }
 
 function SlotsPlate({ room }) {
@@ -313,9 +333,10 @@ export function UiKitPage() {
         <Plate id="character" room={room} title="Character" caption={'Sample: the Character page' + (me ? ' (your real data)' : ' (no player handed to this page: honest empty lines)')}><CharacterSample room={room} me={me} /></Plate>
         {/* v2.3.6681 (card UI2-frame): the header at the frame's two roots and a deep page */}
         <Plate id="headers" room={room} caption="The header: Gear's root (Close, Gear, Menu ›), the Menu's root (‹ Gear, Menu, Close), a deep page (‹ Back, its title, Menu, Close)" head={<Ui2Header title="Gear" closeStart menuNext />}>
-          <div style={col({ justifyContent: 'center', height: '100%' })}>
-            <Ui2Header title="Menu" backLabel="Gear" onMenu={false} />
-            <Ui2Header title="Life Skills" backLabel="Bro" />
+          {/* v2.3.6688 (the mends): sideways the page is 74 px tall, two 44 px headers stood out of it (mp-uikit 1b at 844x390, red since this plate came, b38b302): side by side there */}
+          <div style={room.wide ? row({ alignItems: 'center', height: '100%' }) : col({ justifyContent: 'center', height: '100%' })}>
+            <div style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}><Ui2Header title="Menu" backLabel="Gear" onMenu={false} /></div>
+            <div style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}><Ui2Header title="Life Skills" backLabel="Bro" /></div>
           </div>
         </Plate>
         <Plate id="tiles" room={room} title="Tiles" caption="Destination tiles: default, pressed, selected (pushed in), focused, locked, a count, new, the rare warm light"><TilesPlate room={room} /></Plate>
@@ -327,6 +348,7 @@ export function UiKitPage() {
         <Plate id="empty" room={room} title="Empty states" caption="Empty states: absent (what, why, how), locked (why), loading (never a 0)"><EmptyPlate room={room} /></Plate>
         <Plate id="confirm" room={room} title="Confirm" caption="The one confirmation: only for the costly or irreversible; a routine action never asks; an outcome not confirmed yet"><ConfirmPlate room={room} /></Plate>
         <Plate id="slots" room={room} title="Items" caption="Rarity slots (Normal, Rare, Elite, Godly; selected; focused; empty), a count, a dot, still loading"><SlotsPlate room={room} /></Plate>
+        <Plate id="workspace" room={room} title="Gear" caption="Two panels: the storage grid with a cell selected (pushed in) and empty cells; the summary in the opposite panel's place"><WorkspacePlate room={room} /></Plate>
       </div>
     </div>
   );

@@ -12,7 +12,13 @@
  *      none longer than the loading screen itself;
  *   3. the Test panel shows the steps as text, and a step's number there is
  *      the page's own;
- *   4. nothing went wrong on the page.
+ *   4. (v2.3.6760, card LOAD part 1) what the screen waited for and why it
+ *      lifted: the Test panel's text carries, in this order after "The loading
+ *      screen was up", the "Why it lifted" line (ready, or its 20 s limit), the
+ *      bro's six own steps (loads, masks, alt, upload, gear, done) and the
+ *      armour's frames line; and window.__btLoadTimes() has the same (a bare
+ *      character: every bro step noted in the preload's order, "none worn");
+ *   5. nothing went wrong on the page.
  */
 import * as H from './harness.mjs';
 export const lane = 'full';
@@ -102,9 +108,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && !!worldLine && typeof at.world === 'number' && worldLine.includes(at.world.toFixed(1)) && /Slowest pictures/.test(shown.text),
       { opened, shown });
 
-    /* ── 4 ── */
+    /* ── 4 (v2.3.6760) ── */
+    const txt = (shown && shown.text) || '';
+    const lines = txt.split('\n');
+    const at1 = (re) => lines.findIndex((l) => re.test(l));
+    const idx = [/The loading screen was up/, /^Why it lifted: (ready|its \d+ s limit)$/, /The bro's own steps/,
+      /The bro's pictures and sheets were loaded/, /The armour's body frames were baked/, /The spare armour sets were baked/,
+      /sent to the graphics chip$/, /The gear sheets were sent/, /The bro was ready/, /^Armour frames ready when it lifted: /, /Slowest pictures/].map(at1);
+    const sorted = idx.every((i, k) => i >= 0 && (k === 0 || i > idx[k - 1]));
+    const broAt = Object.create(null);
+    for (const b of (lt && lt.bro) || []) broAt[b.key] = b.at;
+    const broOrder = ['bro-loads', 'bro-masks', 'bro-alt', 'bro-upload', 'bro-gear', 'bro-done'];
+    const broOk = broOrder.every((k) => typeof broAt[k] === 'number') && broOrder.every((k, i) => i === 0 || broAt[k] >= broAt[broOrder[i - 1]])
+      && typeof at.pictures === 'number' && broAt['bro-loads'] >= 0;
+    const lift = lt && lt.lift;
+    rec.ok(`4. the panel says what the screen waited for and why it lifted, in order (${lines.filter((l) => /Why it lifted|Armour frames/.test(l)).join(' | ')}); the bro's steps ${broOrder.map((k) => broAt[k]).join(', ')} s; lift ${JSON.stringify(lift)}`,
+      sorted && broOk && !!lift && typeof lift.limit === 'boolean' && !!lift.armour && lift.armour.want === 0,
+      { idx, sorted, broAt, lift });
+
+    /* ── 5 ── */
     const bad = P.logs.filter((l) => l.startsWith('pageerror'));
-    rec.ok(`4. nothing went wrong on the page (${bad.length} page errors)`, bad.length === 0, bad.slice(0, 5));
+    rec.ok(`5. nothing went wrong on the page (${bad.length} page errors)`, bad.length === 0, bad.slice(0, 5));
   } finally {
     stopAlive();
     await P.ctx.close().catch(() => {});

@@ -24,6 +24,7 @@ import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, navButtonSize, navRowFills } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
+import { ItemPage, itemPageTitle } from './dash/ItemPage.jsx';   /* v2.3.6687: the one item page, a page of Gear's stack (card UI2-gear) */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { OneBandColumns } from './dash/OneBandColumns.jsx';    /* v2.3.4072 */
 import { oneBandActive } from '../oneBand.js';                  /* v2.3.4072 */
@@ -84,6 +85,7 @@ import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests
 import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
 import { BroDoorPage } from './sheet/BroCard.jsx';
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
+import { DashGrowBox } from './dash/DashGrowBox.jsx';   /* v2.3.6682: the page grows out of the tile tapped (card UI2-frame PR 2) */
 import { ui2RootClass } from '@/ui/kit/index.js';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
 import { SAY } from '@/data/say/bottomDashboard.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
@@ -520,6 +522,7 @@ const PANELS = {
      in old sessions don't render a blank sheet. */
   bag:          { title: say(SAY, 'bottomDashboard.titleBag'),         Component: InventoryPanel },
   hero:         { title: say(SAY, 'bottomDashboard.titleBro'),         Component: HeroExpanded },   /* v2.3.4172: the Bro page */
+  item:         { get title() { return itemPageTitle(); }, Component: ItemPage },   /* v2.3.6687: the one item page (dash/ItemPage.jsx; card UI2-gear) */
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
@@ -1709,7 +1712,7 @@ export const BottomDashboard = () => {
           {/* v2.3.4152: data-band-box -- the band's content box (the page, the nav
               row, the resting columns), centred at the world's width and at
               most 1200 px on a wide screen (game.css html.bt-one-band block) */}
-          <div data-band-box="page" ref={ui2 ? dashScrollBox : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
+          <DashGrowBox data-band-box="page" boxRef={ui2 ? dashScrollBox : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
             {/* ═══ v2.3.2320b: THE DRILL TITLE COMES BACK DOWN HERE ═══
                 v2.3.1922 moved it UP into the toolbar row, and its reasoning
                 was sound at the time: the 44px header it replaced sat in the
@@ -1810,7 +1813,7 @@ export const BottomDashboard = () => {
                       wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
               </div>
             ) : Active && <Active />}
-          </div>
+          </DashGrowBox>
         </>
       ) : null /* v2.3.1350: bar mode — toolbar only, the game's resting
            default (owner: maximum world visibility).  The compact
@@ -2027,7 +2030,7 @@ export const BottomDashboard = () => {
           destination already shows all of this at full size, and the
           panel keeps its height. */}
       {mode !== 'expanded' && !dashMin && !land && (
-        <div data-band-box="cols" style={{
+        <DashGrowBox data-band-box="cols" style={{
           position: 'absolute',
           left: 0, right: 0,
           bottom: 'var(--sab, 0px)',
@@ -2045,7 +2048,7 @@ export const BottomDashboard = () => {
           {oneBandActive()
             ? <OneBandColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
             : <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />}
-        </div>
+        </DashGrowBox>
       )}
 
 

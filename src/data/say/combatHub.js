@@ -19,7 +19,6 @@ export const SAY = Object.freeze({
   'combatHub.sharedAria': 'Shared Attributes, {pts}: open them',
   'combatHub.levelGives': 'Each {w} level gives {n} {w} points',
   'combatHub.dps': 'DPS',
-  'combatHub.dpsAria': 'DPS {v}: what it is',
   'combatHub.damage': 'Damage',
   'combatHub.aspd': 'Attack speed',
   'combatHub.crit': 'Crit chance',
@@ -31,4 +30,12 @@ export const SAY = Object.freeze({
   'combatHub.attrAria': '{stat}: {pts} of {cap} placed. Open its preview',
   'combatHub.attrAriaFree': '{stat}: {pts} placed. Open its preview',
   'combatHub.attrPts': '{n} placed',
+  /* v2.3.6686 (PR 2): the Shared page; DPS's tap opens its tree */
+  'combatHub.maxHp': 'Max HP',
+  'combatHub.maxHpAria': 'Max HP {v}: what it is',
+  'combatHub.defense': 'Defense',
+  'combatHub.moveSpeed': 'Move speed',
+  'combatHub.sharedPoint': '{n} shared point to spend',
+  'combatHub.sharedPoints': '{n} shared points to spend',
+  'combatHub.dpsTreeAria': 'DPS {v}: open what makes it',
 });

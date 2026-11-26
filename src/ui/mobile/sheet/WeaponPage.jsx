@@ -26,8 +26,9 @@
  * a Spend draws on is the page's own weapon (combatHub.js spendPool), named
  * on the page before the press and on the window's lane tab.
  *
- * DPS's tap opens its explainer (the Bro card's own: infoGlossary statInfo)
- * in this PR; PR 2 (6686) opens its breakdown, one layer at a time.
+ * DPS's tap opens its breakdown, one layer at a time (v2.3.6686, PR 2: the
+ * stat tree, sheet/StatTree.jsx, its layer 0 a frame page pushed over this
+ * one; v2.3.6685 opened the explainer, infoGlossary statInfo).
  *
  * Another player's page (`who`, step 9): no count of theirs, and the
  * preview reads only (InfoPopup's readOnly: no stepper, no Spend).
@@ -40,11 +41,11 @@
  * and the six as 44 px doors. */
 import React, { useEffect, useRef } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
-import { statInfo } from '../infoGlossary.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { broWeaponStats } from './broStats.js';
 import { statWindow } from './statWindow.jsx';
-import { combatPools, pointsWords, spendPool, weaponAttributes } from '@/game/combatHub.js';
+import { combatPools, pointsWords, spendPool, weaponAttributes, TREE_PAGES, treeSel } from '@/game/combatHub.js';
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { weaponProgress, weaponRoadmap } from '@/game/progression.js';
 import { prog3AtkMeta } from '../../../data/prog3.js';
 import { Ui2Stat, ui2RootClass } from '@/ui/kit/index.js';
@@ -78,13 +79,6 @@ function pageKey(S, cat, waiting) {
   return [p[cat], p.shared, sk.level || 0, Math.floor(sk.xp || 0), Object.keys(atk).map((k) => k + atk[k]).join(','), dps,
     /* a Spend that stayed waits for the worker, or for its time (statWindow's STAY_WAIT_MS): a tick a second */
     waiting ? Math.floor(Date.now() / 1000) : 0].join('|');
-}
-
-function explain(key, value) {
-  try {
-    const info = statInfo(key);
-    if (info) infoPopupBus.open({ title: info.title, body: info.body, note: info.note, stat: String(value) });
-  } catch (e) { /* no explainer: nothing opens */ }
 }
 
 /**
@@ -149,7 +143,8 @@ export function WeaponPage({ S, cat, who, live }) {
   );
   const dps = (
     <Ui2Stat v={val('dps')} k={say(SAY, 'combatHub.dps')} className="u2-raised u2-stat u2-wp-dps" data-weapon-dps={val('dps')}
-      aria-label={say(SAY, 'combatHub.dpsAria', { v: val('dps') })} onClick={() => explain('DPS', val('dps'))} />
+      aria-label={say(SAY, 'combatHub.dpsTreeAria', { v: val('dps') })}
+      onClick={() => dashboardPanelBus.go({ type: 'push', id: TREE_PAGES[0], sel: treeSel(cat, []), who: self ? undefined : who })} />
   );
   const support = (
     <div className="u2-wp-support" data-weapon-support="">

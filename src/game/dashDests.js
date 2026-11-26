@@ -70,6 +70,11 @@ export const FRAME_PAGES = Object.freeze({
   broSword: 'dashFrame.sword',
   broBow: 'dashFrame.bow',
   broStaff: 'dashFrame.staff',
+  /* v2.3.6686 (card UI2-combat PR 2): the Shared page under the hub; the stat tree's layers, one a
+     depth (src/game/combatHub.js TREE_PAGES), each titled DPS: Back returns layer by layer */
+  broShared: 'dashFrame.sharedAttributes',
+  broTree0: 'dashFrame.dps', broTree1: 'dashFrame.dps', broTree2: 'dashFrame.dps', broTree3: 'dashFrame.dps',
+  broTree4: 'dashFrame.dps', broTree5: 'dashFrame.dps', broTree6: 'dashFrame.dps',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:

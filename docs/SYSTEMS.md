@@ -330,7 +330,8 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/rendering/tables/`: preload
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
-- **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen)
+- **Files**: `src/game/`: assetUrl, assetTable
+- **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
 - **Traps**: `preload`
@@ -376,7 +377,9 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
-- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, broHub, screenZones, pending, combatHub, progression
+- **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
+- **Files**: `src/game/`: itemInspect
+- **Files**: `src/game/`: compare, equipProject, workspace
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

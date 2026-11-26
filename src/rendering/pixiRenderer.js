@@ -80,6 +80,7 @@ import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame tha
 import { PeerImpostors } from './peerImpostor.js';   /* v2.3.4885: one picture per standing player in a crowd (?onepic=1) */
 import { PlateLayers } from './plateLayer.js';   /* v2.3.4989: other players' name plates drawn after the figures (?platelayer=1) */
 import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
+import { markLoad } from '../game/loadTimes.js';   /* v2.3.6760: the bro's own preload steps in the Test panel's Loading times */
 installBatchIdsLean();   /* v2.3.5007: once, as the renderer loads (batchIdsLean.js) */
 installFieldLean();   /* v2.3.5007: and fieldLean.js */
 
@@ -109,6 +110,9 @@ try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /
    finished, so a step that never does can be named (window.__btPreloadSteps) */
 function _preStep(k) {
   try { const o = window.__btPreloadSteps || (window.__btPreloadSteps = {}); o[k] = Date.now(); } catch (e) { /* no window */ }
+  /* v2.3.6760: and into the Test panel's Loading times, which says what the
+     loading screen waited for after the pictures (game/loadTimes.js) */
+  if (k !== 'start') markLoad('bro-' + k);
 }
 export function preloadPlayerAssets() {
   _preStep('start');

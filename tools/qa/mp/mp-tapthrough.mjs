@@ -19,7 +19,7 @@
  *   2. a finger on that ✕ closes the window and the world map stays shut; the
  *      tap's click is eaten, and it was headed for the map's button;
  *   3. the dim round the window, tapped over the minimap, closes it, the map
- *      shut; "Got it" closes it with the Points tab still there and nothing
+ *      shut; "Got it" closes it with the Shared page still there and nothing
  *      opened;
  *   4. a NEW tap on the minimap 0.15 s after a ✕ closed the window opens the
  *      map: only the closing tap's own click is eaten;
@@ -51,23 +51,29 @@ const CLICK_LOG = "window.__qaClicks = []; document.addEventListener('DOMContent
   + " if (t && t.attributes) for (const a of t.attributes) { if (a.name.startsWith('data-')) { d += '[' + a.name + ']'; break; } }"
   + " window.__qaClicks.push(d); }, true); });";
 
-async function openPoints(P) {
-  const grid = P.page.locator('[data-prog3-grid]').first();
-  const tab = P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first();
+/* v2.3.6686 (card UI2-bro, tests part): the old Points tab is gone under the frame.  The same stat
+   window (InfoPopup) now opens from the Shared page's tiles ('shared') or a weapon's page ('sword'):
+   Menu, Bro, Combat, then the door.  A finger on a phone, a click on a computer. */
+const PAGE_OF = { shared: '[data-shared-page]', sword: '[data-weapon-page="sword"]' };
+async function openPoints(P, which = 'shared') {
+  const page = P.page.locator(PAGE_OF[which]).first();
   for (let i = 0; i < 3; i++) {
-    if (await grid.isVisible().catch(() => false)) return true;
-    if (!(await tab.isVisible().catch(() => false))) {
-      await H.openDest(P, 'Bro').catch(() => {});
-      await tab.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    if (await page.isVisible().catch(() => false)) return true;
+    await H.dashOpen(P, which === 'shared' ? 'broCombat' : 'broSword').catch(() => {});
+    if (which === 'shared') {
+      const door = P.page.locator('[data-combat-hub] [data-combat-door="shared"]').first();
+      await door.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+      const touch = await P.page.evaluate(() => navigator.maxTouchPoints > 0).catch(() => false);
+      if (touch) await door.tap({ timeout: 8000 }).catch(() => {}); else await door.click({ timeout: 8000 }).catch(() => {});
     }
-    await tab.click({ timeout: 8000 }).catch(() => {});
-    if (await grid.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false)) {
+    if (await page.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false)) {
       await P.page.waitForTimeout(600);
       return true;
     }
   }
   return false;
 }
+const SHARED_TILE = '[data-shared-attr="hp"]', WEAPON_TILE = '[data-weapon-attr="dmg"]';
 
 const mapOpen = (P) => P.page.evaluate(() => !!document.querySelector('[data-world-map-north]'));
 const shutMap = async (P) => {
@@ -134,10 +140,10 @@ async function phone(P, rec, errs, wsPort) {
   const zone = await H.readState(P, (S) => S.currentZone);
   rec.ok(`phone: in the world (zone "${zone}"), not the retired old map`, zone === 'wheel', { zone });
   await H.devOp(wsPort, 'kit', id, { what: 'levels' });
-  rec.ok('phone: the Points tab opens', await openPoints(P));
+  rec.ok('phone: the Shared page opens (Menu, Bro, Combat, Shared)', await openPoints(P));
 
   /* ── 1-2. the shared stat's ✕, over the minimap ── */
-  rec.ok('phone: a shared stat\'s window opens', await openStat(P, '[data-prog3-row^="shared:"]'));
+  rec.ok('phone: a shared stat\'s window opens', await openStat(P, SHARED_TILE));
   const g = await windowGeo(P);
   rec.ok('phone: its ✕ lies in the minimap\'s box (the bug\'s geometry) and is what a finger there touches',
     !!g && g.xOverMap && g.xHit === 'button[data-infopopup-x]', g);
@@ -154,7 +160,7 @@ async function phone(P, rec, errs, wsPort) {
   if (await mapOpen(P)) await shutMap(P);
 
   /* ── 3. the dim round the window, over the minimap; and "Got it" ── */
-  await openStat(P, '[data-prog3-row^="shared:"]');
+  await openStat(P, SHARED_TILE);
   const g2 = await windowGeo(P);
   rec.ok('phone: the dim round the window covers part of the minimap', !!(g2 && g2.dim) && g2.dimHit === 'div[data-infopopup]', g2);
   if (g2 && g2.dim) {
@@ -183,8 +189,8 @@ async function phone(P, rec, errs, wsPort) {
     seen = await clicksSeen(P);
     await tap(P, got);
     await P.page.waitForTimeout(1200);
-    const gridUp = await P.page.locator('[data-prog3-grid]').first().isVisible().catch(() => false);
-    rec.ok('phone: "Got it" closes the window, the Points tab still there, nothing opened and no click past',
+    const gridUp = await P.page.locator(PAGE_OF.shared).first().isVisible().catch(() => false);
+    rec.ok('phone: "Got it" closes the window, the Shared page still there, nothing opened and no click past',
       !(await popupUp(P)) && !(await mapOpen(P)) && gridUp && (await clicksSince(P, seen)).length === 0,
       { gridUp, past: await clicksSince(P, seen) });
   } else {
@@ -193,7 +199,7 @@ async function phone(P, rec, errs, wsPort) {
   }
 
   /* ── 4. a new tap, a moment later, is the player's ── */
-  await openStat(P, '[data-prog3-row^="shared:"]');
+  await openStat(P, SHARED_TILE);
   const g4 = await windowGeo(P);
   await tap(P, g4.x);
   await P.page.waitForTimeout(150);
@@ -203,8 +209,9 @@ async function phone(P, rec, errs, wsPort) {
   rec.ok('phone: a NEW tap on the minimap 0.15 s after the ✕ closed the window opens the world map', opened && !(await popupUp(P)));
   if (await mapOpen(P)) await shutMap(P);
 
-  /* ── 5. a weapon stat's taller window ── */
-  rec.ok('phone: a weapon stat\'s window opens', await openStat(P, '[data-prog3-row^="sword:"]'));
+  /* ── 5. a weapon stat's taller window (a weapon's page now: v2.3.6686) ── */
+  await openPoints(P, 'sword');
+  rec.ok('phone: a weapon stat\'s window opens', await openStat(P, WEAPON_TILE));
   const g5 = await windowGeo(P);
   seen = await clicksSeen(P);
   await tap(P, g5.x);
@@ -257,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const id = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'kit', id, { what: 'levels' });
       await openPoints(P);
-      await openStat(P, '[data-prog3-row^="shared:"]');
+      await openStat(P, SHARED_TILE);
       const g = await windowGeo(P);
       await tap(P, g.x);
       const opened = await P.page.waitForFunction(() => !!document.querySelector('[data-world-map-north]'), null, { timeout: 5000 })
@@ -279,8 +286,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1500);
       const id = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'kit', id, { what: 'levels' });
-      rec.ok('computer: the Points tab opens', await openPoints(P));
-      rec.ok('computer: a shared stat\'s window opens', await openStat(P, '[data-prog3-row^="shared:"]', true));
+      rec.ok('computer: the Shared page opens (Menu, Bro, Combat, Shared)', await openPoints(P));
+      rec.ok('computer: a shared stat\'s window opens', await openStat(P, SHARED_TILE, true));
       const g = await windowGeo(P);
       rec.ok('computer: its ✕ lies in the minimap\'s box, and a click there hits the ✕, not the map\'s button',
         !!g && g.xOverMap && g.xHit === 'button[data-infopopup-x]', g);

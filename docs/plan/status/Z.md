@@ -1,40 +1,29 @@
 card: Z
-branch: claude/plan-z-sitting-67
-prs: 3 lines listed (6 PRs); this PR (tag 5660, Z's block 5660 to 5679), the last line
+branch: claude/plan-z-sitting-68
+prs: 4 lines listed (12 PRs); this PR (tag 5661, Z's block 5660 to 5679), the last line
 state: ready
 
-## Done (sitting 67, main ac35fd67; the lighter review: no server/src, wire, money or login in any)
-- Heads by ls-remote as the orchestrator listed, none moved (the frame's
-  branch claude/plan-ui2-7-frame at 265140ff, not listed).
-- Step 3 and a bug read (two lanes, GR by hand): files and tags the cards'.
-  #2363: ONE bug in behaviour (debts PAD (67)): HELD. #2368, the UI2
-  documents and GR's own change: no bug.
-- Rehearsed main + #2363 + #2366 + #2368 + #2361, the generated tables
-  mended (`docs/plan/debts.md` PAD and GR (67)): tree
-  a3993e4b8bb7b98fb1b8c583c3749a8381bb8a60, rebuilt from the remote by two
-  helpers to the same hash. gatekeeper.mjs: precheck 0 FAIL, switches-thrown
-  --whole (94 switches), claims-gain --whole, build, questline 187/187,
-  heldsweep's sample 6/6: ALL GREEN.
-- Phone on that tree (helpers): padskin 43/43, camfollow 11/11, uikit
-  23/23, weaponswap 46/46, shieldtoggle 13/13, contextbuttons 27/27,
-  membudget 12/12, twobuttons 102/118 (16 red, 1 skip; PAD's word: 18,
-  main's; helper B's FAIL lines and main's run never came: judged without).
-- What lands (main + #2368 + #2366, UI2.md the kit's): tree
-  b5614c3cea250b6638f69418f9e538bec3a8ded4: precheck 0 FAIL, build PASS.
-## The list: merge in this order, "Create a merge commit"
-1 #2368 (UI2 kit 6680; 31ce7304, base main; one merge base 06a11e09).
-  Deploys nothing. It lands unchanged, so claude/plan-ui2-7-frame (stacked
-  on 31ce7304) stays a clean base: one merge base once it lands.
-2 #2366 landing #2365, #2364, #2362 (UI2 documents 6405..6402; 46e88b30)
-  AFTER A MEND: retarget #2366 to main; merge main into
-  claude/plan-ui2-6-master; its one conflict, docs/plan/status/UI2.md:
-  keep main's (the kit's) whole (`git checkout --theirs`); precheck; push.
-  Its head's tree must be b5614c3cea250b6638f69418f9e538bec3a8ded4 (and
-  main's after it lands). Documents only; deploys nothing; its CLAUDE.md
-  line (the dashboard's pointer to UI_MASTER_SPEC.md) seen and right.
-3 Z (5660, a draft: mark it ready first).
-## Held / To 68
-- #2363 with #2354 (PAD): the Skate button is not redrawn when Charge
-  comes or goes (RideButton.jsx:95/:123); the mend in debts PAD (67).
-- #2361 (GR): carries #2354, lands after #2363; its mend in debts GR (67).
-  Found: debts.md PAD, GR, UI2 (67).
+## Done (sitting 68, main d42e48ac; the lighter review: no server/src, wire, money, login, .github or wrangler.toml in any)
+- Heads by ls-remote, all twelve as the orchestrator listed. Bug read by
+  three lanes on each PR's own landing diff: no bug in behaviour; the
+  hold of 67 (RideButton's redraw) mended at RideButton.jsx:101 with
+  mp-padskin 5b/5c. Unsure findings: UI2 (68) in debts.md, next jobs.
+- Rehearsed the whole order with every mend made (scratch, the trees
+  below): gatekeeper.mjs on the final tree
+  0837fc090270e6c3454319a56f5e533406459786: precheck 0 FAIL,
+  switches-thrown --whole (94), claims-gain --whole, build, questline
+  187/187 all PASS; heldsweep's sample 5/6 then 6/6 (main's own ride
+  noise, red on main too). Precheck on the camera's mended head 0 FAIL.
+- Phone: ui2bro 27/27, ui2combat 51/51, boards 37/37, oneband 55/56
+  (main's sideways fit), onboarding 4/5 then 5/5 (main's flake) on
+  86ae15a1; twobuttons 93/112 (main's families, the run cut short by a
+  closed browser) on e1467159; on the final tree camfollow 11/11,
+  contextbuttons 26/27 (5, mode 4's chop: red on main too).
+## The list (merge commits; each mend by the orchestrator, precheck before each push)
+1 PAD: #2354, #2363, #2378.
+2 The camera #2361 after PAD, with GR (67)'s mend: tree 5ab1088e.
+3 UI2: #2369, #2370, #2374, #2376, #2377, #2373, #2375, #2371.
+4 Z (5661, a draft: mark it ready first).
+The whole list, heads, mends and trees: docs/plan/log.md, sitting 68.
+## Found
+- debts.md PAD (68), UI2 (68), Found (68).
