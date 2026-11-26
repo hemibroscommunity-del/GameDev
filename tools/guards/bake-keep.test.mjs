@@ -10,8 +10,8 @@
  *      each input (the body, the belt, each worn piece), of a body from the
  *      look's numbers, one byte of any input's pixels, the rod on a fish
  *      frame, the bake's version;
- *   2. what is not keyed does not move it (the reply's id, the QA cuts, the
- *      address of pixels that are the same pixels);
+ *   2. what is not keyed does not move it (the reply's id, the QA cuts,
+ *      another address of the same file); a file that did not read: no key;
  *   3. a field nobody listed makes NO key (the job is baked): on the job, an
  *      input, a worn entry, a look;
  *   4. every field the page posts in a job (entityRenderer.js `_runBake`,
@@ -19,8 +19,10 @@
  *      gearNumbers.js gearInput) is one of the lists -- read from those files;
  *   5. the store's rules: what is kept reads back whole (keptOk), the cap
  *      lets go of the least lately used first (evictPlan), `?bakekeep=0`;
- *   6. the worker answers a kept job through keepReady/keptJob, and bakes
- *      whatever has no key -- read from maskedBakeWorker.js.
+ *   6. the worker makes the key first (takeJob > keyFirst) and answers a
+ *      kept job from the store; a job with no key, or not kept, is baked, and
+ *      kept only when every sheet it drew is the file its key read -- read
+ *      from maskedBakeWorker.js.
  *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-26:
  *   1. bakeKeep.js keyParts: delete `val('worn' + i + '.k', w.k);`  -> FAIL 1
@@ -67,8 +69,11 @@ const lookJob = () => ({
   dilate: 6, poseInfo: { pose: 'stand', dir: 'east', frameIdx: 0 }, ds: 2,
 });
 let rodMask = new Uint8Array([1, 0, 1, 1]);
+/* a sheet's file by its address: two addresses of the same file read the same */
+const FILES = { 'blob:x': new Uint8Array([9, 9, 9, 1]), 'blob:y': new Uint8Array([9, 9, 9, 1]), 'blob:z': new Uint8Array([9, 9, 9, 2]) };
 const reader = (build) => ({
-  pixels: (i) => { const s = i.bm || i.ub || i.lb; return s ? s.px : null; },
+  pixels: (i) => { const s = i.bm || i.lb; return s ? s.px : null; },
+  file: (u) => FILES[u] || null,
   look: (l) => ({ rgba: px(12, 9 + (l.row[0] || 0)), pm: px(12, 10 + (l.row[0] || 0)) }),
   rod: () => rodMask,
   build: build == null ? 'v1|/assets/maskedBakeWorker-abc.js|ua' : build,
@@ -96,8 +101,12 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
   ];
   for (const who of ['body', 'belt', 'worn0', 'worn1']) {
     for (const f of ['tx', 'ty', 'fw', 'fh', 'ow', 'oh']) moves.push([who + '.' + f, (j) => { const i = who === 'body' ? j.body : who === 'belt' ? j.belt : j.worn[+who.slice(4)].inp; i[f] += 1; }]);
-    moves.push([who + ': one byte of its pixels', (j) => { const i = who === 'body' ? j.body : who === 'belt' ? j.belt : j.worn[+who.slice(4)].inp; const s = i.bm || i.ub; s.px = s.px.slice(); s.px[17] ^= 1; }]);
+    if (who !== 'worn1') moves.push([who + ': one byte of its pixels', (j) => { const i = who === 'body' ? j.body : who === 'belt' ? j.belt : j.worn[+who.slice(4)].inp; const s = i.bm; s.px = s.px.slice(); s.px[17] ^= 1; }]);
   }
+  /* a sheet by address: its file and the rectangle in it */
+  moves.push(['worn1: another file', (j) => { j.worn[1].inp.url = 'blob:z'; }]);
+  moves.push(['worn1.sx', (j) => { j.worn[1].inp.sx += 1; }]);
+  moves.push(['worn1.sy', (j) => { j.worn[1].inp.sy += 1; }]);
   for (const [name, move] of moves) {
     const j = bitmapJob();
     const k = move ? await keyOf((move(j), j)) : await keyOf(j, 'v2|/assets/maskedBakeWorker-def.js|ua');
@@ -126,11 +135,13 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
 /* 2. what is not keyed does not move it */
 {
   const base = await keyOf(bitmapJob());
-  const j1 = bitmapJob(); j1.id = 99; j1._qa = [{ same: true }]; j1._urlRead = true; j1._sheets = [];
+  const j1 = bitmapJob(); j1.id = 99; j1._qa = [{ same: true }]; j1._urlRead = true; j1._sheets = []; j1._keyTried = true; j1._files = new Map();
   j1.body.qaBm = { px: px(12, 77) };
   check('2. the id, the QA cuts and the worker\'s own marks do not move the key', (await keyOf(j1)) === base);
-  const j2 = bitmapJob(); j2.worn[1].inp.url = 'blob:y'; j2.worn[1].inp.sx = 50;
-  check('2. the address of the same pixels does not move the key (they are read)', (await keyOf(j2)) === base);
+  const j2 = bitmapJob(); j2.worn[1].inp.url = 'blob:y';
+  check('2. another address of the same file does not move the key (the file is read)', (await keyOf(j2)) === base);
+  const j3 = bitmapJob(); j3.worn[1].inp.url = 'blob:none';
+  check('2. an address whose file did not read: no key', K.keyParts(j3, reader()) === null);
 }
 
 /* 3. a field nobody listed makes no key */
@@ -223,8 +234,10 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
 /* 6. the worker's road */
 {
   const wk = read('src/rendering/maskedBakeWorker.js');
-  check('6. runJob answers through the keep when it is ready', /function runJob\(j\) \{[\s\S]{0,200}if \(keepReady\(\)\) \{ keptJob\(j\); return; \}/.test(wk));
-  check('6. a job with no key, or not kept, is baked (and kept only with a key)', /const b = j\.look \? lookNow\(j, !!key\) : bakeNow\(j, !!key\);/.test(wk) && /if \(key && b\.kept\)/.test(wk));
+  check('6. takeJob makes the key first, before any sheet is read', /function takeJob\(j\) \{[\s\S]{0,400}if \(!j\._keyTried && keepReady\(\)\) \{ j\._keyTried = true; keyFirst\(j\); return; \}/.test(wk));
+  check('6. a kept job is answered from the store (fromKept, postReply)', /async function keyFirst\(j\)[\s\S]*?const v = await keep\.store\.get\(key\);[\s\S]*?out = fromKept\(j, v\);[\s\S]*?postReply\(j, out\);/.test(wk));
+  check('6. a job with a key and not kept is baked, then kept', /const b = j\.look \? lookNow\(j, !!key\) : bakeNow\(j, !!key\);/.test(wk) && /if \(key && b\.kept && keepReady\(\)\) keep\.store\.put\(key, b\.kept\)/.test(wk));
+  check('6. kept only when the sheet drawn is the file the key read (urlInputs drops the key)', /if \(!want \|\| !got \|\| want\.length !== got\.length \|\| want\.some\(\(v, k\) => v !== got\[k\]\)\) j\._key = null;/.test(wk));
   check('6. the keep is off until the page says (`keep.on` starts false)', /const keep = \{ on: false,/.test(wk));
   check('6. the worker keeps its store itself (IndexedDB from the worker)', /self\.indexedDB/.test(wk) && !/indexedDB/.test(read('src/rendering/systems/entityRenderer.js')));
 }

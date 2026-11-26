@@ -21,10 +21,13 @@
  * (tools/guards/bake-keep.test.mjs); the worker and the page import it.
  *
  * THE KEY is made from the job AS THE WORKER RECEIVES IT, every field of it:
- *   - an input (the body, the belt, each worn piece) by its PIXELS as the
- *     bake draws them (the worker reads the rectangle it would draw: a cut
- *     bitmap, a sheet by its address, a frame of the gear's numbers -- all
- *     the same to the key) and its placing (tx, ty, fw, fh, ow, oh);
+ *   - an input (the body, the belt, each worn piece) by what the bake
+ *     draws: a sheet by its address by the digest of its FILE's bytes (as
+ *     fetched: the worker decodes that file) and the rectangle in it; a cut
+ *     bitmap or a frame of the gear's numbers by its PIXELS; and its placing
+ *     (tx, ty, fw, fh, ow, oh).  A file is digested, not its picture read
+ *     back: measured in the game on the test box, reading the pictures back
+ *     cost about 2 s a job, a busy graphics chip's queue (the spec);
  *   - a body drawn from the look's numbers by the frame those numbers make
  *     in the look's colours (lookFrameRGBA: what lookBake.js reads) and its
  *     cell;
@@ -83,10 +86,13 @@ export const JOB_FIELDS = Object.freeze({
   _urlRead: 'none',      /* the worker's own mark: its addresses read */
   _sheets: 'none',       /* the worker's own list: the sheets it holds */
   _qa: 'none',           /* QA: the address read against the page's cut */
+  _keyTried: 'none', _key: 'none', _verifyOut: 'none', _files: 'none',   /* the keep's own marks on a job */
 });
 export const INPUT_FIELDS = Object.freeze({
-  bm: 'pixels', ub: 'pixels', lb: 'pixels',   /* the picture drawn: cut, a sheet by address, from numbers */
-  url: 'pixels', sx: 'pixels', sy: 'pixels',  /* where a sheet's rectangle is */
+  bm: 'pixels', lb: 'pixels',                 /* the picture drawn: cut on the page, from the gear's numbers */
+  url: 'file',                                /* a sheet by address: its FILE's bytes are read (read.file) */
+  ub: 'file',                                 /* ...and decoded from that file by the worker */
+  sx: 'key', sy: 'key',                       /* where in that sheet */
   look: 'pixels', cell: 'pixels',             /* where a frame of the gear's numbers is */
   tx: 'key', ty: 'key', fw: 'key', fh: 'key', ow: 'key', oh: 'key',
   qaBm: 'none',          /* QA: the page's own cut, compared, never drawn */
@@ -123,6 +129,7 @@ const asBytes = (b) => (b instanceof Uint8Array ? b : new Uint8Array(b.buffer, b
 /**
  * The parts of a job's key, in order, or null (no key: bake).
  *   read.pixels(inp)  -> the input's pixels as the bake draws them (RGBA), or null
+ *   read.file(url)    -> the digest of a sheet's file, as fetched, or null
  *   read.look(look)   -> { rgba, pm } of a body from the look's numbers, or null
  *   read.rod()        -> the fish rod's mask as bytes, or null
  *   read.build        -> the bake's version text (KEEP_V, the script, the browser)
@@ -136,10 +143,20 @@ export function keyParts(j, read) {
   const input = (name, inp) => {
     if (inp == null) { val(name, null); return true; }
     if (!known(inp, INPUT_FIELDS)) return false;
-    const px = read.pixels(inp);
-    if (!px) return false;   /* nothing to draw is not a picture: bake */
+    if (inp.url != null) {
+      /* a sheet by address: the digest of the file's own bytes, and the
+         rectangle in it -- no picture read back (on a phone, or a busy
+         graphics chip, a read-back waits behind the frame being drawn) */
+      const fb = read.file(inp.url);
+      if (!fb) return false;
+      val(name + '.rect', [inp.sx, inp.sy]);
+      add(name + '.file', fb);
+    } else {
+      const px = read.pixels(inp);
+      if (!px) return false;   /* nothing to draw is not a picture: bake */
+      add(name + '.px', px);
+    }
     val(name + '.at', [inp.tx, inp.ty, inp.fw, inp.fh, inp.ow, inp.oh]);
-    add(name + '.px', px);
     return true;
   };
   if (j.body != null && j.look != null) return null;   /* never both: not a job this knows */
