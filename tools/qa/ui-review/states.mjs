@@ -876,6 +876,16 @@ export const STATES = [
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broSword' }); b.go({ type: 'push', id: 'broTree0', sel: 'sword|' }); b.go({ type: 'push', id: 'broTree1', sel: 'sword|perSwing' }); b.go({ type: 'push', id: 'broTree2', sel: 'sword|perSwing/avg' }); b.go({ type: 'push', id: 'broTree3', sel: 'sword|perSwing/avg/least' }); b.go({ type: 'push', id: 'broTree4', sel: 'sword|perSwing/avg/least/hitBase' }); }); } },
   { id: 'ui2-combat-shared', group: 'Dashboard', title: 'Combat: Shared Attributes', about: 'The hub\'s Shared door (\u2039 Combat, Shared Attributes, Menu, Close): Max HP the headline (raised: a tap explains it), Defense beside it, then "Attributes" with the shared points to spend and the seven (Max HP, Defense, Max Mana, Stamina, Dodge, Move speed, Resist), four and three; a tap opens the preview on its Shared tab. No effective-health number.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broShared' }); }); } },
+  /* v2.3.6687: the one item page (card UI2-gear PR 1): Gear's worn sword, its Details */
+  { id: 'dash-item-page', group: 'Dashboard', title: 'The one item page', about: 'Gear\'s picked sword, its picture and name pressed (the "\u203a" door): the one item page on Gear\'s stack under the header [\u2039 Gear] Sword [Menu] [\u2715]; the picture in its grade\'s outline with its stars, the name, the grade\'s word and "Worn"; the facts three across (Damage, DPS, Attack speed, Range, Hardness...); Unequip full width at the foot with Pin beside it.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
+      await wait(P, 400);
+      const e = await tapSel(P, '[data-gear-cell="sword"]');
+      if (e) return e;
+      await wait(P, 400);
+      return tapSel(P, '[data-gear-details]');
+    } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the

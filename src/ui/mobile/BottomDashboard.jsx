@@ -24,6 +24,7 @@ import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, navButtonSize, navRowFills } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
+import { ItemPage, itemPageTitle } from './dash/ItemPage.jsx';   /* v2.3.6687: the one item page, a page of Gear's stack (card UI2-gear) */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { OneBandColumns } from './dash/OneBandColumns.jsx';    /* v2.3.4072 */
 import { oneBandActive } from '../oneBand.js';                  /* v2.3.4072 */
@@ -520,6 +521,7 @@ const PANELS = {
      in old sessions don't render a blank sheet. */
   bag:          { title: say(SAY, 'bottomDashboard.titleBag'),         Component: InventoryPanel },
   hero:         { title: say(SAY, 'bottomDashboard.titleBro'),         Component: HeroExpanded },   /* v2.3.4172: the Bro page */
+  item:         { get title() { return itemPageTitle(); }, Component: ItemPage },   /* v2.3.6687: the one item page (dash/ItemPage.jsx; card UI2-gear) */
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
