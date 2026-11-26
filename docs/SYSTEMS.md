@@ -375,6 +375,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 
 - **Files**: `src/rendering/tables/`: ui
 - **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests
+- **Files**: `src/game/`: itemInspect
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

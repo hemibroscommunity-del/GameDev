@@ -5,23 +5,26 @@ import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.4233: a "?" pie
 import { BagTile, GEAR_SEL_RING, GEAR_SEL_BLUE, GEAR_SEL_TINT } from './InventoryPanel.jsx';
 import { GEAR_FILTER_GROUPS, GEAR_FILTERS, GEAR_CELLS, gearCell } from './itemCategory.js';
 import { gearTabBus } from './gearTabBus.js';
+import { cellContent, HAND_FIELD } from './gearCells.js';   /* v2.3.6687: the nine cells' reader, shared with the one item page (card UI2-gear) */
+import { openItemPage } from './itemPageOpen.js';   /* v2.3.6687: Gear's Details opens the one item page (card UI2-gear) */
+import { ui2FrameOn } from '../ui2Frame.js';
+import { SAY as SAY_ITEM } from '@/data/say/itemInspect.js';
+import { say } from '@/game/say.js';
 import { itemActionList, runItemAction, entryTarget } from './itemActions.js';
 import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
-import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
+import { weaponSlotFor } from './equipActions.js';
 import { weaponRows, shieldRows, armourRows, gainRows, charLevel } from './gearStats.js';
-import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
+import { getEquippedSlots, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4191: the overview's full-body bro */
 import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4191: the item card's stat pictures, the Points window's own */
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
-import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX, toDisplayHp } from '../../../data/gameSystems.js';
-import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
+import { gemCutKey, gemIcon } from '@/data/gems.js';
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4151: the coins beside the filter */
 import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' badge says a big purse short, as the top bar does */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151: a "?" piece's mark, as on its card */
-import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 import { beforeDraw } from '@/game/framePacer.js';   /* v2.3.6289: the bag's edges read at the top of the frame (card HB2 PR 10) */
 import { AFTER_PAINT } from '@/ui/afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2); v2.3.6283: the tab's redraw beside the game's (PR 4) */
 
@@ -136,7 +139,6 @@ function groupSpare(entries) {
 /* v2.3.4273: the card's ✕ button, its side, and the card width under which the head's picture steps aside for it */
 const CARD_X_WIDE_AT = 150;   /* a card this wide (a computer, a tablet) has the room for the full 36 px button and its head room */
 
-const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
 /* what each slot is, in one plain sentence */
 const SLOT_SENTENCE = {
@@ -180,64 +182,6 @@ function useMeasure() {
 
 /* The equipped piece in a cell, as { item, icon, quality, name, target, rows }.
    `target` is what the cell's Unequip acts on (null: no button). */
-function cellContent(R, id, slots) {
-  const c = gearCell(id);
-  if (c.field) {
-    const wpn = R[c.field] || null;
-    return {
-      item: wpn, icon: wpn ? wpnIconSrc(R, wpn) : null, quality: wpn && wpn.quality,
-      name: wpn ? weaponDisplayName(wpn) : '',
-      unequip: wpn ? () => unequipWeaponSlot(c.active === 'melee' ? 'weapon' : c.active) : null,
-      rows: wpn ? weaponRows(R, wpn) : [],
-    };
-  }
-  const sl = slots.find((x) => x.slot === id);
-  if (id === 'shield') {
-    return { item: R.shield || null, icon: sl && sl.iconSrc, quality: R.shield && R.shield.quality,
-      name: (R.shield && R.shield.name) || 'Shield', unequip: R.shield ? () => unequipShieldDirect() : null,
-      rows: shieldRows(R.shield) };
-  }
-  if (id === 'chest' || id === 'legs') {
-    const piece = id === 'chest' ? R.armor : R.legsArmor;
-    const gearId = getEquip(id);
-    /* v2.3.4199, the owner: "don't show the shirt in the chest slot. It's too
-       confusing ... It's intended for torso armor." The base shirt is a
-       cosmetic gear id (equip.shirt, no armour stat), so the chest cell is
-       worn only by the Iron-Torso-style piece or a chest gear layer. */
-    const worn = id === 'chest'
-      ? !!(piece || (sl && sl.item && sl.item.gearChestId && sl.item.gearChestId !== 'none'))
-      : !!(sl && sl.item);
-    const unequip = piece ? () => (id === 'chest' ? unequipArmorDirect() : unequipLegsDirect())
-      : (gearId && gearId !== 'none') ? () => unequipGearDirect(id) : null;
-    return { item: worn ? (piece || sl.item) : null, icon: worn ? (sl && sl.iconSrc) : null, quality: piece && piece.quality,
-      name: (piece && piece.name) || (id === 'chest' ? 'Chest' : 'Legs'), unequip,
-      rows: piece ? armourRows(piece, id) : [] };
-  }
-  if (id === 'cape') {
-    const it = sl && sl.item;
-    return { item: it || null, icon: sl && sl.iconSrc, quality: null, name: it ? it.name : 'Cape',
-      unequip: it ? () => {
-        const S = getState();
-        try { if (S && S.channel) act('cape_equip', { worn: false }); } catch (e) { /* offline */ }   /* v2.3.5191: through the action door (actions.js) */
-      } : null,
-      rows: [] };
-  }
-  if (id === 'amulet') {
-    /* v2.3.4151: NO Unequip -- the worker's unequip_request for the amulet
-       slot nulls it with no bag to put it in (gear.js _handleUnequipRequest:
-       "armor/shield/amulet just null out"), so the button would destroy it */
-    const card = getEquipContribs(R).cards.amulet;
-    return { item: R.amulet || null, icon: sl && sl.iconSrc, quality: null,
-      name: (R.amulet && R.amulet.name) || 'Amulet', unequip: null,
-      rows: card ? card.rows.map((r) => ({ k: r.k, v: r.v })) : [] };
-  }
-  /* gem: the gems set in the weapon in your hand */
-  const hand = R[HAND_FIELD[R.activeSlot || 'melee']] || null;
-  const els = hand ? [hand.element1, hand.element2].filter(Boolean) : [];
-  return { item: els.length ? { els, hand } : null, icon: null, els, hand, quality: null,
-    name: els.length ? els.map((e) => gemElementName(e) + ' Gem').join(' + ') : 'Gem', unequip: null, rows: [] };
-}
-
 const actBtn = (tone, off) => ({
   width: '100%', minHeight: 32, padding: '4px 4px', boxSizing: 'border-box',
   fontSize: 12, fontWeight: 800, fontFamily: 'inherit', borderRadius: 8, cursor: off ? 'default' : 'pointer',
@@ -503,6 +447,28 @@ const GearCellView = ({ c, R, slots, selCell, hand, t }) => {
         <img src={pic} alt="" draggable={false} style={{ width: filled ? '94%' : '78%', height: filled ? '94%' : '78%', objectFit: 'contain', opacity: filled ? 1 : 0.3, pointerEvents: 'none' }} />
       )}
     </div>
+  );
+};
+
+/* ═══ v2.3.6687: GEAR'S DOOR TO THE ONE ITEM PAGE (card UI2-gear PR 1) ═══
+   Under the new frame (?ui2=0 the way back) a picked item's picture and
+   name are ONE button, "Details of <name>": it opens the one item page
+   (dash/ItemPage.jsx) on Gear's stack, Back returning here with the pick
+   kept.  The card's foot is left as it was (one gold button, mp-geartab's
+   measure); the door's mark is the "›" in the head's corner, drawn over
+   the room the ✕ already keeps, so nothing in the card moves.  PR 2's
+   summary carries the Details button of the specification's part 5. */
+const HeadBox = ({ door, name, style, children }) => {
+  if (!door) return <div style={style}>{children}</div>;
+  return (
+    <button type="button" data-gear-details="" aria-label={say(SAY_ITEM, 'itemInspect.detailsAria', { name: name || '' })}
+      onClick={(e) => { e.stopPropagation(); door(); }}
+      style={{ ...style, position: 'relative', width: '100%', boxSizing: 'border-box', margin: 0, padding: 0, ...(style && style.paddingRight != null ? { paddingRight: style.paddingRight } : null),
+        border: 0, background: 'none', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer',
+        touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}>
+      {children}
+      <span aria-hidden="true" data-gear-details-mark="" style={{ position: 'absolute', right: 2, bottom: -2, fontSize: 18, fontWeight: 900, lineHeight: 1, color: COL.accent, pointerEvents: 'none' }}>{'›'}</span>
+    </button>
   );
 };
 
@@ -841,7 +807,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const head = (pic, name, quality, opts) => {
     const o = opts || {};
     return (
-      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: cardXRoom ? cardX + 4 : 5 } : null) }}>
+      <HeadBox door={o.door} name={name} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: cardXRoom ? cardX + 4 : 5 } : null) }}>
         {pic}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nameEl(name, quality)}
@@ -852,7 +818,7 @@ export const GearTab = ({ R: Rin, desk }) => {
             {o.extra && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.extra}</span>}
           </div>
         </div>
-      </div>
+      </HeadBox>
     );
   };
   /* v2.3.4191: the owner's "basic number line hardness 0/5" -- the word,
@@ -886,6 +852,7 @@ export const GearTab = ({ R: Rin, desk }) => {
 
   let footer = null;
   let body;
+  const frameDoors = (() => { try { return ui2FrameOn(); } catch (e) { return false; } })();   /* v2.3.6687: the door to the one item page, under the new frame only */
   let moreList = [];
   let morePress = null;
   if (selCell) {
@@ -907,7 +874,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           </>
         ) : ct.item ? (
           <>
-            {head(cellPic, ct.name, ct.quality)}
+            {head(cellPic, ct.name, ct.quality, { door: frameDoors && Rin ? () => openItemPage({ from: 'gear', R: Rin, cell: selCell }) : null })}
             {!short && hardLine(c.field ? hardOf(ct.item) : null)}
             {ct.rows.length > 0 ? <StatPills rows={ct.rows} w={iw} line={short} /> : sentence(SLOT_SENTENCE[selCell], null, short ? 1 : 2)}
           </>
@@ -992,6 +959,7 @@ export const GearTab = ({ R: Rin, desk }) => {
         {head(art(card.thumb, card.glyph, hidden), name, q, {
           hidden, info: card.info, infoColor: card.infoColor,
           qty: selEntry.count || 0,
+          door: frameDoors && Rin ? () => openItemPage({ from: 'gear', R: Rin, entry: selEntry }) : null,
         })}
         {!short && hardLine(!hidden && selEntry.kind === 'stashWeapon' ? hardOf(o) : null)}
         {rows && rows.length > 0
