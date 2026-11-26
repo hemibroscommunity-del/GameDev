@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "06a11e099f7cfa453d9a5ca4dbdb31ec249a8141",
+  "tree": "326fb530c378701d7a62b12eb392838520390251",
+  "committedAt": "2026-11-25T16:25:31-08:00",
+  "subject": "Merge pull request #2359 from hemibroscommunity-del/claude/plan-en-fishsword",
+  "files": 8639,
+  "bytes": 969610090,
+  "listingSha256": "f0cf4cae09afe2129320392a8a891230c6359edba90d1be67a94d521f61a59ba",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

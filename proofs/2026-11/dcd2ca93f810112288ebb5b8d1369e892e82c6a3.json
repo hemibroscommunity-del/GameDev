@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dcd2ca93f810112288ebb5b8d1369e892e82c6a3",
+  "tree": "e219d3e5e22722b18dcf67a12917a321fddee412",
+  "committedAt": "2026-11-25T16:25:53-08:00",
+  "subject": "Merge pull request #2357 from hemibroscommunity-del/claude/plan-ct-24-bowspecial",
+  "files": 8644,
+  "bytes": 969709324,
+  "listingSha256": "1f62bc30d7d99e21d21a4c98da56eb2490f937f189a945c92fc4c2c6a57712ed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
