@@ -64,6 +64,8 @@ import { pageDropDue } from './artHolds.js';                    /* v2.3.4416: a 
 import { drawSourceRect } from './paletteDraw.js';              /* v2.3.3190: a page kept as colour numbers, read on the CPU */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: ...and drawn so */
 import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
+import { assetUrl } from '../game/assetUrl.js';                  /* v2.3.6744: each sheet and page at its file's version (card KEEP) */
+import { loadSheetPage, freeSheetPage } from './sheetPage.js';   /* v2.3.6744: ...the page at its OWN version, not the sheet's */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -187,8 +189,14 @@ function index() {
   /* v2.3.2999: which placing made them (placing.js PLACING, or PLACING_V2
      with `?placing=2`) */
   wheelObjectStats.version = o.version || null;
+  /* v2.3.6744: each sheet (x.json) and its page (x.png) at its OWN file's
+     version (assetUrl, card KEEP PR 3c), so /world/objects/ can be kept a
+     year (public/_headers): a changed page is a new address.  The page is
+     asked for by its own address, never the sheet's with its query copied
+     on (png8Worker.js, sheetPage.js) */
   _idx = { src: o, o, n, cols, rows, start: count, items, pk, page, w, h, ax, reach, scl, frame, maxH, maxHalfW, pageNames, pageMB, palette,
-    sheets: man.atlases.map((a) => BASE + a.sheet) };
+    sheets: man.atlases.map((a) => assetUrl(BASE + a.sheet)),
+    images: man.atlases.map((a) => assetUrl(BASE + (a.image || a.sheet.replace(/\.json$/, '.png')))) };
   return _idx;
 }
 function cellOf(x, y, cols, rows) {
@@ -248,17 +256,21 @@ function stopPngWorker() {
   for (const done of _pwWait.values()) done({ ok: false, error: 'stopped' });
   _pwWait.clear();
 }
-function readSheet(url) {
+/* v2.3.6744: `image`, the page's own address with its version (card KEEP) */
+function readSheet(url, image) {
   const w = pngWorker();
   if (!w) return Promise.resolve(null);
   const id = ++_pwSeq;
   return new Promise((resolve) => {
     _pwWait.set(id, resolve);
-    try { w.postMessage({ id, url, bases: _basesWay() }); } catch (e) { _pwWait.delete(id); resolve(null); }
+    try {
+      if (image) w.postMessage({ pageOf: id, image });   /* v2.3.6744: first, the page's own address (png8Worker.js) */
+      w.postMessage({ id, url, bases: _basesWay() });
+    } catch (e) { _pwWait.delete(id); resolve(null); }
   });
 }
-async function loadPalettePage(url) {
-  const m = await readSheet(url);
+async function loadPalettePage(url, image) {
+  const m = await readSheet(url, image);
   if (!m || !m.ok) return null;
   const rgba = new Uint8Array(1024);
   for (let c = 0; c < m.n; c++) {
@@ -398,15 +410,21 @@ function loadPage(ix, k) {
   rec = { state: 'loading', sheet: null, wanted: performance.now(), p: null, gen: _gen, palette: false, picture: false, t0: performance.now() };
   _pages.set(k, rec);
   _loading++;
-  const url = ix.sheets[k];
+  const url = ix.sheets[k], image = ix.images[k];
   /* a prefix of their own for the frames Pixi files in its cache: bare, a
      frame called 'stone-1' or 'barrel-2' would take (and, unloaded, take
-     away) any other sheet's frame of that name */
-  const asPicture = () => { rec.picture = true; return Assets.load({ src: url, data: { cachePrefix: CACHE_PREFIX } }); };
+     away) any other sheet's frame of that name.  v2.3.6744: the page first,
+     at its own version (sheetPage.js), handed to the sheet's load; the
+     sheet's unload lets it go as before (freeSheet) */
+  const asPicture = () => {
+    rec.picture = true;
+    return loadSheetPage(image).then((texture) => Assets.load({ src: url, data: { cachePrefix: CACHE_PREFIX, texture } })
+      .catch((e) => { freeSheetPage(image); throw e; }));
+  };
   /* v2.3.3190: as colour numbers where the game draws them so (above) */
   const st = paletteStats();
   const load = paletteOn() && ix.palette[k]
-    ? loadPalettePage(url).catch(() => null).then((sheet) => {
+    ? loadPalettePage(url, image).catch(() => null).then((sheet) => {
       if (sheet) { rec.palette = true; st.pages++; return sheet; }
       /* (let go while it was read -- the Wheel left, a rebuild: nothing to load) */
       if (_pages.get(k) !== rec || rec.gen !== _gen) return null;
