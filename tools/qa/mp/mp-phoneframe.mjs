@@ -29,9 +29,38 @@
  *
  *   QA_DIST=dist-prof node tools/qa/mp/run.mjs phoneframe
  *   BT_PF_QUERY='nopalette' ...    # extra address switches for the page
- *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, townacross, fight, landwalk; the two skateboard scenes only when named)
+ *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, townacross, fight, fightreal, landwalk; the two skateboard scenes and `fightreal`, a fight the blows land in, only when named)
  *   BT_QA_CPU_THROTTLE=4 ...       # a slower phone
  *   BT_QA_PROFILE=budget-android   # a slow machine whole: its throttle, its line, its lane (tools/qa/profiles.mjs; v2.3.5861)
+ *   BT_PF_ALLOC=1 ...              # v2.3.6700: + WHO MAKES THE GARBAGE (below)
+ *
+ * v2.3.6700 (card RT, the performance red team): WHO MAKES THE GARBAGE.  The
+ * held budget lists the browser's garbage collector as a family nobody owns
+ * (held-budget.mjs `gc`: 8 to 45 ms at a time, "make less of it per frame"),
+ * and nothing ranked WHO makes it.  With BT_PF_ALLOC=1 each scene gets one
+ * more window of its own (BT_PF_ALLOC_MS, default 6 s; after the profile, so
+ * the sampling costs the profile nothing): the browser's allocation sampler
+ * (CDP HeapProfiler.startSampling, counting what a collection has already
+ * taken back too), read as KB a second and KB a frame, by the function that
+ * allocated (own) and by who called it (with callees).  Bytes are V8's; a
+ * phone's Safari packs objects differently, so read it as a RANKING too.
+ *
+ *   BT_PF_REACT=1 ...              # v2.3.6700: + WHO REDRAWS (below)
+ *
+ * v2.3.6700: WHO REDRAWS.  A component that draws itself again when nothing
+ * it shows has changed is work nobody sees (a timer's `force`, a new object
+ * set on every message).  With BT_PF_REACT=1 each scene gets a window of its
+ * own (BT_PF_REACT_MS, default 6 s) that counts React's commits and, in each,
+ * the components that ran (the fibers React marks PerformedWork, read through
+ * its own DevTools hook, which a production build calls too): renders a
+ * second by component.  Names need the unminified build (QA_DIST=dist-prof).
+ *
+ *   BT_PF_DPR=0.5 ...              # v2.3.6700: a phone's frame RATE on this box: a
+ *                                  # quarter of the pixels a side, so the software
+ *                                  # chip keeps up and "a frame" is 20 to 60 ms of
+ *                                  # game, not 500 (at dpr 3 this box draws 2 a
+ *                                  # second, and everything counted "a frame" --
+ *                                  # rebuilds, garbage -- holds half a second of play)
  *
  * Writes tools/qa/mp/out/phoneframe.json (every number and the profiles' top
  * lists) and prints a summary. */
@@ -39,6 +68,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { SourceMap } from 'node:module';
+import { REACT_HOOK, censusArm, censusRead } from './idle-census.mjs';   /* v2.3.6700: who redraws (the idle census's counter) */
 export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
@@ -48,6 +78,10 @@ const PROFILE = process.env.BT_PF_PROFILE !== '0';
 const QUERY = process.env.BT_PF_QUERY || '';
 const WANT = (process.env.BT_PF_SCENES || 'town,townwalk,fight,landwalk').split(',').map((s) => s.trim()).filter(Boolean);
 const TOP = Number(process.env.BT_PF_TOP || 45);
+const ALLOC = process.env.BT_PF_ALLOC === '1';   /* v2.3.6700: who makes the garbage */
+const ALLOC_MS = Number(process.env.BT_PF_ALLOC_MS || 6000);
+const REACT = process.env.BT_PF_REACT === '1';   /* v2.3.6700: who redraws */
+const REACT_MS = Number(process.env.BT_PF_REACT_MS || 6000);
 /* the page's device pixel ratio: 3 is an iPhone's own pixels; 1 lets this
    box's software drawing keep up, for a profile with more frames in it */
 const DPR = Number(process.env.BT_PF_DPR || 3);
@@ -139,6 +173,52 @@ function aggregate(profile, maps) {
   }
   const top = (m, n) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => [k, +v.toFixed(1)]);
   return { ms: +all.toFixed(1), js: +js.toFixed(1), native: +native.toFixed(1), gc: +gc.toFixed(1), self: top(self, TOP), total: top(total, TOP), files: top(files, 30) };
+}
+
+/* v2.3.6700: an allocation sampling profile (CDP HeapProfiler.stopSampling's tree: every node its call frame and
+   `selfSize`, the bytes the sampler puts on it) -> bytes by the function that allocated, and by each function with
+   all it called.  Names through the same source maps as the CPU profile's. */
+function aggregateAlloc(head, maps) {
+  const keyOf = (cf) => {
+    const fn = (cf && cf.functionName) || '(anonymous)';
+    if (!cf || !cf.url) return fn;
+    const file = basename(cf.url.split('?')[0]);
+    const sm = maps.get(file);
+    let src = shortSrc(cf.url), line = cf.lineNumber + 1;
+    if (sm) {
+      try {
+        const e = sm.findEntry(cf.lineNumber, cf.columnNumber);
+        if (e && e.originalSource) { src = shortSrc(e.originalSource); line = e.originalLine + 1; }
+      } catch { /* outside the map */ }
+    }
+    return `${fn} ${src}:${line}`;
+  };
+  /* `inLoop`: under the game's frame (BroTown.jsx _gameLoop, the name mp-heldsweep finds the loop by).  What the
+     frame makes grows with the frame rate (this box draws a few a second, a phone 60 or 120); what a message or a
+     timer makes does not: the two are summed apart so each can be scaled its own way. */
+  const self = new Map(), total = new Map(), files = new Map(), selfOut = new Map();
+  let all = 0, inFrame = 0;
+  const walk = (n, stack, inLoop) => {
+    const k = keyOf(n.callFrame);
+    const own = n.selfSize || 0;
+    const fresh = !stack.includes(k);
+    if (fresh) stack.push(k);
+    const loop = inLoop || /gameLoop/.test((n.callFrame && n.callFrame.functionName) || '');
+    if (own) {
+      all += own;
+      if (loop) inFrame += own; else selfOut.set(k, (selfOut.get(k) || 0) + own);
+      self.set(k, (self.get(k) || 0) + own);
+      const m = / ([^ ]+):\d+$/.exec(k);
+      const f = m ? m[1] : k;
+      files.set(f, (files.get(f) || 0) + own);
+      for (const kk of stack) total.set(kk, (total.get(kk) || 0) + own);
+    }
+    for (const c of n.children || []) walk(c, stack, loop);
+    if (fresh) stack.pop();
+  };
+  if (head) walk(head, [], false);
+  const top = (m, n) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+  return { bytes: all, inFrame, self: top(self, TOP), total: top(total, TOP), files: top(files, 30), selfOut: top(selfOut, TOP) };
 }
 
 /* ── the page's WebGL calls, counted on the renderer's own context ── */
@@ -429,8 +509,10 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
      scenario (harness.mjs, "every scenario plays at noon") and a player has */
   const amb = /(^|&)ambience(&|$)/.test(q0 || '');
   const query = (q0 || '').split('&').filter((t) => t && t !== 'ambience').join('&');
+  /* v2.3.6700: the init script as text, so the ambience and the redraw counter's hook can ride together */
+  const initSrc = [amb ? 'window.__btAmbienceOff = false;' : '', REACT ? `(${REACT_HOOK.toString()})();` : ''].filter(Boolean).join('\n');
   const P = await H.newPlayer(browser, { name: 'frame', wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query,
-    init: amb ? (() => { window.__btAmbienceOff = false; }) : null });
+    init: initSrc || null });
   const QUERY = query;
   const out = { query: q0, dpr: DPR, sceneMs: SCENE_MS, throttle: Number(process.env.BT_QA_CPU_THROTTLE) || 1, profile: H.PROFILE ? H.PROFILE.name : null, maps: maps.size, scenes: [] };   /* v2.3.5861: the slow profile (card O2 PR 2) */
   let stopAlive = null;
@@ -536,6 +618,46 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
           return m;
         }), v]);
       }
+      /* v2.3.6700: who makes the garbage, in a window of its own (BT_PF_ALLOC=1) */
+      let alloc = null;
+      if (ALLOC) {
+        await cdp.send('HeapProfiler.enable').catch(() => {});
+        await P.page.evaluate(() => { window.perfTracker.reset(); });
+        const a0 = Date.now();
+        const on = await cdp.send('HeapProfiler.startSampling', { samplingInterval: 4096, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true })
+          .then(() => true).catch(() => false);
+        if (on) {
+          await P.page.waitForTimeout(ALLOC_MS);
+          const hp = await cdp.send('HeapProfiler.stopSampling').catch(() => null);
+          const asecs = (Date.now() - a0) / 1000;
+          const aframes = await P.page.evaluate(() => (window.perfTracker.getSamples() || []).length || 1);
+          if (hp && hp.profile) {
+            const ag = aggregateAlloc(hp.profile.head, maps);
+            const perS = (b) => +(b / 1024 / asecs).toFixed(1);
+            /* the frame's own garbage by the FRAME (it grows with the rate), the rest by the SECOND (it does not) */
+            alloc = { secs: +asecs.toFixed(1), frames: aframes, kbPerSec: perS(ag.bytes),
+              frameKb: +(ag.inFrame / 1024 / aframes).toFixed(2), outsideKbPerSec: perS(ag.bytes - ag.inFrame),
+              self: ag.self.map(([k, b]) => [k, perS(b)]), total: ag.total.map(([k, b]) => [k, perS(b)]), files: ag.files.map(([k, b]) => [k, perS(b)]),
+              selfOut: ag.selfOut.map(([k, b]) => [k, perS(b)]) };
+          }
+        }
+      }
+      /* v2.3.6700: who redraws, in a window of its own (BT_PF_REACT=1) */
+      let react = null;
+      if (REACT) {
+        const armed = await P.page.evaluate(censusArm);
+        if (armed) {
+          const r0 = Date.now();
+          await P.page.waitForTimeout(REACT_MS);
+          react = await P.page.evaluate(censusRead);
+          react = { commits: react.commits, by: react.by, err: react.err, frames: react.frames || 1 };
+          const rsecs = (Date.now() - r0) / 1000;
+          react.secs = +rsecs.toFixed(1);
+          react.commitsPerSec = +(react.commits / rsecs).toFixed(1);
+          react.by = Object.entries(react.by).sort((a, b) => b[1] - a[1]).slice(0, 60).map(([k, n]) => [k, +(n / rsecs).toFixed(2)]);
+          react.rendersPerSec = +react.by.reduce((a, [, n]) => a + n, 0).toFixed(1);
+        }
+      }
       stopped = true;
       await driving.catch(() => {});
       const s = pt.a;
@@ -560,6 +682,8 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
         gl,
         census,
         sdc,
+        alloc,
+        react,
         profile: prof ? aggregate(prof, maps) : null,
       };
       out.scenes.push(row);
@@ -589,6 +713,23 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
         console.log('     by file:');
         for (const [k, v] of row.profile.files.slice(0, 14)) console.log(`       ${String(v).padStart(7)}  ${k}`);
       }
+      if (alloc) {
+        const at60 = +(alloc.frameKb * 60 + alloc.outsideKbPerSec).toFixed(0);
+        console.log(`     garbage: the frame makes ${alloc.frameKb} KB a frame, everything else ${alloc.outsideKbPerSec} KB a second (${alloc.secs} s sampled, ${alloc.frames} frames):`
+          + ` at 60 frames a second that is about ${at60} KB a second (here, at this box's rate, ${alloc.kbPerSec}).  KB a second by who allocated:`);
+        for (const [k, v] of alloc.self.slice(0, 26)) console.log(`       ${String(v).padStart(7)}  ${k}`);
+        console.log('     ...of that, outside the frame (messages, timers, React):');
+        for (const [k, v] of alloc.selfOut.slice(0, 14)) console.log(`       ${String(v).padStart(7)}  ${k}`);
+        console.log('     ...and with all they call:');
+        for (const [k, v] of alloc.total.slice(0, 30)) console.log(`       ${String(v).padStart(7)}  ${k}`);
+        console.log('     by file:');
+        for (const [k, v] of alloc.files.slice(0, 14)) console.log(`       ${String(v).padStart(7)}  ${k}`);
+      }
+      if (react) {
+        console.log(`     redraws: ${react.commitsPerSec} React commits a second, ${react.rendersPerSec} component renders a second (${react.secs} s counted, ${react.frames} frames${react.err ? '; ' + react.err : ''}); renders a second by component:`);
+        const cols = react.by.slice(0, 48).map(([k, n]) => `${String(n).padStart(6)} ${k}`);
+        for (let i = 0; i < cols.length; i += 3) console.log('       ' + cols.slice(i, i + 3).map((c) => c.padEnd(40)).join(''));
+      }
       return row;
     };
 
@@ -614,7 +755,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
       await P.page.keyboard.press('z').catch(() => {});
       await P.page.waitForTimeout(600);
     }
-    if (WANT.includes('fight') || WANT.includes('landwalk')) {
+    if (WANT.includes('fight') || WANT.includes('landwalk') || WANT.includes('fightreal')) {
       const geom = await H.wheelGeom().catch(() => null);
       const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
       const at = WHEEL_SPAWNS.ember.points[0];
@@ -622,6 +763,25 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
       rec.ok('reached the Flame Fields\' first monsters (guard)', reached, { at, geom: !!geom });
       await P.page.waitForTimeout(3000);
       if (WANT.includes('fight')) await scene('Flame Fields, fighting', drivers.fight);
+      if (WANT.includes('fightreal')) {
+        /* v2.3.6700: a fight the monsters' blows LAND in (only when named).  Every other scene is played unhurt
+           (`god`, above), so the worker never sends this phone its health: the messages a real fight brings --
+           `player_state` at every blow and every regen pass, the blow's own event -- and what they make the page
+           do are not in those scenes at all.  Kept alive by a refill every 2.5 s (one more `player_state` each:
+           count it). */
+        await H.devOp(wsPort, 'vitals', myId, { heal: true, god: false }).catch(() => null);
+        let healing = true;
+        const healer = (async () => {
+          while (healing) {
+            await new Promise((r) => setTimeout(r, 2500));
+            if (healing) await H.devOp(wsPort, 'vitals', myId, { heal: true }).catch(() => null);
+          }
+        })();
+        await scene('Flame Fields, fighting with the blows landing', drivers.fight);
+        healing = false;
+        await healer;
+        await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 20 }).catch(() => null);
+      }
       if (WANT.includes('landwalk')) await scene('Flame Fields, walking', drivers.walk);
     }
     rec.ok(`every scene measured${query ? ` (?${query})` : ''}`, out.scenes.length >= 1 && out.scenes.every((s) => s.frames > 10), out.scenes.map((s) => [s.label, s.frames]));
