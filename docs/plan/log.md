@@ -8,6 +8,8 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 67 | (no box) | listed (main ac35fd67): #2368 (the kit); #2366 landing #2365, #2364, #2362 after its mend (tree b5614c3c); this notes PR (5660). Held: #2363 with #2354 (a bug: the Skate button's redraw), #2361 behind it | the owner's play; debts PAD, GR, UI2 (67) |
+| 67 | (no box) | rehearsed main + #2363 + #2366 + #2368 + #2361 (tree a3993e4b, rebuilt by two helpers): precheck, switches-thrown, claims-gain, build, questline 187/187, heldsweep 6/6 all green; phone: padskin, camfollow, uikit, weaponswap, shieldtoggle, contextbuttons, membudget whole; twobuttons 102/118 (main's main run never came) | as above |
 | 66 | (no box) | listed (main 739eb6a0): #2360; #2359 landing #2358; #2357 landing #2355 (deploys); #2356 after its mend (tree 4ea0075f, deploys); this notes PR (6279). #2354 withdrawn by the owner | the owner's play; debts CT, PAD and Found (66) |
 | 66 | (no box) | rehearsed by hand (the generated tables met): precheck 0 FAIL, switches-thrown, claims-gain, build, questline PASS; heldsweep's sample main's own; mp-twobuttons/contextbuttons on the tree and three helpers: main's steps, and 7d on #2357's head (CT's next job) | as above |
 | 65 tail | (no box) | listed at 65's tail (main 0c648ebb): #2349 landing #2346 (head 3d0846c8, base main, one merge base, draft; tree 34ffe6a6, the head's own); `test` green; this notes PR (6278) | the owner's play; the debt: `docs/plan/debts.md` CT (65 tail) |

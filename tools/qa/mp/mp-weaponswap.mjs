@@ -185,8 +185,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
     name: 'Swapper', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel',
     /* v2.3.3283: a tap is under 0.6 s, and on this box the browser saw every
-       60 ms tap as 0.75-1.2 s; the QA knob stretches the window */
-    query: 'tapms=4000',
+       60 ms tap as 0.75-1.2 s; the QA knob stretches the window.
+       v2.3.6641 (card PAD part 4): `padskin=0`: this is the PILL's test (its
+       gold ring, its own place clear of today's controls); on a phone the
+       controller puts the same three buttons in the shell's wells, and
+       mp-padskin holds those (2d the lit well, 3 the boxes, 5 the swap) */
+    query: 'tapms=4000&padskin=0',
   });
   const frames = [];
   P.page.on('websocket', (ws) => ws.on('framereceived', (f) => { if (typeof f.payload === 'string') { frames.push(f.payload); if (frames.length > 4000) frames.splice(0, 1000); } }));

@@ -302,6 +302,58 @@ stays with that PR until it lands, and is marked (held).
   (`node tools/guards/systems.test.mjs --write`, `switches.test.mjs
   --write`).
 
+## PAD (67: #2363 held, landing #2354 with it)
+
+- HOLD (a bug in behaviour, read on 1f862236): `src/ui/panels/RideButton.jsx`
+  draws nothing in the controller while Charge shows
+  (`padLive() && ctxFor(true, chargeShowing(S)) !== 'skate'`, :123), but its
+  poll redraws only when `rideButtonView(S).key` (on|asking, :78) moves.
+  Riding with a sword, a monster comes into sight and Charge appears: the
+  Skate face stays drawn over Charge in the one mobility well (the rule
+  mp-padskin 2c checks, on foot only); if a redraw comes while Charge shows,
+  the dismount is gone after the sighting until the ride's on/asking moves.
+  The mend: the poll's key carries the pick, e.g. at :95
+  `var k = v ? v.key + '|' + (padLive() && chargeShowing(stateRef.current) ? 1 : 0) : '';`
+  and an mp-padskin step that rides into a sighting with a sword (Skate gone,
+  Charge alone) and out of it (Skate back).
+- Next job (not a hold): `ShieldButton.jsx` stamps `_shieldTouchAt` at
+  `touchstart` (:896) and drops a `mousedown` within 800 ms of it (:895); the
+  browser's mouse press comes after `touchend`, so a press held past 800 ms
+  (the uncancelable case the comment names) still toggles twice. Stamp it in
+  `onTouchEnd` (:937) too. Chrome's case; not seen on Safari.
+- After the mend #2363 merges `main` (sitting 67's lines landed): its one
+  conflict is `tools/dev/tag-blocks.json`'s end, kept as `"QP"`, `"PAD":
+  [[6640, 6659]]`, `"UI2": [[6680, 6699]]`, `"nextBlock": 6700`; then
+  precheck, mp-padskin, mp-twobuttons; the next sitting rehearses it (its
+  six behaviour changes of part 4 read and found right: the width, `padSpot`
+  dy, no housing on a computer, the 800 ms rule, the ring, Attack's box).
+- Still part 3's: Whirlwind and Shield Bash beside the Special socket (66).
+
+## GR (67: #2361 waits on #2363)
+
+- #2361 carries #2354 (base `claude/plan-pad-1-controller`), which never
+  lands alone: it lands after #2363. Its own change (`src/game/cameraFollow.js`,
+  BroTown's call, `?camfollow=0`) read and found right; mp-camfollow 11/11 on
+  sitting 67's tree. Its mend then: retarget to `main`; merge `main`; keep
+  the render row of `tools/guards/lib/systems.mjs` as
+  `f('src/game', 'poseHides|cameraFollow') /* v2.3.6208: what a body's pose hides (card EN); v2.3.6660: the camera's follow (card GR) */`;
+  `tools/dev/tag-blocks.json`'s end `"PAD"`, `"GR": [[6660, 6679]]`,
+  `"UI2"`, the highest `nextBlock`; `node tools/guards/systems.test.mjs
+  --write`, `switches.test.mjs --write`; precheck. Landing it deploys
+  nothing (no file under `server/` beyond #2363's, already on `main`).
+
+## UI2 (67)
+
+- Line 2's mend keeps the kit's `docs/plan/status/UI2.md`: parts 1 to 5's
+  Done, Found and Needs (14 found lines: `trade2.js`'s header, the craft's
+  repeat, `LANTERN-SLATE-SPEC.md`'s old palette, Raleway, three loops without
+  reduced motion, `prog3.js`:35...) are at
+  `git show 46e88b30:docs/plan/status/UI2.md`: the next UI2 PR carries them
+  back into its status.
+- #2368 also changed `src/index.html` (Raleway's request swapped for
+  Merriweather's, the kit's serif; no new request) and `CREDITS.md` (its
+  row): outside its own list, harmless (read at 67).
+
 ## BRO
 
 - `mp-brocard` 55/59 red the same four on `main` 096d7000 and on #2349's
