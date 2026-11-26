@@ -152,13 +152,17 @@ async function shotPlates(P, file, ids) {
   for (const id of ids) els.push(await P.page.$(`[data-u2-plate="${id}"]`));
   if (els.some((e) => !e)) return false;
   if (ids.length === 1) { await els[0].screenshot({ path: path.join(SHOTS, file) }); return true; }
-  /* several plates: one picture from the first's top to the last's bottom */
+  /* several plates: one picture from the first's top to the last's bottom.  v2.3.6780: the page scrolled
+     to the top BEFORE the boxes are read (a single plate's picture scrolls it, and a box read before the
+     scroll put the clip outside the picture) */
+  await P.page.evaluate((y) => { document.querySelector('[data-u2-kit]').scrollTop = y; }, 0);
+  await P.page.waitForTimeout(200);
   const a = await els[0].boundingBox();
   const b = await els[els.length - 1].boundingBox();
-  await P.page.evaluate((y) => { document.querySelector('[data-u2-kit]').scrollTop = y; }, 0);
   const vh = P.page.viewportSize().height;
   const h = b.y + b.height - a.y;
-  if (h > vh) await P.page.setViewportSize({ width: P.page.viewportSize().width, height: Math.ceil(a.y + h + 20) });
+  /* v2.3.6780: grown when the plates END below the window, not only when they are taller than it */
+  if (a.y + h + 20 > vh) await P.page.setViewportSize({ width: P.page.viewportSize().width, height: Math.ceil(a.y + h + 20) });
   await P.page.waitForTimeout(500);
   await P.page.screenshot({ path: path.join(SHOTS, file), clip: { x: a.x, y: a.y, width: a.width, height: h } });
   return true;
@@ -302,7 +306,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const kept = await at(base);
     const shotWas = await Q.page.$('[data-u2-plate="weights"]').then((e) => (e ? e.screenshot({ path: path.join(SHOTS, 'ui3-kit-was.png') }).then(() => true, () => false) : false));
     const back = await at(base + '&ui2look=1');
-    const isOld = (c) => /ui2-was/.test(c.look) && /^#193145$/i.test(c.pageVar) && c.edge === 'rgba(150, 195, 230, 0.24)' && /rgba\(150, 195, 230, 0\.24\)/.test(c.line) && c.probe === 'was';
+    const isOld = (c) => /ui2-was/.test(c.look) && /^#193145$/i.test(c.pageVar) && c.edge === 'rgba(150, 195, 230, 0.24)' && /rgba\(150, ?195, ?230, ?0?\.24\)/.test(c.line) && c.probe === 'was';
     const isNew = (c) => !/ui2-was/.test(c.look) && /^#14232F$/i.test(c.pageVar) && c.edge === 'rgb(75, 98, 117)' && c.probe === 'new';
     rec.ok('10. ?ui2look=0 gives yesterday\'s page #193145 and the old light-blue edge, still after a reload with no switch (remembered); ?ui2look=1 the new again',
       isOld(old) && isOld(kept) && isNew(back), { old, kept, back });
