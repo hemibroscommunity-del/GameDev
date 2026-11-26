@@ -444,21 +444,21 @@ function takeJob(j) {
   }
   /* v2.3.5000: the pieces from numbers made bitmaps first (the one wait: the
      job is then baked in one run, as before) */
-  if ((j.worn || []).some((w) => w && w.inp && w.inp.look)) { lookBitmaps(j).then(() => runJob(j), () => runJob(j)); return; }
-  runJob(j);
+  if ((j.worn || []).some((w) => w && w.inp && w.inp.look)) { lookBitmaps(j).then(() => answerJob(j), () => answerJob(j)); return; }
+  answerJob(j);
 }
-function runJob(j) {
+function answerJob(j) {
   /* v2.3.6761: QA's check of a kept answer (its inputs read only for this) */
   if (j._verifyOut) { try { verifyKept(j, j._verifyOut); } catch (e) { keep.differ++; } postReply(j, j._verifyOut); return; }
   /* v2.3.6761: a job with a key (not kept yet) is baked and kept */
   const key = j._key || null;
-  const b = j.look ? lookNow(j, !!key) : bakeNow(j, !!key);
+  const b = j.look ? lookNow(j, !!key) : runJob(j, !!key);
   postReply(j, b);
   if (key && b.kept && keepReady()) keep.store.put(key, b.kept).then((ok) => { if (ok) keep.stored++; });
 }
-/* the bake itself: { reply, transfer, kept } -- `kept` (wantKept) the bytes
+/* the bake itself (its name kept from before the keep: TRAPS §253's list): { reply, transfer, kept } -- `kept` (wantKept) the bytes
    the store keeps, read from the very canvas the reply is made of */
-function bakeNow(j, wantKept) {
+function runJob(j, wantKept) {
   const reply = { id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: null };
   const transfer = [];
   let kept = null;
@@ -675,7 +675,7 @@ const sameBytes = (a, b) => {
 /* QA: the job baked again beside its kept answer, byte for byte, as the page
    receives them (the bitmap drawn back, the cell, the bits, the residue) */
 function verifyKept(j, out) {
-  const b = j.look ? lookNow(j, false) : bakeNow(j, false);
+  const b = j.look ? lookNow(j, false) : runJob(j, false);
   const a = out.reply, f = b.reply;
   let why = '';
   if (f.err || f.raw) why = 'the bake again: ' + (f.err || 'raw');
@@ -696,19 +696,20 @@ function verifyKept(j, out) {
 }
 /* a sheet's file by address, digested (SHA-256 of its bytes as fetched),
    once a session an address (a page's sheet at a blob address never changes;
-   a file on the server is read through its cache) */
+   a file on the server is read through its cache: the page fetched it to
+   draw it).  No time limit of its own (TRAPS §279: a file that is late is
+   waited for, never cut as if it hung); a worker that truly hangs is the
+   page's stuck watch's, as for any job (entityRenderer.js _BAKE_STUCK_MS) */
 const FILE_KEEP_N = 64;
 const _files = new Map();   /* url -> Promise<Uint8Array | null> */
 function fileDigest(url) {
   let p = _files.get(url);
   if (p) { _files.delete(url); _files.set(url, p); return p; }
-  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const cut = ac ? setTimeout(() => ac.abort(), SHEET_URL_MS) : 0;
-  p = fetch(url, ac ? { signal: ac.signal } : undefined)
+  p = fetch(url)
     .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
     .then((buf) => self.crypto.subtle.digest('SHA-256', buf))
     .then((h) => new Uint8Array(h), () => null)
-    .then((v) => { clearTimeout(cut); if (!v) _files.delete(url); return v; });
+    .then((v) => { if (!v) _files.delete(url); return v; });
   _files.set(url, p);
   while (_files.size > FILE_KEEP_N) _files.delete(_files.keys().next().value);
   return p;

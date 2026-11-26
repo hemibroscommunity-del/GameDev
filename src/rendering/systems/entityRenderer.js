@@ -3641,7 +3641,10 @@ export async function prewarmMaskedBodyFrames(opts) {
   /* v2.3.6761: ...and tell it the keep's switch (`?bakekeep=0`) before its
      first job of the session: a job kept on the disk is answered from there
      (src/game/bakeKeep.js; docs/specs/bake-keep.md) */
-  try { keepTell(_getBakeWorker(), typeof window !== 'undefined' ? window : null); } catch (e) { /* inline path */ }
+  try {
+    const probe = keepTell(_getBakeWorker(), { on: !sw('bakekeep'), verify: typeof window !== 'undefined' && window.__btBakeKeepVerify === true });
+    if (probe && typeof window !== 'undefined') window.__btBakeKeep = probe;   /* QA (mp-bakekeep): the worker's counts */
+  } catch (e) { /* inline path */ }
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;

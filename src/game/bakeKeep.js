@@ -50,8 +50,9 @@
  * not read back whole (keptOk) is baked again and replaced.  When in doubt,
  * bake: never a wrong picture.
  *
- * `?bakekeep=0`: today's behaviour (nothing read from or written to the
- * store).  The worker keeps nothing until the page has told it the switch
+ * `?bakekeep=0` (the switch table's row, read by the page through
+ * src/game/switches.js): today's behaviour, nothing read from or written to
+ * the store.  The worker keeps nothing until the page has told it the switch
  * (keepTell), so a job that arrives first is baked as today.
  */
 
@@ -63,11 +64,6 @@ export const KEEP_DB = 'bt-bakekeep';
  *  docs/specs/bake-keep.md), on the phone's disk, not in its memory. */
 export const KEEP_CAP_MB = 20;
 export const KEEP_CAP_BYTES = KEEP_CAP_MB * 1024 * 1024;
-
-/** `?bakekeep=0` turns the keep off for that page (the switch table's row). */
-export function keepSwitchOn(search) {
-  return !/[?&]bakekeep=0(&|$)/.test(String(search || ''));
-}
 
 /* ═══ WHAT THE KEY READS ═══
    Each field of a job, of an input and of a worn entry: `key` (its value is
@@ -351,28 +347,24 @@ export function keepStore(idb, version, cap) {
 
 /* ═══ THE PAGE'S SIDE: TELL THE WORKER, AND THE PROBE ═══
    Called by the prewarm (entityRenderer.js prewarmMaskedBodyFrames) with the
-   bake worker before its first job of the session: the switch, QA's check,
-   and a port for the counts (window.__btBakeKeep(), read by mp-bakekeep).
-   Told once a worker. */
+   bake worker before its first job of the session: whether the keep is on
+   (`?bakekeep=0`, read there through src/game/switches.js), QA's check, and a
+   port for the worker's counts.  Told once a worker.  -> the probe that asks
+   for the counts (window.__btBakeKeep, read by mp-bakekeep), or null. */
 let _toldWorker = null;
-export function keepTell(wk, win) {
-  if (!wk || wk === _toldWorker) return false;
+export function keepTell(wk, { on = true, verify = false } = {}) {
+  if (!wk || wk === _toldWorker) return null;
   _toldWorker = wk;
-  let on = true, verify = false;
-  try { on = keepSwitchOn(win && win.location && win.location.search); } catch (e) { on = true; }
-  try { verify = !!(win && win.__btBakeKeepVerify === true); } catch (e) { verify = false; }
   let port = null, mine = null;
   try {
     if (typeof MessageChannel === 'function') { const ch = new MessageChannel(); port = ch.port2; mine = ch.port1; }
   } catch (e) { port = null; mine = null; }
-  try { wk.postMessage({ type: 'keep', on, verify, port }, port ? [port] : []); } catch (e) { return false; }
-  if (win && mine) {
-    /* QA: the worker's counts, asked over the port (one answer an ask) */
-    win.__btBakeKeep = () => new Promise((res) => {
-      const t = setTimeout(() => res(null), 20000);   /* the worker answers between jobs: a bake on a slow box takes seconds */
-      mine.onmessage = (e) => { clearTimeout(t); res(e.data || null); };
-      try { mine.postMessage({ ask: 1 }); } catch (e) { clearTimeout(t); res(null); }
-    });
-  }
-  return true;
+  try { wk.postMessage({ type: 'keep', on: !!on, verify: !!verify, port }, port ? [port] : []); } catch (e) { return null; }
+  if (!mine) return null;
+  /* one answer an ask; the worker answers between jobs (a bake on a slow box takes seconds) */
+  return () => new Promise((res) => {
+    const t = setTimeout(() => res(null), 20000);
+    mine.onmessage = (e) => { clearTimeout(t); res(e.data || null); };
+    try { mine.postMessage({ ask: 1 }); } catch (e) { clearTimeout(t); res(null); }
+  });
 }

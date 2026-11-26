@@ -74,4 +74,30 @@ limit with the frames still being made); the limit is unchanged.
 
 ## The numbers (the test box, 2026-11-26)
 
-MEASURED_HERE
+`mp-bakekeep`, the copper torso and greaves, the trousers drawn (177 frames):
+
+| | before (main) | after |
+|---|---|---|
+| first login in the set: frames ready at the lift | 7 of 177 | 0 to 6 of 177 (as before: nothing kept yet) |
+| second login: frames ready at the lift | 5 of 177 | see the note below |
+| second login: the worn set's jobs | all baked again (about 3 s a frame here) | 200 answered from the store, none baked; 501 ms of the worker's time in all |
+| second login: `masks` after `loads` | never reached in 400 s | FINAL_MASKS |
+| a kept frame against the bake, byte for byte | | 172 of 172 the same |
+| `?bakekeep=0` | | nothing read, nothing written |
+| the store after a set | | 172 frames, 3.9 MB (about 22 KB a frame) |
+
+**The lift on this box.** Here the loads alone take 39 to 54 s (`loads`), past
+the screen's 20 s limit, so the screen lifts before the armour's step can
+begin, kept or not: "every frame ready at the lift" cannot be shown on this
+box, only every frame ready when `masks` comes. On the owner's iPhone the
+pictures were ready at 18.0 s, inside the limit: whether the screen now lifts
+on "ready" there is for the owner's next paste of the Loading times (part 1's
+readout) to say.
+
+**What the key reads, and why so.** The first key read every input's picture
+back. In a bare page that is 1 to 4 ms a job; in the game, on this box, it was
+about 2 s a job, because each read waits behind the frame the graphics chip is
+drawing. So a sheet by address is keyed by its FILE (the digest of the bytes
+fetched, and kept only when the sheet the worker drew is that same file) and a
+frame of the gear's numbers by its sheet of numbers: the key reads no picture
+back, and a kept job decodes no sheet.
