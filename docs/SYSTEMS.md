@@ -381,6 +381,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: itemInspect
 - **Files**: `src/game/`: compare, equipProject, workspace
 - **Files**: `src/game/`: charHud
+- **Files**: `src/game/`: ownPlate
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

@@ -3,8 +3,8 @@
  * The owner, 2026-11-26: "Also remove the name plate on your bro (now that
  * it's already on hud it's redundant)".  src/game/ownPlate.js decides
  * whether a figure's plate is drawn on this screen; the renderer
- * (entityRenderer.js _ownPlateSync) builds or destroys YOUR plate when that
- * answer changes.  This suite tests what the rule DOES, then reads the
+ * (src/rendering/ownPlateFx.js ownPlateSync, called from the player renderer)
+ * builds or destroys YOUR plate when that answer changes.  This suite tests what the rule DOES, then reads the
  * renderer's syntax tree for how it is asked.  It lives here, not in
  * server/test/: it tests the page's code, and a new file there deploys the
  * worker (TRAPS §277).
@@ -18,9 +18,10 @@
  *   3. the page's answer follows its address (`?hud=0`, `?ownplate=1`, a
  *      replaceState) and asks the rule only when the address changed (a
  *      thousand frames on one address: one ask);
- *   4. THE RENDERER'S TREE: it asks selfNameDrawn() in two places only (the
- *      figure's factory, and your update's _ownPlateSync call), never the
- *      rule itself; another player's figure never asks it; _ownPlateSync
+ *   4. THE RENDERER'S TREE (the render system's files, by filesOf): it asks
+ *      selfNameDrawn() in two places only (the figure's factory, and your
+ *      update's ownPlateSync call), never the rule itself; another player's
+ *      figure never asks it; ownPlateSync
  *      returns at once when the answer is unchanged, DESTROYS the pill (never
  *      `.visible = false` on it) and touches nothing else of the figure (the
  *      HP bar, the skull, the spend bars: `_hud*`, `_skullText`);
@@ -40,6 +41,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readSystem } from './lib/filesOf.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 let failed = 0;
@@ -141,8 +143,11 @@ const modSrc = read(MOD);
 
 /* ── 4. the renderer's tree ── */
 const parse = (src) => B.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
-const ER = 'src/rendering/systems/entityRenderer.js';
-const erSrc = read(ER);
+/* the player renderer, found by system (never by its path: tests-by-system) */
+const erSrc = [...readSystem('render').values()].find((src) => src.includes('function createPlayerDisplay(')) || '';
+check('4. the player renderer is found in the render system (createPlayerDisplay)', erSrc.length > 0);
+const FX = 'src/rendering/ownPlateFx.js';
+const fxSrc = read(FX);
 const calleeName = (n) => (n.callee.type === 'Identifier' ? n.callee.name : null);
 const memberChain = (n) => {   /* `display._hudHpBarFrame.visible` -> ['display', '_hudHpBarFrame', 'visible'] */
   const out = [];
@@ -152,65 +157,71 @@ const memberChain = (n) => {   /* `display._hudHpBarFrame.visible` -> ['display'
   }
   return out;
 };
-function renderer(src) {
+function syncOf(p, src) {
+  const s = { earlyOut: false, destroysPill: false, hidesPill: false, touches: [] };
+  const first = p.node.body.body[0];
+  /* `if (!display || display._ownPlateOn === on) return;` */
+  if (first && first.type === 'IfStatement' && (first.consequent.type === 'ReturnStatement'
+    || (first.consequent.type === 'BlockStatement' && first.consequent.body.length === 1 && first.consequent.body[0].type === 'ReturnStatement'))) {
+    const test = src.slice(first.test.start, first.test.end);
+    s.earlyOut = /\._ownPlateOn\s*===\s*on\b/.test(test);
+  }
+  p.traverse({
+    CallExpression(q) {
+      const c = q.node.callee;
+      if (c.type === 'MemberExpression' && c.property.type === 'Identifier' && c.property.name === 'destroy' && c.object.type === 'Identifier' && c.object.name === 'pill') s.destroysPill = true;
+    },
+    MemberExpression(q) {
+      const ch = memberChain(q.node);
+      const hit = ch.find((k) => /^_hud|^_skullText$|^_comboText$|^_res[A-Z]/.test(k));
+      if (hit) s.touches.push(ch.join('.'));
+    },
+    AssignmentExpression(q) {
+      const ch = q.node.left.type === 'MemberExpression' ? memberChain(q.node.left) : [];
+      if (ch[ch.length - 1] === 'visible' && (ch[0] === 'pill' || ch.includes('_namePill'))) s.hidesPill = true;
+    },
+  });
+  return s;
+}
+function renderer(src, fx) {
   const r = { askSelf: [], askRule: 0, otherAsks: 0, sync: null };
+  for (const one of [src, fx]) B.traverse(parse(one), {
+    CallExpression(p) { if (calleeName(p.node) === 'nameDrawn') r.askRule++; },
+  });
+  B.traverse(parse(fx), {
+    FunctionDeclaration(p) { if (p.node.id.name === 'ownPlateSync') r.sync = syncOf(p, fx); },
+  });
   const ast = parse(src);
   B.traverse(ast, {
     CallExpression(p) {
       const name = calleeName(p.node);
-      if (name === 'nameDrawn') r.askRule++;
       if (name !== 'selfNameDrawn') return;
       const fn = p.getFunctionParent();
       const fname = fn && fn.node.id ? fn.node.id.name : (fn && fn.node.key ? fn.node.key.name : '?');
-      const where = p.parentPath.isCallExpression() && calleeName(p.parent) === '_ownPlateSync' ? '_ownPlateSync(...)' : 'bare';
+      const where = p.parentPath.isCallExpression() && calleeName(p.parent) === 'ownPlateSync' ? 'ownPlateSync(...)' : 'bare';
       r.askSelf.push(fname + ':' + where);
       if (fname === 'createOtherPlayerDisplay') r.otherAsks++;
     },
     FunctionDeclaration(p) {
       if (p.node.id.name === 'createOtherPlayerDisplay') r.otherSrc = src.slice(p.node.start, p.node.end);
-      if (p.node.id.name !== '_ownPlateSync') return;
-      const s = { earlyOut: false, destroysPill: false, hidesPill: false, touches: [] };
-      const first = p.node.body.body[0];
-      /* `if (!display || display._ownPlateOn === on) return;` */
-      if (first && first.type === 'IfStatement' && (first.consequent.type === 'ReturnStatement'
-        || (first.consequent.type === 'BlockStatement' && first.consequent.body.length === 1 && first.consequent.body[0].type === 'ReturnStatement'))) {
-        const test = src.slice(first.test.start, first.test.end);
-        s.earlyOut = /\._ownPlateOn\s*===\s*on\b/.test(test);
-      }
-      p.traverse({
-        CallExpression(q) {
-          const c = q.node.callee;
-          if (c.type === 'MemberExpression' && c.property.type === 'Identifier' && c.property.name === 'destroy' && c.object.type === 'Identifier' && c.object.name === 'pill') s.destroysPill = true;
-        },
-        MemberExpression(q) {
-          const ch = memberChain(q.node);
-          const hit = ch.find((k) => /^_hud|^_skullText$|^_comboText$|^_res[A-Z]/.test(k));
-          if (hit) s.touches.push(ch.join('.'));
-        },
-        AssignmentExpression(q) {
-          const ch = q.node.left.type === 'MemberExpression' ? memberChain(q.node.left) : [];
-          if (ch[ch.length - 1] === 'visible' && (ch[0] === 'pill' || ch.includes('_namePill'))) s.hidesPill = true;
-        },
-      });
-      r.sync = s;
     },
   });
   return r;
 }
-function rendererBad(src) {
-  const r = renderer(src);
+function rendererBad(src, fx = fxSrc) {
+  const r = renderer(src, fx);
   const bad = [];
-  const want = ['createPlayerDisplay:bare', '_updatePlayer:_ownPlateSync(...)'];
+  const want = ['createPlayerDisplay:bare', '_updatePlayer:ownPlateSync(...)'];
   const got = r.askSelf;
-  if (got.length !== 2 || !got.includes(want[0]) || !got.includes(want[1])) bad.push('selfNameDrawn asked at ' + JSON.stringify(r.askSelf) + ' (want the factory and one _ownPlateSync call)');
+  if (got.length !== 2 || !got.includes(want[0]) || !got.includes(want[1])) bad.push('selfNameDrawn asked at ' + JSON.stringify(r.askSelf) + ' (want the factory and one ownPlateSync call)');
   if (r.askRule) bad.push('the rule itself (nameDrawn) asked ' + r.askRule + ' times in the renderer: a frame would ask it');
   if (r.otherAsks) bad.push('another player\'s figure asks it');
-  if (!r.sync) bad.push('no _ownPlateSync');
+  if (!r.sync) bad.push('no ownPlateSync');
   else {
-    if (!r.sync.earlyOut) bad.push('_ownPlateSync does not return at once on an unchanged answer (a structural change a frame)');
-    if (!r.sync.destroysPill) bad.push('_ownPlateSync does not destroy the pill');
-    if (r.sync.hidesPill) bad.push('_ownPlateSync hides the pill (a hidden Text keeps its texture: TRAPS §192)');
-    if (r.sync.touches.length) bad.push('_ownPlateSync touches what stays: ' + r.sync.touches.join(', '));
+    if (!r.sync.earlyOut) bad.push('ownPlateSync does not return at once on an unchanged answer (a structural change a frame)');
+    if (!r.sync.destroysPill) bad.push('ownPlateSync does not destroy the pill');
+    if (r.sync.hidesPill) bad.push('ownPlateSync hides the pill (a hidden Text keeps its texture: TRAPS §192)');
+    if (r.sync.touches.length) bad.push('ownPlateSync touches what stays: ' + r.sync.touches.join(', '));
   }
   return bad;
 }
@@ -218,7 +229,7 @@ function rendererBad(src) {
   const bad = rendererBad(erSrc);
   check('4. the renderer asks the page\'s answer in the factory and your update only, destroys the plate on a change and touches nothing else', bad.length === 0, bad.join('\n     '));
   /* the other player's factory builds its plate unasked */
-  const body = renderer(erSrc).otherSrc || '';
+  const body = renderer(erSrc, fxSrc).otherSrc || '';
   check('4b another player\'s figure builds its plate whatever the rule says', /\n {2}_attachNamePill\(container, 14, undefined, uiLayer\);/.test(body) && !/selfNameDrawn|_ownPlateSync/.test(body));
 }
 
@@ -233,16 +244,20 @@ function plantEr(what, from, to) {
   if (erSrc.indexOf(from) < 0) { check('5 plant (' + what + ') finds its line', false, from); return; }
   check('5 plant red: ' + what, rendererBad(erSrc.split(from).join(to)).length > 0);
 }
+function plantFx(what, from, to) {
+  if (fxSrc.indexOf(from) < 0) { check('5 plant (' + what + ') finds its line', false, from); return; }
+  check('5 plant red: ' + what, rendererBad(erSrc, fxSrc.split(from).join(to)).length > 0);
+}
 await plantMod('another player\'s plate gone', '  if (!self) return true;', '  if (!self) return !!ownPlate;');
 await plantMod('your plate gone under ?hud=0', '  if (!hudOn) return true;\n', '');
 await plantMod('the switch not remembered', "if (v === '1') ls.setItem(OWN_PLATE_KEY, '1'); else ", '');
 await plantMod('the rule asked every ask of the page (no memo)', '  if (_for !== s) {', '  if (true) {');
 await plantMod('the HUD\'s rule restated (the switch read for the HUD)', 'hudOn: charHudOn()', 'hudOn: true');
-plantEr('the Text hidden, not destroyed', '  pill.destroy({ children: true });', '  pill.visible = false;');
-plantEr('the rule asked every frame in the renderer', '_ownPlateSync(display, selfNameDrawn());', '_ownPlateSync(display, nameDrawn({ self: true, hudOn: true, ownPlate: false }));');
-plantEr('the structural change made every frame', '  if (!display || display._ownPlateOn === on) return;', '  if (!display) return;');
-plantEr('the HP bar gone with the name', '  pill.destroy({ children: true });', '  pill.destroy({ children: true });\n  if (display._hudHpBarFrame) display._hudHpBarFrame.visible = false;');
-plantEr('the skull gone with the name', '  pill.destroy({ children: true });', '  pill.destroy({ children: true });\n  display._skullText.destroy();');
+plantFx('the Text hidden, not destroyed', '  pill.destroy({ children: true });', '  pill.visible = false;');
+plantEr('the rule asked every frame in the renderer', 'ownPlateSync(display, selfNameDrawn(), _buildOwnPlate);', 'ownPlateSync(display, nameDrawn({ self: true, hudOn: true, ownPlate: false }), _buildOwnPlate);');
+plantFx('the structural change made every frame', '  if (!display || display._ownPlateOn === on) return;', '  if (!display) return;');
+plantFx('the HP bar gone with the name', '  pill.destroy({ children: true });', '  pill.destroy({ children: true });\n  if (display._hudHpBarFrame) display._hudHpBarFrame.visible = false;');
+plantFx('the skull gone with the name', '  pill.destroy({ children: true });', '  pill.destroy({ children: true });\n  display._skullText.destroy();');
 plantEr('another player\'s figure asking it', '  _attachNamePill(container, 14, undefined, uiLayer);', '  if (selfNameDrawn()) _attachNamePill(container, 14, undefined, uiLayer);');
 
 /* ── 6. every mutant of the module ── */

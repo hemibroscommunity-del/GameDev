@@ -150,7 +150,8 @@ import { SMALL_TEX, elemSmallKey } from '@/data/smallIcons.js';   /* v2.3.3279: 
 import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
-import { selfNameDrawn, nameDrawnAsks } from '../../game/ownPlate.js';   /* v2.3.6788: your own plate, only while the HUD does not say your name */
+import { selfNameDrawn } from '../../game/ownPlate.js';   /* v2.3.6788: your own plate, only while the HUD does not say your name */
+import { ownPlateSync, ownPlateProbeArm } from '../ownPlateFx.js';   /* v2.3.6788: ...built or destroyed on a change */
 import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3481: a clone you spar with lifts its plate off yours (it imports nothing) */
 import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the hair clipped through the stencil, not a pass of its own */
 import { heapTrimOn } from '../heapTrim.js';   /* v2.3.5007: the heap trim's switch */
@@ -6338,64 +6339,9 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
 }
 
 
-/* ═══ v2.3.6788: YOUR OWN PLATE, BUILT OR DESTROYED ON A CHANGE (card UI3, PR 9) ═══
-   The owner, 2026-11-26: "remove the name plate on your bro (now that it's
-   already on hud it's redundant)".  The rule is game/ownPlate.js's
-   (selfNameDrawn: the HUD showing, `?ownplate=1`); here only what it does to
-   the figure, and only when its answer differs from the one this figure
-   holds (`_ownPlateOn`): never a structural change a frame (TRAPS §218).
-   Off, the whole capsule goes -- its three Texts, its backing, the badges --
-   DESTROYED, not hidden (TRAPS §192): an alpha-0 or hidden Text still holds
-   its texture.  On, the factory builds it whole again in the same layer
-   (the uiLayer) and the next _updateNamePill draws it from an empty key.
-   What is not the plate stays: the HP bar, the skull, the spend bars. */
-function _ownPlateSync(display, on) {
-  if (!display || display._ownPlateOn === on) return;
-  display._ownPlateOn = on;
-  display._ownPlateBuilds = (display._ownPlateBuilds || 0) + 1;   /* QA: __btOwnPlate */
-  if (on) {
-    if (!display._namePill && display._uiLayer) {
-      _attachNamePill(display, 15, undefined, display._uiLayer);
-      /* back in the place it was built in, so it draws in the same order */
-      const ui = display._uiLayer;
-      if (display._ownPlateAt != null) ui.setChildIndex(display._namePill, Math.min(display._ownPlateAt, ui.children.length - 1));
-      display._pillKey = null;
-      display._pillZoom = undefined;   /* the new pill takes its scale and resolution */
-    }
-    return;
-  }
-  const pill = display._namePill;
-  if (!pill) return;
-  if (window.__btProbe) display._ownPlateLastName = display._pillName;   /* QA: is it destroyed? */
-  if (pill.parent) pill.parent.removeChild(pill);
-  pill.destroy({ children: true });
-  display._namePill = null; display._pillBg = null; display._pillName = null;
-  display._pillLevel = null; display._pillLvlNum = null;
-  display._broBadge = null; display._partyBadge = null; display._elemBadge = null;
-  display._pillKey = null; display._pillZoom = undefined; display._pillW = 0;
-}
-
-/* v2.3.6788: the QA probe's reading of your figure (window.__btOwnPlate,
-   mp-ownplate): whether the plate is built, whether the last one destroyed
-   was destroyed, how often the rule was asked and the plate rebuilt (both
-   must stand still while nothing changes), and the HP bar that stays */
-let _ownPlateProbeOf = null;
-function _ownPlateProbe() {
-  const d = _ownPlateProbeOf;
-  if (!d) return null;
-  const pill = d._namePill;
-  const last = d._ownPlateLastName;
-  const frame = d._hudHpBarFrame;
-  return {
-    drawn: d._ownPlateOn === true,
-    pill: !!pill, inLayer: !!(pill && pill.parent), shown: !!(pill && pill.visible),
-    words: d._pillName ? d._pillName.text : null,
-    lastDestroyed: last ? last.destroyed === true : null,
-    builds: d._ownPlateBuilds || 0, asks: nameDrawnAsks(),
-    hpBar: !!(frame && frame.visible && (d._hudHpAlpha || 0) > 0.01),
-    bandHalf: _selfBandHalf(d),
-  };
-}
+/* v2.3.6788: your own plate built again (ownPlateFx.js ownPlateSync calls it):
+   the factory's, in your uiLayer */
+function _buildOwnPlate(display) { _attachNamePill(display, 15, undefined, display._uiLayer); }
 
 /* v2.3.6788: half your band's height, in the uiLayer's units: the plate's,
    drawn or not -- so the HP bar's place, the skull over it, the chat bubble's
@@ -7116,7 +7062,7 @@ function createPlayerDisplay() {
      Yours stays one step above your peers' -- 15 against their 14 -- which has
      been true since v2.3.1681. */
   /* v2.3.6788: decided once here, as the figure is built (game/ownPlate.js;
-     _ownPlateSync builds or destroys it after, only on a change); the two
+     ownPlateFx.js builds or destroys it after, only on a change); the two
      numbers the band is sized by are kept either way (_selfBandHalf) */
   container._pillCss = 15;
   container._pillChain = PLAYER_SIZE_MULT;
@@ -14950,14 +14896,14 @@ export class EntityRenderer {
        positions from — a real risk to buy an invisible one. */
     /* v2.3.6788: your own plate only while the HUD does not say your name
        (game/ownPlate.js; built or destroyed when the answer changes) */
-    _ownPlateSync(display, selfNameDrawn());
+    ownPlateSync(display, selfNameDrawn(), _buildOwnPlate);
     /* v2.3.3313: your alliance's tag, from your party's roster */
     _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
       !S._dying && !_chatBubbleUp(S, S.myId, now), !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2); v2.3.3858: the bubble has its place */
     /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn */
     if (window.__btProbe) window.__btSelfPlate = display._pillName ? display._pillName.text : null;   /* v2.3.6788: none while it is not drawn */
     /* v2.3.6788: QA probe (mp-ownplate) -- your plate as built, and what stays */
-    if (window.__btProbe) { _ownPlateProbeOf = display; if (!window.__btOwnPlate) window.__btOwnPlate = _ownPlateProbe; }
+    if (window.__btProbe) ownPlateProbeArm(display, _selfBandHalf);
     if (display._namePill) {
       const _pH = (display._pillCss || 15) * PLATE_H_RATIO;
       const _pS = display._pillZoom || 1;
