@@ -35,4 +35,6 @@ export const SAY = Object.freeze({
   'dashFrame.whoseUnknown': "Another player's Bro",
   'dashFrame.notOffered': 'Not open on this server yet',
   'dashFrame.points': 'Points',
+  /* v2.3.6684 (card UI2-bro PR 2): the passport's Titles page */
+  'dashFrame.titles': 'Titles',
 });

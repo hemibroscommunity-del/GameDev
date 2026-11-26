@@ -48,8 +48,9 @@ export const BRO_HUB_DOORS = Object.freeze([
   Object.freeze({ id: 'pets', word: 'dashFrame.pets', art: '/icons/ui/pets-paw.webp', opens: 'page:pets', cap: 'petbook' }),
 ]);
 
-/* the frame's own pages Character and Combat open (dashDests.js FRAME_PAGES) */
-export const BRO_HUB_PAGES = Object.freeze({ broCharacter: 'character', broCombat: 'combat' });
+/* the frame's own pages Character and Combat open (dashDests.js FRAME_PAGES); v2.3.6684: and
+   Titles, the passport's door (the title's Equip, with its pending mark) */
+export const BRO_HUB_PAGES = Object.freeze({ broCharacter: 'character', broCombat: 'combat', broTitles: 'titles' });
 
 /** Is this one of Bro's own frame pages (Character, Combat)? */
 export function isBroHubPage(id) {
@@ -115,8 +116,8 @@ export function broHubWhose(who) {
    The eight doors of today's Progress page (broPages.js BRO_DOORS) and the
    road each takes under the new frame (the card's reading 3).  A road:
      bro:<door>        one of the six tiles above;
-     bro:<door>/<what> inside that door's page (Character's today's pages until
-                       the passport, PR 2: its title line, its Clan door);
+     bro:<door>/<what> inside that door's page (v2.3.6684: the passport's
+                       Titles door and its Clan line, PASSPORT_DOORS below);
      menu:<door>       a tile of the Menu (dashDests.js MENU_DESTS). */
 export const BRO_PROGRESS_ROADS = Object.freeze({
   skills: 'bro:skills',
@@ -128,3 +129,158 @@ export const BRO_PROGRESS_ROADS = Object.freeze({
   achievements: 'bro:feats',
   equipment: 'bro:equipment',
 });
+
+/* ═══ v2.3.6684: CHARACTER, THE PASSPORT (card UI2-bro, the build's step 3, PR 2) ═══
+ *
+ * The owner, 2026-11-25: "Character: RPG passport; large portrait and
+ * adjacent combat level, name/title, supporting summaries. Not a combat-stat
+ * dump."  The master specification's 4.1: "Prominent portrait, name, equipped
+ * title and combat level. Supporting content: Sword, Bow, Staff levels; clan
+ * and guild affiliations; achievement points; quest completion count; titles
+ * ... Link to the detailed destinations rather than duplicating all their
+ * content."  And the owner's standing rule: "keep my game content over the
+ * mockup stuff".
+ *
+ * broPassport(r, who) says WHAT the page shows, from readings the page takes
+ * with the game's own readers (sheet/CharacterPage.jsx readPassport):
+ *   r.name     the player's name
+ *   r.combat   the combat level BY THE GAME'S READER (src/data/prog3.js
+ *              prog3CharLevel: the best weapon's while `onelevel` is on, the
+ *              sum to 300 when it is off): shown as it is, never worked out
+ *              again here from the weapons
+ *   r.weapons  { sword, bow, staff: { lvl, unspent } }
+ *   r.titleId  the worker's equipped title (S._achv.t); r.earned(id) whether
+ *              it is earned (S._achv.got); r.titleText(id) its name (the
+ *              achievement's: there is no list of titles apart from them)
+ *   r.clanParty  the worker says clans are parties (caps clanparty + partykeep)
+ *   r.party    S._party (the worker's party_state), null when in none
+ *   r.oldClan  { tag, name } a clan of an older worker (S._clanData), or null
+ *   r.ap       the worker's total of achievement points, null while unknown
+ *   r.quests   quests completed (your phone's count), null while unknown
+ * Each line is the game's value, or an honest line where it has none, or the
+ * kit's loading placeholder while it has not arrived (never a 0).  The two
+ * worked-out labels ("Sword Specialist") are NOT shown: their rules are the
+ * owner's (the master notes' F5).
+ *
+ * Another player's page (`who`; nothing opens it until step 9): the same
+ * public lines, named as theirs, with none of the owner's marks (no unspent
+ * points), no Journey (your phone's own records) and no Equip. */
+
+/* the three weapons, in the game's one vocabulary (the master notes' table 1,
+   line 9): `p3` the prog3 skill (prog3.js SKILLS), `art` the touch control's
+   picture (the master notes' part 4) */
+export const PASSPORT_WEAPONS = Object.freeze([
+  Object.freeze({ cat: 'sword', word: 'charPage.sword', art: '/icons/ui/combat-melee.webp' }),
+  Object.freeze({ cat: 'bow', word: 'charPage.bow', art: '/icons/ui/combat-bow.webp' }),
+  Object.freeze({ cat: 'staff', word: 'charPage.staff', art: '/icons/ui/combat-magic.webp' }),
+]);
+
+/* the passport's doors (a door is what opens something; a fact that opens
+   nothing is recessed): `opens` the same words as Bro's doors */
+export const PASSPORT_DOORS = Object.freeze({
+  weapon: 'page:broCombat',      /* today's Combat page on that weapon, until step 4 */
+  clan: 'page:clan',             /* the Party page (clans are parties now) */
+  guilds: 'page:guild',          /* today's Guilds page: the ten skill guilds */
+  ap: 'page:achievements',       /* Feats */
+  quests: 'page:quests',         /* the Quests page */
+  titles: 'page:broTitles',      /* the titles you have earned, and Equip */
+  journey: 'page:journey',       /* lifetime records (moved here from the Settings hub) */
+});
+
+const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Math.max(0, Math.floor(Number(v))));
+
+/** The Clan line: { v } the game's own name, or { key, n } words, with `none`. */
+export function passportClan(r) {
+  const R = r || {};
+  if (R.clanParty) {
+    const p = R.party && typeof R.party === 'object' && R.party.state === 'open' ? R.party : null;
+    if (!p) return Object.freeze({ key: 'charPage.noClan', none: true });
+    const a = p.ally && typeof p.ally === 'object' ? p.ally : null;
+    const tag = a && (a.on || a.clan) && typeof a.tag === 'string' && /^[A-Z0-9]{1,4}$/.test(a.tag) ? a.tag : null;
+    if (tag) return Object.freeze({ v: '[' + tag + ']' + (a.name ? ' ' + String(a.name) : ''), none: false });
+    const n = Array.isArray(p.members) ? p.members.length : 0;
+    return Object.freeze({ key: 'charPage.inParty', n, none: false });
+  }
+  const c = R.oldClan && typeof R.oldClan === 'object' && R.oldClan.tag ? R.oldClan : null;
+  if (!c) return Object.freeze({ key: 'charPage.noClan', none: true });
+  return Object.freeze({ v: (c.name || c.tag) + ' [' + c.tag + ']', none: false });
+}
+
+/**
+ * The passport for `who` (null: yours).  Gives back:
+ *   whose     null (yours) or broHubWhose's label
+ *   name, combat (the reader's, or null)
+ *   title     { id, text } only when it is EARNED, else null ("No title equipped")
+ *   weapons   [{ cat, word, art, lvl, points, opens }]  (points: yours only)
+ *   summary   [{ id, k, v | key+n, none, loading, opens }]  Clan, Guilds, AP, Quests
+ *   doors     [{ id, k, opens }]  Titles, and Journey (yours only)
+ */
+export function broPassport(r, who) {
+  const R = r || {};
+  const self = who == null;
+  const earned = typeof R.earned === 'function' ? R.earned : () => false;
+  const tid = typeof R.titleId === 'string' && R.titleId ? R.titleId : null;
+  let title = null;
+  if (tid && earned(tid)) {
+    const text = typeof R.titleText === 'function' ? R.titleText(tid) : null;
+    if (text) title = Object.freeze({ id: tid, text: String(text) });
+  }
+  const W = R.weapons || {};
+  const weapons = PASSPORT_WEAPONS.map((w) => {
+    const k = W[w.cat] || {};
+    const lvl = num(k.lvl);
+    const pts = self ? (num(k.unspent) || 0) : 0;
+    return Object.freeze({ cat: w.cat, word: w.word, art: w.art, lvl, points: pts, opens: PASSPORT_DOORS.weapon });
+  });
+  const clan = passportClan(R);
+  const ap = num(R.ap);
+  const quests = num(R.quests);
+  const summary = [
+    Object.freeze({ id: 'clan', k: 'charPage.clan', ...clan, loading: false, opens: PASSPORT_DOORS.clan }),
+    Object.freeze({ id: 'guilds', k: 'charPage.guilds', key: 'charPage.skillGuilds', none: false, loading: false, opens: PASSPORT_DOORS.guilds }),
+    Object.freeze({ id: 'ap', k: 'charPage.ap', v: ap, none: false, loading: ap == null, opens: PASSPORT_DOORS.ap }),
+    /* another player's quests are their phone's count, which the worker does not keep: an honest line */
+    Object.freeze(quests == null && !self
+      ? { id: 'quests', k: 'charPage.quests', key: 'charPage.notShared', none: true, loading: false, opens: null }
+      : { id: 'quests', k: 'charPage.quests', v: quests, none: false, loading: quests == null, opens: PASSPORT_DOORS.quests }),
+  ];
+  const doors = [Object.freeze({ id: 'titles', k: 'charPage.titles', opens: PASSPORT_DOORS.titles })];
+  if (self) doors.push(Object.freeze({ id: 'journey', k: 'charPage.journey', opens: PASSPORT_DOORS.journey }));
+  const c = num(R.combat);
+  return Object.freeze({
+    whose: broHubWhose(who),
+    self,
+    name: String(R.name == null ? '' : R.name).trim(),
+    combat: c == null ? null : Math.max(1, c),
+    title,
+    weapons: Object.freeze(weapons),
+    summary: Object.freeze(summary),
+    doors: Object.freeze(doors),
+  });
+}
+
+/* the controls a title change holds while it is out (src/game/pending.js) */
+export const TITLE_HOLDS = Object.freeze(['title:equip', 'title:remove']);
+
+/**
+ * The Titles page's row of actions (src/game/screenZones.js's actions): Equip
+ * (slot 0) and Remove title (slot 1), each ROUTINE (a title is changed back
+ * as easily: no confirmation), each `check` the same rule the worker keeps
+ * (server achievements.js _achvTitle: an id you have earned, or none).
+ * Another player's page has NO actions: the owner's alone.
+ *   who       null: yours
+ *   picked    the title picked in the list (an id) or null
+ *   worn      the title you wear (an id) or null
+ *   earned(id)
+ */
+export function titleActions(who, picked, worn, earned) {
+  if (who != null) return [];
+  const has = typeof earned === 'function' ? earned : () => false;
+  return [
+    {
+      id: 'equip', slot: 0, cost: 'routine',
+      check: () => (!picked ? 'charPage.pickTitle' : !has(picked) ? 'charPage.notEarned' : picked === worn ? 'charPage.alreadyWorn' : null),
+    },
+    { id: 'remove', slot: 1, cost: 'routine', check: () => (worn ? null : 'charPage.noTitleWorn') },
+  ];
+}
