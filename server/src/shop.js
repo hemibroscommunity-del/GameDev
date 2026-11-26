@@ -206,6 +206,12 @@ export function toolEarned(quests, key) {
  * Cap `shieldshop`; kill switch: the live flag `shieldshop: false` takes it
  * off the shelf and refuses every buy (present and false is off).
  */
+/* the refusals a tool and the shield share, in Diego's words (written once:
+   the player-words census, docs/specs/player-words.md) */
+const SAY_HAVE = 'You already have one';
+const SAY_QUEST = "Mayor Bro's quest gives you your first one";
+const SAY_NONE = "He hasn't got any";
+const SAY_POOR = 'Not enough coins';
 export const SHIELD_KEY = 'pine_shield';
 export const SHIELD_PRICE = 100;   /* the tools' price (TOOL_SHELF), burnt */
 export function isShieldKey(key) { return key === SHIELD_KEY; }
@@ -799,12 +805,12 @@ export const shopMethods = {
        quest gave one, who holds none */
     if (isToolKey(key)) {
       const why = this._toolWhyNot(ps, key);
-      if (why === 'have') return { ok: false, error: 'You already have one' };
-      if (why === 'quest') return { ok: false, error: "Mayor Bro's quest gives you your first one" };
-      if (why) return { ok: false, error: "He hasn't got any" };
+      if (why === 'have') return { ok: false, error: SAY_HAVE };
+      if (why === 'quest') return { ok: false, error: SAY_QUEST };
+      if (why) return { ok: false, error: SAY_NONE };
       const cost = TOOL_SHELF[key];
       const purse = Math.floor(Number(ps.coins) || 0);
-      if (purse < cost) return { ok: false, error: 'Not enough coins' };
+      if (purse < cost) return { ok: false, error: SAY_POOR };
       this._goldTake(ps, cost, 'shop_tool'); /* v2.3.4670: the gold door */
       if (!ps.inventory) ps.inventory = {};
       /* `key` passed isToolKey, an own-property test on our own table, so it
@@ -825,15 +831,15 @@ export const shopMethods = {
        door's request id acts once (reqonce.js). */
     if (isShieldKey(key)) {
       const why = shieldWhyNot(ps, this._shieldShopOff());
-      if (why === 'have') return { ok: false, error: 'You already have one', why };
-      if (why === 'quest') return { ok: false, error: "Mayor Bro's quest gives you your first one", why };
-      if (why) return { ok: false, error: "He hasn't got any", why };
+      if (why === 'have') return { ok: false, error: SAY_HAVE, why };
+      if (why === 'quest') return { ok: false, error: SAY_QUEST, why };
+      if (why) return { ok: false, error: SAY_NONE, why };
       const purse = Math.floor(Number(ps.coins) || 0);
-      if (purse < SHIELD_PRICE) return { ok: false, error: 'Not enough coins', why: 'coins' };
+      if (purse < SHIELD_PRICE) return { ok: false, error: SAY_POOR, why: 'coins' };
       const piece = questShieldMint(SHIELD_ITEM);
       /* the bag is empty (shieldWhyNot), so the door's cap cannot refuse it;
          if it ever did, nothing has been taken */
-      if (!stashGive(ps, 'shieldStash', piece, 'shop_shield', this)) return { ok: false, error: 'Your bag is full', why: 'full' };
+      if (!stashGive(ps, 'shieldStash', piece, 'shop_shield', this)) return { ok: false, error: SAY_NONE, why: 'full' };
       this._goldTake(ps, SHIELD_PRICE, 'shop_shield');
       if (pid && this._gearProvRecord) this._gearProvRecord(pid, 'shield', piece, 'shop');   /* its gid, as the quest's piece gets (src 'quest') */
       if (pid) this._saveRpg(pid, ps);

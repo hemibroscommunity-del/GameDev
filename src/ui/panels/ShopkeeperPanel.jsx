@@ -90,9 +90,8 @@ const SHIELD_ROW_ICON = '/icons/items/shield.webp?v=2.3.4222';
 /* Show his shield row?  Only against a worker that says `shieldshop`, and
    only to a player who owns no shield, worn or spare: a replacement, never a
    second.  The worker's quote says the rest (a player no quest gave one). */
-function shieldRowShown() {
+function shieldRowShown(S) {   /* S: the game's state the panel already holds */
   try {
-    const S = window._gameState && window._gameState.current;
     if (!S || !S._serverCaps || !S._serverCaps.shieldshop) return false;
     const R = S.rpg || {};
     return !R.shield && !(Array.isArray(R.shieldStash) && R.shieldStash.length > 0);
@@ -299,7 +298,7 @@ export function ShopkeeperPanel() {
      player the quest gave one (server shop.js TOOL_SHELF), since a death in
      No man's land takes them. */
   /* v2.3.6800: and the Pine Shield, to a player who owns none (shieldRowShown) */
-  const shieldShown = shieldRowShown();
+  const shieldShown = shieldRowShown(S);
   const shelf = shopBus.stock.filter((i) => (i.shield ? shieldShown : (i.staple || i.tool || i.qty > 0)));
   const broHas = (k) => (shopBus.quoteFor(k) || {}).qty || 0;
   const youHave = (k) => Math.floor(inv[k] || 0);
