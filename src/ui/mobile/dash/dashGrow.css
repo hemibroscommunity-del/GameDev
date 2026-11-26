@@ -1,0 +1,26 @@
+/* v2.3.6682: the dashboard page's growing motion (card UI2-frame PR 2, reading 8;
+   src/game/dashGrow.js says which and from where, DashGrowBox.jsx wears it).
+   Transform and opacity only, on the page's container: the compositor's work,
+   no layout, nothing held on the page's thread.  220 ms on the band's own curve
+   (sheet/motion.js).  Each kind has two names, a and b, the motions taking
+   them in turn, so a page asked while the last still grows starts its own.
+   No fill: at the end the container is as it was, and the class comes off. */
+.bt-dash-grow { animation-duration: 220ms; animation-timing-function: cubic-bezier(.2,.8,.2,1); animation-fill-mode: none; }
+/* grow: out of the tile tapped (its cell; else the tap's point; else the centre) */
+.bt-dash-grow--grow-a { animation-name: btDashGrow-grow-a; }
+.bt-dash-grow--grow-b { animation-name: btDashGrow-grow-b; }
+@keyframes btDashGrow-grow-a { from { transform: scale(.3); opacity: 0; } 55% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes btDashGrow-grow-b { from { transform: scale(.3); opacity: 0; } 55% { opacity: 1; } to { transform: none; opacity: 1; } }
+/* shrink: Back -- the page under settles back as the one on top goes into
+   the place it grew from (the origin is that page's own `from`) */
+.bt-dash-grow--shrink-a { animation-name: btDashGrow-shrink-a; }
+.bt-dash-grow--shrink-b { animation-name: btDashGrow-shrink-b; }
+@keyframes btDashGrow-shrink-a { from { transform: scale(1.14); opacity: .35; } to { transform: none; opacity: 1; } }
+@keyframes btDashGrow-shrink-b { from { transform: scale(1.14); opacity: .35; } to { transform: none; opacity: 1; } }
+/* fresh: from nothing, at the centre (a change of workspace, the Menu's root by its shortcut, the dashboard opened) */
+.bt-dash-grow--fresh-a { animation-name: btDashGrow-fresh-a; }
+.bt-dash-grow--fresh-b { animation-name: btDashGrow-fresh-b; }
+@keyframes btDashGrow-fresh-a { from { transform: scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes btDashGrow-fresh-b { from { transform: scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+/* the phone's reduced motion: none (the code gives no class then; this is the second lock) */
+@media (prefers-reduced-motion: reduce) { .bt-dash-grow { animation: none !important; } }

@@ -62,6 +62,35 @@ function frame() {
   };
 }
 const read = (P) => P.page.evaluate(frame);
+
+/* v2.3.6682 (card UI2-frame PR 2): THE MOTION, READ AS A STATE (TRAPS §200).
+   The page's container wears [data-dash-grow] (and its transform-origin) from
+   the step until the animation's own end.  A MutationObserver logs every kind
+   and origin it wears, and a press notes whether a motion was on at that
+   moment; the test then waits for the attribute to be gone (off by its end,
+   at whatever pace this box draws), never a window of ms. */
+async function growWatch(P) {
+  await P.page.evaluate(() => {
+    const w = window.__u2grow = window.__u2grow || { log: [], taps: [] };
+    w.log.length = 0; w.taps.length = 0;
+    if (w.obs) w.obs.disconnect();
+    const seen = (el) => { const k = el.getAttribute('data-dash-grow'); if (k) w.log.push({ k, o: el.style.transformOrigin, box: el.getAttribute('data-band-box') }); };
+    w.obs = new MutationObserver((ms) => {
+      for (const m of ms) {
+        if (m.type === 'attributes') { if (m.target.hasAttribute('data-dash-grow')) seen(m.target); continue; }
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          if (n.hasAttribute('data-dash-grow')) seen(n);
+          n.querySelectorAll('[data-dash-grow]').forEach(seen);
+        }
+      }
+    });
+    w.obs.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-dash-grow'] });
+    if (!w.tapOn) { w.tapOn = true; window.addEventListener('pointerdown', () => w.taps.push(!!document.querySelector('[data-dash-grow]')), true); }
+  });
+}
+const growOff = (P) => P.page.waitForFunction(() => !document.querySelector('[data-dash-grow]'), null, { timeout: 15000 }).then(() => true).catch(() => false);
+const growLog = (P) => P.page.evaluate(() => ({ log: window.__u2grow.log.slice(), taps: window.__u2grow.taps.slice() }));
 const tap = async (P, sel, ms = 450) => { await P.page.locator(sel).first().tap({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
 const click = async (P, sel, ms = 450) => { await P.page.locator(sel).first().click({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
 async function bandShot(P, file) {
@@ -199,6 +228,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
     const G8b = await read(P);
     rec.ok('8b. a page opened from the world alone: Back says World and closes again', F8.page === 'leaderboard' && /World/.test(F8.back || '') && G8b.kind === 'closed', { page: F8.page, back: F8.back, after: G8b.kind });
+    /* 12. THE MOTION (v2.3.6682, PR 2): a page grows out of the tile tapped, shrinks back on Back */
+    await H.dashMenuRoot(P);
+    await growOff(P);
+    await growWatch(P);
+    await tap(P, '[data-dash-grid="menu"] [data-dest="quests"]', 0);
+    const offA = await growOff(P);
+    const A12 = await growLog(P);
+    const G12 = await read(P);
+    rec.ok('12a. the Quests tile: its page grows out of the tile\'s cell (37.5% 25%), and the class comes off at the animation\'s end',
+      G12.page === 'quests' && A12.log.some((x) => x.k === 'grow' && x.o === '37.5% 25%' && x.box === 'page') && offA, { page: G12.page, log: A12.log, off: offA });
+    await growWatch(P);
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 0);
+    const offB = await growOff(P);
+    const B12 = await growLog(P);
+    rec.ok('12b. Back: the Menu\'s root comes back as the page shrinks into its tile (the same origin), and the class comes off',
+      (await read(P)).kind === 'menu-root' && B12.log.some((x) => x.k === 'shrink' && x.o === '37.5% 25%') && offB, { log: B12.log, off: offB });
+    /* taps while it grows: a hub's tile tapped at once, inside the growing page (force: Playwright would wait for it to stop moving) */
+    /* the page's animations played at a tenth of their pace (the browser's own clock, not a wait), so the
+       second press surely lands while the first page still grows on this box, however fast it draws */
+    const cdp = await P.page.context().newCDPSession(P.page);
+    await cdp.send('Animation.enable');
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: 0.1 });
+    await growWatch(P);
+    await tap(P, '[data-dash-grid="menu"] [data-dest="social"]', 0);
+    await P.page.locator('[data-dash-grid="socialHub"] [data-dest="social"]').first().tap({ timeout: 6000, force: true });
+    await growOff(P);
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
+    await cdp.detach().catch(() => {});
+    const C12 = await growLog(P);
+    const G12c = await read(P);
+    rec.ok('12c. taps during it are not lost: Social, then Friends at once inside the growing page, opens Friends (a press made while the motion was on)',
+      G12c.page === 'social' && C12.taps.length >= 2 && C12.taps.slice(1).some(Boolean), { page: G12c.page, taps: C12.taps, log: C12.log });
+    /* a change of workspace, and the Menu's root by its shortcut: from nothing */
+    await growWatch(P);
+    await tap(P, '[data-dash-frame] [data-dash-ctl="menu"]', 0);
+    await growOff(P);
+    const D12 = await growLog(P);
+    rec.ok('12d. the Menu shortcut on a deep page: its root grows from nothing (the centre)', D12.log.some((x) => x.k === 'fresh' && x.o === '50% 50%'), D12.log);
+    await growWatch(P);
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 0);
+    await growOff(P);
+    const E12 = await growLog(P);
+    rec.ok('12e. Back from the Menu\'s root to Gear (a change of workspace): from nothing', (await read(P)).kind === 'gear-root' && E12.log.some((x) => x.k === 'fresh' && x.box === 'cols'), E12.log);
+    /* the phone's reduced motion: none */
+    await P.page.emulateMedia({ reducedMotion: 'reduce' });
+    await growWatch(P);
+    await tap(P, '[data-dash-frame] [data-dash-ctl="menu"]', 500);
+    await tap(P, '[data-dash-grid="menu"] [data-dest="hero"]', 700);
+    const F12 = await growLog(P);
+    rec.ok('12f. reduced motion: the page opens, no motion worn', (await read(P)).page === 'hero' && F12.log.length === 0, F12.log);
+    await P.page.emulateMedia({ reducedMotion: 'no-preference' });
+    /* 13. LEFTOVER A (v2.3.6682): the band's handle hides and keeps BOTH workspaces */
+    await H.dashOpen(P, 'dashboard');
+    await P.page.evaluate(() => window.__broDashPanelBus.go({ type: 'push', id: 'stats' }));
+    await P.page.waitForTimeout(600);
+    await H.dashMenuRoot(P);
+    await tap(P, '[data-dash-grid="menu"] [data-dest="quests"]', 900);
+    await tap(P, '[data-dash-fold]', 900);
+    const H13 = await read(P);
+    await tap(P, '[data-dash-frame="closed"] [data-dash-ctl="gear"]', 900);
+    const G13 = await read(P);
+    await tap(P, '[data-dash-fold]', 900);
+    await tap(P, '[data-dash-frame="closed"] [data-dash-ctl="menu"]', 900);
+    const M13 = await read(P);
+    rec.ok('13. the handle folds the band and keeps both: Gear comes back on its Stats page, the Menu on Quests',
+      H13.kind === 'closed' && G13.page === 'stats' && G13.nav.ws === 'gear' && M13.page === 'quests' && M13.nav.ws === 'menu',
+      { folded: H13.kind, gear: [G13.page, G13.nav], menu: [M13.page, M13.nav] });
+    await tap(P, '[data-dash-frame] [data-dash-ctl="close"]', 600);
     /* 9. the other shapes */
     for (const s of [{ w: 375, h: 667, band: 235, rows: 2, tag: '375x667' }, { w: 844, h: 390, band: 130, rows: 1, tag: '844x390' }]) {
       await P.page.setViewportSize({ width: s.w, height: s.h });
@@ -216,6 +313,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await tap(P, '[data-dash-grid="menu"] [data-dest="quests"]', 900);
         await bandShot(P, 'ui2-frame-page-sideways.png');
       }
+    }
+    /* 12g. ?dashgrow=0: none (the switch's row) */
+    await P.page.setViewportSize({ width: 390, height: 844 });
+    await P.page.evaluate(() => { try { history.replaceState(null, '', location.pathname + (location.search ? location.search + '&' : '?') + 'dashgrow=0'); } catch (e) { /* */ } });
+    await P.page.reload();
+    if (await inWorld(P, rec, 'dashgrow=0')) {
+      await H.dashMenuRoot(P);
+      await growWatch(P);
+      await tap(P, '[data-dash-grid="menu"] [data-dest="quests"]', 900);
+      const Z = await growLog(P);
+      rec.ok('12g. ?dashgrow=0: the page opens, no motion worn', (await read(P)).page === 'quests' && Z.log.length === 0, Z.log);
     }
   } finally {
     await P.ctx.close().catch(() => {});

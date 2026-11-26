@@ -34,6 +34,7 @@ import { deskBigActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OP
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { twoButtonsLive, holdAutoOn } from '@/game/latch.js';   /* v2.3.6544: the two buttons' words, by their one gate (card CT PR 5) */
 import { SAY } from '@/data/say/questCoach.js';
+import { SAY as GUIDE } from '@/data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 import { say } from '@/game/say.js';
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -804,6 +805,9 @@ const LESSONS = [
         body: 'Mayor Bro paid you in gear. Tap the handle to find it.' },   /* v2.3.4172 */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
+      /* v2.3.6682 (card UI2-frame PR 2): under the new frame, the control that leads to Gear (its button, or the Menu root's "‹ Gear") */
+      { sel: '[data-dash-ctl][data-nav="dashboard"]', reach: '[data-dash-ctl][data-nav="dashboard"]',
+        body: GUIDE['dashGuide.rewardGear'] },
       { sel: '[data-nav="dashboard"]', reach: '[data-nav="dashboard"]',
         body: 'Mayor Bro paid you in gear. Tap Dashboard to find it.' },
     ],
@@ -1064,6 +1068,12 @@ const LESSONS = [
         body: function (S) { return pointsTipWords('grid', S && S.rpg); } },
       { sel: '[data-section="Build"]', reach: '[data-section="Build"]',
         body: function (S) { return pointsTipWords('tab', S && S.rpg); } },
+      /* v2.3.6682 (card UI2-frame PR 2): under the new frame, Bro's tile on the
+         Menu's root, then the Menu button (it wears [data-nav="hero"] there) */
+      { sel: '[data-dest="hero"]', reach: '[data-dest="hero"]',
+        body: function (S) { return pointsTipWords('tile', S && S.rpg); } },
+      { sel: '[data-dash-ctl="menu"]', reach: '[data-dash-ctl="menu"]',
+        body: function (S) { return pointsTipWords('menu', S && S.rpg); } },
       { sel: '[data-nav="hero"]', reach: '[data-nav="hero"]',
         body: function (S) { return pointsTipWords('nav', S && S.rpg); } },
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
@@ -1149,7 +1159,12 @@ const LESSONS = [
                 body: 'Your Login Key is the ONLY way back to this character. Open it and save it somewhere.' },
               { sel: '.bt-navrail [aria-label="More"]', reach: '.bt-navrail [aria-label="More"]',
                 /* v2.3.4172: the tile is Account now, the key on its page */
-                body: 'More > Account. Your Login Key is the only way back to this character — save it somewhere.' }],
+                body: 'More > Account. Your Login Key is the only way back to this character — save it somewhere.' },
+              /* v2.3.6682 (card UI2-frame PR 2): under the new frame More is gone: Account is a tile
+                 under Settings (the hub), Settings a door on the Menu's root, the Menu a button */
+              { sel: '[data-dest="account"]', reach: '[data-dest="account"]', body: GUIDE['dashGuide.keyAccount'] },
+              { sel: '[data-dest="settings"]', reach: '[data-dest="settings"]', body: GUIDE['dashGuide.keySettings'] },
+              { sel: '[data-dash-ctl="menu"]', reach: '[data-dash-ctl="menu"]', body: GUIDE['dashGuide.keyMenu'] }],
     label: 'Save your Login Key',
     /* Gated on having got through the fight lessons: a key is meaningless to
        someone who has not yet decided they want to keep the character, and the

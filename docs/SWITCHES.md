@@ -706,6 +706,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?bandbeat` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | The band's 200 ms redraw runs in one piece, as before. |
 | `?bropages` | page | switch | v2.3.6600 | 2026-11-25 | =0 | logic |  | no | The Bro tab is the one card of before (you, the stats, the doors; it scrolls), not the three pages. |
 | `?create` | page | lever | v2.3.1861 |  | =1 | none |  | no | Goes straight to the character creator. |
+| `?dashgrow` | page | switch | v2.3.6682 | 2026-11-26 | =0 | logic |  | no | A dashboard page is simply there when it opens and when Back is pressed: it does not grow out of the tile tapped, nor shrink back into it (src/game/dashGrow.js, dash/DashGrowBox.jsx; the phone's reduced-motion setting does the same; card UI2-frame PR 2). |
 | `?guest` | page | lever | v2.3.1116 |  | =1 | none |  | no | This tab plays as a fresh guest with its own id. |
 | `?jumpicon` | page | value | v2.3.3721 |  | a glyph's name | logic |  | no | Picks the jump button's glyph. |
 | `?login` | page | lever | v2.3.1839 |  | =1 | none |  | no | Shows the login door. |

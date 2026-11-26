@@ -25,6 +25,7 @@
  * points-tips.test.mjs runs this in node.
  */
 import { placedPoints } from './pointsReset.js';
+import { SAY as GUIDE } from '../data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 
 /* how long after your last blow, dealt or taken, before a tip may show */
 export const POINTS_TIP_CALM_MS = 5000;
@@ -87,6 +88,10 @@ export function pointsTipWords(where, rpg) {
   if (where === 'tab') return 'Your ' + pts + (n === 1 ? ' is' : ' are') + ' waiting. Tap Points.';
   /* the card's own title says "Level up!" (the lesson's label) */
   /* v2.3.4172: the button is Bro now, and the fold a handle, not OPEN */
+  /* v2.3.6682 (card UI2-frame PR 2): under the new frame, Bro's tile on the
+     Menu's root, and the Menu button that leads to it */
+  if (where === 'tile') return GUIDE['dashGuide.pointsBro'].replace('{pts}', pts);
+  if (where === 'menu') return GUIDE['dashGuide.pointsMenu'].replace('{pts}', pts);
   if (where === 'nav') return 'You have ' + pts + ' to spend. Tap Bro.';
   if (where === 'side') return 'You have ' + pts + ' to spend. Open your dashboard.';
   return 'You have ' + pts + ' to spend. Tap the handle.';
