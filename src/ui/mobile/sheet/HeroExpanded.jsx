@@ -1507,7 +1507,7 @@ export const HeroExpanded = () => {
             const pools = combatPools(R, chanCaps);
             const laneAvail = (cat) => Number(pools[cat]) || 0;
             const sharedAvail = pools.shared;
-            const { spendFor, openStatInfo, stayCheck } = statWindow({ R, buildCat, laneAvail, sharedAvail, stayRef });   /* v2.3.6685 */
+            const { spendFor, openStatInfo, stayCheck } = statWindow({ R, buildCat, laneAvail, sharedAvail, stayRef, live: getState });   /* v2.3.6685 */
             stayCheckRef.current = stayCheck;
             /* ═══ v2.3.2620: WHAT IS ALREADY IN A CATEGORY ═══
                Owner: "make it so that the current points applied to skills is

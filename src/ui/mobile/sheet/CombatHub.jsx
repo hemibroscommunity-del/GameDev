@@ -19,7 +19,6 @@
  * picture, word and count (its XP bar under the word). */
 import React, { useEffect } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { getState } from '../dash/common.js';
 import { heroSectionBus } from './heroSectionBus.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { combatHubDoors, combatPools, combatLevel } from '@/game/combatHub.js';
@@ -56,11 +55,12 @@ function Bar({ p }) {
 }
 
 /**
- * S    the game's state (handed by BroCard)
- * who  whose page (null: yours; step 9 sets another's)
+ * S     the game's state (handed by BroCard)
+ * who   whose page (null: yours; step 9 sets another's)
+ * live  () => the game's state now (optional; default the S handed: the page never reaches for it)
  */
-export function CombatHub({ S, who }) {
-  useClock(() => hubKey(getState()), 400);
+export function CombatHub({ S, who, live }) {
+  useClock(() => hubKey(live ? live() : S), 400);
   const [ref, room] = useRoom();
   const R = (S && S.rpg) || null;
   const doors = combatHubDoors(R, chanOf(S), who == null ? null : who);

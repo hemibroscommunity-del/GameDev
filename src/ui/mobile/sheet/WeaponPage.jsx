@@ -39,7 +39,6 @@
  * of page hold them (narrower: one door, "All stats", never smaller text),
  * and the six as 44 px doors. */
 import React, { useEffect, useRef } from 'react';
-import { getState } from '../dash/common.js';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
@@ -92,11 +91,12 @@ function explain(key, value) {
  * S    the game's state (handed by BroCard)
  * cat  'sword' | 'bow' | 'staff'
  * who  whose page (null: yours)
+ * live () => the game's state now (optional; default the S handed, as CharacterPage reads it)
  */
-export function WeaponPage({ S, cat, who }) {
+export function WeaponPage({ S, cat, who, live }) {
   const stayRef = useRef(null);
   const stayCheckRef = useRef(null);
-  useClock(() => pageKey(getState(), cat, !!stayRef.current), 300);
+  useClock(() => pageKey(live ? live() : S, cat, !!stayRef.current), 300);
   const [ref, room] = useRoom();
   /* the window that stays after Spend is put up again with this render's numbers (statWindow) */
   useEffect(() => {
@@ -114,7 +114,7 @@ export function WeaponPage({ S, cat, who }) {
   const attrs = weaponAttributes(R, cat);
   const ww = WEAPON_WORD[cat] ? WEAPON_WORD[cat]() : '';
   const win = statWindow({
-    R, buildCat: cat, stayRef, readOnly: !self,
+    R, buildCat: cat, stayRef, readOnly: !self, live: live || (() => S),
     laneAvail: (c) => Number(pools[c]) || 0, sharedAvail: pools.shared,
   });
   stayCheckRef.current = self ? win.stayCheck : null;

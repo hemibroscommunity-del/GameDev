@@ -17,7 +17,6 @@
  * ctx.readOnly (for step 9: another player's page): the window reads, with
  * no stepper, no Spend and no lane to pick (InfoPopup's `readOnly`). */
 import React from 'react';
-import { getState } from '../dash/common.js';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { previewStatPoint } from './statPreview.js';
@@ -59,12 +58,14 @@ export function statPtsIn(R, st, laneCat) {
 export const STAY_WAIT_MS = 3000;
 
 /**
- * ctx  { R, buildCat, laneAvail(cat), sharedAvail, stayRef, readOnly }
+ * ctx  { R, buildCat, laneAvail(cat), sharedAvail, stayRef, readOnly, live() (the game's state now) }
  * Returns { spendFor(st, cat), openStatInfo(st, cat, spend, extra), stayCheck() }.
  */
 export function statWindow(ctx) {
   const { R, buildCat, laneAvail, sharedAvail, stayRef } = ctx;
   const readOnly = !!ctx.readOnly;
+  /* the game's state now, as the host hands it (never reached for here: the open hand, grand plan 5.7) */
+  const live = typeof ctx.live === 'function' ? ctx.live : () => null;
   const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
   const n2 = (v) => (Math.round(v * 100) / 100).toFixed(2);
   /* ═══ v2.3.2222: THE ℹ️ WINDOW ═══
@@ -111,7 +112,7 @@ export function statWindow(ctx) {
        reconnect it starts is the player's): the button stays and
        says why, as it does for a capped stat, and the session is
        brought back so the next tap spends. */
-    const S0 = getState();
+    const S0 = live();
     const ch0 = S0 && S0.channel;
     const offline = !!(ch0 && typeof ch0.isLive === 'function' && !ch0.isLive());
     let offlineWhy = null;
@@ -137,7 +138,7 @@ export function statWindow(ctx) {
          its extra spends refused, exactly as a double tap was. */
       max: Math.max(0, Math.min(avail, cap - pts)),
       run: (n) => {
-        const S2 = getState();
+        const S2 = live();
         const R2 = S2 && S2.rpg;
         if (!S2 || !S2.channel) return;
         /* v2.3.3034: gone since the window opened -- send nothing
@@ -331,7 +332,7 @@ export function statWindow(ctx) {
           stay: true,
           run: (n) => {
             const count = Math.max(1, Math.floor(Number(n) || 1));
-            const R0 = (getState() || {}).rpg || R;
+            const R0 = (live() || {}).rpg || R;
             stayRef.current = { st, cat, laneCat, n: count, at: Date.now(), was: statPtsIn(R0, st, laneCat), payload };
             spend.run(count);
           },
@@ -341,7 +342,7 @@ export function statWindow(ctx) {
         /* v2.3.3551: and on a first spend -- everything placed is what
            this window just spent -- that the free reset gives them
            back (game/pointsTips.js), so trying a stat is safe */
-        spentHint: spentN > 0 ? firstSpendHint(((getState() || {}).rpg || R).prog3, spentN, pointsResetOn(getState())) : null,
+        spentHint: spentN > 0 ? firstSpendHint(((live() || {}).rpg || R).prog3, spentN, pointsResetOn(live())) : null,
         /* ═══ v2.3.2684: THE LANE IS CHOSEN HERE NOW ═══
            Owner: "The button to change which of the 3 combat skills
            it's applied to ... is a tab in the confirm window.  This

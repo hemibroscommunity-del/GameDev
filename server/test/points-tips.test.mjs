@@ -128,7 +128,9 @@ const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.
     && /done\.points = true; saveDone\(done\)/.test(coach));
   check('6: a body may be worked out when shown', /typeof body === 'function'/.test(coach));
   /* the anchors the lesson names exist in the page */
-  const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8');
+  /* v2.3.6685 (card UI2-combat): the stat window moved whole to sheet/statWindow.jsx: read with it */
+  const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8')
+    + '\n' + readFileSync(new URL('../../src/ui/mobile/sheet/statWindow.jsx', import.meta.url), 'utf8');
   const dash = readFileSync(new URL('../../src/ui/mobile/BottomDashboard.jsx', import.meta.url), 'utf8');
   check('6: the grid\'s top row and its head cell are there', /data-prog3-band="lane"/.test(hero) && /data-prog3-lane=\{isLane \? buildCat : 'shared'\}/.test(hero));
   /* v2.3.4172: Bro is one card; Points ('Build') a window over it, opened by
