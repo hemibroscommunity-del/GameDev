@@ -344,7 +344,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
              another (the socketed ones, the two, Sprint, Quick eat, Burst,
              the trap, the board, Charge);
          8c. with the tier drawn every socketed control shown is in its
-             well (nothing moved for it);
+             well (nothing moved for it); the read waits for Attack's
+             socket first (v2.3.6643);
          8d. a tap on Shield Bash sends the old button's request (`ability`,
              bash) and the WORKER answers it (its stamina spent, or its
              refusal named); 8e the same for Whirlwind;
@@ -477,6 +478,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (D2.c.block) await tapAt(P, D2.c.block.box, 21);
       const raised = await P.page.waitForFunction(() => !!document.querySelector('[data-ability="bash"]'), null, { timeout: 8000 }).then(() => true).catch(() => false);
       await P.page.waitForTimeout(600);
+      /* v2.3.6643 (card PAD part 8): the read waits for Attack's socket first.
+         8c was red one run in three upright (part 22's runs on e1467159: its
+         list lacked `attack`): the Attack button was not yet seated (shown,
+         its face in the attack well) when the step read, after the guard's
+         tap.  Up to 8 s; a button that never seats still fails 8c below. */
+      await P.page.waitForFunction(() => {
+        const el = document.querySelector('.bt-rjoy-base');
+        const f = el && el.querySelector('.bt-pad-face');
+        const sh = document.querySelector('[data-padhousing="shell"]');
+        const L = window.__btPad && window.__btPad.layout;
+        if (!f || !sh || !L || !L.wells || !L.wells.attack) return false;
+        for (let e = el; e && e !== document.body; e = e.parentElement) {
+          const cs = getComputedStyle(e);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false;
+        }
+        const cs = getComputedStyle(document.documentElement);
+        const band = parseFloat(cs.getPropertyValue('--sheet-h')) || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+        const r = f.getBoundingClientRect(), s = sh.getBoundingClientRect(), w = L.wells.attack;
+        return Math.abs(r.left + r.width / 2 - (s.left + w.x)) <= 1.5 && Math.abs(r.top + r.height / 2 - (window.innerHeight - band - w.y)) <= 1.5;
+      }, null, { timeout: 8000, polling: 100 }).catch(() => null);
       const G = await LOOK8();
       if (shots) await P.page.screenshot({ path: shots + '/pad6-specials-' + label + '.png' });
       const T = G.pad && G.pad.tier, L8 = G.pad && G.pad.layout;

@@ -35,6 +35,7 @@ import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: whic
 import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
 import { fillOrder } from './zoneGate.js';   /* v2.3.4400: the gate's pieces, nearest the arrival first */
 import { sw, swHas, pageAddress } from './switches.js';   /* v2.3.5310: the page's one reader (card T); v2.3.5311 its address */
+import { hereCells, hereFor } from './hereCells.js';   /* v2.3.6720: the last few cells' answers (card PRT) */
 import { assetUrl } from './assetUrl.js';   /* v2.3.6744: the objects' manifest at its file's version (card KEEP) */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
@@ -61,6 +62,11 @@ const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, 
 const _filling = new Map();    /* v2.3.4094: "i,j" -> the zone gate's piece still being laid (wheelWarm) */
 let _here = null;              /* the swatch under your feet: { q, x, y } */
 let _hereAsked = null;
+/* v2.3.6720 (card PRT): the last few cells' answers, so two places a fraction
+   of a pixel apart in two cells are not a message to the worker on every
+   frame (game/hereCells.js has the story).  `?herecells=0`: one answer, as
+   before. */
+const _hereKept = hereCells();
 const _gotFns = new Set();     /* v2.3.2959: told when a picture some piece went without has come */
 const _under = new Map();      /* v2.3.2967: "i,j" -> the swatch drawn at every 3 game px of that piece */
 
@@ -413,7 +419,10 @@ function onMessage(m, resolveInit, rejectInit) {
   if (m.type === 'where') {
     _hereAsked = null;
     /* v2.3.2966: with the region and tier there, and in words (the map) */
-    if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y, region: m.reg || null, tier: m.tier || 0, words: m.words || null };
+    if (m.q != null) {
+      _here = { q: m.q, x: m.id.x, y: m.id.y, region: m.reg || null, tier: m.tier || 0, words: m.words || null };
+      _hereKept.put(_here);   /* v2.3.6720 */
+    }
     return;
   }
   /* v2.3.4400: the ground's pictures are still arriving (the bytes so far):
@@ -561,18 +570,26 @@ export function wheelHere(x, y) {
   if (!_w || !info) return null;
   const cell = info.worldW / info.walk.cols;
   const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
-  if (!_hereAsked && (!_here || _here.x !== cx || _here.y !== cy)) {
+  /* v2.3.6720 (card PRT): this cell's answer if it is the last one or one of
+     the few kept (game/hereCells.js: the renderer asks about two places a
+     fraction of a pixel apart in one frame, and where they are in two cells
+     -- the arrival point is such a place -- one kept answer was a question
+     to the worker every frame).  Only a cell not kept is asked for. */
+  let at = hereFor(_here, null, cx, cy);
+  if (!at && !sw('herecells')) at = hereFor(null, _hereKept, cx, cy);
+  if (!at && !_hereAsked) {
     _hereAsked = { x: cx, y: cy };
     _w.postMessage({ type: 'where', id: _hereAsked, x, y });
   }
-  if (!_here) return null;
-  const c = info.catalog[_here.q];
+  const h = at || _here;   /* not answered yet: the last answer, not `fresh` */
+  if (!h) return null;
+  const c = info.catalog[h.q];
   /* v2.3.3064: `fresh` -- the answer is for the cell you are in, not the last
      one asked (the land music's first word on a visit, game/wheelMusic.js:
      the worker lingers after you leave, so its last answer can be where you
      died) */
-  return c ? { id: c.id, name: c.name, water: _here.q === info.water, made: info.made[c.id] || null,
-    region: _here.region, tier: _here.tier, words: _here.words, fresh: _here.x === cx && _here.y === cy } : null;
+  return c ? { id: c.id, name: c.name, water: h.q === info.water, made: info.made[c.id] || null,
+    region: h.region, tier: h.tier, words: h.words, fresh: h.x === cx && h.y === cy } : null;
 }
 
 /* ═══ v2.3.2967: THE GROUND UNDER YOUR FEET, for the footstep sound ═══
@@ -634,6 +651,7 @@ export function wheelStop() {
   _under.clear();
   _here = null;
   _hereAsked = null;
+  _hereKept.clear();   /* v2.3.6720: another worker, another Wheel: its answers go with it */
   _failP = null; _retryAt = 0; _retryWait = 0;   /* v2.3.4370: the next way in starts afresh */
 }
 

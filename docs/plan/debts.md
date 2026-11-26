@@ -354,6 +354,29 @@ stays with that PR until it lands, and is marked (held).
   Merriweather's, the kit's serif; no new request) and `CREDITS.md` (its
   row): outside its own list, harmless (read at 67).
 
+## PAD (68)
+
+- Next job (not a hold): mp-padskin 8c upright reads Attack before it is
+  seated, a one-in-three flake (64/65, 65/65, 65/65 on e1467159): wait on
+  Attack's socket before the read (part 22's runs).
+- `mp-contextbuttons` 5 (mode 4: a press of Attack starts the chop) is red on
+  `main` d42e48ac, on d8a10178, on e1467159 and on the final tree alike:
+  main's own (Found (68)), not PAD's.
+
+## UI2 (68)
+
+- Next jobs (not holds; read by a lane at 68, unsure, none seen on a phone):
+  `GearPanels.jsx` Summary (~:237) renders nothing, with no close, when a
+  WORN pick's cell is emptied by the worker (the 'gone' effect covers bag
+  picks only); `StatTree` is not given `who` (another player's tree would
+  show your numbers once step 9 opens it); a '?' bag cell carries its real
+  `data-grade` in the page (no style reads it); the first points' guide
+  arrow stops at Bro's landing (`guideArrow.js`); `ItemPage` reads the `R`
+  it opened with (a count changed while it is open is stale).
+- Each UI2 line's merge of main kept the BRANCH's `docs/plan/status/UI2.md`
+  whole (`git checkout --ours`): the earlier lines' Done and Found are in
+  their heads' history; the next UI2 PR gathers them.
+
 ## BRO
 
 - `mp-brocard` 55/59 red the same four on `main` 096d7000 and on #2349's
@@ -363,6 +386,58 @@ stays with that PR until it lands, and is marked (held).
 - `mp-deskkeys` 8f (a double click on a snowman lunges and ends locked on
   it) red on `main` and on the head alike: waits for the owner's verdict
   (65).
+
+## KEEP (69)
+
+- Next jobs (not holds; the purpose review of #2385/#2388/#2389 on
+  87b08b1b, every card dodge for `/sfx` RED): `tools/guards/keep-sfx.test.mjs`
+  scans only strings that start `/sfx/`, so a folder constant
+  (`const VOICE='/sfx/voice/'; playFile(VOICE+n+'.mp3')`), a template on
+  `SFX='/sfx'`, a `.join` of parts, or a `.replace` on a stamped address
+  (it carries the OLD `?v=`) stays GREEN: make `loadSample`/`playFile`/`fetch`
+  the only ways a sound is fetched and judge those calls' arguments.
+- `tools/assets/keepVersions.mjs:51`: with `KEEP_STAMP=0` nothing is
+  stamped but `public/_headers` still ships the one-year `/sfx/*` block:
+  drop the kept blocks from `dist/_headers` when the stamp is off, or fail
+  the build when `CF_PAGES` is set (nothing in the repository sets the
+  variable today; the Pages build is a plain `vite build`).
+- `public/tools/ground/app.js:838`: the Ground Studio fetches the bare
+  footstep addresses of `clips.json`; under the year's block the owner's
+  own browser keeps an old footstep there for a year (a studio, not the
+  game: the card's scope to say).
+- The card's own PR 4 plant "a `_headers` block for a folder whose count
+  is not 0" is GREEN on this stack (no guard yet): PR 4 holds to it.
+
+## PRT (69)
+
+- Next jobs (not holds; #2384 f2e58e9c, the card's break proofs all RED):
+  `tools/guards/here-cells.test.mjs` never plays `src/game/wheelTrial.js`
+  `wheelHere`, so `wheelTrial` never calling `_hereKept.put`, or passing
+  float keys (`x/cell`), stays GREEN; `tools/guards/draw-on-change.test.mjs`
+  never plays `ElementBurstButton.jsx` `burstView`, so the element or the
+  flash dropped from the burst key (a button frozen in its old colour after
+  a weapon swap) stays GREEN: export `burstView` and play its key.
+
+## LOAD (69)
+
+- Next jobs (not holds; #2386 b29cda8a, no behaviour change found):
+  `src/game/loadTimes.js` markLift reads `window.__btMaskedCoverage` for
+  EVERY player at every lift (about 6 ms, the page's thread; not in
+  `tools/qa/mp/held-budget.mjs`): read it only while the readout is open;
+  that read's non-look path calls `getBodyFrame` (entityRenderer.js:3024),
+  which can start `buildBodySheet` when the 20 s cap lifted before the
+  preload's bake (the same sheets, sooner). `docs/plan/status/LOAD.md` on
+  the head still says `working` and "open the draft PR": stale.
+
+## TD (69)
+
+- #2380 changes `.github/workflows/deploy-worker.yml`: it merges only
+  with the owner's own Approve (CODEOWNERS); the stack #2381 to #2383 sits
+  on it and waits with it. Once #2380 is on `main`, Found's first line
+  (a `server/test/` merge deploys) is mended: strike it then (sitting 70).
+- Reviewed #2382's deletions (16 files of `src/game`): none had an effect;
+  the module load order is identical over 964 modules. `czMX` stays under
+  its disable line (its read can throw): the owner's call in TD's Needs.
 
 ## Found (no card's debt)
 
@@ -379,3 +454,11 @@ stays with that PR until it lands, and is marked (held).
 - `node tools/dev/state-census.mjs --check` is red on `main` 096d7000
   (`docs/plan/census/state.md` not what the code says: 913 files then,
   1098 now); precheck does not run it (65).
+- `mp-onboarding` is flaky on `main` d42e48ac: 5/5 then 2/5 (the intro
+  clip's lift, the rail, the first tap), and 4/5 then 5/5 on #2377 (68).
+- `mp-heldsweep`'s sample is red on `main` d42e48ac at the ride (`other:
+  _sprite` 19.7 ms > 12) and on the final tree once (`screen-check` 16.8 ms
+  left no note), then 6/6 on it: the ride station is noisy (68).
+- `mp-contextbuttons` 5 ("mode 4: a press of Attack starts the chop, as
+  before") is red on `main` d42e48ac (26/27): the press lands on Attack's
+  disc and no chop starts in 5 s. Card CT's files (68).

@@ -1,6 +1,6 @@
 card: PAD
-branch: claude/plan-pad-6-specials (stacked on claude/plan-pad-3-housing)
-prs: #2354 (draft, tag 6640, part 1: lands only with part 3); #2363 (tag 6641, parts 3-5); part 6 (tag 6642, draft, base #2363's branch)
+branch: claude/plan-pad-8-nojump (from main 7ec316e9)
+prs: #2354, #2363, part 6 (merged, sitting 68); part 8 (tag 6643, draft)
 state: ready
 
 ## Done
@@ -9,32 +9,31 @@ state: ready
   the big well in a fight, the shield a tap; the shell at the world's
   width; the board's poll keys on the controller's pick; Block's stamp.
 - 6642 part 6: Whirlwind and Shield Bash in a TIER over the right lobe
-  (padSkin.js specialLayout): the housing as drawn has no free 44 px
-  place, so while either shows the right lobe is drawn ~42 px taller (the
-  same housing.png, its steep wall band stretched: no new picture);
-  Whirlwind over Special, Bash over the mobility well, the old buttons'
-  own faces at the top row's size, boxes 44.  Who shows: the old rule
-  (AbilityButtons' list, abilityStatus), told to the shell (padTier.js).
-  Sprint (no well) stands 4 px over the tier always (clearOfTier: its old
-  place sat 10 px into it upright).  pad-skin.test 3c/3f-3q; mp-padskin 8.
+  (padSkin.js specialLayout; the right lobe drawn ~42 px taller while
+  either shows); Sprint stands over the tier (clearOfTier).
+- 6643 part 8 (CUT DOWN by the owner's "Do 1.": Jump stays small in the
+  middle well in a fight, as built): no game file changed.  mp-padskin
+  8c's read waits for Attack's socket (shown, its face in the attack
+  well, up to 8 s) before it reads: part 22's one-in-three red.
 
 ## Found
-- The bow and staff have no extra special of their own: Whirlwind is the
-  sword's alone; Shield Bash is the RAISED SHIELD's with any weapon (a bow
-  with its guard up shows Bash, as the old layout did).
-- Special hides while the guard is up, so with Bash shown its well is empty.
-- Sideways the tier meets the minimap: the owner's call.
-- Part 6's last red (8e sideways, stamina null, no answer) was the TEST's:
-  that page sat 2+ minutes with no real input, so the idle logout (v2.3.1913)
-  hung it up and the first tap was only "I'm back" (v2.3.3034). Mended in
-  mp-padskin only (`H.keepAlive`, wait for link and player, 8 s fast poll).
-- mp-padskin: the full run's last red was 8e sideways (above); the final
-  full run is a helper's (PR body).
+- CHARGE (the card's check): it IS drawn in the top-left (mobility) well
+  whenever the game shows it (padSkin.js wellOf: charge -> 'mobility';
+  ctxFor: Charge over the board).  It shows (controlVisibility.js
+  chargeShown, thumbSide.js chargeUp) with a melee weapon (never the bow
+  or staff), a monster SIGHTED or locked and NONE IN REACH.  The well is
+  empty in a fight when: a monster is in reach (the specials' phase: you
+  are already swinging); a duel, an arena match or a player locked
+  (v2.3.6554: Charge is for monsters); the bow or staff in hand; or
+  `?chargebtn=0`.  The board takes the well only out of a fight (or for
+  a rider).  With the guard up Shield Bash's tier sits over that well.
+- The bow and staff have no extra special: Whirlwind is the sword's;
+  Shield Bash the raised shield's with any weapon.
+- Special hides while the guard is up.  Sideways the tier meets the
+  minimap: the owner's call.  A computer's Jump key is unchanged.
 
 ## Next
 - Nothing: message the orchestrator, stop.
 
 ## Needs
-- The gatekeeper's sitting for #2363 with #2354, then this.  The owner's
-  iPhone: the tier is the orchestrator's choice (other ways: floating in
-  the old places, new art; or the tier always drawn for a sword).
+- The gatekeeper's sitting for part 8 (a test-only change: no deploy).

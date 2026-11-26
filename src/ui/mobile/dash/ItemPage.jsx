@@ -69,7 +69,7 @@ export function ItemPage() {
       <div className="u2-item-in">
         <div className="u2-item-id" data-item-id="">
           <span className="u2-item-pic">
-            <Ui2Slot grade={m.hidden ? 'normal' : m.grade} art={m.art} size={52} name={m.name} />
+            <Ui2Slot grade={m.hidden ? 'normal' : m.grade} hidden={m.hidden} art={m.art} size={52} name={m.name} />
             {!m.art && m.glyph ? <span className="u2-item-glyph" aria-hidden="true">{m.glyph}</span> : null}
           </span>
           <span className="u2-item-words">
@@ -94,7 +94,7 @@ export function ItemPage() {
               ))}
             </div>
           ) : null}
-          {m.line ? <p className="u2-item-line" data-item-line="">{m.line}</p> : null}
+          {m.line ? <p className={'u2-item-line' + (m.hidden ? ' is-hidden' : '')} data-item-line="">{m.line}</p> : null}
           {m.doors.length ? (
             <div className="u2-item-doors">
               {m.doors.map((d) => (

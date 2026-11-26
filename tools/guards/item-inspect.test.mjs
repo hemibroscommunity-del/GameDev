@@ -48,7 +48,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectItem, itemGrade, ITEM_GRADES, reqWords } from '../../src/game/itemInspect.js';
+import { inspectItem, itemGrade, ITEM_GRADES, reqWords, itemSummary } from '../../src/game/itemInspect.js';
 import { SAY } from '../../src/data/say/itemInspect.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -78,6 +78,14 @@ const FISH = (over) => ({
   ...(over || {}),
 });
 const MOCK_WORDS = /\b(common|epic|legendary)\b/i;
+/* v2.3.6688 (the mends): today's card's words for a "?" piece, read off game/revealBag.js revealCardFor (its
+   imports are the page's, so its text is read, not run): the page must say the same */
+const HIDDEN_LINE = (() => {
+  const src = fs.readFileSync(path.join(ROOT, 'src/game/revealBag.js'), 'utf8');
+  const body = src.slice(src.indexOf('export function revealCardFor'));
+  const m = body.match(/\binfo:\s*'([^']+)'/);
+  return m ? m[1] : '(revealCardFor\'s info not found)';
+})();
 const allText = (m) => JSON.stringify([m.title, m.name, m.gradeWord, m.where, m.line, m.facts, m.actions.map((a) => [a.label, a.why])]);
 
 /* ── the checks, each a function of a model maker, so a plant can be played ── */
@@ -154,6 +162,18 @@ const CHECKS = {
   C9(make) {
     const m = make(SWORD({ hidden: true, name: 'Unrevealed Sword' }));
     if (m.gradeWord || m.stars || m.facts.some((f) => /\d/.test(f.v))) return JSON.stringify([m.gradeWord, m.stars, m.facts]);
+    /* v2.3.6688 (the mends; mp-revealbag 3): a "?" with its rows and a real grade on file says today's card's words
+       and shows nothing the reveal gives (no grade, no stars, no number, its own name only) */
+    const t = make(SWORD({ hidden: true, name: 'Iron Torso', kind: 'chest', quality: 'elite', rows: [{ k: 'Damage cut', v: '12%' }],
+      actions: [{ id: 'reveal', label: 'Reveal', tone: 'primary', off: false, why: '' }, { id: 'equip', label: 'Equip', off: false, why: '' }] }));
+    if (t.line !== HIDDEN_LINE) return 'the line: ' + JSON.stringify(t.line) + ' (today\'s card: ' + HIDDEN_LINE + ')';
+    if (t.grade || t.gradeWord || t.stars) return 'a grade: ' + JSON.stringify([t.grade, t.gradeWord, t.stars]);
+    if (t.facts.some((f) => /\d/.test(f.v))) return 'a number: ' + JSON.stringify(t.facts);
+    if (t.name !== 'Iron Torso' || /\b(Normal|Rare|Elite|Godly)\b/.test(t.name)) return 'the name: ' + t.name;
+    const ids = t.actions.map((a) => a.id);
+    if (!ids.includes('reveal') || !ids.includes('equip')) return 'the actions: ' + ids;
+    const s = itemSummary(t, 'chest', null);
+    if (s.line !== HIDDEN_LINE || s.stars || s.gradeWord || s.head || s.facts.some((f) => /\d/.test(f.v))) return 'the summary: ' + JSON.stringify(s);
     return '';
   },
   C10(make) {
@@ -187,6 +207,9 @@ const PLANTS = [
   ['P8', 'C8', 'an overall verdict among the facts', (i) => { const m = inspectItem(i); return re(m, { facts: [...m.facts, { k: 'Overall', v: 'Better' }] }); }],
   ['P9', 'C9', 'a "?" piece\'s grade shown', (i) => { const m = inspectItem(i); const g = itemGrade(i.quality); return re(m, { gradeWord: g.word, stars: g.stars }); }],
   ['P10', 'C10', 'the lead not first', (i) => { const m = inspectItem(i); return re(m, { actions: [...m.actions].reverse() }); }],
+  ['P11', 'C9', 'a "?" piece\'s name shown with its grade', (i) => { const m = inspectItem(i); return i.hidden && i.quality ? re(m, { name: itemGrade(i.quality).word + ' ' + m.name }) : m; }],
+  ['P12', 'C9', 'a "?" piece\'s stars shown (the grade at rest)', (i) => { const m = inspectItem(i); return i.hidden && i.quality ? re(m, { grade: itemGrade(i.quality).grade, stars: itemGrade(i.quality).stars }) : m; }],
+  ['P13', 'C9', 'a "?" piece\'s line lost behind its rows', (i) => { const m = inspectItem(i); return i.hidden && i.rows ? re(m, { line: '' }) : m; }],
 ];
 for (const [p, c, what, plant] of PLANTS) {
   let r;
@@ -205,7 +228,9 @@ for (const [p, c, what, plant] of PLANTS) {
 
 /* the words table: none of the mockup's grades, no verdict */
 {
-  const words = Object.values(SAY).join(' | ');
+  /* v2.3.6688 (the mends): the ONE allowed "better": a "?" piece's "Rare or better" (today's card's words, a range of
+     grades the pile promises, not a verdict on the item) */
+  const words = Object.entries(SAY).filter(([k]) => k !== 'itemInspect.hiddenLine').map(([, v]) => v).join(' | ');
   check('the page\'s words name no mockup grade and no verdict', !MOCK_WORDS.test(words) && !/\b(better|worse)\b/i.test(words), words);
 }
 
@@ -227,8 +252,9 @@ for (const [p, c, what, plant] of PLANTS) {
   const bd = rd('src/ui/mobile/BottomDashboard.jsx');
   const rows = bd.match(/^\s*item:\s*\{[^\n]*Component:\s*ItemPage\b/mg) || [];
   check('the frame has ONE \'item\' page, drawn by ItemPage', rows.length === 1, rows.length);
-  const gear = rd('src/ui/mobile/dash/GearTab.jsx');
-  check('Gear\'s card opens the one item page (openItemPage)', /import \{ openItemPage \} from '\.\/itemPageOpen\.js'/.test(gear) && /openItemPage\(\{ from: 'gear'/.test(gear));
+  /* v2.3.6688: under the frame Gear is the two panels (GearPanels.jsx), whose summary's Details is the door */
+  const gear = rd('src/ui/mobile/dash/GearPanels.jsx');
+  check('Gear\'s Details opens the one item page (openItemPage)', /import \{ openItemPage, itemPageInput \} from '\.\/itemPageOpen\.js'/.test(gear) && /openItemPage\(\{ from: 'gear'/.test(gear));
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks pass');
