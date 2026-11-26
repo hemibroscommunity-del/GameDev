@@ -17,7 +17,7 @@ Tag 6784. Stacked on the kit (claude/plan-ui3-1-kit, PR #2395) with Gear's PR 3 
 - Nothing: the ONE message to the orchestrator.
 
 ## Found
-- (none outside the card)
+- mp-ui2frame is red at its step 2 on the KIT branch too (its locator.tap of the closed row's Gear button times out at 6 s on this box; base dd44d30e red the same): the test's, not this card's (tools/qa/mp/mp-ui2frame.mjs:127).
 
 ## Needs
 - The owner: whether a bag square may go under 44 px (not needed on the four phone shapes: three rows fit upright).
