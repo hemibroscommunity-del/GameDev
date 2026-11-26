@@ -1580,7 +1580,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      from nothing, and it VERIFIES rather than trusts — it re-decodes its own
      output and refuses to report success if rate, channel count or duration
      drifted (observed drift 0.026-0.049 s, i.e. under one mp3 frame).
-     Masters are kept in docs/triage-2026-09-17/music/ on purpose: a re-encode
+     Masters are kept in docs/archive/triage-2026-09-17/music/ on purpose: a re-encode
      at a different setting needs them, and public/audio/music/ is OUTPUT —
      never encode from there, it compounds loss.
      Per track, file size and resident PCM at 44.1 kHz (was -> now):

@@ -1,7 +1,7 @@
 /* ═══ v2.3.2503: CUT THE TATTOO EDITOR'S ZONE-PICKER ART FROM THE OWNER'S SHEET ═══
  *
  * Owner, with `tools/gear/src-art/creator/tattoo-zone-ui.png` and the mockup
- * `docs/triage-2026-09-14/assets/tattoo-editor-mock.png`: the little character
+ * `docs/archive/triage-2026-09-14/assets/tattoo-editor-mock.png`: the little character
  * beside the editor gets tappable zone frames, a flip button turns it round,
  * and a label names the side and zone.
  *

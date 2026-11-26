@@ -707,6 +707,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `?afterpaint` | page | switch | v2.3.6244 | 2026-11-18 | =0 | logic |  | no | The door prompt is placed inside React's commit, as before (card HB: the coach's and the band's measures too, as their PRs land). |
 | `?bandbeat` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | The band's 200 ms redraw runs in one piece, as before. |
+| `?bandgrip` | page | switch | v2.3.6697 | 2026-11-26 | =1 | logic |  | no | The dashboard's pull handle comes back on the band's top edge, upright (the bar on its small tab, a tap on it folds and unfolds), and it alone wears the fold's hook [data-dash-fold] again, as before (src/ui/mobile/dash/bandGripSwitch.js, BandGrip.jsx; the owner, 2026-11-26: "remove the pull handle on the dashboard"; card UI2-grip). |
 | `?bropages` | page | switch | v2.3.6600 | 2026-11-25 | =0 | logic |  | no | The Bro tab is the one card of before (you, the stats, the doors; it scrolls), not the three pages. |
 | `?burstidle` | page | switch | v2.3.6720 | 2026-11-26 | =0 | logic |  | no | The Element Burst button is drawn again on every animation frame, as before, not only when what it shows has changed (ElementBurstButton.jsx; game/drawOnChange.js). |
 | `?create` | page | lever | v2.3.1861 |  | =1 | none |  | no | Goes straight to the character creator. |
