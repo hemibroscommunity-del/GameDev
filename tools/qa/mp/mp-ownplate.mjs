@@ -82,6 +82,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
   const aId = await H.readState(A, (S) => S.myId);
   const bId = await H.readState(B, (S) => S.myId);
+  /* B a step aside, so the pictures show both figures, not one over the other */
+  const aAt = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
+  await H.hopTo(B, aAt.x + 110, aAt.y + 10, { tries: 20 }).catch(() => null);
+  await A.page.waitForTimeout(1500);
 
   /* ── 1. yours not built, theirs drawn, on both phones ── */
   const a1 = await until(A, (o) => o.drawn === false);
@@ -164,6 +168,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'kit', aId, { what: 'weapons' }).catch(() => {});
   await A.page.waitForTimeout(1200);
   await H.equipWeapon(A, 'greatsword', 'weapon', 'melee').catch(() => null);
+  await H.closeDest(A).catch(() => {});   /* the Gear window down, for the picture */
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
   const fz = WHEEL_SPAWNS.frost && WHEEL_SPAWNS.frost.points[0];
   await H.hopTo(A, fz[0] + 150, fz[1] + 220, { tries: 260 });
@@ -171,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let f6 = null;
   for (let tries = 0; tries < 40; tries++) {
     const m = (await near(A))[0];
-    if (m && m.d > 70) await H.hopTo(A, m.x, m.y + 50, { tries: 20 });
+    if (m && m.d > 70) await H.hopTo(A, m.x, m.y - 50, { tries: 20 });   /* from the north: the trees stand south of them */
     await tapR(A);
     await A.page.waitForTimeout(400);
     f6 = await own(A);
