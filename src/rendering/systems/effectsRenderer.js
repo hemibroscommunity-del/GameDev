@@ -13,7 +13,8 @@ import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's sp
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { sw, pageAddress } from '@/game/switches.js'   /* v2.3.5343: the page's one reader of its address (card M, PR 4) */
 import { Assets, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
+import { LockReticle, nearestInMeleeReach, AimFrame, AimCaret } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle; v2.3.6555: + the aim's frame and caret (card CT part 22) */
+import { aimGate, aimMarks } from '@/game/aimMarks.js';   /* v2.3.6555: what the aim shows in the two buttons (card CT part 22) */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.6223: the effects' small minted pictures, kept as images (card FX PR 4) */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn; v2.3.5250: and a popup kept as numbers, read for its cut */
@@ -2794,6 +2795,16 @@ export class EffectsRenderer {
     if (typeof window !== 'undefined') {
       const _selfLR = this;
       window.__btLockReticle = function () { return _selfLR._lockReticle ? _selfLR._lockReticle.probe() : null; };
+    }
+    /* v2.3.6555: the two buttons' frame (yellow: the next press's monster,
+       red: the lock) and the caret in front of the bro (lockReticle.js
+       AimFrame, AimCaret; what shows is game/aimMarks.js's; card CT part 22) */
+    this._aimFrame = new AimFrame(this.overlayLayer);
+    this._aimCaret = new AimCaret(this.overlayLayer);
+    if (typeof window !== 'undefined') {
+      const _selfAM = this;
+      window.__btAimFrame = function () { return _selfAM._aimFrame ? _selfAM._aimFrame.probe() : null; };
+      window.__btAimCaret = function () { return _selfAM._aimCaret ? _selfAM._aimCaret.probe() : null; };
     }
 
     this.hudGfx = new Graphics();
@@ -7468,6 +7479,14 @@ export class EffectsRenderer {
     }
     try {
       const _tc = S._targetCands;
+      /* v2.3.6555 (card CT part 22): the two buttons' aim, once a frame.  With
+         its frame on (mode 5 on a touch screen, not `?targetframe=0`) the
+         chevrons below are not drawn and the tap reticle steps aside: one
+         frame at a time (the owner: "Instead of tiny red hollow arrow ...
+         it needs to be something larger"). */
+      const _aimG = aimGate();
+      const _aim = aimMarks(S, _aimG);
+      const _aimFrameOn = _aimG.live && _aimG.frame;
       /* Probe, house style (__btMonHit, __btCoach, __btWorldProps): which
          monsters got a mark this frame and where.  A pixel count alone
          cannot answer that in town, where the cobble is very nearly the
@@ -7690,7 +7709,7 @@ export class EffectsRenderer {
       /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
          must not paint over a per-zone loading overlay, and it gives the QA
          crop a way to suppress the whole indicator without moving the scene. */
-      if (_tc && _tc.length && !S._zoneLoading) {
+      if (_tc && _tc.length && !S._zoneLoading && !_aimFrameOn) {
         const _lockRef = S.lockedTarget && S.lockedTarget.ref;
         /* One shared bob so the whole set pulses together rather than
            shimmering independently -- a field of out-of-phase carets reads
@@ -8090,12 +8109,20 @@ export class EffectsRenderer {
       /* v2.3.3876: a lock you chose wears four corner brackets round the
          monster's body (lockReticle.js) -- the box from the same shared body
          table the chip and the aim read */
+      const _lrBox = (m) => {
+        const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
+        const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
+        return { cx: x, cy: y - off, hw: Math.max(20, off) + 10, hh: off + 18 };   /* room round the body, clear of it */
+      };
+      /* v2.3.6555: the aim's frame on the same box, x 1.25 (AimFrame), and
+         the caret 26 CSS px out from the feet (card CT part 22) */
+      if (this._aimFrame) this._aimFrame.update(S, _aim.frame, _aim.color, _aim.tone, _lrBox);
+      if (this._aimCaret) {
+        const _ap = S.player;
+        this._aimCaret.update(S, _aim.caret, _ap ? _ap.x : NaN, _ap ? _ap.y + (playerGroundDy(S.currentZone, _ap.x, _ap.y) || 0) : NaN);
+      }
       if (this._lockReticle) {
-        this._lockReticle.update(S, (m) => {
-          const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
-          const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
-          return { cx: x, cy: y - off, hw: Math.max(20, off) + 10, hh: off + 18 };   /* room round the body, clear of it */
-        }, (S.rpg && (S.rpg.activeSlot === 'ranged' || S.rpg.activeSlot === 'staff')) || !S.player ? null : () => nearestInMeleeReach(S, (m) => {
+        this._lockReticle.update(S, _lrBox, _aimFrameOn || (S.rpg && (S.rpg.activeSlot === 'ranged' || S.rpg.activeSlot === 'staff')) || !S.player ? null : () => nearestInMeleeReach(S, (m) => {
           /* v2.3.3973: with a melee weapon in hand, the nearest monster inside
              your melee reach wears the reticle too, softer -- the reach ring's
              own sum above (your reach x your depth + its hit radius x its
@@ -8105,7 +8132,7 @@ export class EffectsRenderer {
           const mk = bossSizeK(m);
           return { x: m.renderX != null ? m.renderX : m.x, y: fy - (monsterBodyOffsetY(arch) || 23) * mk,
             r: GS_OUTER_RADIUS * meleeRangeMult(S.rpg) + (monsterMeleeHitRadius(arch) || 24) * mk };
-        }));
+        }), _aimFrameOn);   /* v2.3.6555: the aim's frame up: the tap reticle and the reach box step aside */
       }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
@@ -17118,6 +17145,8 @@ export class EffectsRenderer {
     if (this._destroyed) return;
     this._destroyed = true;
     if (this._lockReticle) { this._lockReticle.destroy(); this._lockReticle = null; }   /* v2.3.3876 */
+    if (this._aimFrame) { this._aimFrame.destroy(); this._aimFrame = null; }   /* v2.3.6555 */
+    if (this._aimCaret) { this._aimCaret.destroy(); this._aimCaret = null; }   /* v2.3.6555 */
     for (const off of this._offs) { try { off(); } catch (e) { /* already off */ } }
     this._offs = [];
     try { this._freeFarm(); } catch (e) { /* v2.3.3439: the farmer's strips and tools; _bakes below has the rest */ }
