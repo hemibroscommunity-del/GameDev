@@ -25,7 +25,7 @@
  */
 import { barNumber } from './barNumbers.js';
 import { readerFor, pageAddress, swValue } from './switches.js';
-import { say } from './say.js';
+import { say } from '../game/say.js';   /* (written so the words guard reads it: say.test 7) */
 import { SAY } from '../data/say/zoneHeader.js';
 
 /* Gear's form: barNumber(coins, true, 10000) -- whole up to 9,999, short past it */

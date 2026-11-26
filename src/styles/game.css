@@ -2616,6 +2616,33 @@ html[data-charhud="1"]{--bt-charhud-h:56px;
 .bt-zone-header__goldnum{display:inline-block;width:var(--bt-bar-gold-num);text-align:left;overflow:visible}
 .bt-zone-header__spinslot{flex:none;display:flex;align-items:center;justify-content:flex-end}
 .bt-zone-header__balance--gold .bt-zone-header__spinslot{width:var(--bt-bar-spin-w)}
+/* v2.3.6786: AN UPRIGHT PHONE (under 600 px across: every sideways phone is
+   wider) has no room for the coin BESIDE its number: at 375 x 667 the logo
+   and the spin leave 37 px between them, and the gold beside its number
+   needs about 72, twice over with the door's column matched.  The
+   orchestrator's pick (A) of 2026-11-26: the coin stacked OVER its number
+   (the number 11 x --zk, the same gold face), the gold 28 x --zk across; the
+   name still centred on the screen, the logo shrinking with the middle (it
+   already did on a narrow phone, v2.3.4263: about 85 px of its 102 at 375,
+   88 of 106 at 390), the spin's button untouched.  The owner's to change:
+   (B) the spin's round wheel picture instead of its plate, (C) the centring
+   given up. */
+@media (max-width:599px){
+  .bt-zone-header{--bt-bar-gold-col:calc(28px * var(--zk));
+    --bt-bar-side:calc(var(--bt-bar-gold-col) + 3px + var(--bt-bar-spin-w))}
+  .bt-zone-header__balance--gold{gap:3px}
+  .bt-zone-header__gold{flex-direction:column;justify-content:center;gap:1px;width:var(--bt-bar-gold-col);
+    font-size:calc(11px * var(--zk))}
+  .bt-zone-header__balance .bt-zone-header__gold img{width:calc(16px * var(--zk));height:calc(16px * var(--zk))}
+  .bt-zone-header__goldnum{width:auto;text-align:center}
+  /* while the XP bar holds the middle (under ?hud=0 only: the HUD's own bar
+     has the weapon's XP otherwise), the gold steps out for its seconds and
+     the door's column goes back to its own width, so the XP bar has the room
+     it had before -- as the AP chip did on a narrow bar (v2.3.3765) */
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__gold{display:none}
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__left,
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__balance--gold{min-width:calc(38px * var(--zk));width:auto}
+}
 /* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:
    replaces the bracketed-checkmark art, which read as UI chrome). */
 .bt-worn-dot{position:absolute;top:3px;right:3px;width:10px;height:10px;

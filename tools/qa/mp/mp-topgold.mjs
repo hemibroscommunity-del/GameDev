@@ -7,7 +7,10 @@
  *   1. the gold's DRAWN box ([data-topbar-gold]) lies between the name's box
  *      (the clear "BroTown" and the logo over it) and the spin's button, on
  *      the bar;
- *   2. the name's centre is the bar's and the screen's centre within 1 px,
+ *   2. the name's centre is the bar's and the screen's centre within 1 px
+ *      (upright, the coin stacked over its number and the logo at least 80%
+ *      of its size: the orchestrator's pick (A) of 2026-11-26; sideways and
+ *      on a computer the coin beside its number, the logo whole),
  *      with the gold at the new character's purse and at a seven-figure one
  *      (9,999,999 granted by the worker), and nothing overlaps: the gold
  *      neither the logo nor the name nor the spin; the door's column not the
@@ -62,6 +65,8 @@ const look = (P) => P.page.evaluate(() => {
     gold: r(g), goldN: g ? g.getAttribute('data-topbar-gold') : null, goldText: g ? (g.textContent || '').trim() : null,
     goldLabel: g ? g.getAttribute('aria-label') : null,
     coin: r(g && g.querySelector('img')), num: r(g && g.querySelector('.bt-zone-header__goldnum')),
+    /* the logo's drawn picture (object-fit contain in its box): its width, and what it is at full size */
+    logoArt: (() => { const im = q('[data-topbar-logo]'); if (!im || !im.naturalWidth) return null; const b = im.getBoundingClientRect(); const full = b.height * im.naturalWidth / im.naturalHeight; return { drawn: +Math.min(b.width, full).toFixed(1), full: +full.toFixed(1) }; })(),
     test: r(q('[data-test-mode-tag]')), nml: r(q('.bt-zone-header .bt-nml-pill')),
     coins: S && S.rpg ? S.rpg.coins : null, fromServer: !!(S && S._rpgFromServer),
     stored: (() => { try { return localStorage.getItem('bt_topgold'); } catch (e) { return 'x'; } })(),
@@ -83,6 +88,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const hc = a.header ? cx(a.header) : null;
     rec.ok(T + `2 (${why}): the name's centre ${c} is the bar's ${hc} and the screen's ${a.vw / 2} within 1 px`,
       c != null && Math.abs(c - hc) <= 1 && Math.abs(c - a.vw / 2) <= 1, { title: a.title, header: a.header, left: a.left, right: a.right, mid: a.mid });
+    const up = a.vw < 600;
+    const la = a.logoArt;
+    rec.ok(T + `2 (${why}): the logo drawn ${la && la.drawn} of its ${la && la.full} px (${up ? 'upright: at least 80%, the orchestrator\'s pick (A)' : 'full size'})`,
+      !!la && la.drawn >= la.full * (up ? 0.8 : 0.99), la);
+    if (up) rec.ok(T + `2 (${why}): upright, the coin stacked over its number (pick A)`, !!a.coin && !!a.num && a.coin.b <= a.num.t + 1, { coin: a.coin, num: a.num });
+    else rec.ok(T + `2 (${why}): the coin beside its number`, !!a.coin && !!a.num && a.coin.r <= a.num.l + 1, { coin: a.coin, num: a.num });
     const hits = [['gold', 'logo'], ['gold', 'title'], ['gold', 'spin'], ['gold', 'test'], ['gold', 'nml'], ['out', 'mid'], ['out', 'logo'], ['coin', 'num']].filter(([x, y]) => over(a[x], a[y]));
     rec.ok(T + `2 (${why}): nothing overlaps (${hits.map((h) => h.join('/')).join(', ') || 'none'})`, hits.length === 0, a);
   };
