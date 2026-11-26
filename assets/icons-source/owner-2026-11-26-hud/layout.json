@@ -1,0 +1,80 @@
+{
+ "note": "v2.3.6787: written by tools/art/cut-hud.mjs. Each object on sheet.png (px, fitted to its own alpha), and the top row as measured (sheet px).",
+ "boxes": {
+  "faceGroup": {
+   "x": 64,
+   "y": 13,
+   "w": 462,
+   "h": 511
+  },
+  "bar": {
+   "x": 537,
+   "y": 97,
+   "w": 1558,
+   "h": 279
+  },
+  "swordRing": {
+   "x": 17,
+   "y": 497,
+   "w": 222,
+   "h": 221
+  },
+  "pill": {
+   "x": 254,
+   "y": 540,
+   "w": 274,
+   "h": 152
+  },
+  "track": {
+   "x": 541,
+   "y": 553,
+   "w": 645,
+   "h": 114
+  },
+  "fill": {
+   "x": 1199,
+   "y": 557,
+   "w": 462,
+   "h": 106
+  },
+  "badge": {
+   "x": 1676,
+   "y": 508,
+   "w": 203,
+   "h": 200
+  },
+  "ring": {
+   "x": 1894,
+   "y": 459,
+   "w": 255,
+   "h": 258
+  }
+ },
+ "top": {
+  "face": 461,
+  "faceY": 233,
+  "faceTop": 13,
+  "wring": 279,
+  "trackH": 231,
+  "fillH": 141,
+  "pillH": 200,
+  "badgeTop": 303,
+  "badgeBottom": 505,
+  "badgeW": 205,
+  "barW": 1558,
+  "gapFaceBar": 12
+ },
+ "K": 0.10412147505422993,
+ "row": {
+  "face": 48,
+  "wring": 29,
+  "track": 24.1,
+  "fill": 14.7,
+  "pill": 20.8,
+  "badge": 21.3,
+  "bar": 162.2,
+  "gap": 1.2,
+  "badgeOver": 17.8,
+  "badgeBelow": 3.2
+ }
+}

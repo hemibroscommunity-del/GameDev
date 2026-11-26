@@ -139,7 +139,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const watch = (P, id) => P.page.on('pageerror', (e) => errors.push(id + ': ' + String(e && e.message || e).slice(0, 200)));
 
   /* ── the phone, upright ── */
-  const A = await H.newPlayer(browser, { name: 'Hudbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel' });
+  const A = await H.newPlayer(browser, { name: 'Hudbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel', query: 'hudart=0' });   /* v2.3.6787: UI3-hud's drawn panel (the owner's pictures: mp-ui3hudart) */
   watch(A, 'phone');
   await H.enterWorld(A);
   await A.page.waitForTimeout(1200);
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`2. ...and it counts to the worker's numbers ("${b2 && b2.hudBar && b2.hudBar.num}" = ${wantNum})`, !!b2 && !!b2.hudBar && b2.hudBar.num === wantNum, { num: b2 && b2.hudBar && b2.hudBar.num, wantNum });
 
   /* ── the computer, and the party ── */
-  const D = await H.newPlayer(browser, { name: 'Hudesk', wsPort, webPort, viewport: { width: 1280, height: 720 }, dpr: 2, world: 'wheel', wide: true });
+  const D = await H.newPlayer(browser, { name: 'Hudesk', wsPort, webPort, viewport: { width: 1280, height: 720 }, dpr: 2, world: 'wheel', wide: true, query: 'hudart=0' });   /* v2.3.6787: the drawn panel */
   watch(D, 'computer');
   await H.enterWorld(D);
   await H.pastWelcome(D);

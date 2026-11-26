@@ -519,6 +519,14 @@ export const STATES = [
   { id: 'charhud-desk', group: 'The world (HUD)', title: 'The character HUD, top left (a computer)', views: ['desktop'],
     about: 'The same HUD on a computer playing wide (184 x 52): a click on it opens Bro and never swings; its tooltip says "Click to open Bro".',
     run: async ({ P }) => { await wait(P, 600); } },
+  /* tag 6787 (card UI3, PR 8): the same HUD in the owner's pictures of
+     2026-11-26 (on by default; ?hudart=0 the panel above) */
+  { id: 'hudart', group: 'The world (HUD)', title: 'The character HUD in the owner\'s pictures (upright)', views: ['portrait'],
+    about: 'Top left under the top bar, opposite the minimap, the owner\'s pictures: your face in a steel ring, your COMBAT level in the gold badge hanging under it, and to its right one steel bar: the weapon in your hand in its small ring, the green fill its progress to its next level, its LEVEL in the pill at the bar\'s right end; your name above the bar and "45 / 120" in it. A tap on the face opens Bro, on the bar that weapon\'s page. 184 x 52.',
+    run: async ({ P }) => { await wait(P, 600); } },
+  { id: 'hudart-side', group: 'The world (HUD)', title: 'The character HUD in the owner\'s pictures (sideways)', views: ['landscape'],
+    about: 'The same on a phone held sideways, every piece at 92 % (169 x 48); the quest line and the status chips under it, the party chip beside it, clear of the minimap.',
+    run: async ({ P }) => { await wait(P, 600); } },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
      told), its window, and (until v2.3.4163) the player frame top-left.  v2.3.4113: the chip

@@ -13,4 +13,10 @@ export const SAY = Object.freeze({
   /* the one-line quest tracker under the HUD, between two quests: how many
      others have work for you (the card's long "+5 more: look for..." in short) */
   'charHud.more': '+{more} more',
+  /* v2.3.6787: the owner's pictures (src/ui/hud/HudArt.jsx; card UI3 PR 8).
+     The badge's words: its number is the combat level */
+  'charHud.artLevel': 'Level {n}',
+  /* the weapon bar is a button: it opens the weapon in hand's page */
+  'charHud.artBar': 'Tap to open {weapon}',
+  'charHud.artBarAria': '{weapon}, level {n}: open {weapon}',
 });

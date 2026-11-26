@@ -1,0 +1,53 @@
+/* ═══ v2.3.6787: THE CHARACTER HUD IN THE OWNER'S PICTURES (card UI3, PR 8) ═══
+   src/ui/hud/HudArt.jsx draws it; every place and size is src/game/hudArt.js
+   HUD_ART's (inline, each times --ha-k), the pictures public/ui/hud/'s
+   (tools/art/cut-hud.mjs, from the owner's sheet of 2026-11-26).  UI3-hud's
+   box: 184 x 52 upright and on a computer, just under the top bar
+   (--bt-hud-base), 8 px from the left, opposite the minimap; sideways (a short
+   screen) the same pictures at 92 % (169 x 48).  The stretched pieces (the
+   track, the green fill) are border-images: their round ends never stretch.
+   Over the WebGL canvas: nothing here animates but the "+N XP" pop (TRAPS
+   section 42), no CSS filter (an iPhone pays a layer). */
+.bt-hudart{--ha-k:1;position:absolute;top:var(--bt-hud-base,56px);left:8px;z-index:17;
+  box-sizing:border-box;pointer-events:auto;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  color:#F1F0E9;font-family:'Source Sans 3',sans-serif}
+.bt-hudart *{touch-action:manipulation;box-sizing:border-box}
+.bt-hudart__face,.bt-hudart__bar{position:absolute;display:block;cursor:pointer}
+.bt-hudart__face *,.bt-hudart__bar *{pointer-events:none}
+.bt-hudart__pic{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+/* the face, a circle on the ring's own navy, under the rim */
+.bt-hudart__disc{position:absolute;display:block;border-radius:50%;overflow:hidden;background:#052838}
+.bt-hudart__disc img{width:100%;height:100%;display:block;object-fit:cover}
+.bt-hudart__badge,.bt-hudart__pill,.bt-hudart__wring{position:absolute;display:block}
+/* the numbers on the badge (the combat level) and the pill (the weapon's) */
+.bt-hudart__num{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:calc(12px * var(--ha-k));line-height:1;color:#F1F0E9;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  text-shadow:-1px 0 0 #0B1620,1px 0 0 #0B1620,0 -1px 0 #0B1620,0 1px 0 #0B1620}
+.bt-hudart__badge .bt-hudart__num{padding-bottom:calc(2px * var(--ha-k))}
+.bt-hudart__badge .bt-hudart__num.is-long{font-size:calc(10px * var(--ha-k))}
+.bt-hudart__pill .bt-hudart__num{font-size:calc(11px * var(--ha-k))}
+/* the name: one line over the track */
+.bt-hudart__name{position:absolute;display:block;font-weight:700;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:#F1F0E9;text-shadow:0 1px 1px rgba(0,0,0,.75)}
+.bt-hudart__track,.bt-hudart__fill{position:absolute;display:block;border-style:solid;border-width:0;
+  border-image-slice:24 fill;border-image-repeat:stretch}
+.bt-hudart__fill{left:0;border-image-slice:15 fill;
+  width:calc(var(--hudart-fill,0px) * var(--ha-k));clip-path:inset(0 calc(var(--hudart-clip,0px) * var(--ha-k)) 0 0)}
+.bt-hudart__xp{position:absolute;display:block}
+/* the count is XpTrack's ("45 / 120", where the kill's XP flies): its own
+   fills hidden, the green picture is the fill */
+.bt-hudart__count{position:absolute;left:0;top:0;right:0;bottom:0;display:block}
+.bt-hudart__count .bt-xp-bar__track{position:absolute;left:0;top:0;width:100%;height:100%;min-width:0;
+  background:none;box-shadow:none;border-radius:0}
+.bt-hudart__count .bt-xp-bar__fill,.bt-hudart__count .bt-xp-bar__white{display:none}
+.bt-hudart__count .bt-xp-bar__num{font-size:inherit}
+.bt-hudart__wring .bt-hudart__icon{position:absolute;display:block;object-fit:contain}
+/* a gain on another weapon: its "+N XP" under the bar's right end */
+.bt-hudart__pop{position:absolute;right:0;display:flex;align-items:center;gap:2px;white-space:nowrap}
+.bt-hudart__pop img{width:12px;height:12px;display:block}
+.bt-hudart__pop .bt-xp-gain{font-size:11px}
+/* sideways (a short screen): the whole group at 92 % (UI3-hud's media query:
+   with the one band html[data-orient] never says sideways) */
+@media (max-height:480px){.bt-hudart{--ha-k:.92}}

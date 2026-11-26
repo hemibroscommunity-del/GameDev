@@ -33,6 +33,7 @@ import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the ow
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
 import { warmOnce } from './warmOnce.js';   /* v2.3.4652 */
+import { HUD_ART_URLS } from '../game/hudArt.js';   /* v2.3.6787: the character HUD's pieces */
 /* v2.3.3120: the TRAP pop-up's picture (TrapButton.jsx uses the same string)
    v2.3.3281: the owner's box trap (tools/ui/cut-bag-icons.py), no longer the
    Trapping skill's icon -- the same picture in the bag, on the Woodworker's
@@ -82,6 +83,9 @@ export function controlsPreloadUrls() {
      disc and knob, every button's face and its grey twin -- on screen from
      the first frame of play, a face's twin the moment a state asks */
   urls.push(...PAD_ART_URLS);
+  /* v2.3.6787: the character HUD's seven pieces (card UI3 PR 8; public/ui/hud/,
+     19 kB of files, 128 colours): on screen from the first frame of play */
+  urls.push(...HUD_ART_URLS);
   return [...new Set(urls)];
 }
 
