@@ -9,7 +9,7 @@ import { ctlColumn, ctlBottom, CTL_SLOT, rightCluster, RCTL_SLOT } from '@/ui/pa
 import { padSpecialAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6642: Whirlwind and Shield Bash in the right lobe's tier (card PAD part 6) */
 import { padTierBus } from './padTier.js';   /* v2.3.6642: ...the shell told when the tier shows */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
-import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash, tierMetal } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3018: A PICTURE EACH, IN THE MOCKUP'S FIVE STATES ═══
    Owner: "Make the on screen buttons look more like the improved mockup."
@@ -336,6 +336,7 @@ export function AbilityButtons(props) {
     },
     wrapFace(anchor, size, faceSize, React.createElement(Skin, {
       size: faceSize, tone: 'slate', state: skinState,
+      metal: tierMetal(anchor.face > 0),   /* v2.3.6646: in the tier, the steel ring (the owner: "Turn steel"; `?padgold=1` the gold) */
       progress: st.cdLeft > 0 ? 1 - st.cdFrac : null,
       flash: flash,
     }, kind === 'whirl'
