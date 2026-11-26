@@ -1565,6 +1565,19 @@ export const STATES = [
      by a real thumb on the left stick (a short push: the turn, not the walk),
      the sight line drawn and Block and the specials come.  Put back on
      today's combat after. */
+  /* v2.3.6640 (card PAD; game/padSkin.js, panels/PadHousings.jsx): the touch
+     controls as one game controller, the owner's mockup of 2026-11-25 */
+  {
+    id: 'pad-controller', group: 'Fighting', title: 'The controller: the stick and the buttons in their housings',
+    about: 'The touch controls as one built-in game controller (the owner\'s mockup, 2026-11-25): a left housing holds the stick (its socket empty until a thumb walks), a right housing holds Attack (big, low), Jump beside it and a row of three above (the skateboard or Charge, Block, Special), each in a fixed socket, both docked to the band\'s top edge with the middle open. A control the game hides leaves its socket empty. `?padskin=0` gives the old look.',
+    views: ['portrait', 'landscape'],
+    settle: 1200,
+    run: async ({ P }) => {
+      await wait(P, 600);
+      const ok = await evalIn(P, () => !!document.querySelector('[data-padhousing="R"]') && !!document.querySelector('.bt-pad'));
+      return ok ? undefined : 'no controller drawn';
+    },
+  },
   {
     id: 'two-buttons', group: 'Fighting', title: 'The two buttons, nothing in sight',
     about: 'The two-button trial (`?manual=5`) with no monster in sight: on the right only the Attack button (raised, a bevel) and Jump, laid out for a right thumb (v2.3.6549: Attack low by the edge, Jump on the arc beside it). Block comes when a monster is in your sight (or hits you), Charge with a sword when one is in sight but too far, and the specials only once one is in reach.',

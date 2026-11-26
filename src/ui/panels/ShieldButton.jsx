@@ -8,6 +8,7 @@ import { fightOn } from '@/game/sparTargets.js';
 import { blockShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6549: Block at a threat (card CT part 16) */   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
+import { padAnchor } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
@@ -860,6 +861,7 @@ export function ShieldButton(props) {
      the diagonal bottom-left of the disc, on its own, for "mental separation
      for combat purpose" -- see blockAnchor. */
   var anchor = thumbAnchor('block', isLandscape) || blockAnchor(isLandscape);   /* v2.3.6549: on the thumb's arc in the two buttons, a spot of its own */
+  anchor = padAnchor('block', isLandscape, anchor);   /* v2.3.6640: its socket in the controller (card PAD) */
   var size = anchor.size;
   var right = anchor.right;
   var press = function (e) {
@@ -921,6 +923,7 @@ export function ShieldButton(props) {
   },
   React.createElement(Skin, {
     size: size, tone: on ? 'warm' : 'slate', state: skinState,
+    pad: anchor.pad ? 'block' : null, face: anchor.face,   /* v2.3.6640 */
     progress: onCd ? 1 - Math.min(1, cdLeft / SHIELD_CD_MS) : null,
     flash: flash && skinState === 'normal',
   },

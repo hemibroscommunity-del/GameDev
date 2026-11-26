@@ -7,6 +7,7 @@ import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
 import { Skin, JumpGlyph, jumpGlyphKind, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
+import { padAnchor } from './padSpot.js';   /* v2.3.6640: its socket in the controller (card PAD) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
@@ -148,6 +149,7 @@ export function JumpButton(props) {
   if (!view || !jumpButtonWanted()) return null;   /* v2.3.3105: ?jumpbtn only; v2.3.3681: unless ?jumpbtn=0 */
 
   var anchor = thumbAnchor('jump', isLandscape) || jumpAnchor(isLandscape);   /* v2.3.6549: beside Attack on the thumb's arc in the two buttons */
+  anchor = padAnchor('jump', isLandscape, anchor);   /* v2.3.6640: its socket in the controller (card PAD) */
   var size = anchor.size;
 
   var press = function () {
@@ -213,7 +215,7 @@ export function JumpButton(props) {
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
+  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal', pad: anchor.pad ? 'jump' : null, face: anchor.face },
     /* v2.3.3526: the owner's round jump (card 11), the button's face.
        v2.3.3721: a plain arrow over the ground instead (the owner's pick of
        four: "I like option B for jump better") -- the owner: "the

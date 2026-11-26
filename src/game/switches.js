@@ -221,6 +221,7 @@ const FORMS = {
   'p3cols': '1',
   'pace': '0|off|false',
   'packworker': '0',
+  'padskin': '0',
   'pagebases': '0|off|false',
   'partydoor': '0',
   'perf': '1',
