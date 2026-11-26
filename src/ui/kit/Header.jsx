@@ -14,7 +14,9 @@
  *                      frame's pointer handling, its QA hooks, data-key);
  *   menuMark           what waits behind the Menu ({ count, dot, glow }: the
  *                      badge that climbs from a door inside it, the audit's
- *                      part 2, BUILD 6). */
+ *                      part 2, BUILD 6).
+ * v2.3.6681 (part 3): Close is the OUTER ✕ (`data-esc-outer`): Esc presses it
+ * only when no ✕ inside the page is in front (deskKeys.js frontControl). */
 import React from 'react';
 import { stateClass } from './shine.js';
 import { Ui2Badge } from './Badge.jsx';
@@ -23,7 +25,7 @@ import { say } from '@/game/say.js';
 
 export function Ui2Header({ title, backLabel = say(SAY, 'ui2Kit.back'), onBack, onMenu, onClose, states = {}, closeStart, menuNext, ctl = {}, menuMark = null }) {
   const close = (
-    <button type="button" className={'u2-raised u2-ctl is-round' + stateClass(states.close)} data-u2="close" data-esc="" aria-label={say(SAY, 'ui2Kit.close')} onClick={onClose || undefined} {...(ctl.close || {})}>{'✕'}</button>
+    <button type="button" className={'u2-raised u2-ctl is-round' + stateClass(states.close)} data-u2="close" data-esc="" data-esc-outer="" aria-label={say(SAY, 'ui2Kit.close')} onClick={onClose || undefined} {...(ctl.close || {})}>{'✕'}</button>
   );
   return (
     <div className="u2-head" style={{ width: '100%' }}>
