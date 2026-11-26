@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "175e337305de8197e7b4282cc9fdbdfe138d59bd",
+  "tree": "cf31c359f6a57482e041bc3d789c3db54d7e3b79",
+  "committedAt": "2026-11-26T07:15:13-08:00",
+  "subject": "Merge pull request #2363 from hemibroscommunity-del/claude/plan-pad-3-housing",
+  "files": 8739,
+  "bytes": 984372851,
+  "listingSha256": "e75c4ca3dcb1ab5c2e8dcf5501056567a57d79c9e9b0353a5ea5f3a1927d10c2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
