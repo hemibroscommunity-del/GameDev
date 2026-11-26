@@ -18,6 +18,15 @@
  *
  *   loadSheetPage(page)   -> its Texture (rejects as a load does)
  *   freeSheetPage(page)   the page let go when its sheet's load failed after it
+ *   forgetSheet(sheet)    called just before the sheet's Assets.load: Pixi's
+ *                         resolver keeps the FIRST load's `data` for an address
+ *                         (Assets.load adds an asset only when its key is new),
+ *                         so a sheet let go and asked for again was handed the
+ *                         first visit's page, destroyed -- mp-palette's
+ *                         `?nopalette` phone after a black screen's rebuild
+ *                         drew no objects (0 pages, 2 loading).  Forgotten, the
+ *                         load takes its own page.  What the resolver keeps is
+ *                         one entry an address: at most the 40 sheets.
  */
 import { Assets } from 'pixi.js';
 
@@ -30,4 +39,8 @@ export async function loadSheetPage(page) {
 
 export function freeSheetPage(page) {
   try { return Promise.resolve(Assets.loader.unload(page)).catch(() => {}); } catch (e) { return Promise.resolve(); }
+}
+
+export function forgetSheet(sheet) {
+  try { if (Assets.resolver.hasKey(sheet)) Assets.resolver.removeAlias(sheet); } catch (e) { /* as it was */ }
 }

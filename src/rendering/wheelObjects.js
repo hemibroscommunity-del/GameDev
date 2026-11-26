@@ -65,7 +65,7 @@ import { drawSourceRect } from './paletteDraw.js';              /* v2.3.3190: a 
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: ...and drawn so */
 import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 import { assetUrl } from '../game/assetUrl.js';                  /* v2.3.6744: each sheet and page at its file's version (card KEEP) */
-import { loadSheetPage, freeSheetPage } from './sheetPage.js';   /* v2.3.6744: ...the page at its OWN version, not the sheet's */
+import { loadSheetPage, freeSheetPage, forgetSheet } from './sheetPage.js';   /* v2.3.6744: ...the page at its OWN version, not the sheet's */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -418,8 +418,10 @@ function loadPage(ix, k) {
      sheet's unload lets it go as before (freeSheet) */
   const asPicture = () => {
     rec.picture = true;
-    return loadSheetPage(image).then((texture) => Assets.load({ src: url, data: { cachePrefix: CACHE_PREFIX, texture } })
-      .catch((e) => { freeSheetPage(image); throw e; }));
+    return loadSheetPage(image).then((texture) => {
+      forgetSheet(url);   /* this load's page, never a visit before's (sheetPage.js) */
+      return Assets.load({ src: url, data: { cachePrefix: CACHE_PREFIX, texture } }).catch((e) => { freeSheetPage(image); throw e; });
+    });
   };
   /* v2.3.3190: as colour numbers where the game draws them so (above) */
   const st = paletteStats();

@@ -457,6 +457,13 @@ check('3-4 LEFT only falls: every row still names a built address in its file (s
     sheetLoads(wo.replace('data: { cachePrefix: CACHE_PREFIX, texture }', 'data: { cachePrefix: CACHE_PREFIX }')).length === 1);
   check('6c plant: farmWorld.js\'s sheet load without its texture -> red',
     sheetLoads(fw.replace('data: { cachePrefix: OBJ_PREFIX, texture }', 'data: { cachePrefix: OBJ_PREFIX }')).length === 1);
+  /* v2.3.6744: ...and forgets its address first: Pixi's resolver keeps the first load's data (its page) for an
+     address, so a sheet asked for again after it was let go got the first visit's page, destroyed (mp-palette's
+     ?nopalette phone after a rebuild: no objects).  The line before each such load is forgetSheet(url). */
+  const forgets = (code) => (code.match(/forgetSheet\(url\);[^\n]*\n\s*return Assets\.load\(\{ src: url, data: \{ cachePrefix: [A-Z_]+, texture \} \}\)/g) || []).length;
+  check('6c\': wheelObjects.js and farmWorld.js forget the sheet\'s address just before loading it with its page (sheetPage.js forgetSheet)',
+    forgets(wo) === 1 && forgets(fw) === 1, { wheelObjects: forgets(wo), farmWorld: forgets(fw) });
+  check('6c\' plant: the forget taken out of farmWorld.js -> red', forgets(fw.replace(/forgetSheet\(url\);/, '')) === 0);
   const farmPage = "page = farmCopy(assetUrl(OBJ_BASE + a + '.png'))";
   check('6d door: the farm\'s copy asks for each page at its own version (farmCopy(assetUrl(...)))', fw.includes(farmPage) && fw.includes("const farmCopy = (u) => u + (u.indexOf('?') >= 0 ? '&' : '?') + 'farm=1';"));
   const wt = rd('src/game/wheelTrial.js');

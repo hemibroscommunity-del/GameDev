@@ -19,7 +19,8 @@ state: ready
 ## Next
 
 - PR 3c's last phone runs on its final code: a helper's (playable,
-  membudget, keepcensus, pagebases, palette, farmpalette).
+  membudget, keepcensus, pagebases, palette, farmpalette). mp-palette
+  caught a fault of 3c's (Pixi kept a sheet's first page): forgetSheet.
 - `/icons/*` block: after LOAD part 2 moves HUD_BAR_VER, and a server-test
   PR unpins owner-icons 8g, bag-icons 2a, 5c, achievements 9a, 9f.
 - The next family (my pick): `/ui`'s quest pictures (ui-quest, 31 bare:
@@ -28,7 +29,6 @@ state: ready
 
 ## Found
 
-- 20 requests a load for trait frames that do not ship (PR 1's finding).
 - picture-door's RAW skips `Assets.loader.load(` (sheetPage.js: the page
   load Pixi's sheet loader made inside before, under its sheet's row).
 - held-sweep.test 3c pins `w.postMessage({ id, url, bases: _basesWay() })`:

@@ -56,7 +56,7 @@ import { bedNext, farmClock, farmWorkBeats, cropStageOf, soilOf, FARM_STEPS } fr
 import { cue } from '../game/eventSounds.js'; /* v2.3.3343: a crop heard ripening */
 import { playerGroundDy } from './systems/entityRenderer.js';
 import { assetUrl } from '../game/assetUrl.js';                  /* v2.3.6744: each sheet and page at its file's version (card KEEP) */
-import { loadSheetPage, freeSheetPage } from './sheetPage.js';   /* v2.3.6744: ...the page at its OWN version, not the sheet's */
+import { loadSheetPage, freeSheetPage, forgetSheet } from './sheetPage.js';   /* v2.3.6744: ...the page at its OWN version, not the sheet's */
 
 export const FARM_ZONE_ID = 'farm_home';
 /* v2.3.3960: the fed soils near black (_bed): the picture times this */
@@ -152,8 +152,10 @@ export function preloadFarmArt() {
        loaded first and handed to the sheet (sheetPage.js), never asked for
        at the sheet's query copied on; unloading the sheet lets it go */
     const url = farmCopy(assetUrl(OBJ_BASE + a + '.json')), page = farmCopy(assetUrl(OBJ_BASE + a + '.png'));
-    jobs.push(loadSheetPage(page).then((texture) => Assets.load({ src: url, data: { cachePrefix: OBJ_PREFIX, texture } })
-      .catch((e) => { freeSheetPage(page); throw e; })).then((sheet) => {
+    jobs.push(loadSheetPage(page).then((texture) => {
+      forgetSheet(url);   /* this visit's page, never the last visit's (sheetPage.js) */
+      return Assets.load({ src: url, data: { cachePrefix: OBJ_PREFIX, texture } }).catch((e) => { freeSheetPage(page); throw e; });
+    }).then((sheet) => {
       if (gen !== _gen) { Assets.unload(url).catch(() => {}); return; }
       _sheets.set(a, url);
       const tx = (sheet && sheet.textures) || {};
