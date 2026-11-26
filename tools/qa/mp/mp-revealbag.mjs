@@ -107,9 +107,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const card = await P.page.evaluate(() => {
       /* v2.3.4151: in the Gear tab a bag tap shows the piece in its middle
          panel (GearTab.jsx), the same card and the same action list */
-      const c = document.querySelector('[data-item-card]') || document.querySelector('[data-gear-pane="bro"]');
+      /* v2.3.6688 (card UI2-gear, the tests part): under the frame a bag tap opens the SUMMARY ([data-gear-summary]: the lead action, Reveal, and Details); the rest of the list is on the item page behind Details (read just below) */
+      const c = document.querySelector('[data-item-card]') || document.querySelector('[data-gear-pane="bro"]') || document.querySelector('[data-gear-summary]');
       if (!c) return null;
-      return { text: c.innerText, reveal: !!c.querySelector('[data-reveal]'), mark: !!c.querySelector('[data-unrevealed-mark]'),
+      return { summary: c.hasAttribute('data-gear-summary'), text: c.innerText, reveal: !!c.querySelector('[data-reveal]'), mark: !!c.querySelector('[data-unrevealed-mark]'),
         buttons: [...c.querySelectorAll('button')].map((b) => b.innerText.trim()).filter(Boolean) };
     });
     /* v2.3.4191: the Gear tab's card has ONE gold button (Reveal here) and
@@ -122,8 +123,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate(() => { const b = document.querySelector('[data-gear-more-menu] [data-esc]'); if (b) b.click(); });
       await P.page.waitForTimeout(300);
     }
+    if (card && card.summary && await P.page.$('[data-gear-summary] [data-gear-details]')) {
+      await P.page.locator('[data-gear-summary] [data-gear-details]').first().tap();
+      await P.page.waitForTimeout(1000);
+      card.page = await P.page.evaluate(() => {
+        const g = document.querySelector('[data-item-page]');
+        return g ? { text: g.innerText, acts: [...g.querySelectorAll('[data-item-act]')].map((b) => b.innerText.trim()), mark: !!g.querySelector('[data-unrevealed-mark]'), reveal: !!g.querySelector('[data-reveal]') } : null;
+      });
+      if (card.page) { card.buttons = card.buttons.concat(card.page.acts); card.text += ' ' + card.page.text; card.mark = card.mark || card.page.mark; }
+      await P.page.locator('[data-dash-frame] [data-dash-ctl="back"]').first().tap().catch(() => {});
+      await P.page.waitForTimeout(800);
+    }
     rec.ok('3. its card says "Rare or better" and offers Reveal and Equip (no Sell, no Drop)',
-      !!card && /Rare or better/.test(card.text) && card.reveal && card.mark && card.buttons.includes('Equip') && !card.buttons.includes('Sell') && !card.buttons.includes('Drop'), card);
+      !!card && /Rare or better/.test(card.text) && (card.reveal || (card.page && card.page.reveal)) && card.mark && card.buttons.includes('Equip') && !card.buttons.includes('Sell') && !card.buttons.includes('Drop'), card);
     await P.page.screenshot({ path: join(OUT, 'revealbag-2-card.png') }).catch(() => {});
 
     /* ── 4 ── Reveal: the overlay, the tile still a "?" while it spins.  Read
@@ -153,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       };
       requestAnimationFrame(tick);
     });
-    await P.page.locator('[data-item-card] [data-reveal], [data-gear-pane="bro"] [data-reveal]').first().tap();
+    await P.page.locator('[data-item-card] [data-reveal], [data-gear-pane="bro"] [data-reveal], [data-gear-summary] [data-reveal]').first().tap();
     const rv = await H.waitFor(P, () => (window.__qaReveal && window.__qaReveal.landed) || null, (v) => !!v, { timeout: 12000, label: 'the reveal lands' }).catch(() => null);
     const w4 = await P.page.evaluate(() => window.__qaReveal);
     rec.ok('4. Reveal closes the card and plays the reveal', !!w4 && w4.spin && w4.cardGone === true, w4);
@@ -196,7 +208,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.locator('[data-gear-pane="bro"] [data-gear-act="more"]').first().tap().catch(() => {});
         await P.page.waitForTimeout(400);
       }
-      const eq = P.page.locator('[data-item-card] button, [data-gear-pane="bro"] button', { hasText: /^Equip$/ }).first();
+      /* v2.3.6688: under the frame the summary's lead is Reveal; Equip is on the item page behind Details */
+      if (await P.page.$('[data-gear-summary] [data-gear-details]')) { await P.page.locator('[data-gear-summary] [data-gear-details]').first().tap().catch(() => {}); await P.page.waitForTimeout(900); }
+      const eq = P.page.locator('[data-item-card] button, [data-gear-pane="bro"] button, [data-item-page] button', { hasText: /^Equip$/ }).first();
       await eq.tap().catch(() => {});
       const spin2 = await H.waitFor(P, () => document.querySelector('[data-tut="reveal-overlay"]') ? true : null, (v) => v, { timeout: 6000, label: 'the overlay (equip)' }).catch(() => null);
       const wornDuring = await H.readState(P, (S) => (S.rpg.weapon && S.rpg.weapon.gearBase) || null);
