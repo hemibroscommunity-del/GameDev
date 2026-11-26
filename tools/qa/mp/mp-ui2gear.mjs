@@ -299,18 +299,15 @@ async function toShowcase(P, press) {
   await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
   await P.page.waitForTimeout(500);
   await P.page.evaluate(() => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); });
-  /* the landing's tiles grow into place (dashGrow): the tap waits until the Equipment tile is where it stays
-     (the first run's tap, read mid-growth, landed on Combat beside it: this box draws a few frames a second) */
-  let last = null;
-  for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
-    const r = await P.page.evaluate(() => { const e = document.querySelector('[data-dash-grid="bro"] [data-dest="equipment"]'); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map(Math.round).join(); }).catch(() => null);
-    if (r && r === last) break;
-    last = r;
-    await P.page.waitForTimeout(400);
-  }
+  /* the page grows into place (dashGrow: drawn scaled until the animation's own end, `data-dash-grow` worn
+     till then): the tap waits for the motion's end, read as a state (TRAPS §200).  The first runs' tap, aimed
+     at the Equipment tile mid-growth on this box's few frames a second, landed on Combat once it ended. */
+  const settled = () => H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
+  await settled();
   await press(P, '[data-dash-grid="bro"] [data-dest="equipment"]', 1200);
   await H.waitFor(P, () => !!document.querySelector('[data-gear-showcase] [data-gear-cell]'), (v) => !!v, { timeout: 15000, label: 'the showcase' }).catch(() => null);
   await P.page.waitForTimeout(800);
+  await settled();
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -432,6 +429,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && same(p12.facts, g12.facts) && p12.where === g12.where && same(p12.acts, g12.acts) && fits(p12),
       { show: { name: p12.name, facts: p12.facts, where: p12.where, acts: p12.acts }, gear: { name: g12.name, facts: g12.facts, where: g12.where, acts: g12.acts }, fit: fitWhy(p12) });
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 1000);
+    await H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
     const b12 = await sread(P);
     rec.ok('12b. Back: the showcase again', b12.there && !b12.item, { there: b12.there, item: b12.item, title: b12.title });
     await tap(P, '[data-gear-showcase] [data-gear-manage]', 1500);
