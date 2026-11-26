@@ -92,6 +92,23 @@ stays with that PR until it lands, and is marked (held).
 
 ## CT
 
+- `src/game/bowSpecialNow.js` `bowSpecialMon`: its lock branch asks
+  neither alive nor range, so a lock on a monster killed since the last
+  `latchFrame` can loose one Special at the corpse for a frame, and a lock
+  past the bow's range fires as Attack would (#2357, 66; no failing case
+  found: CT's next job, a node case).
+- `tools/qa/mp/mp-twobuttons.mjs` / `mp-contextbuttons.mjs`: card
+  CT-part22 asks them mended "where the shape changed"; #2356 changed
+  neither and its status does not say they were read (66: the rehearsal's
+  run below).
+- `tools/qa/mp/mp-twobuttons.mjs:921` 7d on #2357's head 545761ec (a
+  helper, once): red both ways where `main` and the tree SKIP it. Upright
+  (0 free, 1 loosed, idle, hit null): the test's, its hide lifts only on
+  a FREE shot and a line shot was loosed. Sideways (0 free, 0 loosed, the
+  latch ACTIVE, three presses) is not explained: a press with nothing in
+  sight took a lock and loosed nothing. CT's next job: run 7d where it
+  does not skip, say which half fails, `?nearpick=0` beside it (66).
+
 - `tools/qa/mp/mp-contextbuttons.mjs:292-298` steps 4 and 5 (sitting 65's
   tail, the stack 3d0846c8 and the pill 2825d8e0 alike: red once in two
   runs, the press on the disc, HARVEST, `_btnHarvest` true, no chop): the
@@ -270,6 +287,21 @@ stays with that PR until it lands, and is marked (held).
   `fx.resume(d.gap, d.carried)` (`thawCarried.js:123`) and a throw that
   skips noting the same beat's gap (:121/124) are green (61).
 
+## PAD (66: #2354 withdrawn by the owner at 21:5x, before the list)
+
+- Whirlwind (`AbilityButtons`) and Shield Bash (`ShieldButton.jsx:648`)
+  keep today's `rightCluster` places while Special moved to its socket:
+  their boxes may meet by a few px, and `server/test/pad-skin.test.mjs` 3c
+  checks only the socketed controls. Part 3's job: a case for the
+  unsocketed ones (no failing case shown).
+- mp-contextbuttons (named by the card) is not in PAD's status;
+  mp-membudget was read on part 1's 96f0ebf3, not on 8f9e2d87.
+- #2354 rewrites `tools/guards/lib/systems.mjs` and `docs/SYSTEMS.md`'s
+  input row (+ padSkin) and the switch tables: after sitting 66's list
+  lands, its stack merges `main` and writes them again
+  (`node tools/guards/systems.test.mjs --write`, `switches.test.mjs
+  --write`).
+
 ## BRO
 
 - `mp-brocard` 55/59 red the same four on `main` 096d7000 and on #2349's
@@ -281,6 +313,11 @@ stays with that PR until it lands, and is marked (held).
   (65).
 
 ## Found (no card's debt)
+
+- A merge that adds or changes a file in `server/test/` deploys the worker
+  (TRAPS §277): #2355/#2357 and #2356 carry no worker code but each
+  merge redeploys it (one brief disconnect each; the last deploy wins).
+  The orchestrator's note "none deploys" read `server/src` only (66).
 
 - The Deploy worker on c2da80bf failed 14:57 on `login-keys` 12g ("...that
   join is put out and handed nothing": the join got its whole state);
