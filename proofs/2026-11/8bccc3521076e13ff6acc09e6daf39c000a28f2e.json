@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8bccc3521076e13ff6acc09e6daf39c000a28f2e",
+  "tree": "f430859d7301aacfaf8385c61a23b5da85cc7a78",
+  "committedAt": "2026-11-26T07:44:14-08:00",
+  "subject": "Merge pull request #2376 from hemibroscommunity-del/claude/plan-ui2-10-combat",
+  "files": 8811,
+  "bytes": 993789146,
+  "listingSha256": "dfbe7ab1baa9d7ccc1014f8af9436843933eef8e33c9558c3c1c2fd588f0c007",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
