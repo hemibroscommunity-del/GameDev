@@ -71,9 +71,12 @@ const lookJob = () => ({
 let rodMask = new Uint8Array([1, 0, 1, 1]);
 /* a sheet's file by its address: two addresses of the same file read the same */
 const FILES = { 'blob:x': new Uint8Array([9, 9, 9, 1]), 'blob:y': new Uint8Array([9, 9, 9, 1]), 'blob:z': new Uint8Array([9, 9, 9, 2]) };
+/* a sheet of the gear's numbers by its key: its digest */
+const NUMBERS = { 'gear-1': new Uint8Array([4, 4, 4, 1]), 'gear-2': new Uint8Array([4, 4, 4, 2]) };
 const reader = (build) => ({
   pixels: (i) => { const s = i.bm || i.lb; return s ? s.px : null; },
   file: (u) => FILES[u] || null,
+  numbers: (k) => NUMBERS[k] || null,
   look: (l) => ({ rgba: px(12, 9 + (l.row[0] || 0)), pm: px(12, 10 + (l.row[0] || 0)) }),
   rod: () => rodMask,
   build: build == null ? 'v1|/assets/maskedBakeWorker-abc.js|ua' : build,
@@ -117,7 +120,9 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
   for (const [name, move] of [
     ['look.cell', (j) => { j.look.cell.ty = 1; }],
     ['look.row (the frame in its colours)', (j) => { j.look.row = new Uint8Array([1, 0, 0, 0, 0, 0, 0, 0]); }],
-    ['a worn piece from numbers: its pixels', (j) => { j.worn[0].inp.lb.px = px(12, 6); }],
+    ['a worn piece from numbers: another sheet of numbers', (j) => { j.worn[0].inp.look = 'gear-2'; }],
+    ['a worn piece from numbers: its cell', (j) => { j.worn[0].inp.cell.x += 4; }],
+    ['a worn piece from numbers: its placing', (j) => { j.worn[0].inp.ty += 1; }],
     ['the belt come', (j) => { j.belt = inp(2); }],
   ]) {
     const j = lookJob(); move(j);
@@ -142,6 +147,8 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
   check('2. another address of the same file does not move the key (the file is read)', (await keyOf(j2)) === base);
   const j3 = bitmapJob(); j3.worn[1].inp.url = 'blob:none';
   check('2. an address whose file did not read: no key', K.keyParts(j3, reader()) === null);
+  const j4 = lookJob(); j4.worn[0].inp.look = 'gear-9';
+  check('2. a sheet of numbers that is not here: no key', K.keyParts(j4, reader()) === null);
 }
 
 /* 3. a field nobody listed makes no key */

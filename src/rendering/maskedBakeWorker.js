@@ -105,6 +105,21 @@ function lookTable(key, sh) {
   return t;
 }
 const _bms = new Map();   /* 'key@x,y,w,h' -> ImageBitmap */
+/* v2.3.6761: a sheet of numbers' digest (the keep's key reads it), made again when its sheet is */
+const _numbers = new Map();   /* key -> Promise<Uint8Array | null> */
+function numbersDigest(key) {
+  let p = _numbers.get(key);
+  if (p) return p;
+  const sh = lookSheets.get(key);
+  if (!sh || !sh.bytes) return Promise.resolve(null);
+  const b = sh.bytes;
+  const head = new Uint8Array(new Uint32Array([sh.w | 0, sh.rows | 0, sh.bits | 0]).buffer);
+  const all = new Uint8Array(head.length + b.length);
+  all.set(head, 0); all.set(b instanceof Uint8Array ? b : new Uint8Array(b.buffer || b), head.length);
+  p = self.crypto.subtle.digest('SHA-256', all).then((h) => new Uint8Array(h), () => null);
+  _numbers.set(key, p);
+  return p;
+}
 const BM_CAP = 48;
 async function lookBitmap(inp) {
   const sh = lookSheets.get(inp.look);
@@ -367,6 +382,7 @@ function fetchSheet(j) {
         const g = c.getContext('2d', { willReadFrequently: true });
         g.drawImage(bm, 0, 0);
         const out = unpackLookSheet(g.getImageData(0, 0, s.W, s.n + s.T).data, s);
+        _numbers.delete(j.key);   /* v2.3.6761: its digest made again */
         lookSheets.set(j.key, lookSheetParse(out, s.W, s.rows, s.bits));
         if (j.check) self.postMessage({ type: 'lookSheetDone', key: j.key, hash: lookBytesHash(out) });
       } finally { try { bm.close(); } catch (e2) { /* closed */ } }
@@ -387,7 +403,7 @@ function waitsFor(j) {
 self.onmessage = (e) => {
   const j = e.data || {};
   if (j.type === 'rod') { rod = j.rod || null; return; }
-  if (j.type === 'lookSheet') { try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
+  if (j.type === 'lookSheet') { _numbers.delete(j.key); try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
   if (j.type === 'lookSheetUrl') { fetchSheet(j); return; }
   if (j.type === 'keep') { keepSet(j); return; }   /* v2.3.6761: the page's switch, before its first job */
   /* v2.3.5050 (sitting 5): a job's sheets by address start reading as it
@@ -551,7 +567,7 @@ function residueOf(res) {
    when the store throws or is not there.  docs/specs/bake-keep.md. */
 const keep = { on: false, verify: false, port: null, store: null, ver: '',
   hits: 0, misses: 0, stored: 0, bad: 0, nokey: 0, same: 0, differ: 0, diffs: [], ms: 0,
-  t: { px: 0, digest: 0, get: 0, out: 0, n: 0 } };   /* QA: where a kept answer's time goes */
+  t: { px: 0, digest: 0, get: 0, out: 0, n: 0, bm: 0 } };   /* QA: where a kept answer's time goes */
 function keepSet(m) {
   keep.on = !!m.on;
   keep.verify = !!m.verify;
@@ -575,19 +591,20 @@ function keepStats() {
   return { on: keep.on && !!S && !S.off, verify: keep.verify, why: S ? S.why : (keep.on ? '' : 'switched off'),
     hits: keep.hits, misses: keep.misses, stored: keep.stored, bad: keep.bad, nokey: keep.nokey,
     same: keep.same, differ: keep.differ, diffs: keep.diffs.slice(0, 6), ms: Math.round(keep.ms),
-    t: { px: Math.round(keep.t.px), digest: Math.round(keep.t.digest), get: Math.round(keep.t.get), out: Math.round(keep.t.out), n: keep.t.n },
+    t: { px: Math.round(keep.t.px), digest: Math.round(keep.t.digest), get: Math.round(keep.t.get), out: Math.round(keep.t.out), n: keep.t.n, bm: keep.t.bm },
     frames: S ? S.rows.size : 0, mb: S ? Math.round(S.bytes / 1048576 * 100) / 100 : 0, capMb: KEEP_CAP_MB };
 }
 const keepReady = () => keep.on && !!keep.store && !keep.store.state.off && !!(self.crypto && self.crypto.subtle);
-/* an input's pixels as the bake draws it (drawer): its rectangle, 1:1 */
+/* a cut input's pixels as the bake draws it (drawer): its rectangle, 1:1 */
 function inputPixels(inp) {
-  const src = inp && (inp.bm || inp.lb || inp.ub);
+  /* only a bitmap cut on the page is read (a sheet by address is keyed by its
+     file, a frame of numbers by its sheet's numbers: keyParts) */
+  const src = inp && inp.bm;
   if (!src || !(inp.fw > 0) || !(inp.fh > 0)) return null;
-  const ox = src === inp.ub ? inp.sx : 0, oy = src === inp.ub ? inp.sy : 0;
   const c = mkCpu(inp.fw, inp.fh);
   const g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
-  g.drawImage(src, ox, oy, inp.fw, inp.fh, 0, 0, inp.fw, inp.fh);
+  g.drawImage(src, 0, 0, inp.fw, inp.fh, 0, 0, inp.fw, inp.fh);
   return g.getImageData(0, 0, inp.fw, inp.fh).data;
 }
 /* a body from the look's numbers: the frame lookBake.js reads (lookFrameRGBA) */
@@ -609,9 +626,9 @@ function rodBytes() {
   }
   return _rodBytes;
 }
-async function keepKey(j, files) {
+async function keepKey(j, files, numbers) {
   const t0 = performance.now();
-  const parts = keyParts(j, { pixels: inputPixels, file: (u) => files.get(u) || null, look: lookPixels, rod: rodBytes, build: keep.ver });
+  const parts = keyParts(j, { pixels: (inp) => { keep.t.bm++; return inputPixels(inp); }, file: (u) => files.get(u) || null, numbers: (k) => numbers.get(k) || null, look: lookPixels, rod: rodBytes, build: keep.ver });
   const t1 = performance.now();
   keep.t.px += t1 - t0;
   if (!parts) { keep.nokey++; return null; }
@@ -705,10 +722,12 @@ async function keyFirst(j) {
     const worn = (j.worn || []).map((w) => w && w.inp);
     /* a piece from numbers whose sheet is not here: no key (its road fails it, as before) */
     if (!worn.some((x) => x && x.look && !lookSheets.has(x.look))) {
-      if (worn.some((x) => x && x.look)) await lookBitmaps(j);
-      const files = new Map();
-      for (const x of [j.body, j.belt, ...worn]) if (x && x.url && !files.has(x.url)) files.set(x.url, await fileDigest(x.url));
-      key = await keepKey(j, files);
+      const files = new Map(), numbers = new Map();
+      for (const x of [j.body, j.belt, ...worn]) {
+        if (x && x.url && !files.has(x.url)) files.set(x.url, await fileDigest(x.url));
+        if (x && x.look && !numbers.has(x.look)) numbers.set(x.look, await numbersDigest(x.look));
+      }
+      key = await keepKey(j, files, numbers);
       j._files = files;
     }
   } catch (e) { key = null; }

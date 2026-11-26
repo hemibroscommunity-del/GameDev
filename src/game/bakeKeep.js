@@ -23,8 +23,9 @@
  * THE KEY is made from the job AS THE WORKER RECEIVES IT, every field of it:
  *   - an input (the body, the belt, each worn piece) by what the bake
  *     draws: a sheet by its address by the digest of its FILE's bytes (as
- *     fetched: the worker decodes that file) and the rectangle in it; a cut
- *     bitmap or a frame of the gear's numbers by its PIXELS; and its placing
+ *     fetched: the worker decodes that file) and the rectangle in it; a
+ *     frame of the gear's numbers by the digest of the sheet's numbers and
+ *     its cell; a bitmap cut on the page by its PIXELS; and its placing
  *     (tx, ty, fw, fh, ow, oh).  A file is digested, not its picture read
  *     back: measured in the game on the test box, reading the pictures back
  *     cost about 2 s a job, a busy graphics chip's queue (the spec);
@@ -89,11 +90,12 @@ export const JOB_FIELDS = Object.freeze({
   _keyTried: 'none', _key: 'none', _verifyOut: 'none', _files: 'none',   /* the keep's own marks on a job */
 });
 export const INPUT_FIELDS = Object.freeze({
-  bm: 'pixels', lb: 'pixels',                 /* the picture drawn: cut on the page, from the gear's numbers */
+  bm: 'pixels',                               /* a bitmap cut on the page: its pixels */
+  lb: 'numbers',                              /* the worker's picture of a frame of numbers, made from them */
   url: 'file',                                /* a sheet by address: its FILE's bytes are read (read.file) */
   ub: 'file',                                 /* ...and decoded from that file by the worker */
   sx: 'key', sy: 'key',                       /* where in that sheet */
-  look: 'pixels', cell: 'pixels',             /* where a frame of the gear's numbers is */
+  look: 'numbers', cell: 'key',               /* a frame of the gear's numbers: its sheet's digest (read.numbers) and its cell */
   tx: 'key', ty: 'key', fw: 'key', fh: 'key', ow: 'key', oh: 'key',
   qaBm: 'none',          /* QA: the page's own cut, compared, never drawn */
 });
@@ -130,6 +132,7 @@ const asBytes = (b) => (b instanceof Uint8Array ? b : new Uint8Array(b.buffer, b
  * The parts of a job's key, in order, or null (no key: bake).
  *   read.pixels(inp)  -> the input's pixels as the bake draws them (RGBA), or null
  *   read.file(url)    -> the digest of a sheet's file, as fetched, or null
+ *   read.numbers(key) -> the digest of a sheet of the gear's numbers, or null
  *   read.look(look)   -> { rgba, pm } of a body from the look's numbers, or null
  *   read.rod()        -> the fish rod's mask as bytes, or null
  *   read.build        -> the bake's version text (KEEP_V, the script, the browser)
@@ -143,7 +146,14 @@ export function keyParts(j, read) {
   const input = (name, inp) => {
     if (inp == null) { val(name, null); return true; }
     if (!known(inp, INPUT_FIELDS)) return false;
-    if (inp.url != null) {
+    if (inp.look != null) {
+      /* a frame of the gear's numbers: the digest of the sheet's numbers and
+         the cell (the worker colours it from them, lookBitmap: no picture read back) */
+      const nb = read.numbers(inp.look);
+      if (!nb) return false;
+      val(name + '.cell', inp.cell);
+      add(name + '.numbers', nb);
+    } else if (inp.url != null) {
       /* a sheet by address: the digest of the file's own bytes, and the
          rectangle in it -- no picture read back (on a phone, or a busy
          graphics chip, a read-back waits behind the frame being drawn) */
