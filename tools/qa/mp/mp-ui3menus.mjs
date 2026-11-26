@@ -221,13 +221,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* 3. Gear at 390 x 844: one socket, the marks, the label row, the pill */
     await toGear(P);
-    /* the pin's anchor: the ore's item page, Pin, and back */
-    try {
-      await tap(P, '[data-gear-bag] [data-bag-key="i-ore_copper_ore"]', 900);
-      await tap(P, '[data-gear-details]', 1400);
-      await tap(P, '[data-item-pin]', 900);
-    } catch (e) { /* recorded below: the anchor not seen */ }
-    await toGear(P);
+    /* the pin's anchor: the ore's item page, Pin, and back (twice at most: a tap on this box's slow frames can
+       land before the summary is drawn; the step that missed is recorded) */
+    const pinErr = [];
+    const anchored = () => P.page.evaluate(() => { const e = document.querySelector('[data-gear-bag] [data-bag-key="i-ore_copper_ore"]'); return !!e && /\u2693/.test(e.textContent); });
+    for (let i = 0; i < 2 && !(await anchored()); i++) {
+      try {
+        await tap(P, '[data-gear-bag] [data-bag-key="i-ore_copper_ore"]', 1200);
+        await tap(P, '[data-gear-details]', 1600);
+        await tap(P, '[data-item-pin]', 1200);
+      } catch (e) { pinErr.push(String(e && e.message || e).slice(0, 80)); }
+      await toGear(P);
+    }
     const g3 = await gread(P);
     await shot(P, 'ui3-gear.png');
     const pair = (g3.bagSlots || []).map((b) => b.s && (g3.worn || []).find((w) => w && w.grade === b.s.grade && w.bg === b.s.bg && w.bw === b.s.bw && w.rad === b.s.rad) && b).find(Boolean);
@@ -236,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('3. 390x844: a bag square and a worn cell of the same grade draw the same socket (background, outline, radius); no bag square paints its own face',
       !!pair && (g3.bagSlots || []).every((b) => /u2-slot/.test(b.s.cls) && b.inline === '||'), { pair: pair && pair.key, slot: pair && pair.s, bag0: (g3.bagSlots || [])[0], worn0: (g3.worn || [])[0] });
     rec.ok('3a. the bag\'s marks kept: the ore\'s count, the pin\'s anchor, the "?" on the unrevealed torso', !!ore && /3/.test(ore.text) && /⚓/.test(ore.text) && !!hid && hid.q,
-      { ore: ore && ore.text, hidden: hid && { key: hid.key, q: hid.q } });
+      { ore: ore && ore.text, hidden: hid && { key: hid.key, q: hid.q }, pin: pinErr });
     rec.ok('4. the label row 24 px, its words 11 px, no word under 11; every control 24 tall and 44 to the touch; the gold a recessed pill (not a button), its number the purse, its coin 16 px',
       g3.head === 24 && g3.headFont === '11px' && g3.small.length === 0 && g3.ctls.length > 0 && g3.ctls.every((c) => c.h === 24 && c.touch === '44px')
       && !!g3.gold && g3.gold.tag === 'DIV' && /is-pill/.test(g3.gold.cls) && g3.gold.sunk && g3.gold.n === g3.gold.coins && g3.gold.text.length > 0 && g3.gold.art === 16,
