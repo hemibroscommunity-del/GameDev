@@ -23,7 +23,7 @@
 .ui2 .u2-ql-title { font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55); }
 .ui2 .u2-ql-sub { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-ql-count { flex: 0 0 auto; font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); font-variant-numeric: tabular-nums; }
-.ui2 .u2-ql-count.is-full, .ui2 .u2-ql-ready { color: #7FD6AC; }
+.ui2 .u2-ql-count.is-full, .ui2 .u2-ql-ready { color: var(--ui2-text-gold); }
 .ui2 .u2-ql-ready { flex: 0 0 auto; font-size: var(--ui2-fs-label); font-weight: 700; white-space: nowrap; }
 .ui2 .u2-ql-star { flex: 0 0 auto; font-size: var(--ui2-fs-value); color: var(--ui2-text-gold); }
 .ui2 .u2-ql-doors { flex: 0 0 auto; display: flex; gap: var(--ui2-space-m); min-width: 0; }
@@ -41,21 +41,21 @@
 
 /* ── a quest's page ── */
 .ui2.u2-qp { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
-/* the name and its state on one line */
+/* the name and its state on one line (v2.3.6691: the state, a full count and the steps read the kit's text tokens: R9 of ui3-weights knows no done or full meaning) */
 .ui2 .u2-qp-id { flex: 0 0 auto; display: flex; align-items: center; gap: var(--ui2-space-m); min-width: 0; padding: 0 var(--ui2-space-s); height: 22px; }
 .ui2 .u2-qp-face { width: 22px; height: 22px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; border-radius: var(--ui2-radius-slot); }
 .ui2 .u2-qp-title { flex: 0 1 auto; min-width: 0; font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-qp-state { flex: 0 1 auto; min-width: 0; font-size: var(--ui2-fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ui2 .u2-qp-status { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #7FB0EC; }
+.ui2 .u2-qp-status { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ui2-text-ivory); }
 .ui2 .u2-qp-status.is-ready { color: var(--ui2-text-gold); }
-.ui2 .u2-qp-status.is-done { color: #7FD6AC; }
+.ui2 .u2-qp-status.is-done { color: var(--ui2-text-muted); }
 .ui2 .u2-qp-status.is-available { color: var(--ui2-text-muted); }
 .ui2 .u2-qp-giver { color: var(--ui2-text-muted); }
 /* the steps behind you: they scroll, the page opens on the last */
 .ui2 .u2-qp-steps { flex: 1 1 auto; min-height: 20px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: var(--ui2-space-xs); padding-top: 1px; padding-bottom: 1px; }
 .ui2 .u2-qp-step { flex: 0 0 auto; display: flex; align-items: center; gap: var(--ui2-space-m); min-height: 18px; }
-.ui2 .u2-qp-tick { flex: 0 0 auto; width: 15px; height: 15px; border-radius: 8px; background: #59BF91; color: #10222A; font-size: var(--ui2-fs-small); font-weight: 900; display: flex; align-items: center; justify-content: center; }
-.ui2 .u2-qp-step-text { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-body); color: #7FD6AC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qp-tick { flex: 0 0 auto; width: 15px; height: 15px; border-radius: 8px; background: #59BF91; color: var(--ui2-text-on-action); font-size: var(--ui2-fs-small); font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.ui2 .u2-qp-step-text { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-body); color: var(--ui2-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-qp-step-item { width: 18px; height: 18px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; }
 /* NOW: dominant, never behind a scroll */
 .ui2 .u2-qp-now {
@@ -72,7 +72,7 @@
 .ui2 .u2-qp-where-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-qp-bar { flex: 0 0 64px; }
 .ui2 .u2-qp-now-count { flex: 0 0 auto; font-size: var(--ui2-fs-value); font-weight: 800; line-height: 1.1; color: var(--ui2-text-ivory); font-variant-numeric: tabular-nums; }
-.ui2 .u2-qp-now-count.is-full { color: #7FD6AC; }
+.ui2 .u2-qp-now-count.is-full { color: var(--ui2-text-gold); }
 .ui2 .u2-qp-more { flex: 0 0 auto; font-size: var(--ui2-fs-small); line-height: 13px; font-style: italic; color: var(--ui2-text-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-qp-more.is-note { font-style: normal; color: var(--ui2-text-gold); }
 .ui2 .u2-qp-more.is-next { font-style: normal; text-align: left; padding: 0 var(--ui2-space-s); white-space: normal; line-height: 1.25; }
