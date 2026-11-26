@@ -245,16 +245,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('12b. Back: the Menu\'s root comes back as the page shrinks into its tile (the same origin), and the class comes off',
       (await read(P)).kind === 'menu-root' && B12.log.some((x) => x.k === 'shrink' && x.o === '37.5% 25%') && offB, { log: B12.log, off: offB });
     /* taps while it grows: a hub's tile tapped at once, inside the growing page (force: Playwright would wait for it to stop moving) */
-    /* the page's animations played at a tenth of their pace (the browser's own clock, not a wait), so the
-       second press surely lands while the first page still grows on this box, however fast it draws */
+    /* the page's animations played at a hundredth of their pace (the browser's own clock, not a wait: 220 ms
+       becomes 22 s), so the second press surely lands while the first page still grows on this box, however
+       slowly Playwright's next tap comes (at a tenth, 2.2 s, it came after the end); the pace is put back
+       before the wait for the class to come off */
     const cdp = await P.page.context().newCDPSession(P.page);
     await cdp.send('Animation.enable');
-    await cdp.send('Animation.setPlaybackRate', { playbackRate: 0.1 });
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: 0.01 });
     await growWatch(P);
     await tap(P, '[data-dash-grid="menu"] [data-dest="social"]', 0);
     await P.page.locator('[data-dash-grid="socialHub"] [data-dest="social"]').first().tap({ timeout: 6000, force: true });
-    await growOff(P);
     await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 });
+    await growOff(P);
     await cdp.detach().catch(() => {});
     const C12 = await growLog(P);
     const G12c = await read(P);
