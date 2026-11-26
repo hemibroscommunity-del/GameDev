@@ -30,13 +30,13 @@ So after this card: a thing that looks pressable IS a destination or an action; 
 
 **PR 2, UI3-hud (tag 6781): the persistent character HUD.** AFTER card PAD's sprint part is ready, stacked on `claude/plan-pad-9-rimsprint` (it holds `src/ui/BroTown.jsx`; never beside it).
 - Top-left, under the top bar, opposite the minimap: the bro's face (the portrait the dashboard already bakes, `portraitStore.js`: no new bake, no new memory), beside it the name and "Lv N" (the combat level), under them a gold XP bar labelled with its weapon; under the HUD the tracked quest as ONE line (today's `QuestCard`, made smaller; its tap still opens the quest).
-- Which weapon: the one whose next level raises the combat level soonest (their words: *"whichever weapon is closest to increasing the overall combat level"*): `combatLevelProgress(R)` answers that, NOT `bestWeaponProgress`. The rule moves to a module under `src/game/` with its suite.
+- Which weapon: the one whose next level raises the combat level soonest (their words: *"whichever weapon is closest to increasing the overall combat level"*): `combatLevelProgress(R)`'s rule, NOT `bestWeaponProgress`; it does not say WHICH weapon, so the new module under `src/game/` restates the rule, keeps the weapon, and its suite holds the two to each other.
 - A tap on the face opens the Bro page at once (after PR 3: the one character page). On a computer a click on it is not a swing.
 - It shows the face, the name, the level and the XP bar ONLY. Health and energy do NOT come back (the owner took the old frame out on 2026-11-03, v2.3.4163; this is their later word for what they list, no more).
-- While it shows, the top bar's passing XP slot keeps life-skill XP only: weapon XP moves in the HUD's own bar (never both).
-- The party chip, the element chips and "Skip tutorial" move under the stack by the HUD's own height (one CSS variable), with no overlap at 375 x 667 and 667 x 375. Sideways it is compact: say its size and show the picture.
+- While it shows, the top bar's passing XP slot is quiet: that slot only ever showed weapon XP, and weapon XP now moves in the HUD's own bar (never both; the kill's XP flight lands on the HUD's bar).
+- The party chip and the element chips move under the stack by the HUD's own height (one CSS variable), with no overlap at 375 x 667 and 667 x 375. Sideways it is compact: say its size and show the picture.
 - The online count: there is none on the HUD today (taken out in v2.3.1227), so nothing moves; a count inside Social is step 7's. FLAGGED to the owner, not built.
-- `?hud=0` (remembered) gives today's top-left. `BroTown.jsx` gains ONE mount line; everything else is its own files.
+- `?hud=0` (remembered) gives today's top-left. `BroTown.jsx` gains an import, ONE mount line and one call for the status column's place (its style object moves out to the HUD's files), and its line count still falls; everything else is its own files. `UI3-hud.md` has the code's facts where they sharpen these lines.
 
 **PR 3, UI3-bro (tag 6782): Bro and Character become one page.** Stacked on PR 1's branch; LISTED AFTER PR 2 in the sitting (without the HUD, nothing would show who you are).
 - The Menu's Bro door opens ONE page under the one header. Its word stays the game's, "Bro" (the mock-up says "Character": FLAGGED, one word to change). Six tiles: Combat, Equipment, Life Skills, Feats, Pets, Journey. Under them ONE flat strip (the kit's facts form): AP, Quests, Clan (or Party), Guilds; each a door where the game has a page (`PASSPORT_DOORS`).
