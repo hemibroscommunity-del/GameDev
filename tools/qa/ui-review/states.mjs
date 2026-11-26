@@ -844,7 +844,7 @@ export const STATES = [
       if (!ok) return 'no monster card to open';
     },
   },
-  dash('more', 'Menu (More under ?ui2=0)', 'v2.3.6681 (card UI2-frame): the Menu\'s root, the directory -- eight equal tiles four by two (Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings), each its picture and one word, under the one header (\u2039 Gear, Menu, Close). Under ?ui2=0 the old More page: its fifteen tiles.'),
+  dash('more', 'Menu (More under ?ui2=0)', 'v2.3.6681 (card UI2-frame): the Menu\'s root, the directory -- eight equal tiles four by two (Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings), each its picture and one word, under the one header (\u2039 Gear, Menu, Close); v2.3.6784 (card UI3-menus): each picture the largest the tile holds, 58 px upright and 35 sideways (src/game/menuTile.js), on a tile of 2 px padding, every word in the header\'s type. Under ?ui2=0 the old More page: its fifteen tiles.'),
   /* v2.3.6681 (card UI2-frame): the new frame's own screens */
   { id: 'dash-frame-closed', group: 'Dashboard', title: 'The dashboard closed: Gear and Menu', about: 'The band closed: the slim row keeps two buttons, Gear and Menu (a count on Menu while points wait); the handle on its edge.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'close' }); }); } },
@@ -887,7 +887,7 @@ export const STATES = [
       return tapSel(P, '[data-gear-summary] [data-gear-details]');
     } },
   /* v2.3.6688: Gear's two panels (card UI2-gear PR 2): management, a look from the bag, a look from the worn cells */
-  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars.',
+  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars. v2.3.6784 (card UI3-menus): the label rows 24 px (their words 11 px caps), the gold a recessed pill, the bag\'s squares the kit\'s socket (the worn cells\'), the bag in WHOLE rows (three wherever 44 px squares allow; the scroll snaps to a row: src/game/gearGeometry.js).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); }); } },
   { id: 'dash-gear-look-bag', group: 'Dashboard', title: 'Gear: a look from the bag', about: 'A bag square tapped: the Inventory stays left, the square pushed in; the Equipped panel\'s place is its summary (a piece you could wear: your DPS or Damage cut now and if equipped, the change, Details and Equip).',
     run: async ({ P }) => {
