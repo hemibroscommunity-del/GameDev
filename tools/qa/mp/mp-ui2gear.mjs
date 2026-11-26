@@ -183,6 +183,9 @@ async function swordPage(P, press) {
   await P.page.waitForTimeout(400);
   await press(P, '[data-gear-cell="sword"] [role="button"]');
   await press(P, '[data-gear-summary] [data-gear-details]', 900);
+  /* v2.3.6689: the page grows into place (dashGrow, `data-dash-grow` until its animation's end): read it after
+     (a read mid-growth measured the page at 144 x 57 on this box's few frames a second; TRAPS §200) */
+  await H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
   return read(P);
 }
 const fits = (s) => s.page && !s.scrolls && s.smallBtns.length === 0 && s.outBtns.length === 0 && s.small.length === 0 && s.cut.length === 0 && s.actsIn && s.idIn;
@@ -434,7 +437,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('12b. Back: the showcase again', b12.there && !b12.item, { there: b12.there, item: b12.item, title: b12.title });
     await tap(P, '[data-gear-showcase] [data-gear-manage]', 1500);
     const m13 = await pread(P);
-    rec.ok('13. Manage Gear: Gear\'s two panels', m13.root && m13.mode === 'manage' && m13.leftBag && !!m13.rightBody, { root: m13.root, mode: m13.mode });
+    /* Gear as it was left (the owner, 2026-11-25: Close resets no workspace; workspace.js 'fold'): management, or the look left open */
+    rec.ok('13. Manage Gear: Gear\'s two panels, as they were left', m13.root && (m13.mode === 'manage' || m13.mode === 'look') && (m13.leftBag || !!m13.rightBody), { root: m13.root, mode: m13.mode });
     /* 14. your own player card: its equipment row */
     await P.page.evaluate(() => { if (window.__broInspectSelf) window.__broInspectSelf(); });
     await H.waitFor(P, () => !!document.querySelector('.bt-pin-equip [data-pin-item]'), (v) => !!v, { timeout: 15000, label: 'the card\'s equipment row' }).catch(() => null);
