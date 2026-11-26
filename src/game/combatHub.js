@@ -36,12 +36,37 @@
 import {
   PROG3, prog3Pool, prog3Shared, prog3PoolFor, prog3PoolShared, prog3PoolAny, prog3CharLevel,
   isProg3SharedEnabled, prog3AtkMeta, prog3AtkPts, prog3StatCap, isStatCapFree,
+  prog3BodyMeta, prog3Pts,   /* v2.3.6686: the Shared page's seven */
 } from '../data/prog3.js';
 import { weaponProgress } from './progression.js';
 import { POINTS_ART_DIR, POINTS_ART_V } from '../data/pointsHeadArt.js';
 
 /* the frame's page of each door (src/game/dashDests.js FRAME_PAGES; src/game/broHub.js BRO_HUB_PAGES) */
 export const COMBAT_PAGES = Object.freeze({ sword: 'broSword', bow: 'broBow', staff: 'broStaff' });
+/* v2.3.6686 (card UI2-combat PR 2): the Shared page, the hub's fourth door (sheet/SharedPage.jsx) */
+export const SHARED_PAGE = 'broShared';
+/* v2.3.6686: the stat tree's layers, one frame page a depth (sheet/StatTree.jsx): DPS is layer 0;
+   a row that opens pushes the next layer's page, so the header's Back returns layer by layer to
+   the weapon's page.  The deepest branch of src/game/metricTree.js dpsTree is layer 6
+   (DPS > damage a swing > crits add > a critical hit > average hit > least hit > hit base); the
+   guard (tools/guards/metric-tree.test.mjs) holds every branch inside this list. */
+export const TREE_PAGES = Object.freeze(['broTree0', 'broTree1', 'broTree2', 'broTree3', 'broTree4', 'broTree5', 'broTree6']);
+/** The layer of a tree page (0..6), or -1. */
+export function treeDepthOf(id) { return TREE_PAGES.indexOf(String(id)); }
+/** What a tree page's entry keeps (dashNav's `sel`): the weapon and the path of node ids. */
+export function treeSel(cat, path) {
+  return String(cat || '') + '|' + (Array.isArray(path) ? path.join('/') : '');
+}
+/** { cat, path } read back from a `sel` (null: not a tree page's). */
+export function treeSelRead(sel) {
+  const s = typeof sel === 'string' ? sel : '';
+  const i = s.indexOf('|');
+  if (i < 0) return null;
+  const cat = s.slice(0, i);
+  if (!Object.prototype.hasOwnProperty.call(COMBAT_PAGES, cat)) return null;
+  const rest = s.slice(i + 1);
+  return { cat, path: rest ? rest.split('/') : [] };
+}
 
 /* the four doors, in the hub's order: three weapons in a row, Shared under them.  The pictures are
    the game's own (the passport's weapons; Shared: the Points tab's gold bust, POINTS_ICONS.shared):
@@ -50,8 +75,8 @@ export const COMBAT_DOORS = Object.freeze([
   Object.freeze({ id: 'sword', cat: 'sword', word: 'combatHub.sword', art: '/icons/ui/combat-melee.webp', opens: 'page:' + COMBAT_PAGES.sword }),
   Object.freeze({ id: 'bow', cat: 'bow', word: 'combatHub.bow', art: '/icons/ui/combat-bow.webp', opens: 'page:' + COMBAT_PAGES.bow }),
   Object.freeze({ id: 'staff', cat: 'staff', word: 'combatHub.staff', art: '/icons/ui/combat-magic.webp', opens: 'page:' + COMBAT_PAGES.staff }),
-  /* v2.3.6685: today's Points window on its Shared column, until PR 2's Shared page (6686) */
-  Object.freeze({ id: 'shared', cat: null, word: 'combatHub.shared', art: `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`, opens: 'points:shared' }),
+  /* v2.3.6686 (PR 2): its own page, the Shared page (v2.3.6685 opened the Points window on its Shared column) */
+  Object.freeze({ id: 'shared', cat: null, word: 'combatHub.shared', art: `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`, opens: 'page:' + SHARED_PAGE }),
 ]);
 
 const WEAPON_OF = Object.freeze({ broSword: 'sword', broBow: 'bow', broStaff: 'staff' });
@@ -120,5 +145,13 @@ export function spendPool(stat, pageCat) {
 export function weaponAttributes(rpg, cat) {
   return prog3AtkMeta().map((m) => Object.freeze({
     key: m.key, label: m.label, art: m.iconSrc, pts: prog3AtkPts(rpg, cat, m.key), cap: isStatCapFree() ? null : prog3StatCap(rpg, m.key),
+  }));
+}
+
+/** v2.3.6686: the seven shared attributes as tiles, the same shape as a weapon's six: the game's
+    names (PROG3_BODY_META) and the points each holds of its cap. */
+export function sharedAttributes(rpg) {
+  return prog3BodyMeta().map((m) => Object.freeze({
+    key: m.key, label: m.label, art: m.iconSrc, pts: prog3Pts(rpg, m.key), cap: isStatCapFree() ? null : prog3StatCap(rpg, m.key),
   }));
 }

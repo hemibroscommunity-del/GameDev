@@ -192,7 +192,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* every player joins upright, the sideways one rotates after (the
        creator cannot be finished sideways: mp-catgrid) */
     const P = await H.newPlayer(browser, { name: who, wsPort, webPort,
-      viewport: land ? { width: 390, height: 844 } : vp, touch: true, dpr: 3, world: 'wheel', init: COACH_DONE });
+      viewport: land ? { width: 390, height: 844 } : vp, touch: true, dpr: 3, world: 'wheel', init: COACH_DONE,
+      query: 'ui2=0' });   /* v2.3.6686 (card UI2-bro, tests part): this check is about the OLD Points grid's heads, badges and breathing counts, which ship under ?ui2=0 until the build's step 10 */
     await H.enterWorld(P);
     await P.page.waitForTimeout(1500);
     if (land) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1100); }

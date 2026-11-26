@@ -62,6 +62,8 @@ export function doorWord(key) {
     case 'dashFrame.sword': return say(SAY, 'dashFrame.sword');   /* v2.3.6685: a weapon's page (card UI2-combat) */
     case 'dashFrame.bow': return say(SAY, 'dashFrame.bow');
     case 'dashFrame.staff': return say(SAY, 'dashFrame.staff');
+    case 'dashFrame.sharedAttributes': return say(SAY, 'dashFrame.sharedAttributes');   /* v2.3.6686: the Shared page */
+    case 'dashFrame.dps': return say(SAY, 'dashFrame.dps');   /* v2.3.6686: the stat tree's layers */
     default: return say(SAY, 'dashFrame.page');
   }
 }

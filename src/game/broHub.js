@@ -54,6 +54,9 @@ export const BRO_HUB_PAGES = Object.freeze({
   broCharacter: 'character', broCombat: 'combat', broTitles: 'titles',
   /* v2.3.6685 (card UI2-combat): a weapon's own page, under Combat's hub (src/game/combatHub.js COMBAT_PAGES) */
   broSword: 'sword', broBow: 'bow', broStaff: 'staff',
+  /* v2.3.6686 (card UI2-combat PR 2): the Shared page, and the stat tree's layers (combatHub.js TREE_PAGES) */
+  broShared: 'shared',
+  broTree0: 'tree', broTree1: 'tree', broTree2: 'tree', broTree3: 'tree', broTree4: 'tree', broTree5: 'tree', broTree6: 'tree',
 });
 
 /** Is this one of Bro's own frame pages (Character, Combat)? */
