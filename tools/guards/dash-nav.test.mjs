@@ -35,7 +35,7 @@ import { fileURLToPath } from 'node:url';
 import {
   dashNavInit, dashNavStep, dashNavView, dashNavBackTo, dashNavOpen, dashNavKey, dashNavLegacy, isGearRoot,
 } from '../../src/game/dashNav.js';
-import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, MORE_ROADS, destOfPage, menuGridShape } from '../../src/game/dashDests.js';
+import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, MORE_ROADS, destOfPage, menuGridShape, frameMarks } from '../../src/game/dashDests.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -192,6 +192,11 @@ for (const r of real) check(r.name, r.ok, r.detail);
   check('2h destOfPage finds a door by its page', destOfPage('quests').id === 'quests' && destOfPage('guild').id === 'guild' && destOfPage('nope') === null);
   const up = menuGridShape(8, false), side = menuGridShape(8, true);
   check('2i the grid: four across and two down upright, eight in a row sideways', up.cols === 4 && up.rows === 2 && side.cols === 8 && side.rows === 1, JSON.stringify([up, side]));
+  const fm = frameMarks({ quests: true, encyclopedia: 2, social: 1, more: 3 }, 4, false);
+  const quiet = frameMarks({}, 0, false);
+  check('2k the marks: points glow on Bro and climb to the Menu as a count; the bell on Settings; nothing waiting, nothing marked',
+    fm.doors.hero.count === 4 && fm.doors.hero.glow && fm.menu.count === 4 && fm.menu.glow && fm.doors.settings.count === 3 && fm.doors.quests.dot
+    && !quiet.menu.count && !quiet.menu.dot && !quiet.menu.glow && frameMarks({ quests: true }, 0, false).menu.dot === true);
   const keys = MENU_DESTS.filter((d) => d.key).map((d) => d.key);
   check('2j a door\'s key is unique, and the letters of the pages they open today (P J U K M)', new Set(keys).size === keys.length && keys.join('') === 'PJUKM', keys.join(''));
 }

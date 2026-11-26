@@ -79,13 +79,10 @@ import { playVw, playVh, playIsLandscape, winVh } from './playViewport.js'; /* v
 import { dashMinBus } from './dashMinBus.js';
 /* v2.3.6681: the new frame (card UI2-frame): the one header, the Menu's directory, its hubs */
 import { DashHeader } from './dash/DashHeader.jsx';
-import { MenuGrid, HomesteadPage, doorWord } from './dash/MenuGrid.jsx';
-import { MENU_DESTS, DASH_HUBS, FRAME_PAGES } from '@/game/dashDests.js';
-import { dashNavView } from '@/game/dashNav.js';
-import { dashScrollBox, dashScrollShown } from './dash/dashScroll.js';
+import { MenuGrid, HomesteadPage, doorWord, openDoor, farmPlots, hubWordFor } from './dash/MenuGrid.jsx';
+import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests.js';
+import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
 import { ui2RootClass } from '@/ui/kit/index.js';
-import { profileFromSelf } from '../panels/playerProfile.js';
-import { openWorldMap } from '../WorldMapOverlay.jsx';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
 import { SAY } from '@/data/say/bottomDashboard.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
@@ -696,35 +693,14 @@ const RAIL_ITEMS = [
 /* v2.3.4470: `?bandbeat=0` -- the band's 200 ms redraw in one piece, as before (see the beat, below) */
 const BAND_BEAT_WHOLE = (() => { try { return /(^|[?&])bandbeat=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 
-/* ═══ v2.3.6681: THE NEW FRAME'S PAGE WORDS AND DOORS (card UI2-frame) ═══ */
-/* the frame's own pages are drawn by the frame (no Component), titled by the header */
+/* ═══ v2.3.6681: THE NEW FRAME (card UI2-frame): its own pages (drawn by the
+   frame, titled by the header), a page's name, and the pages the worker offers
+   (a resumed Menu whose page is gone falls to its root: dashNav's 'menu') ═══ */
 const FRAME_ACTIVE = Object.freeze({ title: '', Component: null });
-/* the worker's caps as last drawn: a resumed Menu whose page is no longer
-   offered falls to its root (dashNav's 'menu'; the card's dodge) */
 let _capsNow = null;
 const CAP_PAGES = Object.freeze({ pets: 'petbook', achievements: 'achievements' });
-dashboardPanelBus.setOffers((id) => {
-  if (!(PANELS[id] || FRAME_PAGES[id])) return false;
-  const cap = CAP_PAGES[id];
-  return !cap || !_capsNow || !!_capsNow[cap];
-});
-/** A page's name, for the header's title and Back's word. */
-function titleOf(id) {
-  if (id === 'menu') return doorWord('dashFrame.menu');
-  if (FRAME_PAGES[id]) return doorWord(FRAME_PAGES[id]);
-  const p = PANELS[id];
-  return (p && p.title) || doorWord('dashFrame.page');
-}
-/** A door of the Menu or a hub: its page over the directory, or the World map
-    over the game (Map: what More's tile and the minimap open; where there is
-    none, the Map page, as More did). */
-function openDoor(d, from) {
-  if (d.opens === 'worldMap') {
-    if (!openWorldMap()) dashboardPanelBus.go({ type: 'push', id: 'map', from });
-    return;
-  }
-  dashboardPanelBus.go({ type: 'push', id: d.page, from });
-}
+dashboardPanelBus.setOffers((id) => !!(PANELS[id] || FRAME_PAGES[id]) && (!CAP_PAGES[id] || !_capsNow || !!_capsNow[CAP_PAGES[id]]));
+const titleOf = (id) => (id === 'menu' ? doorWord('dashFrame.menu') : FRAME_PAGES[id] ? doorWord(FRAME_PAGES[id]) : (PANELS[id] && PANELS[id].title) || doorWord('dashFrame.page'));
 
 export const BottomDashboard = () => {
   /* v2.3.3049: OPEN, then the sword and the shield (then the bow and the
@@ -786,11 +762,7 @@ export const BottomDashboard = () => {
     };
   }, []);
   useEffect(() => dashMinBus.subscribe(setDashMin), []);
-  /* v2.3.6681: a page up again gets its kept scroll back (dash/dashScroll.js; card UI2-frame) */
-  const _navNow = dashboardPanelBus.frameOn() ? dashboardPanelBus.nav() : null;
-  const _navTop = _navNow ? dashNavView(_navNow).top : null;
-  const _navSeen = _navTop && _navNow.shown ? _navNow.ws + ':' + _navTop.key : '';
-  useEffect(() => { if (_navTop && _navNow.shown) dashScrollShown(_navTop.key, _navTop.scroll); }, [_navSeen]);
+  useDashScrollBack();   /* v2.3.6681: a page up again gets its kept scroll back (dash/dashScroll.js; card UI2-frame) */
   /* v2.3.2178: the landscape dock's box and the room panels keep clear of
      it, from one seam (sheetGeometry.landDockFootprint).  Recomputed every
      render like the other playVw()-derived numbers here -- the component
@@ -1228,34 +1200,12 @@ export const BottomDashboard = () => {
      readouts now (its coin keeps the glimmer class; the RAF count-up
      retired with its anchor). */
 
-  /* ═══ v2.3.6681: THE NEW FRAME'S MARKS, DOORS AND WORDS (card UI2-frame) ═══
-     The same badges as the old row's (`dots` above), on the doors that lead
-     to them now: points glow on Bro's tile AND climb to the Menu button (the
-     audit's part 2, BUILD 6); a ready quest on Quests; the codex's new pages
-     on Codex; requests on Social and its Friends; the bell's unread on
-     Settings and its Notifications. */
+  /* v2.3.6681: the frame's marks (dashDests.js frameMarks: points glow on Bro
+     and climb to the Menu), the farm's count, and Party or Clan (card UI2-frame) */
   _capsNow = (Sb && Sb._serverCaps) || null;
-  let menuMark = null, doorMarks = null, plotsReady = 0;
-  if (ui2) {
-    const soc = typeof dots.social === 'number' ? dots.social : 0;
-    const bell = typeof dots.more === 'number' ? dots.more : (dots.more ? 1 : 0);
-    doorMarks = {
-      hero: { count: _pts > 0 ? _pts : 0, glow: _pts > 0, dot: !(_pts > 0) && !!_skillsNew },
-      quests: { dot: !!dots.quests },
-      encyclopedia: { count: dots.encyclopedia || 0 },
-      social: { count: soc },
-      settings: { count: bell },
-      notifications: { count: bell },
-    };
-    const other = !!dots.quests || !!_skillsNew || dots.encyclopedia > 0 || soc > 0 || bell > 0;
-    menuMark = { count: _pts > 0 ? _pts : 0, glow: _pts > 0, dot: !(_pts > 0) && other };
-    try {
-      const pr = profileFromSelf(Sb);
-      plotsReady = pr && pr.homestead ? Math.max(0, Number(pr.homestead.plotsReady) || 0) : 0;
-    } catch (e) { plotsReady = 0; }
-  }
-  const partyWords = (() => { try { return clanPartyOn(Sb); } catch (e) { return true; } })();
-  const hubWord = (d) => doorWord(d.id === 'clan' && !partyWords ? d.wordClan : d.word);
+  const marks = ui2 ? frameMarks(dots, _pts, _skillsNew) : null;
+  const plotsReady = ui2 ? farmPlots(Sb) : 0;
+  const hubWord = hubWordFor(Sb);
 
   const Active = active?.Component;
   const deskKeys = land && deskWideActive();   /* v2.3.3687: a computer playing wide (deskWide.js) */
@@ -1853,7 +1803,7 @@ export const BottomDashboard = () => {
             {framePage ? (
               <div className={ui2RootClass()} data-dash-page={framePage} style={{ flex: 1, minHeight: 0, padding: 4 }}>
                 {framePage === 'homestead' ? <HomesteadPage plots={plotsReady} />
-                  : <MenuGrid label={framePage} doors={framePage === 'menu' ? MENU_DESTS : DASH_HUBS[framePage]} marks={doorMarks}
+                  : <MenuGrid label={framePage} doors={framePage === 'menu' ? MENU_DESTS : DASH_HUBS[framePage]} marks={marks.doors}
                       wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
               </div>
             ) : Active && <Active />}
@@ -2041,7 +1991,7 @@ export const BottomDashboard = () => {
             fixed nav dock so the side container can enclose them (owner:
             "included in that container on that whole right side"). */}
         {/* v2.3.6681: the new frame's one header in the row's place (dash/DashHeader.jsx) */}
-        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={menuMark} />}
+        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={marks ? marks.menu : null} />}
         {!land && !ui2 && (
           <BandClose min={dashMin} expanded={mode === 'expanded'}
             h={navButtonSize(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844).h} />

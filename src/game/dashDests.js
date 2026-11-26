@@ -101,3 +101,29 @@ export function menuGridShape(n, sideways) {
   if (count <= 6) return { cols: 3, rows: 2 };
   return { cols: Math.ceil(count / 2), rows: 2 };
 }
+
+/** The doors' marks (BottomDashboard's `dots`, the old row's badges, on the
+    doors that lead to them now): points to spend glow on Bro's tile and climb
+    to the Menu button as a count (the audit's part 2, BUILD 6); a ready quest
+    on Quests; the codex's new pages on Codex; requests on Social; the bell's
+    unread on Settings and its Notifications; anything else waiting a dot on
+    the Menu. */
+export function frameMarks(dots, pts, skillsNew) {
+  const d = dots || {};
+  const p = Number(pts) > 0 ? Number(pts) : 0;
+  const soc = typeof d.social === 'number' ? d.social : 0;
+  const bell = typeof d.more === 'number' ? d.more : (d.more ? 1 : 0);
+  const codex = Number(d.encyclopedia) > 0 ? Number(d.encyclopedia) : 0;
+  const other = !!d.quests || !!skillsNew || codex > 0 || soc > 0 || bell > 0;
+  return {
+    doors: {
+      hero: { count: p, glow: p > 0, dot: !p && !!skillsNew },
+      quests: { dot: !!d.quests },
+      encyclopedia: { count: codex },
+      social: { count: soc },
+      settings: { count: bell },
+      notifications: { count: bell },
+    },
+    menu: { count: p, glow: p > 0, dot: !p && other },
+  };
+}

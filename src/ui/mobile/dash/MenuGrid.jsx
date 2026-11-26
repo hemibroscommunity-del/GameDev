@@ -20,6 +20,10 @@ import { Ui2Tile } from '@/ui/kit/index.js';
 import { menuGridShape } from '@/game/dashDests.js';
 import { winVh } from '../playViewport.js';
 import { frameTap } from './DashHeader.jsx';
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { openWorldMap } from '../../WorldMapOverlay.jsx';
+import { profileFromSelf } from '../../panels/playerProfile.js';
+import { clanPartyOn } from '@/game/alliance.js';
 import { SAY } from '@/data/say/dashFrame.js';
 import { SAY as BRO } from '@/data/say/broCard.js';   /* the Homestead's words are the Bro row's, as today */
 import { say } from '@/game/say.js';
@@ -117,4 +121,31 @@ export function HomesteadPage({ plots }) {
       </p>
     </div>
   );
+}
+
+/** A door of the Menu or a hub: its page over the directory, or the World map
+    over the game (Map: what More's tile and the minimap open; where there is
+    none, the Map page, as More did). */
+export function openDoor(d, from) {
+  if (d.opens === 'worldMap') {
+    if (!openWorldMap()) dashboardPanelBus.go({ type: 'push', id: 'map', from });
+    return;
+  }
+  dashboardPanelBus.go({ type: 'push', id: d.page, from });
+}
+
+/** Plots ready on your farm (the Bro row's count, from your own profile). */
+export function farmPlots(S) {
+  try {
+    const p = profileFromSelf(S);
+    return p && p.homestead ? Math.max(0, Number(p.homestead.plotsReady) || 0) : 0;
+  } catch (e) { return 0; }
+}
+
+/** A hub tile's word: Party once clans are parties, Clan under the kill switch
+    (More's `labelFor`, v2.3.3526). */
+export function hubWordFor(S) {
+  let party = true;
+  try { party = clanPartyOn(S); } catch (e) { party = true; }
+  return (d) => doorWord(d.id === 'clan' && !party ? d.wordClan : d.word);
 }

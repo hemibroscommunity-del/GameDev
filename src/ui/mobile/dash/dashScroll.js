@@ -14,6 +14,7 @@
  * draws nothing.  On a page's return the same path is found at the next
  * frame's top and its place written back, tried for a few frames while the
  * page's rows arrive. */
+import { useEffect } from 'react';
 import { beforeDraw } from '@/game/framePacer.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashNavView } from '@/game/dashNav.js';
@@ -92,4 +93,13 @@ export function dashScrollShown(key, scroll) {
   if (key == null || !(scroll > 0)) { _back = null; return; }
   _back = { key, scroll, tries: 0 };
   beforeDraw(giveDashScroll);
+}
+
+/** The band's hook: when a page is up (again), give its kept scroll back. */
+export function useDashScrollBack() {
+  const on = dashboardPanelBus.frameOn();
+  const n = on ? dashboardPanelBus.nav() : null;
+  const t = n && n.shown ? dashNavView(n).top : null;
+  const seen = t ? n.ws + ':' + t.key : '';
+  useEffect(() => { if (t) dashScrollShown(t.key, t.scroll); }, [seen]);
 }
