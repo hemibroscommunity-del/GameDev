@@ -3647,10 +3647,18 @@ export function registerPrewarmRenderer(renderer) { _prewarmRenderer = renderer;
    pass has ended.  (docs/specs/worn-first.md tried this before the keep and
    took it out: then the worn set's own bakes were the wait, and this box could
    not show a gain.) */
-let _wornPass = null;
+/* ...and the page's FIRST worn pass too, before it has begun: _noteOwnedGear
+   kicks the spare sets while the loading screen's loads still run (measured:
+   the 27 frames of the iron plate one equip away baked first, `masks` 90 s
+   after the loads).  preloadPlayerAssets always runs the worn pass, armour or
+   none (it returns at once with none). */
+let _wornPassOpen = null;
+let _wornPass = new Promise((r) => { _wornPassOpen = r; });
 export function prewarmMaskedBodyFrames(opts) {
   const p = _prewarmWornPass(opts);
-  _wornPass = p.catch(() => { /* best-effort */ });
+  const done = p.catch(() => { /* best-effort */ });
+  _wornPass = done;
+  if (_wornPassOpen) { const open = _wornPassOpen; _wornPassOpen = null; done.then(open); }
   return p;
 }
 async function _prewarmWornPass(opts) {
@@ -3785,8 +3793,9 @@ export async function prewarmAltWornSets(opts) {
     /* grace period: let the join settle (zone load, first combat) first */
     await new Promise((r) => setTimeout(r, soon ? 300 : 5000));
     if (seq !== _altPrewarmSeq) return;
-    /* v2.3.6761: ...and the worn set's pass, if it is running (above) */
-    if (_wornPass) { await _wornPass; if (seq !== _altPrewarmSeq) return; }
+    /* v2.3.6761: ...and the worn set's pass (above): running, or not begun yet */
+    await _wornPass;
+    if (seq !== _altPrewarmSeq) return;
   }
   /* v2.3.1118: prewarmed ONLY the actually-worn loadout -- the speculative
      3-family bake (~115MB of masked frames at the full 256 bake) pressured

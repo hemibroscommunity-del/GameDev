@@ -213,23 +213,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await keepMissed(P, 2);
     rec.ok(`second login: the worn set answered from the store (${k2 && k2.hits} kept answers, ${k2 && k2.misses} baked)`, !!k2 && k2.hits >= (b ? b.want : 1) * 0.5, k2);
 
-    /* ── 4. a third login, every kept answer baked again beside it ── */
+    /* ── 3b. a third login in the set: measured as the second (no line: the
+       second's is the card's; this says whether what the second still baked
+       was the second's alone) ── */
+    rec.ok('setup: back in the world, third login in the set (guard)', await relogin(P, ''));
+    await readLogin(P);
+    const cm = await readMasks(P, 300000);
+    const k3b = await keepStats(P);
+    console.log(`    login 3: masks ${cm && cm.afterLoads} ms after the loads; frames ready then ${cm && cm.have} of ${cm && cm.want}; the keep: ${k3b && k3b.hits} kept, ${k3b && k3b.misses} baked`);
+    await keepMissed(P, 3);
+    rec.ok(`(measure) third login: \`masks\` ${cm && cm.afterLoads} ms after \`loads\`, ${k3b && k3b.misses} baked`, true, cm);
+
+    /* ── 4. a fourth login, every kept answer baked again beside it ── */
     rec.ok('setup: back in the world, a login that checks every kept frame (guard)', await relogin(P, 'qakeepverify=1'));
     await readLogin(P);
     await H.waitFor(P, () => (window.__btPreloadSteps && window.__btPreloadSteps.masks) || 0, (v) => v > 0, { timeout: 1500000, label: 'the masks, each checked' }).catch(() => 0);
     const kv = await keepStats(P);
-    console.log('    login 3 (each kept frame baked again), the keep: ' + JSON.stringify(kv));
+    console.log('    login 4 (each kept frame baked again), the keep: ' + JSON.stringify(kv));
     rec.ok(`a kept frame is the baked one byte for byte (${kv && kv.same} the same, ${kv && kv.differ} different)`, !!kv && kv.same >= 100 && kv.differ === 0, kv);
 
     /* ── 5. ?bakekeep=0: today's behaviour ── */
     rec.ok('setup: back in the world with ?bakekeep=0 (guard)', await relogin(P, 'bakekeep=0'));
     const c = await readLogin(P);
-    console.log('    ' + (c ? say(4, c) + ' (?bakekeep=0)' : 'login 4: no reading'));
+    console.log('    ' + (c ? say(5, c) + ' (?bakekeep=0)' : 'login 5: no reading'));
     /* the keep is told at the prewarm's start, right after the loads */
     await H.waitFor(P, () => (window.__btPreloadSteps && window.__btPreloadSteps.loads) || 0, (v) => v > 0, { timeout: 180000, label: 'the loads' }).catch(() => 0);
     await P.page.waitForTimeout(20000);
     const k3 = await keepStats(P);
-    console.log('    login 4 (?bakekeep=0), the keep: ' + JSON.stringify(k3));
+    console.log('    login 5 (?bakekeep=0), the keep: ' + JSON.stringify(k3));
     rec.ok(`?bakekeep=0: nothing answered from the store and nothing stored (${JSON.stringify(k3)})`, !!k3 && k3.on === false && !k3.hits && !k3.stored, k3);
     rec.ok('no page errors', errs.length === 0, errs.slice(0, 5));
   } finally {
