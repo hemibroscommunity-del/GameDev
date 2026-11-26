@@ -127,11 +127,17 @@ function WorkspacePlate({ room }) {
   const art = '/icons/items/';
   const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
   const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: art + pics[i], label: g }));
-  const s = Math.max(UI2_SIZE.touch, Math.min(52, Math.floor((room.cw / 2 - 3 * G) / 3)));
+  /* v2.3.6688 (the mends; mp-uikit 1b, 1c): the fixture holds what its panel shows without a scroll, so the kit's
+     audit reads every cell (a storage grid scrolls by intent in the game, which the audit would count as cut):
+     upright two rows of three; sideways (a 46 px panel) ONE row of 44 px cells, and the summary's one stat
+     without its group's label line. */
+  const s = room.wide ? UI2_SIZE.touch : Math.max(UI2_SIZE.touch, Math.min(52, Math.floor((room.cw / 2 - 3 * G) / 3)));
+  const cols = room.wide ? Math.max(4, Math.min(8, Math.floor((room.cw / 2 - 3 * G) / (s + 3)))) : 3;
+  const stat = <Ui2Stat k="Now → If equipped" v="7.5 → 9.4" />;
   return (
     <Ui2TwoPanel height={room.ch}
-      left={{ label: 'Inventory', kind: 'storage', children: <Ui2ItemGrid cells={cells} cols={3} size={s} selectedKey="k1" fill={9} onPick={() => {}} /> }}
-      right={{ label: 'Summary', kind: 'summary', children: <Ui2Group k="DPS"><Ui2Stat k="Now → If equipped" v="7.5 → 9.4" /></Ui2Group> }} />
+      left={{ label: 'Inventory', kind: 'storage', children: <Ui2ItemGrid cells={cells} cols={cols} size={s} selectedKey="k1" fill={room.wide ? cols : 6} onPick={() => {}} /> }}
+      right={{ label: 'Summary', kind: 'summary', children: room.wide ? stat : <Ui2Group k="DPS">{stat}</Ui2Group> }} />
   );
 }
 
@@ -287,9 +293,10 @@ export function UiKitPage() {
         <Plate id="character" room={room} title="Character" caption={'Sample: the Character page' + (me ? ' (your real data)' : ' (no player handed to this page: honest empty lines)')}><CharacterSample room={room} me={me} /></Plate>
         {/* v2.3.6681 (card UI2-frame): the header at the frame's two roots and a deep page */}
         <Plate id="headers" room={room} caption="The header: Gear's root (Close, Gear, Menu ›), the Menu's root (‹ Gear, Menu, Close), a deep page (‹ Back, its title, Menu, Close)" head={<Ui2Header title="Gear" closeStart menuNext />}>
-          <div style={col({ justifyContent: 'center', height: '100%' })}>
-            <Ui2Header title="Menu" backLabel="Gear" onMenu={false} />
-            <Ui2Header title="Life Skills" backLabel="Bro" />
+          {/* v2.3.6688 (the mends): sideways the page is 74 px tall, two 44 px headers stood out of it (mp-uikit 1b at 844x390, red since this plate came, b38b302): side by side there */}
+          <div style={room.wide ? row({ alignItems: 'center', height: '100%' }) : col({ justifyContent: 'center', height: '100%' })}>
+            <div style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}><Ui2Header title="Menu" backLabel="Gear" onMenu={false} /></div>
+            <div style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}><Ui2Header title="Life Skills" backLabel="Bro" /></div>
           </div>
         </Plate>
         <Plate id="tiles" room={room} title="Tiles" caption="Destination tiles: default, pressed, selected (pushed in), focused, locked, a count, new, the rare warm light"><TilesPlate room={room} /></Plate>

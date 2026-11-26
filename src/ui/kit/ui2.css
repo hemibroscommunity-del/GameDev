@@ -649,3 +649,7 @@
 /* v2.3.6688: a control smaller than the finger's floor in a label row reaches 44 px tall all the same */
 .ui2 .u2-hit { position: relative; }
 .ui2 .u2-hit::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: var(--ui2-size-touch); margin-top: calc(var(--ui2-size-touch) / -2); }
+/* v2.3.6688 (the mends, card UI2-gear): a "?" piece's slot (Ui2Slot hidden): its picture dimmed far down under the
+   "?" (reveal/UnrevealedMark.jsx).  Today's card draws a silhouette by a CSS filter; the kit draws no filter
+   (ui2-tokens 8d: a filter is a pass of its own on a phone), so opacity, which is not one. */
+.ui2 .u2-slot.is-hidden .u2-slot-art { opacity: 0.22; }

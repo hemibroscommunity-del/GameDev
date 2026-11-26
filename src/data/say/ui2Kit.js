@@ -7,5 +7,6 @@ export const SAY = Object.freeze({
   'ui2Kit.waiting': '{n} waiting',
   'ui2Kit.new': 'new',
   'ui2Kit.empty': 'Empty',
+  'ui2Kit.hidden': 'not revealed yet',   /* v2.3.6688 (the mends): a "?" piece's slot, to a screen reader */
   'ui2Kit.loading': 'Loading…',
 });

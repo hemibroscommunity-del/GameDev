@@ -102,8 +102,27 @@ function itemRead() {
   };
 }
 const read = (P) => P.page.evaluate(itemRead);
-const tap = async (P, sel, ms = 600) => { await P.page.locator(sel).first().tap({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
-const click = async (P, sel, ms = 600) => { await P.page.locator(sel).first().click({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
+/* where a thing is, waited for (the page held seconds at a time on this box) */
+const centre = async (P, sel) => {
+  let at = null;
+  for (const t0 = Date.now(); !at && Date.now() - t0 < 15000;) {
+    at = await P.page.evaluate((q) => { const el = document.querySelector(q); if (!el) return null; const r = el.getBoundingClientRect(); return r.width && r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; }, sel).catch(() => null);
+    if (!at) await P.page.waitForTimeout(250);
+  }
+  if (!at) throw new Error('no ' + sel);
+  return at;
+};
+/* v2.3.6688 (the mends): a phone's tap is the touchscreen's (mp-pointsreset's, v2.3.6681), not locator.tap's 6 s wait */
+const tap = async (P, sel, ms = 600) => { const at = await centre(P, sel); await P.page.touchscreen.tap(at.x, at.y); await P.page.waitForTimeout(ms); };
+/* v2.3.6688 (the mends): a computer's click by the mouse at the thing's middle, then a wait on the page's state.
+   Playwright's locator.click waited for the page to settle and timed out at 6 s on this box's software drawing
+   (the page is held seconds at a time: TRAPS §200; mp-pointsreset's touchscreen taps, v2.3.6681), not the game's. */
+const click = async (P, sel, ms = 600, until) => {
+  const at = await centre(P, sel);
+  await P.page.mouse.click(at.x, at.y);
+  if (until) await H.waitFor(P, until, (v) => !!v, { timeout: 15000, label: 'after ' + sel }).catch(() => null);
+  await P.page.waitForTimeout(ms);
+};
 async function bandShot(P, file) {
   try {
     const r = await P.page.evaluate(() => { const b = document.querySelector('.bt-dashboard').getBoundingClientRect(); return { x: b.left, y: Math.max(0, b.top - 60), w: b.width, h: Math.min(innerHeight, b.bottom) - Math.max(0, b.top - 60) }; });
@@ -360,7 +379,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await seed(D, wsPort, rec, 'computer', false);
     await toRest(D);
     const m = await pread(D);
-    await click(D, '[data-gear-cell="sword"] [role="button"]', 800);
+    await click(D, '[data-gear-cell="sword"] [role="button"]', 800, () => { const g = window.__btGearTab; return g && g.state().ws.mode === 'look'; });
     const l = await pread(D);
     await bandShot(D, 'ui2-gear-computer.png');
     await D.page.keyboard.press('Escape');

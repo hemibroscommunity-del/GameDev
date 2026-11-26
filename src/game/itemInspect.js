@@ -195,14 +195,18 @@ export function inspectItem(input) {
     name: String(i.name || ''),
     art: i.art || null,
     glyph: i.glyph || null,
-    grade: g.grade,
+    /* v2.3.6688 (the mends): a "?" piece has no grade, no stars, no numbers and today's card's line ("Rare or
+       better", in the rare blue): the tests part found the page and the summary reading "In your bag" with a star
+       and the line lost behind the piece's rows (mp-revealbag 3).  Its name (the material and the kind, the same
+       after the reveal) stays, as on today's card (GearTab.jsx's "shows its card's name"). */
+    grade: hidden ? null : g.grade,
     gradeWord: hidden ? '' : g.word,
     stars: hidden ? 0 : g.stars,
     hidden,
     where: whereWords(place, i.owner),
     readOnly: P.readOnly,
     facts: Object.freeze(facts.slice(0, 6)),
-    line: i.line ? String(i.line) : '',
+    line: hidden ? say(SAY, 'itemInspect.hiddenLine') : (i.line ? String(i.line) : ''),
     doors: Object.freeze((Array.isArray(i.doors) ? i.doors : []).filter((d) => d && d.id && d.label)),
     actions: Object.freeze(actions),
   });
@@ -232,7 +236,8 @@ export function itemSummary(model, kind, cmp) {
   const lead = m.actions.find((a) => a.lead) || null;
   let head = null;
   let facts = [];
-  if (!cmp && !m.hidden) {
+  const cmpOk = m.hidden ? null : (cmp || null);   /* v2.3.6688 (the mends): no comparison of a "?" piece: it would give its grade away */
+  if (!cmpOk && !m.hidden) {
     const want = Object.prototype.hasOwnProperty.call(HEAD_FACT, kind) ? HEAD_FACT[kind] : null;
     const h = want ? m.facts.find((f) => f.k === want) : null;
     if (h) head = { k: h.k, v: h.v };
@@ -241,7 +246,7 @@ export function itemSummary(model, kind, cmp) {
   return Object.freeze({
     name: m.name, art: m.art, glyph: m.glyph, grade: m.grade, gradeWord: m.gradeWord, stars: m.stars,
     hidden: m.hidden, where: m.where, title: m.title, readOnly: m.readOnly,
-    compare: cmp || null,
+    compare: cmpOk,
     head,
     facts: Object.freeze(facts),
     line: m.line,

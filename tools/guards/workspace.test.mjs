@@ -34,6 +34,17 @@
  *   P5 a second tap that opens the look again instead of putting it down
  *   P6 the covered side's scroll overwritten while it is covered
  *   P7 an empty cell opening a summary of nothing
+ *   P8 the dashboard's Close resetting the workspace under the frame
+ *   P9 the Close keeping it under `?ui2=0` (today's reset lost)
+ *
+ * v2.3.6688 (the mends): 8. THE CLOSE (the frame's rule, the owner
+ * 2026-11-25: Close resets no workspace): wsStep 'fold' keeps the pick, the
+ * look, the page and both scrolls when `keep` (under the frame) and gives the
+ * workspace at rest otherwise; and gearTabBus driven in node with the band's
+ * own bus (dashMinBus.set(true), the frame's switch stubbed on the page's
+ * class): under the frame a pick, its look, the bag's scroll and the filter
+ * survive Close then open; under `?ui2=0` Close puts Gear back as v2.3.4353.
+ * (The tests part's find: gearTabBus reset the pick on every fold.)
  *
  * Run: node tools/guards/workspace.test.mjs
  */
@@ -114,6 +125,18 @@ const CHECKS = {
     if (txt(M.step(null, { type: 'close' })) !== txt(M.start())) return 'no state';
     return '';
   },
+  C8(M) {
+    const look = run(M, [{ type: 'scroll', side: 'left', top: 240 }, { type: 'pick', side: 'left', key: 'b3' }]);
+    if (M.step(look, { type: 'fold', keep: true }) !== look) return 'Close under the frame moved the look: ' + txt(M.step(look, { type: 'fold', keep: true }));
+    const page = M.step(look, { type: 'details' });
+    if (M.step(page, { type: 'fold', keep: true }) !== page) return 'Close under the frame moved the page';
+    const right = run(M, [{ type: 'scroll', side: 'right', top: 30 }, { type: 'pick', side: 'right', key: 'sword' }]);
+    const r2 = M.step(right, { type: 'fold', keep: true });
+    if (r2.pick !== 'sword' || r2.from !== 'right' || M.scroll(r2, 'right') !== 30) return 'Close under the frame lost the worn pick: ' + txt(r2);
+    if (txt(M.step(look, { type: 'fold', keep: false })) !== txt(M.start())) return 'Close under ?ui2=0 kept the workspace: ' + txt(M.step(look, { type: 'fold', keep: false }));
+    if (txt(M.step(page, { type: 'fold' })) !== txt(M.start())) return 'only an explicit keep keeps';
+    return '';
+  },
 };
 
 for (const [k, fn] of Object.entries(CHECKS)) {
@@ -131,6 +154,8 @@ const PLANTS = [
   ['P5', 'C2', 'a second tap opening the look again', { ...REAL, step: (s, e) => (e && e.type === 'pick' && s && s.pick === String(e.key) ? s : wsStep(s, e)) }],
   ['P6', 'C3', 'the covered side\'s scroll overwritten', { ...REAL, step: (s, e) => (e && e.type === 'scroll' && s && s.mode === 'look' ? Object.freeze({ ...s, scroll: Object.freeze({ ...s.scroll, [e.side]: Math.max(0, e.top) }) }) : wsStep(s, e)) }],
   ['P7', 'C5', 'an empty cell opening a summary', { ...REAL, step: (s, e) => wsStep(s, e && e.type === 'pick' ? { ...e, look: true } : e) }],
+  ['P8', 'C8', 'Close resetting the workspace under the frame', { ...REAL, step: (s, e) => (e && e.type === 'fold' ? wsStart() : wsStep(s, e)) }],
+  ['P9', 'C8', 'Close keeping it under ?ui2=0', { ...REAL, step: (s, e) => (e && e.type === 'fold' ? s : wsStep(s, e)) }],
 ];
 for (const [p, c, what, M] of PLANTS) {
   let r;
@@ -167,6 +192,40 @@ for (const [p, c, what, M] of PLANTS) {
   check('the summary is the page\'s model cut short (itemSummary of inspectItem)', /\bitemSummary\(/.test(panels) && /\binspectItem\(/.test(panels) && /\bcompareSet\(/.test(panels) && /\bprojectEquip\(/.test(panels));
   check('today\'s Gear stays under ?ui2=0: GearTab hands over only under the frame', /if \(frameOn\) return <GearPanels\b/.test(gear) && /\bui2FrameOn\(\)/.test(gear));
   check('no middle column in the panels (no figure, no bars)', !/CharacterView|VitalBar/.test(panels));
+}
+
+/* ── 8. the Close, on the real bus (v2.3.6688, the mends) ── */
+{
+  let frame = true;
+  const hadDoc = 'document' in globalThis;
+  const keepDoc = globalThis.document;
+  /* the frame's switch is ui2Wanted() && the one band's class on the page (src/ui/mobile/ui2Frame.js) */
+  globalThis.document = { documentElement: { classList: { contains: () => frame, toggle() {} } } };
+  try {
+    const { gearTabBus } = await import('../../src/ui/mobile/dash/gearTabBus.js');
+    const { dashMinBus } = await import('../../src/ui/mobile/dashMinBus.js');
+    const ws = () => gearTabBus.state.ws;
+    if (dashMinBus.min) dashMinBus.set(false);
+    gearTabBus.wsDo({ type: 'scroll', side: 'left', top: 200 }, null, true);
+    gearTabBus.wsDo({ type: 'pick', side: 'left', key: 'i-sword', look: true });
+    gearTabBus.pickFilter('weapon');
+    gearTabBus.setMenu(true);
+    dashMinBus.set(true);
+    dashMinBus.set(false);
+    check('8a. under the frame Close then open keeps the pick, its look and the bag\'s scroll',
+      ws().mode === 'look' && ws().pick === 'i-sword' && ws().from === 'left' && wsScroll(ws(), 'left') === 200, txt(ws()));
+    check('8b. under the frame Close keeps the filter and shuts the open menu',
+      gearTabBus.state.filter.id === 'weapon' && gearTabBus.state.menu === false, txt([gearTabBus.state.filter, gearTabBus.state.menu]));
+    frame = false;
+    dashMinBus.set(true);
+    dashMinBus.set(false);
+    check('8c. under ?ui2=0 Close puts Gear back (no pick, all items: v2.3.4353)',
+      ws().mode === 'manage' && ws().pick === null && gearTabBus.state.filter.id === 'all' && gearTabBus.state.sel === null, txt([ws(), gearTabBus.state.filter]));
+  } catch (e) {
+    check('8. the bus loads in node', false, e && e.stack || e);
+  } finally {
+    if (hadDoc) globalThis.document = keepDoc; else delete globalThis.document;
+  }
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks pass');

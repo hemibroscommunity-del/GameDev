@@ -161,6 +161,20 @@ const CHECKS = {
     if (!fish.action || fish.action.id !== 'eat' || fish.line !== 'Heals 40 HP' || !fish.facts.some((f) => f.v === '7')) return 'a consumable\'s own facts and action: ' + txt(fish);
     return '';
   },
+  C9(M) {   /* v2.3.6688 (the mends): a "?" piece (unrevealed) is never compared, in the set and in the summary */
+    const W = M.project(WEAK, SWORD_B, 'weapon');
+    if (!W) return 'the fixture projects nothing';
+    const plain = M.set({ kind: W.kind, a: W.now, b: W.then });
+    if (!plain) return 'the revealed sword is not compared (the fixture)';
+    const hid = M.set({ kind: W.kind, a: W.now, b: W.then, hidden: true });
+    if (hid) return 'a DPS comparison for an unrevealed weapon: ' + txt(hid.head);
+    const page = inspectItem({ place: 'bag', kind: 'sword', name: 'Steel Sword', quality: 'elite', hidden: true, rows: [{ k: 'DPS', v: '9.4' }], actions: [{ id: 'reveal', label: 'Reveal', tone: 'primary' }, { id: 'equip', label: 'Equip' }] });
+    const sum = M.summary(page, 'sword', plain);
+    if (sum.compare) return 'the summary of an unrevealed sword carries a comparison: ' + txt(sum.compare.head);
+    if (sum.head || sum.facts.some((f) => /\d/.test(f.v)) || sum.stars || sum.gradeWord) return 'the summary gives the grade away: ' + txt([sum.head, sum.facts, sum.stars, sum.gradeWord]);
+    if (!/Rare or better/.test(sum.line)) return 'the summary lacks today\'s "Rare or better": ' + txt(sum.line);
+    return '';
+  },
   C8(M) {   /* at most two rows; the restricted reason; unchanged; arrows and words */
     const s = M.set({ kind: 'sword', a: { dps: 5, hit: 5, swing: 0.6 }, b: { dps: 5, hit: 6, swing: 0.6 }, restricted: 'Sword level 18, requires 25' });
     if (!s || s.rows.length > 2 || s.restricted !== 'Sword level 18, requires 25') return txt(s);
@@ -197,6 +211,8 @@ const PLANTS = [
   ['P10', 'C7', 'the summary\'s action on another player\'s item', { ...REAL, summary: (m, k, c) => { const s = itemSummary(m, k, c); return m.readOnly ? { ...s, action: { id: 'equip', label: 'Equip' }, actions: [{ id: 'equip' }] } : s; } }],
   ['P11', 'C8', 'unchanged read as a change', { ...REAL, set: (i) => { const s = compareSet(i); return s && s.head.change.dir === 'same' ? { ...s, head: { ...s.head, change: { ...s.head.change, dir: 'up', good: 1, v: '+0%', say: '0% more' } } } : s; } }],
   ['P12', 'C8', 'the colour alone, no arrow or word', withRow((r) => ({ ...r, change: { ...r.change, arrow: '', words: '' } }))],
+  ['P13', 'C9', 'a DPS comparison shown for an unrevealed weapon', { ...REAL, set: (i) => compareSet({ ...i, hidden: false }) }],
+  ['P14', 'C9', 'the summary keeping the comparison of a "?"', { ...REAL, summary: (m, k, c) => ({ ...itemSummary(m, k, c), compare: c }) }],
 ];
 for (const [p, c, what, M] of PLANTS) {
   let r;

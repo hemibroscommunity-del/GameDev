@@ -60,3 +60,5 @@
 .ui2 .u2-gp-sum.is-row .u2-gp-acts { flex: 0 0 auto; }
 .ui2 .u2-gp-sum.is-row .u2-gp-acts > .u2-act { flex: 0 0 auto; }
 .ui2 .u2-gp-acts > .u2-act { padding: 0 6px; }
+/* v2.3.6688 (the mends): a "?" piece's "Rare or better" under its name, in the rare blue (today's card's) */
+.ui2 .u2-gp-hidden { display: block; font-size: var(--ui2-fs-small); font-weight: 700; color: var(--ui2-grade-rare); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

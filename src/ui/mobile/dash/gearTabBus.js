@@ -27,6 +27,7 @@
  */
 import { gearCell } from './itemCategory.js';
 import { dashMinBus } from '../dashMinBus.js';   /* v2.3.4353: the band folding resets this tab */
+import { ui2FrameOn } from '../ui2Frame.js';   /* v2.3.6688 (the mends): the fold keeps the workspace only under the frame */
 import { wsStart, wsStep } from '../../../game/workspace.js';   /* v2.3.6688: the two panels' one state (card UI2-gear PR 2); relative, as node tests read this bus */
 
 const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false, ws: wsStart() };
@@ -123,6 +124,20 @@ export const gearTabBus = {
     state.filter = { id: 'all', auto: false };
     emit();
   },
+  /** v2.3.6688 (the mends): the band folded (the dashboard's Close).  Under the frame Close resets no workspace
+   *  (the owner, 2026-11-25): the pick, the look, the bag's scroll and the filter are kept (wsStep 'fold', keep),
+   *  only an open menu shuts.  Under `?ui2=0` today's Gear is put back to its default, as v2.3.4353's reset (the
+   *  tests part found the pick lost here: mp-gearveil's "Close, then open: Gear keeps its pick"). */
+  fold() {
+    let keep = false;
+    try { keep = ui2FrameOn() === true; } catch (_e) { keep = false; }
+    state.ws = wsStep(state.ws, { type: 'fold', keep });
+    if (!keep) { gearTabBus.reset(); return; }
+    if (!state.menu && !state.more) return;
+    state.menu = false;
+    state.more = false;
+    emit();
+  },
   pickFilter(id) {
     state.filter = { id: id || 'all', auto: false };
     state.menu = false;
@@ -147,7 +162,7 @@ export const gearTabBus = {
   },
 };
 
-try { dashMinBus.subscribe((min) => { if (min) gearTabBus.reset(); }); } catch (_e) { /* no band bus: the tab keeps its pick */ }
+try { dashMinBus.subscribe((min) => { if (min) gearTabBus.fold(); }); } catch (_e) { /* no band bus: the tab keeps its pick */ }
 
 if (typeof window !== 'undefined') {
   window.__btGearTab = {

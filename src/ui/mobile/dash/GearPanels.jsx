@@ -242,7 +242,8 @@ function Summary({ R, ws, entry, geo }) {
   let cmp = null;
   if (fromBag && entry && entry.obj && !model.hidden && COMPARE_KINDS[kind]) {
     const p = safe(() => projectEquip(R, entry.obj, kind), null);
-    if (p) cmp = compareSet({ kind: p.kind, a: p.now, b: p.then, restricted: reqWords(p.req).why });
+    /* v2.3.6688 (the mends): `hidden` too, so the rule holds in compare.js itself (a "?" is never compared) */
+    if (p) cmp = compareSet({ kind: p.kind, a: p.now, b: p.then, restricted: reqWords(p.req).why, hidden: model.hidden });
   }
   const sum = itemSummary(model, kind, cmp);
   const lead = sum.action;
@@ -252,10 +253,12 @@ function Summary({ R, ws, entry, geo }) {
   return (
     <div className={'u2-gp-sum' + (geo.short ? ' is-row' : '')} data-gear-summary={fromBag ? 'bag' : 'worn'} data-gear-kind={kind}>
       <div className="u2-gp-id">
-        <Ui2Slot grade={sum.hidden ? 'normal' : sum.grade} art={sum.art} size={pic} name={sum.name} />
+        <Ui2Slot grade={sum.hidden ? 'normal' : sum.grade} hidden={sum.hidden} art={sum.art} size={pic} name={sum.name} />
         <div className="u2-gp-name">
           <span className="u2-gp-name-t" data-gear-sum-name="">{sum.name}</span>
           <span className="u2-gp-where">{sum.where}{sum.gradeWord ? ' · ' + sum.gradeWord : ''}</span>
+          {/* v2.3.6688 (the mends): a "?" piece's line, today's card's, in every shape (sideways too) */}
+          {sum.hidden && sum.line ? <span className="u2-gp-hidden" data-sum-hidden="">{sum.line}</span> : null}
         </div>
         <button type="button" className="u2-gp-x" data-esc="" data-ws-close="" aria-label={say(SAY, 'gearPanels.close')} onClick={close}>{'✕'}</button>
       </div>
@@ -286,7 +289,7 @@ function Summary({ R, ws, entry, geo }) {
             {(geo.short ? sum.facts.slice(0, 1) : sum.facts).map((f) => (
               <div key={f.k} className="u2-gp-row" data-sum-fact={f.k}><span className="u2-gp-k">{f.k}</span><span className="u2-gp-v">{f.v}</span></div>
             ))}
-            {!geo.short && sum.line ? <p className="u2-gp-line">{sum.line}</p> : null}
+            {!geo.short && sum.line && !sum.hidden ? <p className="u2-gp-line">{sum.line}</p> : null}
           </>
         )}
       </div>

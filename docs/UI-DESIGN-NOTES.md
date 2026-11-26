@@ -2270,6 +2270,8 @@ Screens: dash-gear-panels, dash-gear-look-bag, dash-gear-look-worn
 - **Effective health is not shown.** It is the owner's question (F1); armour leads with "Damage cut", the number the game has.
 - **Equip shows at once as today**, and the worker corrects it; the kit's pending mark waits for step 3's `pending.js`.
 - **No Sell here**, as on today's Gear: selling is the shop's own window.
+- **Close keeps the workspace** (v2.3.6688, the mends; the owner, 2026-11-25: Close resets no workspace): the pick, its look, the bag's scroll and the filter survive Close and open (`workspace.js` 'fold'); only an open menu shuts. Under `?ui2=0` Close still puts today's Gear back (v2.3.4353).
+- **A "?" piece** (not revealed yet) says what today's card says: its name, "Rare or better" in the rare blue, the "?" over a dimmed picture, Reveal and Equip; no grade, no stars, no number, no comparison (they would give the reveal away). The kit draws no CSS filter, so the picture is dimmed, not today's silhouette.
 
 **What the real size could not hold:** the label rows are 30 px (the filter's control 30 px tall, its touch reaching 44 px); sideways there is no label row (the panels' names are read to a screen reader) and the summary keeps only its headline, Details, the action and ✕ (Details has the rest).
 

@@ -152,14 +152,16 @@ export function tradeoffLine(rows) {
  *   a, b     the two subjects' numbers ({ dps, hit, swing, cut, block, def,
  *            stamina }; equipProject's `now` and `then`), `a` null when
  *            nothing is worn there;
- *   restricted  the reason it cannot be worn ("Sword level 18, requires 25"), or ''.
+ *   restricted  the reason it cannot be worn ("Sword level 18, requires 25"), or '';
+ *   hidden   the piece is a "?" (game/revealBag.js): no comparison, ever -- its numbers would give its grade away
+ *            (v2.3.6688, the mends: today's card shows no number for one).
  * Returns { subjects, head, rows (at most two), tradeoff, restricted } or
  * null when the kind has nothing to compare.  No verdict field, by design.
  */
 export function compareSet(input) {
   const i = input || {};
   const plan = Object.prototype.hasOwnProperty.call(COMPARE_PLAN, i.kind) ? COMPARE_PLAN[i.kind] : null;
-  if (!plan || !i.b) return null;
+  if (!plan || !i.b || i.hidden) return null;
   const A = i.a || null;
   const B = i.b;
   const head = compareRow(plan.head, A ? A[plan.head] : null, B[plan.head]);

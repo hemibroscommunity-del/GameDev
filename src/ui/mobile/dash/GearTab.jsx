@@ -1111,8 +1111,12 @@ const GearTab = ({ R: Rin, desk }) => {
    work, letting a frame in between its pieces (each cell, each bag square, each bar is a component).  The tab's
    own taps and windows (its buses) still draw it at once.  So the bars and the bag follow the character a frame
    or so later than the rest of the page.  `?afterpaint=0`: drawn inside the game's redraw, as before. */
+/* v2.3.6688 (the mends): the turn draws the CHOICE.  It drew the module's own `GearTab` (today's three panels;
+   only the export is renamed GearTabChoice), so under the frame the two panels never mounted: DashColumns ->
+   GearTabDeferred -> here -> today's Gear.  tools/guards/gear-mount.test.mjs follows the syntax tree's bindings
+   from DashColumns, so a rename cannot dodge it. */
 const GearTabTurn = React.memo(function GearTabTurn({ p }) {
-  return <GearTab R={p.R} desk={p.desk} />;
+  return <GearTabChoice R={p.R} desk={p.desk} />;
 });
 export const GearTabDeferred = (props) => {
   const later = React.useDeferredValue(props);

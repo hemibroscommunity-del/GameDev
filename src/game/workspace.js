@@ -29,6 +29,10 @@
  *   { type: 'gone', keys } the pick is no longer there (sold, eaten, moved):
  *        management, with its scroll;
  *   { type: 'reset' }      the workspace closed.
+ *   { type: 'fold', keep } the dashboard's Close (the band folds).  v2.3.6688 (the mends): under the frame
+ *        (`keep` true) the workspace is kept as it is -- the pick, the look, the page and both scrolls -- for
+ *        the frame's rule (the owner, 2026-11-25: Close resets no workspace; dashNav 'close' keeps both
+ *        stacks); `keep` false (today's Gear, `?ui2=0`) it is the workspace at rest, as v2.3.4353's reset.
  * Pure: no imports (node tests it: tools/guards/workspace.test.mjs). */
 
 export const WS_SIDES = Object.freeze(['left', 'right']);
@@ -82,6 +86,8 @@ export function wsStep(state, ev) {
     }
     case 'reset':
       return wsStart();
+    case 'fold':
+      return e.keep === true ? s : wsStart();
     default:
       return s;
   }
