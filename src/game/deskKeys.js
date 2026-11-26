@@ -102,13 +102,21 @@ export function navKey(id) {
  * middle reaches it -- nothing drawn over it (a window over a window hides the
  * one behind's ✕ under its scrim).  The last such in the page's order, which
  * paints over the ones before it.  null when there is none.
+ * v2.3.6681 (card UI2-frame, part 3): the INNERMOST first.  The frame's Close
+ * (the kit's header, `data-esc-outer`) shuts the whole dashboard, and it can
+ * come after a page's own ✕ in the page's order (the Ranks picker's: Esc
+ * with the picker up shut the dashboard, the picker with it).  An outer ✕ is
+ * pressed only when no other is in front: a picker, a menu or a popup inside
+ * a page closes first, then the page's Close.  A hidden, covered or removed
+ * inner ✕ is not in front, so it never keeps the Close from its press.
+ * (tools/guards/esc-front.test.mjs)
  */
 export function frontControl(sel, doc) {
   doc = doc || (typeof document !== 'undefined' ? document : null);
   if (!doc || !doc.querySelectorAll) return null;
   const vw = typeof innerWidth === 'number' ? innerWidth : 0;
   const vh = typeof innerHeight === 'number' ? innerHeight : 0;
-  let front = null;
+  let front = null, outer = null;
   const list = doc.querySelectorAll(sel);
   for (let i = 0; i < list.length; i++) {
     const el = list[i];
@@ -117,9 +125,11 @@ export function frontControl(sel, doc) {
     const x = r.left + r.width / 2, y = r.top + r.height / 2;
     if (x < 0 || y < 0 || x >= vw || y >= vh) continue;
     const at = doc.elementFromPoint(x, y);
-    if (at && (at === el || el.contains(at))) front = el;
+    if (!(at && (at === el || el.contains(at)))) continue;
+    if (el.hasAttribute && el.hasAttribute('data-esc-outer')) outer = el;
+    else front = el;
   }
-  return front;
+  return front || outer;
 }
 
 /**

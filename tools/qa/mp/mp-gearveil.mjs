@@ -67,7 +67,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate(() => { const b = document.querySelector('[data-dash-close="open"]'); if (b) b.click(); });
       await P.page.waitForTimeout(800);
       const closedState = await P.page.evaluate(() => window.__btGearTab.state());
-      rec.ok(`${V.id} 3. the band closed: no pick, All Items`, !closedState.sel && closedState.filter.id === 'all', closedState);
+      /* v2.3.6681 (card UI2-frame): under the frame Close hides the dashboard and resets neither workspace (the owner's 2026-11-25 master specification), so Gear keeps its pick; the reset below is the old row's (?ui2=0) */
+      const frame3 = await P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
+      rec.ok(frame3 ? `${V.id} 3. the band closed: Gear keeps its pick (Close resets no workspace)` : `${V.id} 3. the band closed: no pick, All Items`,
+        frame3 ? !!closedState.sel && closedState.filter.id === 'sword' : (!closedState.sel && closedState.filter.id === 'all'), closedState);
       rec.ok(`${V.id} 4. no page errors`, errors.length === 0, errors.slice(0, 3));
     } finally {
       await P.ctx.close().catch(() => {});

@@ -1,40 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-66
-prs: 4 lines listed (6 PRs); this PR (tag 6279), the last line
+branch: claude/plan-z-sitting-67
+prs: 3 lines listed (6 PRs); this PR (tag 5660, Z's block 5660 to 5679), the last line
 state: ready
 
-## Done (sitting 66, main 739eb6a0; the lighter review: no server/src, wire, money or login in any)
-- Heads checked by ls-remote and the PRs: all as the orchestrator listed;
-  no body closes another PR. #2354 (PAD) WITHDRAWN by the owner (21:5x,
-  via the orchestrator): not listed; its findings are PAD's debts.
-- Step 3 and a bug-in-behaviour read (four lanes): every PR its card's
-  files and tag; no bug found. Two next jobs (debts CT, 66).
-- Rehearsed main + #2360 + #2359(#2358) + #2357(#2355) + #2356 by hand
-  (the generated tables met; resolved as written below): tree
-  4ea0075f2e02e43257daa463fcabd87b3242365c. precheck 0 FAIL,
-  switches-thrown --whole, claims-gain --whole, build, questline: PASS.
-  heldsweep's sample red, main's own (main alone redder: 5 over, 3 fail).
-- Phone, once each: mp-contextbuttons 26/27 (step 5, its known flake);
-  mp-twobuttons on the tree 93/116 (main's 2b, 2c, 6a, 3h; step 7's
-  placement guard, debts 65; a closing timeout seen on no helper's run).
-  Helpers: main 106/115, #2356 105/117 (main's steps only), #2357's head
-  105/119: main's steps and 7d both ways (it skips on main and on the tree).
+## Done (sitting 67, main ac35fd67; the lighter review: no server/src, wire, money or login in any)
+- Heads by ls-remote as the orchestrator listed, none moved (the frame's
+  branch claude/plan-ui2-7-frame at 265140ff, not listed).
+- Step 3 and a bug read (two lanes, GR by hand): files and tags the cards'.
+  #2363: ONE bug in behaviour (debts PAD (67)): HELD. #2368, the UI2
+  documents and GR's own change: no bug.
+- Rehearsed main + #2363 + #2366 + #2368 + #2361, the generated tables
+  mended (`docs/plan/debts.md` PAD and GR (67)): tree
+  a3993e4b8bb7b98fb1b8c583c3749a8381bb8a60, rebuilt from the remote by two
+  helpers to the same hash. gatekeeper.mjs: precheck 0 FAIL, switches-thrown
+  --whole (94 switches), claims-gain --whole, build, questline 187/187,
+  heldsweep's sample 6/6: ALL GREEN.
+- Phone on that tree (helpers): padskin 43/43, camfollow 11/11, uikit
+  23/23, weaponswap 46/46, shieldtoggle 13/13, contextbuttons 27/27,
+  membudget 12/12, twobuttons 102/118 (16 red, 1 skip; PAD's word: 18,
+  main's; helper B's FAIL lines and main's run never came: judged without).
+- What lands (main + #2368 + #2366, UI2.md the kit's): tree
+  b5614c3cea250b6638f69418f9e538bec3a8ded4: precheck 0 FAIL, build PASS.
 ## The list: merge in this order, "Create a merge commit"
-1 #2360 (UI2 6401, docs; a834f593, base main). Its `test` green first.
-2 #2359 landing #2358 (EN 6208+6206; a45dbeb2 on fb5f54f2): retarget
-  #2359 to main first; one merge base. No server file.
-3 #2357 landing #2355 (CT 6557+6556; 545761ec on 557de656): retarget
-  #2357 to main first. DEPLOYS (server/test: latch, sight, bow-special).
-4 #2356 (CT 6555; 358f9db8, base main) AFTER A MEND: once 3 is in it
-  conflicts in tools/guards/lib/systems.mjs, docs/SYSTEMS.md and
-  docs/plan/status/CT.md. Merge main; the input row's names end
-  `lockFace|bowSpecialNow|aimMarks` (both tag notes); `node
-  tools/guards/systems.test.mjs --write`; `switches.test.mjs --write`;
-  CT.md: #2356's text; precheck; push. `git diff 4ea0075f HEAD` must
-  show only those three files' wording: it lands with no new sitting. DEPLOYS.
-5 Z (6279, a draft: mark it ready first).
-## Held / To 67
-- Nothing held. #2354 waits for PAD part 3's stack.
-## Found
-- debts.md: CT (66) 7d and bowSpecialMon; PAD (66) three; Found (66):
-  a server/test file deploys the worker.
+1 #2368 (UI2 kit 6680; 31ce7304, base main; one merge base 06a11e09).
+  Deploys nothing. It lands unchanged, so claude/plan-ui2-7-frame (stacked
+  on 31ce7304) stays a clean base: one merge base once it lands.
+2 #2366 landing #2365, #2364, #2362 (UI2 documents 6405..6402; 46e88b30)
+  AFTER A MEND: retarget #2366 to main; merge main into
+  claude/plan-ui2-6-master; its one conflict, docs/plan/status/UI2.md:
+  keep main's (the kit's) whole (`git checkout --theirs`); precheck; push.
+  Its head's tree must be b5614c3cea250b6638f69418f9e538bec3a8ded4 (and
+  main's after it lands). Documents only; deploys nothing; its CLAUDE.md
+  line (the dashboard's pointer to UI_MASTER_SPEC.md) seen and right.
+3 Z (5660, a draft: mark it ready first).
+## Held / To 68
+- #2363 with #2354 (PAD): the Skate button is not redrawn when Charge
+  comes or goes (RideButton.jsx:95/:123); the mend in debts PAD (67).
+- #2361 (GR): carries #2354, lands after #2363; its mend in debts GR (67).
+  Found: debts.md PAD, GR, UI2 (67).
