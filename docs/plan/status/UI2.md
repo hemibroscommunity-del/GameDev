@@ -12,6 +12,7 @@ state: ready
 - v2.3.6689, step 5 PR 3 (card UI2-gear; branch claude/plan-ui2-9c-equipment, base main): Bro's Equipment door opens a showcase (`sheet/GearShowcase.jsx`, page `broEquip`: the figure, the nine worn cells by Gear's one body table `src/game/gearShowcase.js GEAR_BODY`, no bag, Manage Gear for yourself only); each cell and the player card's equipment row open the one item page (`itemPageOpen.js`: showcase, profile and another player's read-only sources); `tools/guards/gear-showcase.test.mjs` (S1-S10 planted, each red); `mp-ui2gear` steps 8c, 9c, 11-14; `ui2-bro-equipment` in states.mjs and the notes.
 
 ## Next
+- Waiting on a helper (haiku, effort low) for mp-ui2gear's repeat run on the final code (the first run's tap on Bro's Equipment tile landed mid-growth on Combat: the test now waits for the tile to settle).
 - Nothing on UI2-gear: its three PRs are up.  The Codex's road into the item page is UI2-codex's: it enters `openItemPage({ from: 'codex', ... })` (dash/itemPageOpen.js), place 'codex'.
 
 ## Found

@@ -299,7 +299,15 @@ async function toShowcase(P, press) {
   await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); });
   await P.page.waitForTimeout(500);
   await P.page.evaluate(() => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); });
-  await P.page.waitForTimeout(900);
+  /* the landing's tiles grow into place (dashGrow): the tap waits until the Equipment tile is where it stays
+     (the first run's tap, read mid-growth, landed on Combat beside it: this box draws a few frames a second) */
+  let last = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
+    const r = await P.page.evaluate(() => { const e = document.querySelector('[data-dash-grid="bro"] [data-dest="equipment"]'); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map(Math.round).join(); }).catch(() => null);
+    if (r && r === last) break;
+    last = r;
+    await P.page.waitForTimeout(400);
+  }
   await press(P, '[data-dash-grid="bro"] [data-dest="equipment"]', 1200);
   await H.waitFor(P, () => !!document.querySelector('[data-gear-showcase] [data-gear-cell]'), (v) => !!v, { timeout: 15000, label: 'the showcase' }).catch(() => null);
   await P.page.waitForTimeout(800);
