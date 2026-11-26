@@ -30,7 +30,7 @@ const look = (P) => P.page.evaluate(() => {
     tab: !!tab,
   };
 });
-const openGear = async (P) => { await P.page.evaluate(() => { const b = document.querySelector('[data-nav="dashboard"]'); if (b) b.click(); }); await P.page.waitForTimeout(800); };
+const openGear = async (P) => { await H.dashOpen(P, 'dashboard'); await P.page.waitForTimeout(800); };
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');

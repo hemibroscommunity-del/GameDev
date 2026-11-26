@@ -288,7 +288,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await station('g-boards', 'g: the Leaderboards opened, every board', async () => {
       await H.unfoldBand(A).catch(() => null);
       /* a real tap, as mp-boards does (Ranks on the band's row) */
-      await A.page.locator('.bt-navrail [data-nav="leaderboard"]').first().click({ force: true, timeout: 8000 }).catch(() => null);
+      await H.dashOpen(A, 'leaderboard').catch(() => null);
       await A.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
       await A.page.waitForTimeout(2500);
       const cats = await A.page.evaluate(() => document.querySelectorAll('[data-lb-rail] [data-lb-cat]').length).catch(() => 0);

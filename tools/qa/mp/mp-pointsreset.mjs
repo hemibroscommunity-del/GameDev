@@ -61,7 +61,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { dealt, before, placed });
 
   /* ── 2. the button ── */
-  await P.page.locator('[data-nav="hero"]').first().click({ timeout: 6000 }).catch(() => {});
+  await H.dashOpen(P, 'hero').catch(() => {});
   await P.page.waitForTimeout(900);
   await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first().click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(900);

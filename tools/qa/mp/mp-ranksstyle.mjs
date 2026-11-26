@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1 ── the page */
     await H.unfoldBand(A).catch(() => {});
-    await tap(A, '.bt-navrail [data-nav="leaderboard"]');
+    await H.dashOpen(A, 'leaderboard');
     await A.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
     await H.waitFor(A, () => {
       const imgs = [...document.querySelectorAll('[data-lb-page] img')];
@@ -300,7 +300,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(2500);
     /* turned, the page is opened as a thumb does: the band unfolded, Ranks tapped */
     await H.unfoldBand(A).catch(() => {});
-    if (!(await A.page.$('[data-lb-page]'))) await tap(A, '.bt-navrail [data-nav="leaderboard"]').catch(() => {});
+    if (!(await A.page.$('[data-lb-page]'))) await H.dashOpen(A, 'leaderboard').catch(() => {});
     await A.page.waitForTimeout(800);
     await tap(A, '[data-lb-tab="power"]').catch(() => {});
     await tap(A, '[data-lb-picker]').catch(() => {});
@@ -326,7 +326,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (inD) {
       await D.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
       await H.unfoldBand(D).catch(() => {});
-      await D.page.locator('.bt-navrail [data-nav="leaderboard"]').first().click().catch(() => {});
+      await H.dashOpen(D, 'leaderboard').catch(() => {});
       await D.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
       await D.page.locator('[data-lb-picker]').first().click().catch(() => {});
       await D.page.locator('[data-lb-menu] [data-lb-cat="melee"]').first().click().catch(() => {});
@@ -347,7 +347,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (inO) {
       await O.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
       await H.unfoldBand(O).catch(() => {});
-      await tap(O, '.bt-navrail [data-nav="leaderboard"]');
+      await H.dashOpen(O, 'leaderboard');
       await O.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
       const Ol = await look(O);
       const rail = await O.page.evaluate(() => document.querySelectorAll('[data-lb-rail] [data-lb-cat]').length);

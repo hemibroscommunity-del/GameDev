@@ -478,8 +478,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const side = await A.page.evaluate(() => document.documentElement.getAttribute('data-orient'));
     rec.ok('10 sideways the one band keeps the upright layout (data-orient portrait)', side === 'portrait', { orient: side });
     await H.unfoldBand(A).catch(() => {});
-    await A.page.waitForSelector('.bt-dashboard .bt-navrail [data-nav="hero"]', { timeout: 6000 }).catch(() => {});
-    await pointerUp(A, '.bt-dashboard .bt-navrail [data-nav="hero"]');
+    await H.dashOpen(A, 'hero');
     const sideTile = await A.page.waitForSelector('.bt-dashboard [data-bro-row="achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
       const b = document.querySelector('.bt-dashboard [data-bro-row="achievements"] .bt-bro2-rowt b');
       return b ? { text: b.textContent, whole: b.scrollWidth <= b.clientWidth + 1 } : null;
