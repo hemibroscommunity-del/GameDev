@@ -111,12 +111,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* THE OWNER'S CASE: the band left on another of its pages -- A on the Bro
        card, B on Quests -- tapped as a thumb does (the nav row's buttons) */
     const navTap = async (P, id) => {
-      const b = await P.page.evaluate((d) => {
-        const el = [...document.querySelectorAll(`[data-nav="${d}"]`)].find((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
-        if (!el) return null;
-        const r = el.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-      }, id);
-      if (b) await P.page.touchscreen.tap(b.x, b.y);
+      await H.dashOpen(P, id);
       await P.page.waitForTimeout(900);
       return P.page.evaluate(() => { const d = window.__broDashPanelBus; return d ? { mode: d.state.mode, page: d.current() } : null; });
     };

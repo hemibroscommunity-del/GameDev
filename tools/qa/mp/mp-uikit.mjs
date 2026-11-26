@@ -141,8 +141,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1200);
       const k = await P.page.evaluate(() => window.__btUiKit);
       const A = await P.page.evaluate(audit);
-      const sizeOk = A.frames === 7 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
-      rec.ok(`1a. ${s.tag}: seven boxes, each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
+      const sizeOk = A.frames === 8 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
+      rec.ok(`1a. ${s.tag}: eight boxes (v2.3.6681: + the headers), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
       rec.ok(`1b. ${s.tag}: every piece inside its box and its page (${A.texts} runs of words read)`, A.overflow.length === 0, A.overflow.slice(0, 8));
       rec.ok(`1c. ${s.tag}: no text cut or run out of its box`, A.clipped.length === 0 && A.texts > 80, A.clipped.slice(0, 8));
       rec.ok(`2. ${s.tag}: every control in a box is at least 44 x 44 (${A.buttons} controls)`, A.small.length === 0 && A.buttons > 40, A.small.slice(0, 8));

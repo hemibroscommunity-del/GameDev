@@ -196,7 +196,7 @@ async function sidewaysChecks(P, rec, { label, viewport }) {
 async function screen(browser, wsPort, webPort, rec, { label, viewport, touch, wide, query, before }) {
   const P = await H.newPlayer(browser, {
     name: 'One' + label.replace(/[^A-Za-z]/g, '').slice(0, 8), wsPort, webPort,
-    world: 'wheel', viewport, touch: !!touch, wide: !!wide, query: query || '',
+    world: 'wheel', viewport, touch: !!touch, wide: !!wide, query: (query ? query + '&' : '') + 'ui2=0',   /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   });
   try {
     await H.enterWorld(P);
@@ -583,7 +583,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── v2.3.4152: the device's choice ── */
   {
-    const P = await H.newPlayer(browser, { name: 'OneKeys', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true });
+    const P = await H.newPlayer(browser, { name: 'OneKeys', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true, query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
     try {
       const u = new URL(P.page.url());
       const bare = (extra) => { const v = new URL(u.toString()); v.searchParams.delete('oneband'); if (extra) for (const [k, x] of Object.entries(extra)) v.searchParams.set(k, x); return v.toString(); };

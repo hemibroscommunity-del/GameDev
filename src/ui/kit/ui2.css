@@ -207,6 +207,12 @@
 }
 .ui2 .u2-head-side { flex: 0 0 auto; display: flex; gap: var(--ui2-space-m); }
 .ui2 .u2-head-side.is-start { min-width: 0; }
+/* v2.3.6681 (card UI2-frame): a long Back word gives way before the title does
+   (Back names its target: "‹ Leaderboards"); it ends in an ellipsis, never
+   under the title */
+.ui2 .u2-head-side.is-start { flex: 0 1 auto; max-width: 42%; }
+.ui2 .u2-head-side.is-start .u2-ctl { max-width: 100%; }
+.ui2 .u2-ctl > span:not(.u2-ctl-glyph) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-ctl {
   height: var(--ui2-size-header);
   min-width: var(--ui2-size-touch);

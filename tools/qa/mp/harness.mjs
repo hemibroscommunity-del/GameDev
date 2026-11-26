@@ -1337,6 +1337,8 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
   if (asked === 'Character') {
     await P.page.evaluate(() => { if (window.__btHeroSection) window.__btHeroSection.request('Overview'); });
   }
+  /* v2.3.6681: the new frame (card UI2-frame): the same page by its id */
+  if (await frameUp(P)) return dashOpen(P, DEST_BY_LABEL[label] || label.toLowerCase(), { timeout });
   const railSel = `.bt-navrail [aria-label="${label}"]`;
   if (await P.page.locator(railSel).first().isVisible().catch(() => false)) {
     await tapTop(P.page, railSel, timeout);
@@ -1347,6 +1349,66 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
   /* More's tiles are real <button>s (className bt-more-card), not
      role=button divs like the rail — hence two selectors, not one. */
   await tapTop(P.page, `.bt-dashboard button:has-text("${label}")`, timeout);
+  return true;
+}
+
+/* ═══ v2.3.6681: H.dashOpen(id): A PAGE, THE WAY A PLAYER REACHES IT (card UI2-frame) ═══
+ * The new frame retires the row of buttons (`[data-nav]`), so a scenario asks
+ * for a page by the old button's id (or a page's) and this takes the taps a
+ * player takes: the Menu (its root), then the page's tile; a page in a hub
+ * (Social's Party and Guilds, Settings' Account, Notifications, Feedback,
+ * About, Journey) through its hub; Gear by its button ('dashboard'); the
+ * Menu's root ('more').  Under `?ui2=0` it presses the old button, as the
+ * scenarios did.  Every tap is a real one (tapTop): a missing control fails. */
+const DEST_BY_LABEL = { Bro: 'hero', Gear: 'dashboard', Quests: 'quests', Codex: 'encyclopedia', More: 'more', Ranks: 'leaderboard', Leaderboards: 'leaderboard', Social: 'social', Settings: 'settings', Map: 'map', Homestead: 'homestead' };
+const MENU_DOOR = { hero: 'hero', quests: 'quests', socialHub: 'social', leaderboard: 'leaderboard', encyclopedia: 'encyclopedia', homestead: 'homestead', map: 'map', settingsHub: 'settings' };
+const OLD_MORE_WORD = { skills: 'Life Skills', social: 'Social', clan: 'Party', guild: 'Guild', settings: 'Settings', account: 'Account', map: 'Map', notifications: 'Notifications', feedback: 'Feedback', about: 'About', journey: 'Journey', pets: 'Pets', achievements: 'Achievements' };
+const HUB_OF = { social: 'socialHub', clan: 'socialHub', guild: 'socialHub', settings: 'settingsHub', notifications: 'settingsHub', account: 'settingsHub', feedback: 'settingsHub', about: 'settingsHub', journey: 'settingsHub' };
+async function frameUp(P) {
+  return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
+}
+async function frameKind(P) {
+  return P.page.evaluate(() => { const f = document.querySelector('[data-dash-frame]'); return f ? f.getAttribute('data-dash-frame') : null; }).catch(() => null);
+}
+/** The Menu's root, by taps (from closed, Gear, or any page). */
+export async function dashMenuRoot(P, { timeout = 6000 } = {}) {
+  for (let i = 0; i < 3; i++) {
+    const k = await frameKind(P);
+    if (k === 'menu-root') return true;
+    /* a page straight under the root has no small Menu: its Back is the Menu */
+    const menu = await P.page.locator('[data-dash-frame] [data-dash-ctl="menu"]').count().catch(() => 0);
+    await tapTop(P.page, menu ? '[data-dash-frame] [data-dash-ctl="menu"]' : '[data-dash-frame] [data-dash-ctl="back"]', timeout);
+    await P.page.waitForTimeout(350);
+  }
+  return (await frameKind(P)) === 'menu-root';
+}
+export async function dashOpen(P, id, { timeout = 6000 } = {}) {
+  if (!(await frameUp(P))) {
+    const old = id === 'more' || id === 'dashboard' || id === 'hero' || id === 'quests' || id === 'leaderboard' || id === 'encyclopedia';
+    if (old) { await tapTop(P.page, `[data-nav="${id}"]`, timeout); return true; }
+    return openDest(P, OLD_MORE_WORD[id] || id, { timeout });   /* More's tile, by openDest's own road */
+  }
+  if (id === 'dashboard' || id === 'gear') {
+    for (let i = 0; i < 3; i++) {
+      const k = await frameKind(P);
+      if (k === 'gear-root') return true;
+      if (k === 'closed') await tapTop(P.page, '[data-dash-ctl="gear"]', timeout);
+      else if (k === 'menu-root') await tapTop(P.page, '[data-dash-frame] [data-dash-ctl="back"]', timeout);
+      else await dashMenuRoot(P, { timeout });
+      await P.page.waitForTimeout(350);
+    }
+    return (await frameKind(P)) === 'gear-root';
+  }
+  await dashMenuRoot(P, { timeout });
+  if (id === 'more' || id === 'menu') return true;
+  const hub = HUB_OF[id];
+  const door = hub ? MENU_DOOR[hub] : (MENU_DOOR[id] || id);
+  await tapTop(P.page, `[data-dash-grid="menu"] [data-dest="${door}"]`, timeout);
+  if (hub) {
+    await P.page.waitForTimeout(350);
+    await tapTop(P.page, `[data-dash-grid="${hub}"] [data-dest="${id}"]`, timeout);
+  }
+  await P.page.waitForTimeout(350);
   return true;
 }
 

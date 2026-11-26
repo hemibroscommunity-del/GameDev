@@ -275,7 +275,7 @@ const watchStage = (P, ms) => P.page.evaluate((ms) => new Promise((resolve) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Codexbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: '(' + BLOB_INIT.toString() + ')();' });
+  const P = await H.newPlayer(browser, { name: 'Codexbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', init: '(' + BLOB_INIT.toString() + ')();', query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String(e && e.message || e).slice(0, 200)));
   try {

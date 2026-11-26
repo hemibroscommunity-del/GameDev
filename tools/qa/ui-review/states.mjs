@@ -844,7 +844,18 @@ export const STATES = [
       if (!ok) return 'no monster card to open';
     },
   },
-  dash('more', 'More', 'The More page: eleven tiles (map, social, party, guild, pets, journey, settings, account, notifications with its unread count, feedback, about).'),
+  dash('more', 'Menu (More under ?ui2=0)', 'v2.3.6681 (card UI2-frame): the Menu\'s root, the directory -- eight equal tiles four by two (Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings), each its picture and one word, under the one header (\u2039 Gear, Menu, Close). Under ?ui2=0 the old More page: its fifteen tiles.'),
+  /* v2.3.6681 (card UI2-frame): the new frame's own screens */
+  { id: 'dash-frame-closed', group: 'Dashboard', title: 'The dashboard closed: Gear and Menu', about: 'The band closed: the slim row keeps two buttons, Gear and Menu (a count on Menu while points wait); the handle on its edge.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'close' }); }); } },
+  { id: 'dash-frame-gear', group: 'Dashboard', title: 'Gear\'s root under the one header', about: 'Gear: the header [Close] Gear [Menu \u203a] over today\'s Gear tab (the bag, your bro, the three weapons).',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); }); } },
+  { id: 'dash-frame-social', group: 'Dashboard', title: 'Social\'s hub', about: 'The Menu\'s Social tile: three equal tiles, Friends (today\'s Social page), Party (Clan under its kill switch) and Guilds; Back says Menu.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'socialHub' }); }); } },
+  { id: 'dash-frame-settings', group: 'Dashboard', title: 'Settings\' hub', about: 'The Menu\'s Settings tile: six equal tiles, Settings (today\'s page), Notifications, Account, Feedback, About and Journey (until Bro\'s Feats gives it a home).',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'settingsHub' }); }); } },
+  { id: 'dash-frame-homestead', group: 'Dashboard', title: 'Homestead', about: 'The Menu\'s Homestead tile: the farm\'s picture and what the Bro row says today (plots ready to harvest, and that the farm is reached from the Feed & Seed); nothing to manage from here.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the

@@ -21,7 +21,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
-  await page.goto(H.withLane(`http://localhost:${webPort}/`), { waitUntil: 'domcontentloaded' });
+  /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
+  await page.goto(H.withLane(`http://localhost:${webPort}/?ui2=0`), { waitUntil: 'domcontentloaded' });
 
   /* ═══ v2.3.1814: A BRAND-NEW PLAYER MEETS THE LOGIN DOOR FIRST ═══
      Owner: "a new login screen needs to be made ... It should have button

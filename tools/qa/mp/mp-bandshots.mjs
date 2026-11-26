@@ -322,7 +322,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let stopD = () => {};
   /* v2.3.6600 (card BRO), the mend: these pictures and checks read the Bro card's panels and tiles, which
      `?bropages=0` gives back (the pages' own pictures: mp-bropages).  Before: the default; after: the switch. */
-  const D = await H.newPlayer(browser, { name: 'Bandbro', wsPort, webPort, viewport: { width: 1280, height: 720 }, world: 'wheel', wide: true, query: 'bropages=0' });
+  const D = await H.newPlayer(browser, { name: 'Bandbro', wsPort, webPort, viewport: { width: 1280, height: 720 }, world: 'wheel', wide: true, query: 'bropages=0&ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   D.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   try {
     await H.enterWorld(D);
@@ -358,7 +358,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* a phone on its side, then upright */
   for (const [tag, vp] of [['side', { width: 844, height: 390 }], ['up', { width: 390, height: 844 }]]) {
-    const P = await H.newPlayer(browser, { name: tag === 'side' ? 'Sidebro' : 'Upbro', wsPort, webPort, viewport: vp, touch: true, dpr: 2, world: 'wheel', query: 'bropages=0' });
+    const P = await H.newPlayer(browser, { name: tag === 'side' ? 'Sidebro' : 'Upbro', wsPort, webPort, viewport: vp, touch: true, dpr: 2, world: 'wheel', query: 'bropages=0&ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
     P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
     try {
       await H.enterWorld(P);
