@@ -352,10 +352,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
              bash) and the WORKER answers it (its stamina spent, or its
              refusal named); 8e the same for Whirlwind;
          8f. the bow in hand, the guard down: neither drawn, no tier, and
-             every socketed control in its well.
+             every socketed control in its well;
+         8g. (v2.3.6646, part 11) the tier's rings, Attack's and Special's
+             ready glow and the energy strip in the steel, not the gold.
        PAD_ONLY=specials: this alone. ── */
-    for (const [label, viewport] of (process.env.PAD_ONLY && process.env.PAD_ONLY !== 'specials' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
-      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padspec' : 'Padspecs', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole&tapms=4000' });
+    /* v2.3.6646 (card PAD part 11): at the card's three sizes, the steel's
+       too (8g): an iPhone upright 390 x 844 and 375 x 667, sideways 844 x 390 */
+    const SPEC_VIEWS = [['upright', { width: 390, height: 844 }], ['small', { width: 375, height: 667 }], ['sideways', SIDEWAYS]];
+    const SPEC_NAME = { upright: 'Padspec', small: 'Padspecm', sideways: 'Padspecs' };
+    for (const [label, viewport] of (process.env.PAD_ONLY && process.env.PAD_ONLY !== 'specials' ? [] : SPEC_VIEWS)) {
+      const P = await H.newPlayer(browser, { name: SPEC_NAME[label], wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'wheelwhole&tapms=4000' });
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ' specials: ' + String((e && e.message) || e).slice(0, 200)));
       /* v2.3.6642: a real keystroke every 20 s.  The page hangs itself up after two minutes without
@@ -525,6 +531,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const off8 = GW.pad && G.shell ? Object.keys(WELLS8).filter((k) => G.c[k] && !near(G.c[k].face, WELL(GW, WELLS8[k]), 1.5)) : ['no layout'];
       rec.ok(`8c. ${label}: with the tier drawn every socketed control is in its well (${Object.keys(WELLS8).filter((k) => G.c[k]).join(' ')}; off: ${off8.join(' ') || 'none'})`,
         !!G.tier && off8.length === 0 && !!G.c.attack && !!G.c.block, off8);
+      /* v2.3.6646 (card PAD part 11; the owner: "Turn steel"): in this fight
+         the three places wear the steel sheet's colours, never the gold:
+         8g. Whirlwind's and Shield Bash's ring the steel gradient (data-metal,
+             the ring's computed stroke); Attack's ready glow, and Special's,
+             the cold light DEEBF6 (its --pad-acc and the glow's box-shadow);
+             the energy strip loaded is the steel one, the gold never asked */
+      const ST = await P.page.evaluate(() => {
+        const ring = (k) => { const e = document.querySelector('[data-ability="' + k + '"] .bt-skin'); const c = e && e.querySelector('.bt-skin-ringc');
+          return e ? { metal: e.getAttribute('data-metal'), stroke: c ? getComputedStyle(c).stroke : null } : null; };
+        const acc = (k) => { const e = document.querySelector('.bt-pad[data-pad="' + k + '"]'); const g = e && e.querySelector('.bt-pad-glow');
+          return e ? { acc: (e.style.getPropertyValue('--pad-acc') || '').trim().toUpperCase(), shadow: g ? getComputedStyle(g).boxShadow : null } : null; };
+        const res = performance.getEntriesByType('resource').map((r) => r.name).filter((n) => /blocks-stam/.test(n)).map((n) => n.replace(/^.*\/icons\/ui\//, ''));
+        return { whirl: ring('whirl'), bash: ring('bash'), attack: acc('attack'), special: acc('special'), res };
+      });
+      const steelRing = (r) => !!r && r.metal === 'steel' && /btSkinSteel/.test(String(r.stroke));
+      const coldGlow = (a) => !a || (a.acc === '#DEEBF6' && /rgb\(222, 235, 246\)/.test(String(a.shadow)));
+      rec.ok(`8g. ${label}: steel, not gold: the tier's rings (${ST.whirl && ST.whirl.metal}, ${ST.bash && ST.bash.metal}), Attack's glow ${ST.attack && ST.attack.acc}, Special's ${ST.special ? ST.special.acc : 'not shown'}, the energy strip ${ST.res.join(' ') || 'none'}`,
+        steelRing(ST.whirl) && steelRing(ST.bash) && !!ST.attack && coldGlow(ST.attack) && coldGlow(ST.special)
+        && ST.res.length > 0 && ST.res.every((n) => /^blocks-stam-steel\./.test(n)), ST);
       const pb = await press('bash', 22);
       rec.ok(`8d. ${label}: a tap on Shield Bash sends the old button's request (${pb.sent.join(',')}) and the worker answers it (${pb.heard}; stamina ${pb.s0} -> ${pb.s1})`,
         pb.shown && pb.sent.includes('bash') && !!pb.heard, pb);
