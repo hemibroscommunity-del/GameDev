@@ -312,6 +312,22 @@ export function padOn(thrown, fine) {
   return thrown !== true && fine !== true;
 }
 
+/* v2.3.6641 (the gatekeeper's sitting 67): BLOCK'S ONE PRESS.  The
+   browser's mouse press after a touch is the same press, never a second
+   toggle (part 4: touchend's preventDefault stops it only while touchend is
+   cancelable, and Chrome sends it uncancelable once the page has held the
+   touch past its wait).  The mouse press comes AFTER touchend, so a press
+   held past the wait was stamped at its touchstart only and toggled twice:
+   the stamp is touchstart's AND touchend's (the weapon pill's rule, 800 ms
+   from either).  `type` the event's, `now` its time, `at` the last stamp:
+   { go: the press toggles, at: the stamp kept after it }. */
+export const PRESS_GHOST_MS = 800;
+export function pressGate(type, now, at) {
+  if (type === 'touchend') return { go: false, at: now };
+  if (type === 'mousedown' && now - at < PRESS_GHOST_MS) return { go: false, at: at };
+  return { go: true, at: type === 'touchstart' ? now : at };
+}
+
 /** Every picture the controller draws, for the loading screen to warm. */
 export function padPictures() {
   return Object.keys(PAD_ART);

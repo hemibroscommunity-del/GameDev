@@ -91,8 +91,14 @@ export function RideButton(props) {
 
   React.useEffect(function () {
     var id = setInterval(function () {
-      var v = rideButtonView(stateRef && stateRef.current);
-      var k = v ? v.key : '';
+      var S0 = stateRef && stateRef.current;
+      var v = rideButtonView(S0);
+      /* v2.3.6641 (the gatekeeper's sitting 67): the controller's pick is in
+         the key.  Charge comes and goes with every sighting (thumbSide.js
+         chargeUp) while the ride's own key holds still: keyed on the ride
+         alone, the board stayed drawn over Charge in the mobility well, or,
+         redrawn during the sighting, a rider had no way off after it */
+      var k = v ? v.key + '|' + (padLive() && chargeShowing(S0) ? 1 : 0) : '';
       if (k !== keyRef.current) {
         keyRef.current = k;
         setTick(function (x) { return (x + 1) % 1000000; });

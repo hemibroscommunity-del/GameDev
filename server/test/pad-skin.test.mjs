@@ -32,7 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   PAD, REF, REF_SLOTS, WELLS, PAD_ACCENT, padLayout, wellOf, padSpot, ctxFor, padFace, attackFace, attackWeapon,
-  PAD_ATTACK_ICONS, weaponWell, insideShell, padOn, padPictures, padWidthOf,
+  PAD_ATTACK_ICONS, weaponWell, insideShell, padOn, padPictures, padWidthOf, pressGate, PRESS_GHOST_MS,
 } from '../../src/game/padSkin.js';
 import { PAD_ART, PAD_ART_BYTES } from '../../src/data/padArt.js';
 
@@ -311,6 +311,25 @@ check('9c. a told width WIDER than the column (a stale one after a turn) never w
   const W = padLayout(true, padWidthOf(844, 752));
   check('9d. laid out at the world\'s width the right lobe\'s wells end inside it (Attack\'s centre 752 - (920 - its x) s)',
     near(W.shell.w, 752, 1e-9) && near(W.wells.attack.x, 752 - (REF.W - REF_SLOTS.attack[0]) * W.s, 1e-9) && W.wells.attack.x + W.wells.attack.d / 2 < 752);
+}
+
+/* ── 11 (v2.3.6641, the gatekeeper's sitting 67): Block's one press.  The
+   browser's mouse press follows touchend; a press held past the wait was
+   stamped at touchstart only and toggled twice (Chrome) ── */
+{
+  const run = (evs) => { let at = 0, n = 0; for (const [type, t] of evs) { const g = pressGate(type, t, at); at = g.at; if (g.go) n++; } return n; };
+  check('11a. a quick tap (touchstart, touchend, the mouse press after): ONE toggle',
+    run([['touchstart', 10000], ['touchend', 10070], ['mousedown', 10080]]) === 1);
+  check('11b. a press held 1.5 s (past 800 ms from touchstart): still ONE toggle, the lift stamped',
+    run([['touchstart', 10000], ['touchend', 11500], ['mousedown', 11510]]) === 1);
+  check('11c. a real mouse press later (past ' + PRESS_GHOST_MS + ' ms from the lift): it toggles',
+    run([['touchstart', 10000], ['touchend', 10070], ['mousedown', 10070 + PRESS_GHOST_MS]]) === 2);
+  check('11d. a mouse alone toggles every press; the lift alone never does',
+    run([['mousedown', 10000], ['mousedown', 10100]]) === 2 && run([['touchend', 10000]]) === 0);
+  check('11e. a second touch inside the wait toggles (a touch is never a ghost)',
+    run([['touchstart', 10000], ['touchend', 10070], ['touchstart', 10200]]) === 2);
+  check('11f. a mouse press while the finger is still down (inside the wait from touchstart): the same press',
+    run([['touchstart', 10000], ['mousedown', 10100], ['touchend', 10300]]) === 1);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

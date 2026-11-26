@@ -18,6 +18,12 @@
  *      reach the world (the R zone);
  *   5. THE WEAPON WELLS select as the pill did: a tap on the bow's well puts
  *      the bow in hand and lights that well, the sword's puts it back;
+ *   5b. v2.3.6641 (the gatekeeper's sitting 67), on a page of the two
+ *      buttons (`manual=5`): ON THE BOARD with the sword near the safe
+ *      ground's edge, turned to a monster: sighted, Charge in
+ *      the mobility well and the board's face NOT drawn over it;
+ *   5c. ...turned away, the sighting gone, still riding: the board's
+ *      button back in the mobility well (the way off), Charge gone;
  *   6. IN A FIGHT (a shield worn, a monster near): the big well is Block,
  *      wearing the shield, and Jump is the middle well; a TAP raises the
  *      guard and it stays up with no finger on it; a second tap lowers it; a
@@ -63,6 +69,7 @@ const LOOK = (P) => P.page.evaluate(([sel, face]) => {
 
 /* a well's centre on the page: x from the column's left (the shell's), y up from the band */
 const WELL = (L, k) => { const w = L.pad.wells[k]; return { x: L.shell.l + w.x, y: L.bandTop - w.y, d: w.d }; };
+const SAFE_R = 2937;   /* zones.js wheel.safeR, the town's safe ground (mp-skateboard's); the centre is wheelGeom's */
 const near = (a, b, tol) => !!a && !!b && Math.abs(a.x - b.x) <= tol && Math.abs(a.y - b.y) <= tol;
 const overlap = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 0.5 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 0.5;
 
@@ -71,7 +78,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errs = [];
   const shots = process.env.PAD_SHOTS || null;
   try {
-    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
+    /* PAD_ONLY=rider: the rider's page alone (5b/5c), for a quick look */
+    for (const [label, viewport] of (process.env.PAD_ONLY === 'rider' ? [] : [['upright', UPRIGHT], ['sideways', SIDEWAYS]])) {
       /* ── 0: today's look, on a page with the switch thrown ── */
       const O = await H.newPlayer(browser, { name: label === 'upright' ? 'Padoff' : 'Padoffs', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'padskin=0' });
       players.push(O);
@@ -238,6 +246,82 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(600);
       const C = await LOOK(P);
       rec.ok(`6e. ${label}: out of the fight the big well is Jump again`, calm && !!C.c.jump && near(C.c.jump.face, WELL(C, 'big'), 1.5) && !C.c.block, { calm, jump: C.c.jump && C.c.jump.face });
+      await P.ctx.close().catch(() => {});
+    }
+
+    /* ── 5b/5c (v2.3.6641, the gatekeeper's sitting 67): a rider with a
+       sword rides INTO a sighting and OUT of it.  The mobility well is the
+       board's or Charge's (padSkin.js ctxFor); the board's poll redrew only
+       when the ride's own key moved, so Charge's coming left the board drawn
+       over it, or a redraw during the sighting left no way off after it.
+       Charge is the two buttons' (`manual=5`; the page above plays today's
+       held combat, `manual=4`, which has none): a page of its own.  On the
+       board in town (a click: the button's mouse way; a touch here lasts
+       past its 600 ms tap), hopped out on the line to the monster nearest
+       the safe ground's edge, to 250 px from it (inside the sight's 440 and
+       the view), its back to it; turned TO it, then away.  The turn is
+       written, the body's (S._facingAngle, what a still bro is drawn by: the
+       sight takes the DRAWN facing, sight.js drawnFace), held while the well
+       is read: a board's stick would roll the rider off the safe ground. ── */
+    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Padride' : 'Padrides', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel', query: 'manual=5&wheelwhole&tapms=4000' });
+      players.push(P);
+      P.page.on('pageerror', (e) => errs.push(label + ' rider: ' + String((e && e.message) || e).slice(0, 200)));
+      await H.enterWorld(P);
+      const inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
+      const me = inW ? await H.readState(P, (S) => S.myId) : null;
+      if (me) await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);   /* the weapons owned, the worker's way (step 0's) */
+      const eqS = me ? await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) })) : null;
+      if (label === 'sideways') await H.foldBand(P).catch(() => null);   /* sideways the open band is a page over the controls */
+      await P.page.waitForTimeout(2000);
+      rec.ok(`5b. ${label} rider: in the Wheel with the two buttons, the sword in hand (guard)`, !!inW && !!(eqS && eqS.ok), { inW, eqS });
+      if (!inW || !(eqS && eqS.ok)) continue;
+      const G5 = await H.wheelGeom();
+      const K0 = await LOOK(P);
+      if (K0.c.skate) await P.page.mouse.click(K0.c.skate.box.x, K0.c.skate.box.y);
+      const rideOn = await H.waitFor(P, (S) => !!(S._ride && S._ride.on), (v) => v, { timeout: 8000, label: 'on the board' }).catch(() => null);
+      const pick5 = await P.page.evaluate(([cx, cy, R]) => {
+        const S = window._gameState.current; let best = null;
+        for (const m of S.monsters || []) {
+          if (!m || !m.alive) continue;
+          const d = Math.hypot(m.x - cx, m.y - cy) - R;
+          if (d > 0 && (!best || d < best.d)) best = { id: String(m.id), x: m.x, y: m.y, d: Math.round(d) };
+        }
+        return best;
+      }, [G5.cx, G5.cy, SAFE_R]);
+      rec.ok(`5b. ${label} rider: on the board in town (the board's button in the mobility well), a monster within 230 px of the safe ground's edge (${pick5 && pick5.d}; guard)`,
+        !!rideOn && !!K0.c.skate && near(K0.c.skate.face, WELL(K0, 'mobility'), 1.5) && !!pick5 && pick5.d <= 230, { rideOn, skate: K0.c.skate && K0.c.skate.face, pick5 });
+      if (!rideOn || !pick5 || pick5.d > 230) continue;
+      /* face the monster (`to` true) or turn the back on it, every 100 ms */
+      const turn5 = (to) => P.page.evaluate(([id, to]) => {
+        const S = window._gameState.current;
+        const face = () => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); if (m && S.player) S._facingAngle = Math.atan2(m.y - S.player.y, m.x - S.player.x) + (to ? 0 : Math.PI); };
+        face(); clearInterval(window.__padFace); window.__padFace = setInterval(face, 100);
+      }, [pick5.id, to]);
+      const where5 = () => P.page.evaluate((id) => {
+        const S = window._gameState.current, m = (S.monsters || []).find((x) => x && String(x.id) === id);
+        return { riding: !!(S._ride && S._ride.on), sight: S._sightPhase || 'none', thumb: S._thumbPhase || 'calm', d: m && S.player ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null };
+      }, pick5.id);
+      const a = Math.atan2(pick5.y - G5.cy, pick5.x - G5.cx);
+      await turn5(false);
+      await H.hopTo(P, Math.round(pick5.x - 250 * Math.cos(a)), Math.round(pick5.y - 250 * Math.sin(a)), { tries: 260 }).catch(() => null);
+      await P.page.waitForTimeout(1000);
+      await turn5(true);
+      const ch = await P.page.waitForFunction(() => !!document.querySelector('[data-charge]'), null, { timeout: 10000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(800);   /* several of the board's polls (120 ms) */
+      const I = await LOOK(P);
+      const inS = { ch, charge: !!I.c.charge, skate: !!I.c.skate, inWell: !!I.c.charge && near(I.c.charge.face, WELL(I, 'mobility'), 1.5), at: await where5() };
+      if (shots) await P.page.screenshot({ path: shots + '/pad3-rider-sighted-' + label + '.png' });
+      rec.ok(`5b. ${label}: a rider with a sword sighted (${inS.at.d} px): Charge in the mobility well, the board's face not drawn over it`,
+        inS.ch && inS.at.riding && inS.charge && inS.inWell && !inS.skate, inS);
+      await turn5(false);
+      const gone = await P.page.waitForFunction(() => !document.querySelector('[data-charge]'), null, { timeout: 15000 }).then(() => true).catch(() => false);
+      await P.page.waitForTimeout(800);
+      const Q = await LOOK(P);
+      const outS = { gone, charge: !!Q.c.charge, skate: !!Q.c.skate, inWell: !!Q.c.skate && near(Q.c.skate.face, WELL(Q, 'mobility'), 1.5), at: await where5() };
+      rec.ok(`5c. ${label}: turned away, the sighting gone, still riding: the board's button back in the mobility well (the way off), Charge gone`,
+        outS.gone && outS.at.riding && outS.skate && outS.inWell && !outS.charge, outS);
+      await P.page.evaluate(() => clearInterval(window.__padFace));
       await P.ctx.close().catch(() => {});
     }
   } finally {

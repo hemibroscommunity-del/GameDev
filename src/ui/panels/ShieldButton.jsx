@@ -9,6 +9,7 @@ import { blockShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3
 import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { thumbAnchor } from './thumbSpot.js';   /* v2.3.6549: the two buttons' right thumb's arc (card CT part 16) */
 import { padAnchor, usePadWidth } from './padSpot.js';   /* v2.3.6640: the controller (card PAD) */
+import { pressGate } from '@/game/padSkin.js';   /* v2.3.6641: Block's one press (the gatekeeper's sitting 67) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
@@ -892,8 +893,11 @@ export function ShieldButton(props) {
        uncancelable once the page has held the touch past its wait (seen on the
        test box: mp-padskin 6d sideways read the guard lowered by 'tap' where
        Attack was meant to lower it).  The weapon pill's rule (800 ms). */
-    if (e.type === 'mousedown' && Date.now() - _shieldTouchAt < 800) return;
-    if (e.type === 'touchstart') _shieldTouchAt = Date.now();
+    /* v2.3.6641 (the gatekeeper's sitting 67): and touchend stamps too (below;
+       padSkin.js pressGate): the mouse press comes after it */
+    var g = pressGate(e.type, Date.now(), _shieldTouchAt);
+    _shieldTouchAt = g.at;
+    if (!g.go) return;
     pressOn(e);   /* v2.3.3018: the sheet's Pressed */
     try { toggleShield(stateRef.current); } catch (err) { /* refusal is silent-safe */ }
     setTick(function (v) { return v + 1; });
@@ -934,7 +938,7 @@ export function ShieldButton(props) {
        already carry.  Not stopped from bubbling: nothing on this side needs
        to stop hearing a release, and lE/rE/bE ignore a touch that is not
        theirs. */
-    onTouchEnd: function (e) { e.preventDefault(); pressOff(e); },
+    onTouchEnd: function (e) { e.preventDefault(); _shieldTouchAt = pressGate('touchend', Date.now(), _shieldTouchAt).at; pressOff(e); },   /* v2.3.6641: the stamp at the finger's lift too (pressGate) */
     onTouchCancel: pressOff,
     onMouseUp: pressOff,
     onMouseLeave: pressOff,
