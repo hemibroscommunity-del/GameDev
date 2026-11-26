@@ -82,7 +82,9 @@ export function broStartWeapon(R) {
 /** The rows for weapon `cat`: { cat, has, weapon, rows: [{key, label, info,
  *  icon, value}] } -- thirteen rows, in BRO_STAT_ROWS' order.  Never throws:
  *  a value that cannot be read is "—". */
-export function broWeaponStats(R, cat) {
+/** v2.3.6686 (card UI2-combat): the two inputs the DPS row is worked out from, so the stat
+ *  tree (src/game/metricTree.js dpsTree) is built from the very same pair: { cat, as, wpn }. */
+export function broDpsInputs(R, cat) {
   R = R || {};
   const c = Object.prototype.hasOwnProperty.call(SLOT_OF, cat) ? cat : 'sword';
   /* the rpg as if this weapon were out: every reader below that asks "which
@@ -90,6 +92,12 @@ export function broWeaponStats(R, cat) {
   const as = Object.assign({}, R, { activeSlot: SLOT_OF[c] });
   let wpn = null;
   try { wpn = weaponForCat(R, c); } catch (e) { wpn = null; }
+  return { cat: c, as, wpn };
+}
+
+export function broWeaponStats(R, cat) {
+  R = R || {};
+  const { cat: c, as, wpn } = broDpsInputs(R, cat);
   let d = {};
   try { d = deriveHeroStats(as) || {}; } catch (e) { d = {}; }
   let pills = null;

@@ -51,6 +51,19 @@ export function doorWord(key) {
     case 'dashFrame.feedback': return say(SAY, 'dashFrame.feedback');
     case 'dashFrame.about': return say(SAY, 'dashFrame.about');
     case 'dashFrame.journey': return say(SAY, 'dashFrame.journey');
+    /* v2.3.6683 (card UI2-bro): Bro's six doors (src/game/broHub.js) */
+    case 'dashFrame.character': return say(SAY, 'dashFrame.character');
+    case 'dashFrame.combat': return say(SAY, 'dashFrame.combat');
+    case 'dashFrame.equipment': return say(SAY, 'dashFrame.equipment');
+    case 'dashFrame.lifeSkills': return say(SAY, 'dashFrame.lifeSkills');
+    case 'dashFrame.feats': return say(SAY, 'dashFrame.feats');
+    case 'dashFrame.pets': return say(SAY, 'dashFrame.pets');
+    case 'dashFrame.titles': return say(SAY, 'dashFrame.titles');   /* v2.3.6684: the passport's Titles */
+    case 'dashFrame.sword': return say(SAY, 'dashFrame.sword');   /* v2.3.6685: a weapon's page (card UI2-combat) */
+    case 'dashFrame.bow': return say(SAY, 'dashFrame.bow');
+    case 'dashFrame.staff': return say(SAY, 'dashFrame.staff');
+    case 'dashFrame.sharedAttributes': return say(SAY, 'dashFrame.sharedAttributes');   /* v2.3.6686: the Shared page */
+    case 'dashFrame.dps': return say(SAY, 'dashFrame.dps');   /* v2.3.6686: the stat tree's layers */
     default: return say(SAY, 'dashFrame.page');
   }
 }
@@ -98,6 +111,7 @@ export function MenuGrid({ doors, marks, onDoor, label, wordFor }) {
           <Ui2Tile key={d.id} size="primary" art={d.art || undefined} artSize={art}
             label={wordFor ? wordFor(d) : doorWord(d.word)}
             badge={m.count} dot={m.dot} glow={m.glow}
+            locked={d.locked || undefined} data-locked={d.locked ? '' : undefined}
             data-dest={d.id} data-key={d.key || undefined}
             style={{ minWidth: 0, minHeight: 44, padding: short ? 2 : undefined }}
             {...frameTap(() => onDoor(d, from))} />

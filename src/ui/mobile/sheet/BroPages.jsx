@@ -166,7 +166,7 @@ function Overview({ d, n, held, statsHeld, skills, move, open, dense }) {
 }
 
 /* ── 2. COMBAT STATS (mockups 03 and 04 on ONE page) ── */
-function Combat({ bp, statsPick, skills, move, explain, dense }) {
+function Combat({ bp, statsPick, skills, move, explain, dense, pointsDoor }) {
   const { groups } = broStatGroups(statsPick.rows);
   const w = BRO_WEAPONS.find((x) => x.cat === statsPick.cat) || BRO_WEAPONS[0];
   const k = (skills.find((x) => x.cat === statsPick.cat) || {}).k;
@@ -193,6 +193,16 @@ function Combat({ bp, statsPick, skills, move, explain, dense }) {
             <img src={sk.iconSrc} alt="" draggable={false} /><span>{word(WEAPON_WORD, cat)}</span>
           </button>
         ))}
+        {/* v2.3.6683 (card UI2-bro): under the new frame Combat is Points' road (Progress's Points door),
+            its glow while points wait */}
+        {pointsDoor ? (
+          <button type="button" className={'bt-bro3-pick' + (pointsDoor.n > 0 ? ' is-live' : '')} data-bro-row="points" data-section="Build"
+            data-bro-spend={pointsDoor.n} onClick={stop(pointsDoor.open)}
+            aria-label={say(CARD, 'broCard.points') + ': ' + (pointsDoor.n > 0 ? say(CARD, 'broCard.pointsSub', { n: fmt(pointsDoor.n) }) : say(CARD, 'broCard.pointsSpent'))}>
+            {pointsDoor.n > 0 ? <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" /> : null}
+            <span>{say(CARD, 'broCard.points')}{pointsDoor.n > 0 ? ' ' + fmt(pointsDoor.n) : ''}</span>
+          </button>
+        ) : null}
       </div>
       {group(off, statsPick.has
         ? (xpWords ? <em className="bt-bro3-hint" data-bro-xpnum={k && k.xp ? `${Math.round(k.xp.prog)}/${Math.round(k.xp.thresh)}` : 'max'}>{xpWords}</em> : null)
@@ -277,14 +287,15 @@ function Progress({ d, n, open, dense }) {
  *   open(word) a door's `opens` word acted on;  explain(info, value)  a stat's explainer
  *   wide, dense  the shape (broPagesLayout) */
 export function BroPages(props) {
-  const { bp, wide, dense, move } = props;
-  const shown = broShownPages(bp, wide);
+  const { bp, wide, dense, move, only } = props;
+  /* v2.3.6683 (card UI2-bro): `only` one page under the new frame's header (Combat's door), no marks */
+  const shown = only ? [only] : broShownPages(bp, wide);
   return (
     <>
       {shown.map((page) => (
         <section key={page} className="bt-bro3-page" data-bro-pg={page} data-bro-weapon={page === 'combat' ? props.statsPick.cat : undefined}
           data-bro-has={page === 'combat' ? (props.statsPick.has ? 1 : 0) : undefined}>
-          <Marks bp={bp} wide={wide} move={move} />
+          {only ? null : <Marks bp={bp} wide={wide} move={move} />}
           {page === BRO_PAGES[0] ? <Overview {...props} />
             : page === 'combat' ? <Combat {...props} />
             : <Progress {...props} />}
