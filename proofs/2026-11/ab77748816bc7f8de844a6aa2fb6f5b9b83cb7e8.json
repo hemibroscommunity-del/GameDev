@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ab77748816bc7f8de844a6aa2fb6f5b9b83cb7e8",
+  "tree": "007eb52fcbc86ea749ae6bb385ca9da2650c8dd2",
+  "committedAt": "2026-11-26T08:04:04-08:00",
+  "subject": "Merge pull request #2373 from hemibroscommunity-del/claude/plan-ui2-9-gear",
+  "files": 8840,
+  "bytes": 996577209,
+  "listingSha256": "30b4a217cc0c79748834146e45921cf4858e313cd90ff06ece758f5058fe19ee",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
