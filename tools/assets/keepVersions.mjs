@@ -30,7 +30,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { ROOT, versionTable } from './versions.mjs';
+import { ROOT, versionTable, pageTable, pageTableModule } from './versions.mjs';
 import { stampScript, stampCss, stampHtml, topFolders, unstampable } from './stamp.mjs';
 
 /* A LOADER THAT JOINS ITS OWN KEY to a stamped address (npcArtUrl's
@@ -110,7 +110,26 @@ export function keepVersions({ root = ROOT, report = process.env.KEEP_STAMP_REPO
   const mine = (id) => typeof id === 'string' && !id.includes('?') && !id.includes('\0')
     && id.startsWith(srcDir) && !id.includes(`${sep}node_modules${sep}`);
 
+  /* v2.3.6742: the page's table (src/game/assetUrl.js reads it): written
+     here, from the same versions the stamps carry (the bytes win), for the
+     families a built address can name (versions.mjs PAGE_FAMILIES) */
+  const tableFile = join(root, 'src', 'game', 'assetTable.js');
+  let tableRows = null, tableBytes = 0;
+
   return [
+    {
+      name: 'keep-versions-table',
+      apply: 'build',
+      enforce: 'pre',
+      load(id) {
+        if (typeof id !== 'string' || id.split('?')[0] !== tableFile) return null;
+        load();
+        tableRows = pageTable(table, { versionOf });
+        const code = pageTableModule(tableRows);
+        tableBytes = Buffer.byteLength(code);
+        return { code, map: null };
+      },
+    },
     {
       name: 'keep-versions-css',
       apply: 'build',
@@ -150,6 +169,9 @@ export function keepVersions({ root = ROOT, report = process.env.KEEP_STAMP_REPO
         const by = (list, k) => { const m = new Map(); for (const x of list) m.set(x[k], (m.get(x[k]) || 0) + 1); return [...m].map(([a, n]) => `${a} ${n}`).join(', '); };
         console.log(`[keep-versions] ${stamped.length} written-out addresses carry their file's version (${by(stamped, 'was')}); ${left.length} left (${by(left, 'why') || 'none'})`
           + (report ? `: ${report}` : ': KEEP_STAMP_REPORT=<file> lists them'));
+        console.log(tableRows
+          ? `[keep-versions] the page's table (src/game/assetUrl.js): ${tableRows.length} addresses, ${(tableBytes / 1024).toFixed(1)} KB of script`
+          : "[keep-versions] the page's table: not in this build (nothing imports src/game/assetUrl.js)");
         for (const a of disagree) this.warn(`${a}: its bytes are not shipped.json's row; stamped with the bytes' version (node tools/assets/shipped.mjs --write)`);
         if (report) writeFileSync(report, JSON.stringify({ stamped, left, disagree }, null, 1) + '\n');
       },

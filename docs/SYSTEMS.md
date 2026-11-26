@@ -328,7 +328,8 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/rendering/tables/`: preload
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
-- **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen)
+- **Files**: `src/game/`: assetUrl, assetTable
+- **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
 - **Traps**: `preload`
