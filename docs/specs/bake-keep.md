@@ -79,14 +79,14 @@ an iron plate in the bag (a set one equip away):
 
 | | before (main) | after |
 |---|---|---|
-| first login in the set: frames ready at the lift | 7 of 177 | 7 of 177 (as before: nothing kept yet) |
-| second login: frames ready at the lift | 5 of 177 | 8 of 177 (the lift comes before the loads end here: below) |
+| first login in the set: frames ready at the lift | 7 of 177 | 1 to 7 of 177 (as before: nothing kept yet) |
+| second login: frames ready at the lift | 5 of 177 | 3 of 177 (the lift comes before the loads end here: below) |
 | second login: the worn set's frames when `masks` came | `masks` never reached in 400 s | 177 of 177 |
-| second login: jobs | every one baked again, about 3 s a frame here | 277 from the store, 24 baked (the iron plate's frames, and 3 stand frames whose body sheet differed from the first login's) |
+| second login: jobs | every one baked again, about 3 s a frame here | 276 from the store, 24 baked (the iron plate's frames, and 3 stand frames whose body sheet differed from the first login's) |
 | third login: jobs | | 177 from the store, 0 baked |
-| the worker's time for a kept answer | | about 2 ms (577 ms for 277) |
-| `masks` after `loads`, second and third login | | 89 s and 90 s |
-| a kept frame against the bake, byte for byte | | 171 of 171 the same |
+| the worker's time for a kept answer | | about 2 ms (630 ms for 276) |
+| `masks` after `loads`, second and third login | | 92 s and 89 s |
+| a kept frame against the bake, byte for byte | | 177 of 177 the same, 0 different |
 | `?bakekeep=0` | | nothing read, nothing written |
 | the store after a set | | about 3.9 MB a set (22 KB a frame); 6.4 MB with the spare set |
 
