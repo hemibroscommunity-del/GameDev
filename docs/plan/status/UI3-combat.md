@@ -10,6 +10,7 @@ state: ready
 - Nothing: the PR waits for the gatekeeper.
 
 ## Found
+- `mp-ui2frame` on this branch stops at its second step: the tap on Gear in the closed Menu row (`[data-dash-ctl="gear"]`) timed out on the test box; nothing of the frame or the Menu is this card's (Combat's runs: `mp-ui2combat` 63/63, `mp-ui2bro` 27/27).
 - The real room at 375 x 667 on the test box holds the four bands (the page is taller than 172 px there; the master notes measured 168 before the kit's lower bevels), so the fold does not trigger on that phone; it is built, guarded (C18) and shown on a page held to 168 px (4b2, `ui2-combat-sword-fold-168.png`).
 - A weapon's points cannot all be Spent from one page: each attribute has its cap (Sword 12's six took 21 of 33), so the "pool at 0" case is the dealt Staff (no points of its own, none free).
 
