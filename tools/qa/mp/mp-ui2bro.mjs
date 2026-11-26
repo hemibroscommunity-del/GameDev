@@ -12,8 +12,8 @@
  *   2. every door opens its page under its name and Back (saying Bro) returns
  *      to Bro; Equipment opens Gear and the Menu button comes back to Bro;
  *   3. Combat's page has Points (today's Progress door; v2.3.6685: the hub's
- *      Shared door), which opens the Points window and Back returns to
- *      Combat; the glow on Combat while
+ *      Shared door), which opens the Points window (v2.3.6686: the Shared
+ *      page) and Back returns to Combat; the glow on Combat while
  *      points wait;
  *   4. each of today's eight Progress doors still has its road;
  *   5. `?ui2=0` gives today's Bro (its pages, no landing).
@@ -185,12 +185,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         pass: k === 'character' ? await readPass(P) : null });
       if (k === 'combat') {
         await bandShot(P, 'ui2-bro-combat.png');
-        /* 3b. Points from Combat: the Points window, Back returning to Combat */
+        /* 3b. Points from Combat: v2.3.6686 the Shared page (its seven spend through the preview), Back returning to Combat */
         await tap(P, '[data-bro-door-page="combat"] [data-combat-door="shared"]', 1000);   /* v2.3.6685: the hub's Shared door */
         const Pp = await read(P);
+        const sharedUp = await P.page.evaluate(() => !!document.querySelector('[data-shared-page] [data-shared-attr]'));
         await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 800);
         const Pb = await read(P);
-        rec.ok('3b. Combat\'s Points opens the Points window; Back returns to Combat', Pp.title === 'hero' && Pp.hero === 'Build' && Pb.title === 'broCombat', { open: [Pp.title, Pp.hero], back: Pb.title });
+        rec.ok('3b. Combat\'s Points (its Shared door) opens the Shared page (v2.3.6686); Back returns to Combat', Pp.title === 'broShared' && sharedUp && Pb.title === 'broCombat', { open: Pp.title, sharedUp, back: Pb.title });
       }
       await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
       const A = await read(P);

@@ -64,16 +64,23 @@ const stepCount = (P) => P.page.evaluate(() => {
   return c ? Number(c.getAttribute('data-infopopup-count')) : null;
 });
 const label = (P) => P.page.evaluate(() => {
-  const el = document.querySelector('[data-prog3-plus="shared:hp"]');
+  const el = document.querySelector('[data-shared-attr="hp"]');
   return el ? el.getAttribute('aria-label') : null;
 });
+/* v2.3.6686 (card UI2-bro, tests part): the Max HP tile is on the Shared page now ([data-shared-attr="hp"], its
+   aria-label "Max HP: n placed" with no cap, "n of L placed" with one), reached Menu, Bro, Combat, Shared */
+const hpHead = (P) => P.page.evaluate(() => { const e = document.querySelector('[data-shared-hp]'); return e ? Number(e.getAttribute('data-shared-hp')) : null; });
 
 async function openPoints(P) {
-  await H.openDest(P, 'Bro');
-  await P.page.waitForTimeout(600);
-  await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
-    .first().click({ timeout: 8000 }).catch(() => {});
-  await P.page.waitForTimeout(700);
+  for (let i = 0; i < 3; i++) {
+    if (await P.page.locator('[data-shared-page]').first().isVisible().catch(() => false)) return true;
+    await H.dashOpen(P, 'broCombat').catch(() => {});
+    const door = P.page.locator('[data-combat-hub] [data-combat-door="shared"]').first();
+    await door.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    await door.tap({ timeout: 8000 }).catch(() => {});
+    await P.page.waitForTimeout(700);
+  }
+  return P.page.locator('[data-shared-page]').first().isVisible().catch(() => false);
 }
 
 /* [+] up to `n` times, each tap waited out (this box's world page runs its
@@ -105,9 +112,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* 2 */
   await openPoints(P);
-  const opened = await finger(P, '[data-prog3-plus="shared:hp"]');
+  const opened = await finger(P, '[data-shared-attr="hp"]');
   await P.page.waitForTimeout(500);
-  rec.ok('2. Max HP\'s window opens from its [+]', opened && !!(await P.page.$('[data-infopopup]')));
+  rec.ok('2. Max HP\'s window opens from its tile on the Shared page', opened && !!(await P.page.$('[data-infopopup]')));
   const want = Math.min(s0.shared, s0.level + 3);
   const got = await plus(P, want);
   rec.ok(`2b. [+] adds past your level: ${got} of the ${want} asked (the old bound stopped at ${s0.level})`, got === want && got > s0.level, { got, want, level: s0.level });
@@ -137,10 +144,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* 4 */
   const l1 = await label(P);
   rec.ok(`4. the cell reads its points with no cap: "${l1}"`,
-    !!l1 && new RegExp(`, ${want} points\\.`).test(l1) && !/ of \d/.test(l1), l1);
-  /* v2.3.3578: and what a point is worth, as the bar just grew (the row said
-     "+8 max HP" while each point gave 40 under the one formula) */
-  rec.ok(`4b. ...and a point's worth as the bar grew: "+${per} max HP"`, !!l1 && l1.indexOf(`+${per} max HP per point`) >= 0, l1);
+    !!l1 && new RegExp(`: ${want} placed\\.`).test(l1) && !/ of \d/.test(l1), l1);
+  /* v2.3.3578: and what a point is worth, as the bar just grew.  v2.3.6686: the tile no longer prints "+n max HP per
+     point" (the stat window's preview rows do): the Shared page's headline Max HP is what grew */
+  const head1 = await hpHead(P);
+  rec.ok(`4b. ...and the page's Max HP headline grew with the bar (${s0.maxHp} -> ${s1.maxHp}, the page reads ${head1})`, head1 != null && head1 > 0 && s1.maxHp > s0.maxHp, { head1, before: s0.maxHp, after: s1.maxHp });
 
   /* 6: the switch, read at a rejoin */
   await H.liveFlag(wsPort, 'nostatcap', false);
@@ -152,8 +160,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !s2.caps && s2.hp === want, s2);
   await openPoints(P);
   const l2 = await label(P);
-  rec.ok(`6b. ...the cell says "of ${s2.level}" again: "${l2}"`, !!l2 && new RegExp(`, ${want} of ${s2.level}\\.`).test(l2), l2);
-  await finger(P, '[data-prog3-plus="shared:hp"]');
+  rec.ok(`6b. ...the cell says "of ${s2.level}" again: "${l2}"`, !!l2 && new RegExp(`: ${want} of ${s2.level} placed\\.`).test(l2), l2);
+  await finger(P, '[data-shared-attr="hp"]');
   await P.page.waitForTimeout(500);
   const blocked = await P.page.evaluate(() => {
     const b = document.querySelector('[data-infopopup-blocked]');

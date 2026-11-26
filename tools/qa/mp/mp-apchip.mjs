@@ -105,19 +105,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`2: a first kill (${killed}): the worker's 10 AP said as a "+10 AP" word under the bar (${JSON.stringify(words.map((w) => w.text))}), and the chat line "${line}"`,
     !!killed && words.some((w) => w.text === '+10 AP') && !!line, { killed, words, apNow, line });
 
-  /* ── 3. the Bro card reads the points ── */
-  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) { /* */ } });
-  await P.page.waitForTimeout(600);
-  /* v2.3.6600 (card BRO): the Bro tab is pages; the AP is on Progress's counters (data-bro-ap) */
-  await P.page.evaluate(() => { const c = window.__btBroCard; if (c && c.to) c.to({ to: 'progress' }); });
+  /* ── 3. the Bro page reads the points ──
+     v2.3.6686 (card UI2-bro, tests part): the AP is a counter on the Character passport (data-char-door="ap",
+     under the frame: Menu, Bro, Character) and it shows the compact count of the worker's number */
+  await H.dashOpen(P, 'broCharacter');
   let card = null;
   for (let i = 0; i < 30; i++) {
-    card = await P.page.evaluate(() => { const e = document.querySelector('[data-bro-ap]'); return e ? Number(e.getAttribute('data-bro-ap')) : null; });
+    card = await P.page.evaluate(() => {
+      const e = document.querySelector('[data-char-page] [data-char-door="ap"], [data-char-page] [data-char-ap]');
+      if (!e) return null;
+      const m = (e.textContent || '').match(/\d[\d,.]*/);
+      return m ? Number(m[0].replace(/,/g, '')) : null;
+    });
     if (card === 10) break;
     await P.page.waitForTimeout(200);
   }
   await shot('bro-card');
-  rec.ok(`3: the Bro card reads the same ${card} AP`, card === 10, { card });
+  rec.ok(`3: the Character passport reads the same ${card} AP`, card === 10, { card });
 
   rec.ok(`5: no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   await P.ctx.close().catch(() => {});

@@ -39,6 +39,8 @@ export const SAY = Object.freeze({
   'dashFrame.titles': 'Titles',
   /* v2.3.6685 (card UI2-combat): a weapon's page, its header */
   'dashFrame.sword': 'Sword',
+  'dashFrame.sharedAttributes': 'Shared Attributes',   /* v2.3.6686 */
+  'dashFrame.dps': 'DPS',   /* v2.3.6686: the stat tree's layers */
   'dashFrame.bow': 'Bow',
   'dashFrame.staff': 'Staff',
 });
