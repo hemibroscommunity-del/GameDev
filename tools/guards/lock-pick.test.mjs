@@ -53,7 +53,7 @@ const RING = 440, HOLD = 550;
    the held lock is the caller's (targeting.js): kept while within HOLD */
 function drive(L, frames, opt) {
   const o = opt || {};
-  const mem = { rival: null, since: 0, pushed: null };
+  const mem = { rival: null, since: 0, last: 0 };
   let lock = o.start != null ? o.start : null;
   const seq = [];
   for (const f of frames) {
@@ -67,7 +67,7 @@ function drive(L, frames, opt) {
     if (!held) lock = null;
     const out = L.lockPick({ cands, held, push: f.push || null, px: 0, py: 0, now: f.t, mem, near: o.near !== false }, {});
     if (out.take) lock = out.take.key;
-    seq.push({ t: f.t, lock, why: out.why });
+    seq.push({ t: f.t, lock, rule: out.rule });
   }
   return seq;
 }
@@ -109,6 +109,13 @@ function scenes(L) {
     row(`2 the dwell starts again when the held one is nearest again (B nearer 0-100 ms, then from 320: took at ${t1} ms)`,
       t1 >= 320 + L.LOCK_PICK.DWELL_MS, flips(s).join(','));
   }
+  /* 2c. a gap in the asks (nothing in the ring: the caller skips the pick) ends the stint */
+  {
+    const both = [{ key: 'A', x: 100, y: 0, inReach: true }, { key: 'B', x: 0, y: 95, inReach: true }];
+    const fr = [{ t: 0, mons: both }, { t: 16, mons: both }, { t: 2000, mons: both }, { t: 2016, mons: both }, { t: 2140, mons: both }];
+    const s = drive(L, fr, { start: 'A' });
+    row('2 a rival\'s wait does not survive a gap of two seconds in the asks (it waits again when it comes back)', lockAt(s, 2016) === 'A' && lockAt(s, 2140) === 'B', JSON.stringify(s));
+  }
   /* 3. outside reach: 5% and 10% nearer keep it; 15% nearer takes it at once */
   for (const [k, want] of [[0.95, 'A'], [0.90, 'A'], [0.85, 'B']]) {
     const s = drive(L, frames(0, 16, 1000, () => ({ mons: [{ key: 'A', x: 300, y: 0 }, { key: 'B', x: 0, y: 300 * k }] })), { start: 'A' });
@@ -119,7 +126,7 @@ function scenes(L) {
   {
     const m = [{ key: 'A', x: 100, y: 0, inReach: true }, { key: 'B', x: 0, y: -110, inReach: true }];
     const s = drive(L, [{ t: 0, mons: m, push: { x: 0, y: -1 } }], { start: 'A' });
-    row('4 a push toward the farther of two near-ties (10% farther, up) gives it the lock at once', s[0].lock === 'B' && s[0].why === 'push', JSON.stringify(s));
+    row('4 a push toward the farther of two near-ties (10% farther, up) gives it the lock at once', s[0].lock === 'B' && s[0].rule === 'push', JSON.stringify(s));
     const s2 = drive(L, [{ t: 0, mons: m, push: { x: 0, y: 1 } }], { start: 'A' });
     row('4 a push the other way (down) keeps the nearer: up is up (y down, world space)', s2[0].lock === 'A', JSON.stringify(s2));
     const sd = drive(L, frames(0, 16, 500, () => ({ mons: m, push: { x: 0, y: -0.1 } })), { start: 'A' });
@@ -207,7 +214,7 @@ const real = await import(pathToFileURL(MOD).href);
 for (const [n, ok, d] of scenes(real)) check(n, ok, d);
 {
   const T = real.LOCK_PICK;
-  check('the numbers live in ONE frozen table', Object.isFrozen(T) && T.DWELL_MS === 120 && T.FAR_STEP === 0.88 && T.TIE === 1.25 && T.PUSH_MIN === 0.2 && T.PUSH_FRONT === 0, JSON.stringify(T));
+  check('the numbers live in ONE frozen table', Object.isFrozen(T) && T.DWELL_MS === 120 && T.FAR_STEP === 0.88 && T.TIE === 1.25 && T.PUSH_MIN === 0.2 && T.PUSH_FRONT === 0 && T.STINT_GAP_MS === 1000, JSON.stringify(T));
 }
 
 /* ── the dodges and the mutants, planted in a copy ── */
@@ -222,7 +229,7 @@ const DODGES = [
 ];
 const MUTANTS = [
   ['no dwell: a rival inside reach takes at once', 'if (!same(mem.rival, best.key)) {', 'if (false) {'],
-  ['the dwell never resets when the held one is nearest again', "if (same(held.key, best.key)) { mem.rival = null; out.why = 'nearest'; return out; }", "if (same(held.key, best.key)) { out.why = 'nearest'; return out; }"],
+  ['the dwell never resets when the held one is nearest again', "if (same(held.key, best.key)) { mem.rival = null; out.rule = 'nearest'; return out; }", "if (same(held.key, best.key)) { out.rule = 'nearest'; return out; }"],
   ['the dwell\'s >= as >', 'c.now - mem.since >= LOCK_PICK.DWELL_MS', 'c.now - mem.since > LOCK_PICK.DWELL_MS + 16'],
   ['a far held lock waits the dwell too', 'if (!held.inReach) { mem.rival = null; out.take = best;', 'if (false) { mem.rival = null; out.take = best;'],
   ['the push chooses behind it', 'if (cos > LOCK_PICK.PUSH_FRONT && cos > pickCos)', 'if (cos > pickCos)'],
@@ -232,7 +239,9 @@ const MUTANTS = [
   ['the push needs no near-tie', '&& cands.length > 1 && Math.sqrt(cands[1].d2) <= tieD', ''],
   ['near: false ignored', 'if (c.near === false) {', 'if (false) {'],
   ['today\'s rule without its step', 'best.d2 > held.d2 * LOCK_PICK.FAR_STEP * LOCK_PICK.FAR_STEP', 'false'],
-  ['the outside step at once dropped', "if (bestD <= Math.sqrt(held.d2) * LOCK_PICK.FAR_STEP) { out.take = best; out.why = 'step'; return out; }", ''],
+  ['the outside step at once dropped', "if (bestD <= Math.sqrt(held.d2) * LOCK_PICK.FAR_STEP) { out.take = best; out.rule = 'step'; return out; }", ''],
+  ['a gap does not end the stint', 'if (mem.rival != null && !(c.now - mem.last <= LOCK_PICK.STINT_GAP_MS)) mem.rival = null;', ''],
+  ['the gap is the dwell (a slow phone never switches)', 'c.now - mem.last <= LOCK_PICK.STINT_GAP_MS', 'c.now - mem.last <= LOCK_PICK.DWELL_MS'],
   ['nothing held takes nothing', "if (!held) { mem.rival = null; out.take = best;", "if (!held) { mem.rival = null; out.take = null;"],
   ['the reach without the lunge', 'const r = swordPx + hitR + LOCK_PICK.LUNGE_PX;', 'const r = swordPx + hitR;'],
   ['the reach to the feet', 'dy = (fy - bodyUp) - py;', 'dy = fy - py;'],

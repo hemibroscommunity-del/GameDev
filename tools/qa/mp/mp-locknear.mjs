@@ -37,7 +37,7 @@ const place = (P, list) => P.page.evaluate((list) => {
 }, list);
 const lockOf = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, lt = S.lockedTarget;
-  return { id: lt ? String(lt.id) : null, why: S._lockPickWhy || null, cands: (S._targetCands || []).map((c) => String(c.m && c.m.id)) };
+  return { id: lt ? String(lt.id) : null, rule: S._lockPickRule || null, cands: (S._targetCands || []).map((c) => String(c.m && c.m.id)) };
 });
 /* move one stand-in and start the frame log in ONE evaluate (the move's moment
    and frame are the log's zero) */
@@ -78,7 +78,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await place(P, [{ id: 'qa-a', dx: 110, dy: 0 }, { id: 'qa-b', dx: 0, dy: 150 }]);
     await P.page.waitForTimeout(800);
     const l1 = await lockOf(P);
-    rec.ok(`1. of two stand-ins (110 and 150 px), the nearer has the lock (${l1.id}, ${l1.why})`, l1.id === 'qa-a' && l1.cands[0] === 'qa-a', l1);
+    rec.ok(`1. of two stand-ins (110 and 150 px), the nearer has the lock (${l1.id}, ${l1.rule})`, l1.id === 'qa-a' && l1.cands[0] === 'qa-a', l1);
 
     /* ── 2. the other becomes nearer inside reach: the lock moves within the dwell plus two frames ── */
     await moveAndWatch(P, 'qa-b', 0, 100);
@@ -100,7 +100,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.stickX = 0; S.stickY = -1;
       const step = () => {
         const lt = S.lockedTarget;
-        log.rows.push({ t: Date.now() - log.t0, f: (S._frameCount || 0) - log.f0, ms: S._frameMs || 16.667, id: lt ? String(lt.id) : null, why: S._lockPickWhy });
+        log.rows.push({ t: Date.now() - log.t0, f: (S._frameCount || 0) - log.f0, ms: S._frameMs || 16.667, id: lt ? String(lt.id) : null, rule: S._lockPickRule });
         if (log.rows.length < 60 && !(lt && String(lt.id) === 'qa-b')) requestAnimationFrame(step);
         else { S.stickX = 0; S.stickY = 0; }
       };
@@ -110,8 +110,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const S = window._gameState.current; S.stickX = 0; S.stickY = 0; });
     const w3 = await watched(P);
     const on3 = firstOn(w3, 'qa-b');
-    rec.ok(`3. two near-ties (110 east, 125 north): the stick pushed north gives the farther the lock within two frames (${on3 ? 'frame ' + on3.f + ', ' + on3.t + ' ms, ' + on3.why : 'never'})`,
-      l3a.id === 'qa-a' && !!on3 && on3.f <= 2 && on3.why === 'push', { l3a, rows: w3.rows.slice(0, 8) });
+    rec.ok(`3. two near-ties (110 east, 125 north): the stick pushed north gives the farther the lock within two frames (${on3 ? 'frame ' + on3.f + ', ' + on3.t + ' ms, ' + on3.rule : 'never'})`,
+      l3a.id === 'qa-a' && !!on3 && on3.f <= 2 && on3.rule === 'push', { l3a, rows: w3.rows.slice(0, 8) });
 
     /* ── 4. ?locknear=0: step 2's lock stays ── */
     await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.set('locknear', '0'); history.replaceState(history.state, '', u.toString()); });
@@ -122,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1500);
     const w4 = await watched(P);
     const l4 = await lockOf(P);
-    rec.ok(`4. ?locknear=0: B moved to 100 px (9% nearer) and the lock stays on A: today's 12% step (${l4.id}, ${l4.why})`,
+    rec.ok(`4. ?locknear=0: B moved to 100 px (9% nearer) and the lock stays on A: today's 12% step (${l4.id}, ${l4.rule})`,
       l4a.id === 'qa-a' && l4.id === 'qa-a' && w4.rows.every((r) => r.id === 'qa-a'), { l4a, l4, rows: w4.rows.slice(-3) });
     await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.delete('locknear'); history.replaceState(history.state, '', u.toString()); });
     await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = (S.monsters || []).filter((m) => !String(m.id).startsWith('qa-')); S.lockedTarget = null; });

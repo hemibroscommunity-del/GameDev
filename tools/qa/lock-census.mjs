@@ -96,7 +96,7 @@ for (let f = 0; f < FIGHTS; f++) {
         tl.off++;
         if (cands[0].inReach) tl.offReach++;
         tl.cur++;
-        const why = out.why;
+        const why = out.rule;
         const lm = L[w] != null ? ms[L[w]] : null;
         const ld2 = lm ? (lm.x - P.x) ** 2 + (lm.y - P.y) ** 2 : 0;
         if (why === 'push' || why === 'pushed') {

@@ -143,7 +143,7 @@ Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 - **Files**: `src/rendering/tables/`: combat
 - **Files**: `server/src/`: combat, hits, abilities, accuracy, burst, freeswing, fightlock, killroll, threat, telegraph, elemental, oneformula, statcap, arrowblast, swordconvert, shieldwear, shieldgem, weapongem, amulet, pvpbalance, pvpextras, pvplunge
-- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
+- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, lockPick, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
 - **Doors**: `_monsterHit` in `server/src/hits.js` (MONSTER_HITS: every monster hit on a player)
 - **Switches**: [its rows in the switch table](SWITCHES.md#combat)
 - **Words**: `combat`, `hit`, `ability`, `abilit`, `bow`, `arrow`, `sword`, `staff`, `shield`, `weapon`, `pvp`, `damage`, `whirl`, `dodge`, `elemental`, `accuracy`

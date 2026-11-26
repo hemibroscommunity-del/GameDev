@@ -56,6 +56,11 @@ export const LOCK_PICK = Object.freeze({
   /* rule 2: how long a rival must be the nearest, both inside reach, before
      it takes the lock (the card's start; ms on the caller's clock) */
   DWELL_MS: 120,
+  /* rule 2: a break this long between two asks ends a rival's wait (the
+     caller does not ask on a frame with nothing in the ring).  Far longer
+     than a frame, even this box's (a third of a second): never the dwell
+     itself, or a slow phone's every frame would end it */
+  STINT_GAP_MS: 1000,
   /* rule 3: outside reach a rival must be this share of the held one's
      distance or nearer (0.88: 12% nearer; targeting.js's AUTO_SWITCH_MARGIN) */
   FAR_STEP: 0.88,
@@ -106,30 +111,36 @@ function same(a, b) { return a != null && b != null && String(a) === String(b); 
  *   push:  { x, y } | null               the stick (world space, y down)
  *   px, py                               the player
  *   now                                  ms
- *   mem:   { rival, since }              carried between frames by the caller
+ *   mem:   { rival, since, last }        carried between frames by the caller
  *   near:  boolean                       false: `?locknear=0`, today's rule
  * }
- * out <- { take, why }: `take` the candidate that wears the lock (null: keep
+ * out <- { take, rule }: `take` the candidate that wears the lock (null: keep
  * the held one, or nothing when nothing is held and there are no candidates),
- * `why` one word (the census and the QA probe read it).
+ * `rule` one word (the census and the QA probe read it).
  */
 export function lockPick(c, out) {
   out = out || {};
   out.take = null;
-  out.why = 'none';
+  out.rule = 'none';
   const cands = c.cands || [], held = c.held || null, mem = c.mem || {};
-  if (!cands.length) { mem.rival = null; out.why = held ? 'held' : 'none'; return out; }
+  /* a stint is unbroken: the caller skips the pick on frames with nothing in
+     the ring (targeting.js returns early), so a gap longer than the dwell
+     between two asks (STINT_GAP_MS) ends a rival's wait, or it would take
+     the lock with no wait when it came back */
+  if (mem.rival != null && !(c.now - mem.last <= LOCK_PICK.STINT_GAP_MS)) mem.rival = null;
+  mem.last = c.now;
+  if (!cands.length) { mem.rival = null; out.rule = held ? 'held' : 'none'; return out; }
   const best = cands[0];
 
   if (c.near === false) {
     /* today's rule (v2.3.2251 + AUTO_SWITCH_MARGIN): the 12% step everywhere */
     mem.rival = null;
     if (held && (same(held.key, best.key) || best.d2 > held.d2 * LOCK_PICK.FAR_STEP * LOCK_PICK.FAR_STEP)) {
-      out.why = 'held';
+      out.rule = 'held';
       return out;
     }
     out.take = best;
-    out.why = 'nearest';
+    out.rule = 'nearest';
     return out;
   }
 
@@ -152,28 +163,28 @@ export function lockPick(c, out) {
   }
   if (pick) {
     mem.rival = null;
-    if (held && same(held.key, pick.key)) { out.why = 'push'; return out; }
+    if (held && same(held.key, pick.key)) { out.rule = 'push'; return out; }
     out.take = pick;
-    out.why = 'push';
+    out.rule = 'push';
     return out;
   }
 
   /* nothing held: the nearest, at once */
-  if (!held) { mem.rival = null; out.take = best; out.why = 'nearest'; return out; }
-  if (same(held.key, best.key)) { mem.rival = null; out.why = 'nearest'; return out; }
+  if (!held) { mem.rival = null; out.take = best; out.rule = 'nearest'; return out; }
+  if (same(held.key, best.key)) { mem.rival = null; out.rule = 'nearest'; return out; }
 
   /* 2. near means near */
   if (best.inReach) {
-    if (!held.inReach) { mem.rival = null; out.take = best; out.why = 'reach'; return out; }
-    if (!same(mem.rival, best.key)) { mem.rival = best.key; mem.since = c.now; out.why = 'dwell'; return out; }
-    if (c.now - mem.since >= LOCK_PICK.DWELL_MS) { mem.rival = null; out.take = best; out.why = 'dwell'; return out; }
-    out.why = 'dwell';
+    if (!held.inReach) { mem.rival = null; out.take = best; out.rule = 'reach'; return out; }
+    if (!same(mem.rival, best.key)) { mem.rival = best.key; mem.since = c.now; out.rule = 'dwell'; return out; }
+    if (c.now - mem.since >= LOCK_PICK.DWELL_MS) { mem.rival = null; out.take = best; out.rule = 'dwell'; return out; }
+    out.rule = 'dwell';
     return out;
   }
 
   /* 3. outside reach, the step */
   mem.rival = null;
-  if (bestD <= Math.sqrt(held.d2) * LOCK_PICK.FAR_STEP) { out.take = best; out.why = 'step'; return out; }
-  out.why = 'held';
+  if (bestD <= Math.sqrt(held.d2) * LOCK_PICK.FAR_STEP) { out.take = best; out.rule = 'step'; return out; }
+  out.rule = 'held';
   return out;
 }

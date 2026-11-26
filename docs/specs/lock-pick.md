@@ -76,6 +76,6 @@ monster nearest the feet:
 ## Its tests
 
 - `tools/guards/lock-pick.test.mjs`: the scenes. The card's six dodges and
-  seventeen more mutants are planted in a copy of the module, and each one
+  nineteen more mutants are planted in a copy of the module, and each one
   is seen red on every run.
 - `tools/qa/mp/mp-locknear.mjs`: the phone, with two stand-ins.

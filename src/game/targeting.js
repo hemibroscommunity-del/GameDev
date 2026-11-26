@@ -767,13 +767,13 @@ export function updateTargeting(S) {
   }
   for (let i = 0; i < cands.length; i++) { const q = cands[i]; q.key = q.id != null ? q.id : q.m.id; }
   _PUSH.x = S.stickX || 0; _PUSH.y = S.stickY || 0;
-  if (!S._lockPickMem) S._lockPickMem = { rival: null, since: 0 };
+  if (!S._lockPickMem) S._lockPickMem = { rival: null, since: 0, last: 0 };
   _PICK_IN.cands = cands; _PICK_IN.held = held; _PICK_IN.push = _PUSH;
   _PICK_IN.px = P.x; _PICK_IN.py = P.y; _PICK_IN.now = Date.now();
   _PICK_IN.mem = S._lockPickMem; _PICK_IN.near = near;
   const pick = lockPick(_PICK_IN, _PICK_OUT);
   _PICK_IN.cands = null; _PICK_IN.held = null;   /* hold no frame's monsters past the frame */
-  S._lockPickWhy = pick.why;   /* the QA probe (mp-locknear) and the census's word */
+  S._lockPickRule = pick.rule;   /* the QA probe (mp-locknear) and the census's word */
   if (!pick.take) return;
   const best = pick.take;
   /* Allocate only when the monster actually changes: this runs 60x a second
