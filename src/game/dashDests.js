@@ -66,6 +66,10 @@ export const FRAME_PAGES = Object.freeze({
   broCharacter: 'dashFrame.character',
   broCombat: 'dashFrame.combat',
   broTitles: 'dashFrame.titles',   /* v2.3.6684: the passport's Titles door (the title's Equip) */
+  /* v2.3.6685 (card UI2-combat): a weapon's page under Combat's hub; Back returns to the hub */
+  broSword: 'dashFrame.sword',
+  broBow: 'dashFrame.bow',
+  broStaff: 'dashFrame.staff',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:

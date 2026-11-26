@@ -1,6 +1,6 @@
 card: UI2
-branch: claude/plan-ui2-8b-character
-prs: the kit's draft PR #2368 (ready); the frame's #2369 (stacked on it; ready); Bro's landing #2370 (stacked on #2369; ready); Character, the passport (stacked on #2370; ready)
+branch: claude/plan-ui2-10-combat (step 4, card UI2-combat; stacked on claude/plan-ui2-8b-character)
+prs: the kit's draft PR #2368 (ready); the frame's #2369 (stacked on it; ready); Bro's landing #2370 (stacked on #2369; ready); Character, the passport #2374 (stacked on #2370; ready); Combat's hub and a weapon's page (6685; stacked on #2374; ready)
 state: ready
 
 ## Done
@@ -10,10 +10,16 @@ state: ready
 
 - v2.3.6684, step 3 PR 2 (card UI2-bro; branch claude/plan-ui2-8b-character): Character, the passport (`sheet/CharacterPage.jsx`, the rules `broHub.js` broPassport and titleActions, words `src/data/say/charPage.js`): the face large, the combat level beside it (prog3CharLevel), name, title; Sword, Bow, Staff doors; Clan, Guilds, AP, Quests done; Titles (a frame page: Equip and Remove title, the pending mark from `pending.js`) and Journey (it left the Settings hub: one row of `dashDests.js`); `bro-hub.test` part 3 (8 dodges, 10 plants, each red); `mp-ui2bro` 27 of 27 on the test box (the acceptance task, the seeded passport in five shapes, the title's Equip with its pending mark); precheck OK.
 
+- v2.3.6685, step 4 PR 1 (card UI2-combat; branch claude/plan-ui2-10-combat): Combat's hub (`sheet/CombatHub.jsx`: Sword, Bow, Staff, each level, XP bar and count; Shared Attributes under them) and a weapon's page (`sheet/WeaponPage.jsx`: level and XP with the one line a level gives, DPS the headline, Damage, Attack speed, Crit chance, Range, the six attributes); the rules `src/game/combatHub.js` (the four doors, the pools by one rule, which the Points window reads too; the pool a Spend draws on) and `src/game/progression.js` (a level and its XP; the roadmap's one line); the preview moved whole out of HeroExpanded into `sheet/statWindow.jsx` (HeroExpanded 3,539 to 3,191 lines), InfoPopup's read-only mode; `tools/guards/combat-hub.test.mjs` (12 dodges, 22 plants) and `progression.test.mjs` (6 dodges, 10 plants), each plant seen red; `mp-ui2combat` (the hub, the Sword page in five shapes, the third acceptance task); mp-ui2bro moved to the hub (3b, 2b, 6b).
+
 ## Next
 - Step 2 PR 2 (6682), the growing motion: a fresh session's.  Card UI2-bro is done.
+- Step 4 PR 2 (6686, card UI2-combat): the stat tree (`src/game/metricTree.js`, `sheet/StatTree.jsx`, `calcDisplayDps` handing back its parts) and the Shared page (`sheet/SharedPage.jsx`; the hub's Shared door then opens it instead of the Points window); `metric-tree.test.mjs`; the specification's second acceptance task.
 
 ## Found
+- (6685) FLAG, the points rule: the card and the audit say a weapon's points may also buy body stats (the rule of v2.3.2176). The worker RETIRED that in v2.3.2592: a body spend draws the shared pool or the free remainder, "never a lane's points" (server/src/prog3.js:1420-1426). The screens follow the worker; nothing promises otherwise. The owner's to confirm, not a screen's.
+- (6685) The passport's weapon counts (dash/combatSkill.js:45, combatSkillState) put the free remainder (points banked before channels) in ONE lane (`R._p3PoolFrom`); the Points window and Combat's hub count it in every lane (it is spendable in any). They differ only for a character with free points. Not changed here (the passport is step 3's).
+- (6685) Missing art: Combat's and Shared's own door pictures (Combat wears the melee sword, Shared the Points tab's gold bust).
 - The guide arrow's words for `[data-nav="hero"]` say "Tap Bro: points to spend" (src/ui/guideArrow.js:217); under the frame that hook is worn by the Menu button (Bro's tile on the Menu's root). Its words are outside this card.
 - ControlsTutorial.jsx:106 aims at `.bt-navrail [data-nav="dashboard"]` (only under ?ui2=0); its first selector `[data-tut="coach-gear"]` still finds Gear's tile.
 - (6683) Fourteen phone scenarios read today's Bro card right after opening 'hero' (mp-achievements, -apchip, -bandshots, -brocard, -bropages, -catgrid, -deskkeys, -lazyfail, -pointheads, -pointsfly, -pointsreset, -pointsswitch, -statnocap, -tapthrough): under the landing they reach it through Character (`H.dashOpen(P, 'broCharacter')`) or run under `?ui2=0`. Not run here; the tests part's.

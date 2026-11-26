@@ -1366,6 +1366,7 @@ const OLD_MORE_WORD = { skills: 'Life Skills', social: 'Social', clan: 'Party', 
 const BRO_DOOR_OF = { broCharacter: 'character', broCombat: 'combat', skills: 'skills', achievements: 'feats', pets: 'pets' };   /* v2.3.6683 */
 const HUB_OF = { social: 'socialHub', clan: 'socialHub', guild: 'socialHub', settings: 'settingsHub', notifications: 'settingsHub', account: 'settingsHub', feedback: 'settingsHub', about: 'settingsHub' };   /* v2.3.6684: Journey is the passport's door (PASSPORT_OF) */
 const PASSPORT_OF = { journey: 'journey', broTitles: 'titles' };   /* v2.3.6684 (card UI2-bro PR 2): doors of Character, the passport */
+const COMBAT_OF = { broSword: 'sword', broBow: 'bow', broStaff: 'staff' };   /* v2.3.6685 (card UI2-combat): doors of Combat's hub */
 async function frameUp(P) {
   return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
 }
@@ -1405,7 +1406,7 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
   if (id === 'more' || id === 'menu') return true;
   /* v2.3.6683 (card UI2-bro): Bro's own pages through Bro's six doors (src/game/broHub.js):
      Character and Combat (today's pages under the header), Life Skills, Feats, Pets */
-  const bro = BRO_DOOR_OF[PASSPORT_OF[id] ? 'broCharacter' : id];
+  const bro = BRO_DOOR_OF[PASSPORT_OF[id] ? 'broCharacter' : COMBAT_OF[id] ? 'broCombat' : id];
   if (bro) {
     await tapTop(P.page, '[data-dash-grid="menu"] [data-dest="hero"]', timeout);
     await P.page.waitForTimeout(350);
@@ -1413,6 +1414,10 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
     await P.page.waitForTimeout(350);
     if (PASSPORT_OF[id]) {
       await tapTop(P.page, `[data-char-page] [data-char-door="${PASSPORT_OF[id]}"]`, timeout);
+      await P.page.waitForTimeout(350);
+    }
+    if (COMBAT_OF[id]) {
+      await tapTop(P.page, `[data-combat-hub] [data-combat-door="${COMBAT_OF[id]}"]`, timeout);
       await P.page.waitForTimeout(350);
     }
     return true;

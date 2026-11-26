@@ -50,7 +50,11 @@ export const BRO_HUB_DOORS = Object.freeze([
 
 /* the frame's own pages Character and Combat open (dashDests.js FRAME_PAGES); v2.3.6684: and
    Titles, the passport's door (the title's Equip, with its pending mark) */
-export const BRO_HUB_PAGES = Object.freeze({ broCharacter: 'character', broCombat: 'combat', broTitles: 'titles' });
+export const BRO_HUB_PAGES = Object.freeze({
+  broCharacter: 'character', broCombat: 'combat', broTitles: 'titles',
+  /* v2.3.6685 (card UI2-combat): a weapon's own page, under Combat's hub (src/game/combatHub.js COMBAT_PAGES) */
+  broSword: 'sword', broBow: 'bow', broStaff: 'staff',
+});
 
 /** Is this one of Bro's own frame pages (Character, Combat)? */
 export function isBroHubPage(id) {

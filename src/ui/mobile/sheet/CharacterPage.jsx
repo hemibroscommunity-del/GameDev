@@ -120,7 +120,7 @@ function passportKey(S) {
 }
 
 /* a page's clock: a redraw (a transition: never ahead of a frame) when `key()` moves */
-function useClock(key, ms) {
+export function useClock(key, ms) {
   const [, force] = useState(0);
   useEffect(() => {
     let last = '';
@@ -136,7 +136,7 @@ function useClock(key, ms) {
 /* the page's box: short (a phone on its side) and narrow, from its own ResizeObserver
    (docs/specs/layout-reads.md); the first guess from the kept window size */
 const shortGuess = () => { try { return winVh() < 500; } catch (e) { return false; } };
-function useRoom() {
+export function useRoom() {
   const ref = useRef(null);
   const [room, setRoom] = useState(() => ({ short: shortGuess(), w: 0, h: 0 }));
   useEffect(() => {

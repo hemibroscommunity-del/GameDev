@@ -130,7 +130,10 @@ export const InfoPopup = () => {
      it used to land on what lay under the finger -- over the minimap, the
      world map's "open" button (swallowTapClick.js, TRAPS §247) */
   const close = (e) => { swallowTapClick(e); infoPopupBus.close(); };
-  const stepMax = (cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
+  /* v2.3.6685 (card UI2-combat): READ-ONLY (another player's page, step 9): the window reads, with no
+     stepper, no Spend and no lanes (their pools are theirs) -- whatever the payload carries */
+  const ro = !!cur.readOnly;
+  const stepMax = (!ro && cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
   /* ═══ v2.3.3577: THE COUNT STARTS AT 0, AND [+] ADDS EVERY POINT ═══
      The owner: "when there's only 1 point left to add in your stat point
      allocation screen, still enable adding the last point using the plus
@@ -211,7 +214,7 @@ export const InfoPopup = () => {
       rather than squeezing three of them into whatever is left: on a
       320px card three tabs plus their gaps is tight, and a tab too
       small to hit is worse than one you have to nudge to. */}
-  {cur.lanes && cur.lanes.options && cur.lanes.options.length > 0 && (
+  {!ro && cur.lanes && cur.lanes.options && cur.lanes.options.length > 0 && (
     <div data-infopopup-lanes style={{
       marginTop: compact ? 0 : 10, display: 'flex', gap: 6,
       overflowX: 'auto', WebkitOverflowScrolling: 'touch',
@@ -255,7 +258,7 @@ export const InfoPopup = () => {
   </>);
   const spending = spendingOf === cur;   /* v2.3.3522 */
   const spend = (e) => {
-    if (!cur.action || cur.action.blocked) return;
+    if (ro || !cur.action || cur.action.blocked) return;   /* v2.3.6685: never from a read-only window */
     if (stepMax && stepN < 1) return;   /* v2.3.3577: nothing added yet */
     const run = cur.action.run;
     /* v2.3.3522: a spend that STAYS (the Points window): the window keeps
@@ -483,7 +486,7 @@ export const InfoPopup = () => {
         {/* v2.3.2695: the "Melee points available: 2" line is retired (owner:
             "Remove the redundant 'shared points available'") -- the
             highlighted lane tab carries the same number. */}
-        {cur.action && cur.action.blocked && (
+        {!ro && cur.action && cur.action.blocked && (
           <div data-infopopup-blocked style={{
             marginTop: 9, fontSize: 11.5, fontWeight: 700, color: COL.accent, lineHeight: 1.3,
           }}>{cur.action.blocked}</div>
@@ -552,7 +555,7 @@ export const InfoPopup = () => {
           </div>
         ) : (
         <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>
-          {cur.action && (
+          {cur.action && !ro && (
             <button type="button"
               data-infopopup-action
               /* ═══ v2.3.2597: A BLOCKED ACTION STAYS AND SAYS WHY ═══
