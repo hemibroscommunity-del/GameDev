@@ -153,7 +153,7 @@ export function ChargeButton(props) {
       WebkitTapHighlightColor: 'transparent', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   }, React.createElement(Skin, { size: size, tone: 'slate', state: skinState, progress: cooling ? 1 - st.cdFrac : null, flash: flash && skinState === 'normal',
-    pad: at.pad ? 'charge' : null, face: at.face },   /* v2.3.6640: the painted face, no word (the mockup's) */
+    pad: at.pad ? 'charge' : null, face: at.face, dy: at.dy },   /* v2.3.6640: the painted face, no word (the mockup's) */
     React.createElement('span', { className: 'bt-skin-art', 'data-icon': 'charge', style: { position: 'relative', display: 'block', width: size, height: size } },
       React.createElement(SpeedLines, { size: size, grey: grey }),
       React.createElement('img', { src: grey ? WPN_PILL_ICONS.melee.off : WPN_PILL_ICONS.melee.on, alt: '', draggable: false, width: art, height: art,

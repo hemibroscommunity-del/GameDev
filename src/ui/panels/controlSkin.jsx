@@ -175,7 +175,8 @@ function PadSkin(props) {
   return React.createElement('span', {
     className: 'bt-skin bt-pad', 'data-pad': name, 'data-state': props.state || 'normal',
     'data-glow': f.glow ? '1' : '0', 'data-ring': f.ring ? '1' : '0', 'data-flash': props.flash ? '1' : undefined,
-    style: { '--pad-face': face + 'px', '--pad-acc': acc },
+    /* v2.3.6641 (part 4): `dy`, the art drawn that much lower in a box risen off it, or a rounding's tenth higher (padSkin.js padSpot): the box's inset moved, no layer */
+    style: props.dy ? { '--pad-face': face + 'px', '--pad-acc': acc, top: props.dy + 'px', bottom: -props.dy + 'px' } : { '--pad-face': face + 'px', '--pad-acc': acc },
   },
   React.createElement('span', { className: 'bt-pad-glow' }),
   React.createElement('span', Object.assign({ className: 'bt-pad-face', ref: props.faceRef || undefined }, props.faceProps || null),

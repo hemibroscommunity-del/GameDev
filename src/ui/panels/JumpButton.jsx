@@ -217,7 +217,7 @@ export function JumpButton(props) {
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal', pad: anchor.pad ? 'jump' : null, face: anchor.face },
+  React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal', pad: anchor.pad ? 'jump' : null, face: anchor.face, dy: anchor.dy },
     /* v2.3.3526: the owner's round jump (card 11), the button's face.
        v2.3.3721: a plain arrow over the ground instead (the owner's pick of
        four: "I like option B for jump better") -- the owner: "the

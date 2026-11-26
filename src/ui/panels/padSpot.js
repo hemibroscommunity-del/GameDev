@@ -12,12 +12,13 @@
  */
 import { padOn, padLayout, padSpot, padWidthOf } from '@/game/padSkin.js';
 import { sw } from '@/game/switches.js';
+import { fineInput } from '@/game/deviceProfile.js';
 import { playVw } from '@/ui/mobile/playViewport.js';
 import { canvasCssW, watchCanvasCssW } from '@/game/renderRes.js';
 import { useState, useEffect, startTransition } from 'react';
 
 export function padLive() {
-  return padOn(sw('padskin'));
+  return padOn(sw('padskin'), fineInput());   /* v2.3.6641: never on a computer (padSkin.js padOn) */
 }
 
 /** the world's width: the canvas's as resize() last gave it, never wider
@@ -55,5 +56,5 @@ export function padAnchor(name, isLandscape, today, fight) {
   const L = padNow(isLandscape);
   const s = L && padSpot(name, L, today && today.size, fight === true);
   if (!s) return today;
-  return { size: s.size, right: s.edge, bottomPx: s.bottom, face: s.face, pad: true, well: s.well };
+  return { size: s.size, right: s.edge, bottomPx: s.bottom, face: s.face, pad: true, well: s.well, dy: s.dy };
 }

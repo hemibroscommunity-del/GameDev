@@ -465,7 +465,7 @@ export function TouchControls(props) {
     }
   }, /* v2.3.3018: the ring, the face (rBodyRef -- still the layer the resolver
      fades) and the glow, from the one skin every control wears. */
-  React.createElement(Skin, { size: discW, tone: 'ember', faceRef: rBodyRef, faceProps: { 'data-rbody': '1' }, pad: arcA.pad ? 'attack' : null, face: arcA.face }),
+  React.createElement(Skin, { size: discW, tone: 'ember', faceRef: rBodyRef, faceProps: { 'data-rbody': '1' }, pad: arcA.pad ? 'attack' : null, face: arcA.face, dy: arcA.dy }),
   /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
        Owner: "Attack button sometimes covers monster (not sure best way to
        deal with it maybe 50% transparency during active combat?)"

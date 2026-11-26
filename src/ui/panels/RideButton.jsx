@@ -190,7 +190,7 @@ export function RideButton(props) {
       WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
     },
   },
-  React.createElement(Skin, { size: size, tone: on ? 'warm' : 'slate', state: on ? 'on' : (view.asking ? 'cooldown' : 'normal'), pad: at.pad ? 'skate' : null, face: at.face },
+  React.createElement(Skin, { size: size, tone: on ? 'warm' : 'slate', state: on ? 'on' : (view.asking ? 'cooldown' : 'normal'), pad: at.pad ? 'skate' : null, face: at.face, dy: at.dy },
     /* the board from above, turned across the button: the owner's own
        picture (public/sprites/ride/skateboard-top.png), loaded with the
        rider's art behind the loading screen (rideFx.js preloadRideArt) */

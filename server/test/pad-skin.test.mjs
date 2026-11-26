@@ -197,6 +197,8 @@ const near = (a, b, e) => Math.abs(a - b) <= e;
 
 /* ── 6. the switch ── */
 check('6a. on unless ?padskin=0 is thrown', padOn(undefined) === true && padOn(false) === true && padOn(true) === false);
+check('6a. never on a computer (a mouse the main pointer): today\'s places for the pill and Skate, which a computer shows (v2.3.6641)',
+  padOn(false, true) === false && padOn(undefined, true) === false && padOn(false, false) === true && padOn(true, false) === false);
 check('6b. every picture is named for the loading screen', padPictures().length === Object.keys(PAD_ART).length && padPictures().includes('housing'));
 
 /* ── 7. the art ── */
@@ -280,6 +282,22 @@ check('6b. every picture is named for the loading screen', padPictures().length 
   const T = padLayout(false, 320), ts = T.s, sp = Math.max(101 * ts, 45) + Math.max(100 * ts, 45) - 201 * ts;
   check('8n. a column too narrow for any fit (320) draws the top row at 0.8, moved left half its spread',
     near(T.wells.mid.d, 0.8 * 80 * ts, 1e-9) && near(T.wells.mobility.x, 320 - (920 - 634) * ts - sp / 2, 1e-6));
+}
+
+/* ── 10 (v2.3.6641, card PAD part 4): a box risen off its art draws its art in the WELL ── */
+{
+  const bad = [], risen = [];
+  for (const vw of [320, 375, 390, 430, 752, 844]) {
+    const L = padLayout(false, vw);
+    for (const [name, fight] of [['skate', false], ['jump', true], ['special', false], ['jump', false], ['block', true], ['attack', false]]) {
+      const sp = padSpot(name, L, 50, fight), w = L.wells[sp.well];
+      const art = sp.bottom + sp.size / 2 - sp.dy;   /* the face's centre over the band */
+      if (Math.abs(art - w.y) > 0.06 || sp.dy < -0.5) bad.push([vw, name, art, w.y, sp.dy]);
+      if (sp.dy > 0.5) risen.push(name);
+    }
+  }
+  check('10a. every face\'s centre on its well\'s (0.06 px), the box risen or not (a rounding\'s fraction at most the other way)', bad.length === 0, bad);
+  check('10b. the top row\'s boxes do rise at a phone\'s widths (the case the shift is for)', risen.includes('special') && risen.includes('skate'), risen);
 }
 
 /* ── 9 (v2.3.6641, card PAD part 4): the width it lays out at is the WORLD's ── */

@@ -319,7 +319,7 @@ export function SpecialButton(props) {
   },
   React.createElement(Skin, {
     size: size, tone: 'slate', state: skinState,
-    pad: arc.pad ? 'special' : null, face: arc.face,   /* v2.3.6640 */
+    pad: arc.pad ? 'special' : null, face: arc.face, dy: arc.dy,   /* v2.3.6640 */
     progress: cdLeft > 0 ? 1 - cdFrac : null,
     flash: flash && skinState === 'normal',
   }, specKind

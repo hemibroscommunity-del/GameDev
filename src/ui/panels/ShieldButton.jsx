@@ -951,7 +951,7 @@ export function ShieldButton(props) {
   },
   React.createElement(Skin, {
     size: size, tone: on ? 'warm' : 'slate', state: skinState,
-    pad: anchor.pad ? 'block' : null, face: anchor.face,   /* v2.3.6640 */
+    pad: anchor.pad ? 'block' : null, face: anchor.face, dy: anchor.dy,   /* v2.3.6640 */
     progress: onCd ? 1 - Math.min(1, cdLeft / SHIELD_CD_MS) : null,
     flash: flash && skinState === 'normal',
   },

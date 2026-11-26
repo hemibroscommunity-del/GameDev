@@ -184,11 +184,17 @@ export function padSpot(name, layout, today, fight) {
   if (!k || !layout || !layout.wells[k]) return null;
   const w = layout.wells[k];
   const size = Math.round(w.box.size);
+  const bottom = Math.round(w.box.y - size / 2);
   return {
     side: 'right', well: k,
     edge: Math.round(layout.shell.w - w.box.x - size / 2),
-    bottom: Math.round(w.box.y - size / 2),
+    bottom,
     size, face: Math.round(w.d),
+    /* v2.3.6641 (part 4): how far the box's centre sits ABOVE its art's (a
+       top-row box risen off the big buttons' boxes, padLayout): the face is
+       drawn this much lower in its box, so the ART stays in its well (it was
+       drawn at the box's centre, up to 5 px over its well: mp-twobuttons 3f) */
+    dy: Math.round((bottom + size / 2 - w.y) * 10) / 10,
   };
 }
 
@@ -295,10 +301,15 @@ export function insideShell(layout, x, y, r, clear, art) {
 }
 
 /** `?padskin=0`: today's look.  `thrown` the switch's (switches.js
- *  sw('padskin')), handed by the caller; on a computer the controls are
- *  hidden either way (bt-desktop-hide), so nothing there changes. */
-export function padOn(thrown) {
-  return thrown !== true;
+ *  sw('padskin')), handed by the caller.  `fine`: a mouse is the main pointer
+ *  (deviceProfile.js fineInput), a computer: never the controller there.
+ *  v2.3.6641 (part 4): it was "hidden either way (bt-desktop-hide)", and the
+ *  shell and the touch buttons are, but the weapon pill and the skateboard's
+ *  button show on a computer, and they took the hidden shell's wells (the
+ *  pill spread over the column's foot, Skate under it: mp-weaponswap's
+ *  computer, 52 px into each other).  A computer keeps today's places. */
+export function padOn(thrown, fine) {
+  return thrown !== true && fine !== true;
 }
 
 /** Every picture the controller draws, for the loading screen to warm. */
