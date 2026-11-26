@@ -7,12 +7,13 @@
  * links (tools/guards/menu-font.test.mjs holds the sheets).  In the Wheel's
  * BroTown, a character with the dev kit's weapons:
  *
- *   upright phone (390 x 844, touch), the band's words (on a computer the band
+ *   upright phone (390 x 844, touch; at least 5 words a page: Gear holds 6), the band's words (on a computer the band
  *   also holds the controls' key hints: not a menu, left out), on the Menu, Bro, Character, Combat, a
  *   weapon page (the sword's), Gear, an item page (the worn sword's) and the
  *   Account page:
  *     1. the COMPUTED family of every word under the band starts with
- *        Source Sans 3 (no serif anywhere);
+ *        Source Sans 3 (no serif anywhere; the login key's eight words, a
+ *        monospace on purpose in AccountKeyCard.jsx, are counted apart);
  *     2. no word is cut by its box (its scroll width within its box);
  *     3. no word under 11 px (the kit's count badge and a slot's stars, 10 by
  *        the kit's own law, are not words);
@@ -111,6 +112,9 @@ function wordsRead() {
     if (!text || !/[A-Za-z0-9]/.test(text)) continue;   /* a word: an icon's glyph alone is not one */
     const el = t.parentElement;
     if (!el || seen.has(el) || el.closest('[data-band-keys], [data-desk-keys]')) continue;
+    /* the Account page's eight-word login key (src/ui/account/AccountKeyCard.jsx) is in a monospace face
+       on purpose, each letter told apart; not this card's file: counted apart, the owner's to say */
+    if (el.closest('[data-bt="account-keycard-words"]')) { out.keyMono = (out.keyMono || 0) + 1; continue; }
     seen.add(el);
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) continue;
@@ -133,8 +137,8 @@ function wordsRead() {
   return out;
 }
 const words = (P) => P.page.evaluate(wordsRead);
-const wordsOk = (w) => w.band && w.root === 'frame' && w.n >= 8 && w.wrong.length === 0 && w.cut.length === 0 && w.small.length === 0;
-const wordsWhy = (w) => ({ root: w.root, frame: w.frame, title: w.title, n: w.n, fams: w.fams, wrong: (w.wrong || []).slice(0, 8), cut: (w.cut || []).slice(0, 8), small: (w.small || []).slice(0, 8) });
+const wordsOk = (w) => w.band && w.root === 'frame' && w.n >= 5 && w.wrong.length === 0 && w.cut.length === 0 && w.small.length === 0;
+const wordsWhy = (w) => ({ keyMono: w.keyMono || 0, root: w.root, frame: w.frame, title: w.title, n: w.n, fams: w.fams, wrong: (w.wrong || []).slice(0, 8), cut: (w.cut || []).slice(0, 8), small: (w.small || []).slice(0, 8) });
 
 /* yesterday's letters, put back in the page (for the BEFORE pictures only) */
 async function lettersWas(P, on) {

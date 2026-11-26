@@ -1,6 +1,6 @@
 card: UI3-type
 branch: claude/plan-ui3-6-type
-prs: (draft, base claude/plan-ui3-1-kit; its number in the ready message)
+prs: #2398 (draft, base claude/plan-ui3-1-kit)
 state: ready
 
 ## Done
@@ -17,7 +17,8 @@ state: ready
 ## Found
 - `src/ui/mobile/sheet/HeroExpanded.jsx`:2856 writes `Georgia, "Times New Roman", serif` italic for a lane's info glyph (the old hero sheet, `?ui2=0`): not this card's file.
 - `CREDITS.md`:27 still lists Merriweather (now unused): not this card's file.
-- On a computer the band holds the controls' key caps at 10 px (under the frame, not a menu): the phone test reads the frame's words.
+- On a computer the band holds the controls' key hints at 10 px (not a menu): the phone test leaves them out.
+- `src/ui/account/AccountKeyCard.jsx`:107 shows the eight-word login key in a monospace face (on purpose); not this card's file: counted apart in mp-ui3type, the owner's to say.
 
 ## Needs
 - Nothing.
