@@ -25,10 +25,11 @@ import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3455: the owner's spr
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
 import { foldForGame } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one; v2.3.5045: a few ms at a time (`?foldgentle=0` in one go) */
-import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
-import { AHEAD as SFX_AHEAD_KEYS, AHEAD_WHEN as SFX_AHEAD_WHEN, parseSfxAhead } from './sfxCache.js';   /* v2.3.5006: the four slow decodes decoded ahead, not pinned (`?sfxahead=0` pins them) */
+import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache, AHEAD as SFX_AHEAD_KEYS, AHEAD_WHEN as SFX_AHEAD_WHEN, parseSfxAhead } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
+/* v2.3.5006: AHEAD, AHEAD_WHEN, parseSfxAhead: the four slow decodes decoded ahead, not pinned (`?sfxahead=0` pins them); v2.3.6742: one import with the line above, so this file gained no statement for assetUrl's */
 import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6742: a sound's address gets its file's version (card KEEP PR 3) */
 import { feelSynth, feelBuildDemo } from './weaponFeelSound.js';   /* v2.3.4800: the weapon feel's sounds, synthesised (no files) */
 import { fineInput } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { bowSynth, bowDrawDemo } from './bowFeelSound.js';   /* v2.3.4802: the bow's draw -- the nock, the creak, the click, the twang (no files) */
@@ -3073,7 +3074,7 @@ BT_AUDIO.SFX_MANIFEST = {
   'magic-cast':    '/sfx/magic/magic-cast.mp3',
   'magic-hit':     '/sfx/magic/magic-hit.mp3',
   'magic-hit2':    '/sfx/magic/magic-hit2.mp3',
-  'monster-death': '/sfx/monster/Monster death-bony.mp3',
+  'monster-death': '/sfx/monster/Monster%20death-bony.mp3',   /* v2.3.6742: the space written %20, so the build can read the address whole and give it its version (a space reads as a sentence: tools/assets/stamp.mjs readAddress) */
   'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.mp3',
   'monster-hit':   '/sfx/monster/monster-hit.mp3',
   /* v2.3.1104: owner-supplied metallic CLANG for when a monster strikes the
@@ -4329,12 +4330,17 @@ BT_AUDIO.loadSample = function (key, url) {
   if (this.SFX_CACHE && this._sampleLoading[key] && this._sampleLoadP && this._sampleLoadP[key]) return this._sampleLoadP[key];
   if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return Promise.resolve();
   var self = this;
+  /* v2.3.6742: the one door every decoded sound's file comes through: an
+     address built from parts gets its file's version at `var tag` below (a
+     written-out one has it from the build already, and keeps it:
+     src/game/assetUrl.js; folded into that line, as this file's lines only
+     fall: tools/guards/four-lines) */
   /* ═══ v2.3.3462: ONE DECODE A FILE ═══
      Two keys naming one file were two copies of it in memory: 'fish-on-hook'
      and 'fishing-fish-on-hook' (0.95 MB each), 'lure-drop' and
      'fishing-lure-drop'.  A key whose file another key holds, or is fetching,
      at the same rate, now takes that buffer (decodedMB counts it once). */
-  var tag = url + (this._lowRate(key) ? '@low' : '');
+  var tag = (url = assetUrl(url)) + (this._lowRate(key) ? '@low' : '');
   if (!this._sampleTag) { this._sampleTag = Object.create(null); this._tagLoads = Object.create(null); }
   for (var k in this._sampleTag) {
     if (this._sampleTag[k] === tag && this._samples[k]) {
