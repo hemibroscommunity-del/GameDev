@@ -12,6 +12,7 @@ state: ready
 
 - v2.3.6689, step 5 PR 3 (card UI2-gear; branch claude/plan-ui2-9c-equipment, base main): Bro's Equipment door opens a showcase (`sheet/GearShowcase.jsx`, page `broEquip`: the figure, the nine worn cells by Gear's one body table `src/game/gearShowcase.js GEAR_BODY`, no bag, Manage Gear for yourself only); each cell and the player card's equipment row open the one item page (`itemPageOpen.js`: showcase, profile and another player's read-only sources); `tools/guards/gear-showcase.test.mjs` (S1-S10 planted, each red); `mp-ui2gear` steps 8c, 9c, 11-14 (33 of 33 on the test box, the final code, by a helper); `ui2-bro-equipment` in states.mjs and the notes.
 - v2.3.6693, card UI2-codex (step 6; branch claude/plan-ui2-12-codex, stacked on claude/plan-ui2-11-quests): the Codex as an illustrated collection (the kit's Ui2Collection: Monsters, Items, Resources, Townsfolk, Lands, Pets), a monster's showcase (the kit's Ui2Showcase: its idle strip, Combat, Loot, Habitat, Story, its essentials), Loot as plain rows (one chance each), a drop opening the one item page ("In the Codex", Drops from, Found from); the rules codexView.js, entityInspect.js, lootRows.js and their suites, the mount guard codex-mount; `mp-ui2codex`; states dash-codex-*; its own status file docs/plan/status/UI2-codex.md.
+- v2.3.6689, the mend (sitting 70's gatekeeper held #2391: 2b to 2d read the wiring as text): `tools/guards/gear-showcase.test.mjs` 2b to 2e read the showcase's tap, `openCardItem`, `openItemPage`, `itemPageInput` and the item page off Babel's tree, an ALLOW list holding `owner` to where the actions are offered (plants W1 to W7 red; S2 and S4 also refuse an owner's source carrying a bag entry); mp-ui2bro 2c reads the showcase.
 
 ## Next
 - Nothing: the Quests PR waits for the gatekeeper.  Phone runs on its final code (main eb90c6fd merged; the test box): ui2quests 33/33, questline 187/187, trackquest 13/13, ui2frame 34/34, questpages 22/22; membudget 11/12 until its buffers line went 25.0 -> 25.2 (main reads exactly 25.0; this PR's script is 15.9 KB).  Before the merge: dailyrewards 17/17, questjournal 29/29, deskkeys 73/73.
@@ -23,7 +24,7 @@ state: ready
 - (UI2-quests) the frame's PANELS pages carry no `.ui2` root: each new page wears `ui2RootClass()` itself, as Bro's and Combat's do.
 
 - (UI2-gear PR 3) `ItemTooltip.jsx` is not mounted (its parent `InventorySurface` left GameApp): no road to move, listed in the PR.
-- (UI2-gear PR 3) mp-ui2bro's step 2c reads "Equipment opens Gear": it now opens the showcase (for the tests part).
+- (UI2-gear PR 3, mended in its mend) mp-ui2bro's step 2c read "Equipment opens Gear": it now reads the showcase (page broEquip), Back to Bro, as #2405 reads it.
 
 ## Needs
 - Nothing.
