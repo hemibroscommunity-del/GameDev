@@ -250,7 +250,7 @@ export const SYSTEMS = Object.freeze({
   },
   input: {
     what: 'touch and the controls on a phone',
-    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch|freeAttack|thumbSide|thumbGlue|thumbArc|contextButton|lockFace'), f('src/ui', 'tapDismiss|swallowTapClick')],   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons); v2.3.6547: + freeAttack (item 8); v2.3.6549: + thumbSide, thumbGlue, thumbArc (part 16); v2.3.6550: + contextButton (part 17); v2.3.6551: + lockFace (part 18) */
+    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch|freeAttack|thumbSide|thumbGlue|thumbArc|contextButton|lockFace|bowSpecialNow'), f('src/ui', 'tapDismiss|swallowTapClick')],   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons); v2.3.6547: + freeAttack (item 8); v2.3.6549: + thumbSide, thumbGlue, thumbArc (part 16); v2.3.6550: + contextButton (part 17); v2.3.6551: + lockFace (part 18); v2.3.6557: + bowSpecialNow (part 23 PR 2) */
     words: ['touch', 'control', 'tap', 'thumb', 'swallow'],
     traps: ['input'],
     doors: [],
