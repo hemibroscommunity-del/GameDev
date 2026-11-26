@@ -114,10 +114,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const [door, page] of DOORS) {
       await tap(P, `[data-dash-grid="menu"] [data-dest="${door}"]`, 900);
       const G = await read(P);
-      opened.push({ door, page: G.page, back: G.back, kind: G.kind });
+      opened.push({ door, page: G.page, back: G.back, kind: G.kind, menu: G.ctls.some((c) => c.k === 'menu') });
       await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 600);
     }
-    rec.ok('4a. each tile opens its page, under its name, Back saying Menu', opened.every((o, i) => o.kind === 'page' && o.page === DOORS[i][1] && /Menu/.test(o.back || '')), opened);
+    rec.ok('4a. each tile opens its page, under its name, Back saying Menu (and no second Menu beside it)', opened.every((o, i) => o.kind === 'page' && o.page === DOORS[i][1] && /Menu/.test(o.back || '') && !o.menu), opened);
     F = await read(P);
     rec.ok('4b. ...and Back lands on the Menu\'s root again', F.kind === 'menu-root', F.kind);
     await tap(P, '[data-dash-grid="menu"] [data-dest="map"]', 1200);

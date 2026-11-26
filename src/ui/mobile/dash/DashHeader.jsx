@@ -106,8 +106,13 @@ export function DashHeader({ nav, titleOf, menuMark }) {
   }
   const to = dashNavBackTo(nav);
   const backTo = !to ? '' : to.kind === 'world' ? 'world' : to.kind === 'page' ? to.id : to.ws;
+  /* a page straight under the Menu's root: Back IS the Menu, so the small Menu
+     beside it would say the same thing twice ("‹ Menu" ... "Menu"); it shows
+     from the second page down, where the two differ */
+  const twice = !!to && to.kind === 'ws' && to.ws === 'menu';
   return wrap(
     <Ui2Header title={<span data-dash-title={v.top.id}>{titleOf(v.top.id)}</span>} backLabel={backWord(to, titleOf)} menuMark={menuMark}
+      onMenu={twice ? false : undefined}
       ctl={{
         back: { 'data-dash-ctl': 'back', 'data-dash-back': '', 'data-back-to': backTo, ...frameTap(go({ type: 'back' })) },
         menu: { 'data-dash-ctl': 'menu', 'data-nav': 'hero', ...frameTap(go({ type: 'menuRoot' })) },

@@ -1375,7 +1375,9 @@ export async function dashMenuRoot(P, { timeout = 6000 } = {}) {
   for (let i = 0; i < 3; i++) {
     const k = await frameKind(P);
     if (k === 'menu-root') return true;
-    await tapTop(P.page, '[data-dash-frame] [data-dash-ctl="menu"]', timeout);
+    /* a page straight under the root has no small Menu: its Back is the Menu */
+    const menu = await P.page.locator('[data-dash-frame] [data-dash-ctl="menu"]').count().catch(() => 0);
+    await tapTop(P.page, menu ? '[data-dash-frame] [data-dash-ctl="menu"]' : '[data-dash-frame] [data-dash-ctl="back"]', timeout);
     await P.page.waitForTimeout(350);
   }
   return (await frameKind(P)) === 'menu-root';
@@ -1392,7 +1394,7 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
       if (k === 'gear-root') return true;
       if (k === 'closed') await tapTop(P.page, '[data-dash-ctl="gear"]', timeout);
       else if (k === 'menu-root') await tapTop(P.page, '[data-dash-frame] [data-dash-ctl="back"]', timeout);
-      else await tapTop(P.page, '[data-dash-frame] [data-dash-ctl="menu"]', timeout);
+      else await dashMenuRoot(P, { timeout });
       await P.page.waitForTimeout(350);
     }
     return (await frameKind(P)) === 'gear-root';
