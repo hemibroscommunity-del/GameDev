@@ -58,3 +58,13 @@ Move in the same PR: `mp-crowdsweep` station g (it counts `[data-lb-rail]`, whic
 ## Standing lines
 
 Hand over at 250,000 tokens with the status file true. Phone runs past three go to helpers on the cheapest model. A run's output goes to a file; read only its FAIL lines and totals. One wait, never a poll. Never `src/ui/BroTown.jsx` or a renderer. A claim about a phone says "on the test box".
+
+## The owner's word of 2026-11-26 (it overrules the lines above where they differ)
+
+The owner, after playing the new dashboard (`docs/design/UI_FEEDBACK_2026-11-26.md` part 4: read that file WHOLE first): *"**Leaderboards.** Generally good information density. Reduce the metallic gradients across the first three rows while retaining the gold, silver and bronze medals. Highlight the player's own row regardless of rank."* This card is now built on the kit's three weights (card UI3, PR 1: RAISED for a door or an action only, the STAT recessed with a large number, FACTS flat in one shared container), on the kit's base of `claude/plan-ui3-1-kit` once it is merged or the orchestrator stacks you on it. What it changes, and only that:
+- **Reading 3, the first three rows**: the same surface as every other row; the place is told by the game's gold, silver and bronze medal ONLY (kept), never by a row-wide gradient, tint, metal edge or glow. "No bars, no gradients, no laurels" stands, now for rows 1 to 3 by name.
+- **Reading 4, your standing**: your OWN row is marked WHEREVER it stands (first, tenth or three hundredth): one kit mark on its surface (the kit's selected or border token, PR 1's) and the word "You" for a screen reader, never colour alone. AND, as before, while that row is out of view it is pinned at the foot, wearing the same mark; never a second copy while the real one shows. "Pinned at the foot ONLY while your real row is out of view" stands for the pinned copy; the mark on the real row is new.
+- **Reading 5, your own row's tap**: card UI3's PR 3 (UI3-bro) makes Bro and Character one page for yourself, so "Your own row opens your own Character page" lands on that one Bro page (`hero`); another player's row still opens `CharacterPage` with its `who`.
+- **The weights**: a row is a door (it opens a player): the kit's raised form with PR 1's lighter bevel; the value inside it a fact; no stat form inside a row.
+- **New dodges** for this card's suite, each planted and seen red: rows 1 to 3 given a gradient or a tinted background; a medal dropped from 1 to 3; your row marked only when it is in the top three, or only when pinned; your row marked by colour alone; two copies of your row in view.
+Each of these goes in this PR's `docs/UI-DESIGN-NOTES.md` section with the owner's words, and the decision log line (part 13) quotes them.
