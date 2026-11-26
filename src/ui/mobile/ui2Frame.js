@@ -9,7 +9,7 @@
  * The frame draws where the one band does (src/ui/oneBand.js: every screen
  * plays the upright layout, the band at the bottom); under `?oneband=0` the
  * old side column keeps its own ways. */
-import { sw, swValue } from '@/game/switches.js';
+import { sw, swValue } from '../../game/switches.js';   /* relative: node's suites import this file */
 import { oneBandActive } from '../oneBand.js';
 
 const KEY = 'bt_ui2';

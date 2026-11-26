@@ -1384,10 +1384,7 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
   if (!(await frameUp(P))) {
     const old = id === 'more' || id === 'dashboard' || id === 'hero' || id === 'quests' || id === 'leaderboard' || id === 'encyclopedia';
     if (old) { await tapTop(P.page, `[data-nav="${id}"]`, timeout); return true; }
-    await tapTop(P.page, '[data-nav="more"]', timeout);
-    await P.page.waitForTimeout(700);
-    await tapTop(P.page, `.bt-dashboard button:has-text("${OLD_MORE_WORD[id] || id}")`, timeout);
-    return true;
+    return openDest(P, OLD_MORE_WORD[id] || id, { timeout });   /* More's tile, by openDest's own road */
   }
   if (id === 'dashboard' || id === 'gear') {
     for (let i = 0; i < 3; i++) {
