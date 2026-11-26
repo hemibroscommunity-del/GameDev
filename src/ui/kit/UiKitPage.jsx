@@ -12,8 +12,9 @@
  * player's real data when the state is HANDED to the page: the global is
  * closed to new readers (open-hand.test), so a QA page's harness hands it
  * (`window.__btUiKitHand(S)`, mp-uikit); with none handed, the samples say
- * so, honestly empty.  The serif loads behind the page's own "Loading the kit"
- * (document.fonts.load; a face that fails, the fallback serif).  QA reads
+ * so, honestly empty.  The face loads behind the page's own "Loading the kit"
+ * (document.fonts.load; a face that fails, the fallback; v2.3.6785: the face
+ * is the game's Source Sans 3, no longer a serif).  QA reads
  * window.__btUiKit.
  *
  * v2.3.6780 (card UI3-kit): the plate "Three weights" (the owner, 2026-11-26:
@@ -65,7 +66,7 @@ function kitTap(id) {
 function Plate({ id, caption, room, title = 'Bro', head, children }) {
   return (
     <figure style={{ margin: '0 0 14px' }} data-u2-plate={id}>
-      <figcaption style={{ font: `${UI2_TYPE.small}px/1.3 'Source Sans 3', sans-serif`, color: 'var(--ui2-text-muted)', margin: '0 0 4px 2px' }}>{caption}</figcaption>
+      <figcaption style={{ font: `${UI2_TYPE.small}px/1.3 ${UI2_FONT.fontFamily}`, color: 'var(--ui2-text-muted)', margin: '0 0 4px 2px' }}>{caption}</figcaption>
       <Ui2Frame w={room.w} h={room.h} headH={room.head} label={caption} head={head || <Ui2Header title={title} />}>
         {children}
       </Ui2Frame>
@@ -349,7 +350,7 @@ export function UiKitPage() {
     try {
       const fam = UI2_FONT.fontFamily.split(',')[0];
       /* no flat timer raced against it (TRAPS §279): a face that fails rejects, and the page goes on
-         in the fallback serif; the browser's own network limits end a stalled one */
+         in the fallback face; the browser's own network limits end a stalled one */
       Promise.all(UI2_FONT.weights.map((w) => document.fonts.load(`${w} 16px ${fam}`))).then(done, done);
     } catch (e) { done(); }
     /* QA: the harness hands the state in (never taken here: open-hand.test) */
@@ -371,7 +372,7 @@ export function UiKitPage() {
   const wrap = { width: room.w, margin: '0 auto' };
   return (
     <div className={ui2RootClass()} style={page} data-u2-kit="ready">
-      <div style={{ ...wrap, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 6px 8px', font: `${UI2_TYPE.body}px/1.3 'Source Sans 3', sans-serif`, color: 'var(--ui2-text-muted)' }}>
+      <div style={{ ...wrap, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 6px 8px', font: `${UI2_TYPE.body}px/1.3 ${UI2_FONT.fontFamily}`, color: 'var(--ui2-text-muted)' }}>
         <span>The dashboard kit (v2.3.6680) at this screen's band: {room.w} x {room.h}, header {room.head}</span>
         <a href={shineOff ? '?uikit=1' : '?uikit=1&ui2shine=0'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{shineOff ? 'Shine on' : 'Shine off'}</a>
         {/* v2.3.6780: yesterday's look, to compare (remembered on this phone; ?ui2look=1 returns) */}
