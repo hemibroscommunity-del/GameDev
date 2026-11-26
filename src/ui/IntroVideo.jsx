@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getServerReadyState, serverHoldText } from '@/networking/serverReady.js'; /* v2.3.2439 */
+import { markLift } from '@/game/loadTimes.js'; /* v2.3.6760: why the screen lifted (the Test panel's Loading times) */
 
 /* Bro Town intro overlay — shown once after character creation.
    Plays the intro clip, then fades to reveal the game world.
@@ -118,9 +119,17 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, waitForWorld, t
        behind it (wheelHome.js) */
     try { document.body.classList.add('bt-intro-up'); } catch (e) {}
     let cancelled = false;
+    /* v2.3.6760: did the bro's own preload (waitFor) settle by itself?  The
+       safety limit below also sets readyRef, so readyRef alone cannot say; this
+       is only ever read to NAME why the screen lifted (markLift), never to
+       decide when it does.  The limit is its own const so the readout says
+       the same number the timer runs on. */
+    let gateSettled = false;
+    const HARD_CAP_MS = 20000;
     const maybeFinish = () => {
       if (cancelled || finishedRef.current) return;
       if (minDoneRef.current && readyRef.current && serverRef.current && worldRef.current) {
+        markLift(!gateSettled, HARD_CAP_MS);   /* v2.3.6760 */
         setWaiting(false);
         beginTransition();
         setFading(true);
@@ -135,12 +144,13 @@ export const IntroVideo = ({ onComplete, waitFor, waitForServer, waitForWorld, t
 
     /* No waitFor supplied -> behave like the old fixed-duration intro. */
     Promise.resolve(waitFor).catch(() => {}).then(() => {
+      gateSettled = true;   /* v2.3.6760 */
       readyRef.current = true;
       maybeFinish();
     });
     /* Safety net: never trap the player on the overlay forever if a preload
        somehow never settles (network stall). */
-    const hardCap = setTimeout(() => { readyRef.current = true; maybeFinish(); }, 20000);
+    const hardCap = setTimeout(() => { readyRef.current = true; maybeFinish(); }, HARD_CAP_MS);
     /* v2.3.2439: the server gate.  No cap -- see serverRef above.  A missing
        prop resolves at once so any other caller keeps the old behaviour. */
     Promise.resolve(waitForServer).catch(() => {}).then(() => {
