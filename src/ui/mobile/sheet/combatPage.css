@@ -79,3 +79,40 @@
 .ui2.u2-wp.is-short .u2-wp-attr-words { align-items: center; }
 .ui2.u2-wp.is-short .u2-wp-attr-k { font-size: var(--ui2-fs-small); }
 .ui2.u2-wp.is-short .u2-wp-attr-v { line-height: 13px; }
+
+/* ═══ v2.3.6686: the stat tree, one layer at a time (StatTree.jsx) ═══
+   Upright: the headline row (44 px) and the rows, two rows of three 44 px
+   tiles (a layer has five at most); sideways one row.  A row that opens is
+   raised with its chevron; a reason is sunk (u2-group); the worn weapon is a
+   raised door to its card. */
+.ui2.u2-st { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--ui2-space-s); }
+.ui2 .u2-st-head { flex: 0 0 var(--ui2-size-touch); display: flex; align-items: center; gap: var(--ui2-space-l); padding: 0 var(--ui2-space-l); min-width: 0; }
+.ui2 .u2-st-hv { flex: 0 0 auto; display: flex; flex-direction: column; line-height: 1.1; min-width: 72px; }
+.ui2 .u2-st-hv b { font-size: var(--ui2-fs-value); color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui2 .u2-st-hk { font-size: var(--ui2-fs-small); color: var(--ui2-text-ivory); font-weight: 700; white-space: nowrap; }
+.ui2 .u2-st-how { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-small); line-height: 13px; color: var(--ui2-text-muted); }
+.ui2 .u2-st-rows { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(var(--ui2-size-touch), 1fr); gap: var(--ui2-space-s); }
+.ui2 .u2-st-rows.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ui2 .u2-st-row { position: relative; min-width: 0; min-height: var(--ui2-size-touch); display: flex; flex-direction: column; justify-content: center; gap: 0; padding: var(--ui2-space-xs) var(--ui2-space-m); text-align: left; line-height: 1.15; touch-action: manipulation; }
+.ui2 .u2-st-row.is-opens, .ui2 .u2-st-row.is-item { padding-right: 18px; }
+.ui2 .u2-st-row .u2-chev { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+.ui2 .u2-st-rv { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui2 .u2-st-rk { font-size: var(--ui2-fs-small); font-weight: 700; color: var(--ui2-text-ivory); }
+.ui2 .u2-st-rs { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); }
+.ui2 .u2-st-none { flex: 0 0 auto; padding: var(--ui2-space-l); font-size: var(--ui2-fs-body); }
+.ui2.u2-st.is-short { flex-direction: row; }
+.ui2.u2-st.is-short .u2-st-head { flex: 0 1 260px; min-width: 150px; height: auto; }
+.ui2.u2-st.is-short .u2-st-rows { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-auto-rows: auto; }
+
+/* ═══ v2.3.6686: the Shared page (SharedPage.jsx): the weapon page's shape, seven tiles ═══ */
+.ui2 .u2-wp-tiles.is-seven { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ui2 .u2-wp-tiles.is-seven.is-one { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ui2 .u2-sp-hp { flex: 0 0 auto; min-width: 104px; }
+.ui2 .u2-sp-hp .u2-stat-v { color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; }
+.ui2 .u2-sp-def { flex: 0 0 auto; min-width: 96px; display: flex; flex-direction: column; justify-content: center; padding: 0 var(--ui2-space-l); }
+.ui2 .u2-wp-row.is-attrs.is-stack { flex-direction: column; gap: var(--ui2-space-xs); }
+.ui2 .u2-wp-row.is-stack .u2-wp-attrhead { flex: 0 0 auto; flex-direction: row; align-items: baseline; gap: var(--ui2-space-l); line-height: 14px; }
+.ui2 .u2-wp-row.is-stack .u2-wp-tiles { flex: 1 1 auto; min-height: 0; }
+.ui2 .u2-wp-tiles.is-noart .u2-wp-attr-art { display: none; }
+.ui2 .u2-wp-tiles.is-noart .u2-wp-attr { justify-content: center; text-align: center; }
+.ui2 .u2-wp-tiles.is-noart .u2-wp-attr-words { align-items: center; }

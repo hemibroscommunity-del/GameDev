@@ -5782,8 +5782,7 @@ export function weaponVarBand(weaponType) {
 export function combatHitBase(rpg, wpn, mlvl) {
   var w = wpn && WEAPON_TYPES[wpn.type];
   if (!w) return null;
-  var statKey = EQUIP_STAT_MAP[wpn.type] || 'power';
-  var statVal = (rpg && rpg[statKey]) || 0;
+  var statVal = (rpg && rpg[EQUIP_STAT_MAP[wpn.type] || 'power']) || 0;   /* v2.3.6686: the stat's key read in place (four-lines) */
   /* Raw damage-channel POINTS for the weapon's category (edge /
      drawPower / spellPower) — v2.3.1343: flat +DAMAGE_CHANNEL_FLAT/pt
      added after tier and variance (mirrors calcWeaponDmg). */
@@ -5795,11 +5794,15 @@ export function combatHitBase(rpg, wpn, mlvl) {
     : t2Accel(dmgPts, T2_UNITS.damage);
   /* v2.3.1660 (prog3): trained level × K replaces the stat term —
      the readout mirrors the server roll it predicts. */
-  var base = (weaponEffBase(w.base, wpn)
-    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667))
-    * (prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type), mlvl) : 1) /* v2.3.2680: Power multiplies, pre-tier */
-    * weaponTierFactor(wpn.tierMult || 1) * weaponQualityMult(wpn); /* v2.3.2664: tier factor + grade, the roll's order */
-  return { base: base, flat: flat };
+  /* v2.3.6686 (card UI2-combat, the stat tree): the five factors named in
+     `parts`, each the same call as before, joined in the same order, so
+     `base` is the same number to the last bit; `parts` rides along for the
+     tree (src/game/metricTree.js) and no caller's arithmetic meets it. */
+  var parts = { effBase: weaponEffBase(w.base, wpn), term: prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667,
+    powerMult: prog3Live(rpg) ? prog3PowerMult(rpg, prog3CatFor(wpn.type), mlvl) : 1, /* v2.3.2680: Power multiplies, pre-tier */
+    tierFactor: weaponTierFactor(wpn.tierMult || 1), qualityMult: weaponQualityMult(wpn) }; /* v2.3.2664: tier factor + grade, the roll's order */
+  var base = (parts.effBase + parts.term) * parts.powerMult * parts.tierFactor * parts.qualityMult;
+  return { base: base, flat: flat, parts: parts };
 }
 export function calcCombatDmgRange(rpg, wpn) {
   var hb = combatHitBase(rpg, wpn);
@@ -5809,16 +5812,18 @@ export function calcCombatDmgRange(rpg, wpn) {
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
-  var dmgMin, dmgMax, cdMs = SWING_COOLDOWN * swingCooldownMultFor(rpg, wpn.type) * weaponSwingMult(wpn.type);   /* v2.3.2265: the bow's 25% */
-  dmgMin = base * band[0] + flat;
-  dmgMax = base * band[1] + flat;
+  /* v2.3.6686: the swing's factors named in `sw` (the same calls, the same order) for the stat
+     tree, and each end of the range rounded where it is worked out (the same numbers) */
+  var sw = { swingMs: SWING_COOLDOWN, swingMult: swingCooldownMultFor(rpg, wpn.type), paceMult: weaponSwingMult(wpn.type), castMs: wpn.type === 'staff' ? 300 : 0 },   /* v2.3.2265: the bow's 25% */
+    cdMs = SWING_COOLDOWN * sw.swingMult * sw.paceMult, dmgMin = Math.round(base * band[0] + flat), dmgMax = Math.round(base * band[1] + flat);
   if (wpn.type === 'staff') cdMs += 300;
-  dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
   return {
     min: dmgMin,
     max: dmgMax,
     text: (dmgMin === dmgMax) ? String(dmgMin) : (dmgMin + '-' + dmgMax),
     cdMs: cdMs,
+    /* v2.3.6686: the range's own inputs, for the stat tree (calcDisplayDps' `out`); no caller's sum reads them */
+    parts: { hit: hb.parts, base: base, flat: flat, band: band, swingMs: sw.swingMs, swingMult: sw.swingMult, paceMult: sw.paceMult, castMs: sw.castMs },
   };
 }
 /* v2.3.2520: the player-facing half — see the RAW vs DISPLAYED note above. */
@@ -5836,7 +5841,15 @@ export function calcDisplayDmgRange(rpg, wpn) {
     rawMax: r.max,
   };
 }
-export function calcDisplayDps(rpg, wpn) {
+/* ═══ v2.3.6686: DPS AND ITS PARTS (card UI2-combat, the stat tree) ═══
+   The owner's master specification, 4.2: "Tap a headline metric to see its
+   breakdown ... Use authoritative existing combat calculations".  So the
+   breakdown is THIS function's own lines, not a second sum beside them: an
+   optional third argument `out` (no caller before 6686 passes one) is filled
+   with each part, the total returned as it always was; the tree
+   (src/game/metricTree.js dpsTree) reads `out`, and tools/guards/
+   metric-tree.test.mjs joins it again and holds it to the total to the bit. */
+export function calcDisplayDps(rpg, wpn, out) {
   /* v2.3.2520: folded from the RAW range on purpose.  Every term below --
      the crit anchor's `r.max * CRIT_ANCHOR_MULT` floor and the banked
      critFlat added on top of it -- is in server units, so mixing a scaled
@@ -5878,7 +5891,9 @@ export function calcDisplayDps(rpg, wpn) {
      first cut folded critFlat inside the max and would have under-reported
      every legacy crit-flat build by the part the floor swallowed. */
   var critHit = Math.max(avg * critMult, r.max * CRIT_ANCHOR_MULT) + critFlat;
-  return ((avg + critChance * (critHit - avg)) / (r.cdMs / 1000)) / DISPLAY_SCALE_K;   /* v2.3.2520 */
+  var critAdd = critChance * (critHit - avg);   /* v2.3.6686: what crits add, named; `out` the parts, each the very sum below (the file's line: four-lines) */
+  if (out) Object.assign(out, { range: r, avg: avg, critChance: critChance, critMult: critMult, critFlat: critFlat, anchorMult: CRIT_ANCHOR_MULT, critHit: critHit, critAdd: critAdd, perSwing: avg + critAdd, secs: r.cdMs / 1000, scaleK: DISPLAY_SCALE_K });
+  return ((avg + critAdd) / (r.cdMs / 1000)) / DISPLAY_SCALE_K;   /* v2.3.2520 */
 }
 
 /* v2.3.1207: ONE display heal formula for every fish readout — the

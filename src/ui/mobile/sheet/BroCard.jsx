@@ -28,6 +28,8 @@ import { BRO_HUB_PAGES } from '@/game/broHub.js';   /* v2.3.6684: Bro's own fram
 import { heroSectionBus } from './heroSectionBus.js';
 import { CombatHub } from './CombatHub.jsx';   /* v2.3.6685 (card UI2-combat): Combat's hub */
 import { WeaponPage } from './WeaponPage.jsx';   /* v2.3.6685: a weapon's page */
+import { SharedPage } from './SharedPage.jsx';   /* v2.3.6686: the Shared page */
+import { StatTree } from './StatTree.jsx';   /* v2.3.6686: the stat tree, a layer a page */
 import { COMBAT_PAGES } from '@/game/combatHub.js';
 const isWeapon = (c) => Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(c));   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
@@ -157,7 +159,7 @@ function Row({ id, icon, title, sub, n, live, dot, chevron = true, onTap, extra 
    BRO_HUB_PAGES: 'character', 'combat'), today's pages under the header until their steps;
    with none, under the new frame (dashboardPanelBus.frameOn; `?ui2=0` the one way back) the
    page is Bro's landing, six doors.  `who` whose page (null: yours; step 9 sets another's). */
-export const BroCard = ({ points, onPoints, door, who }) => {
+export const BroCard = ({ points, onPoints, door, who, page }) => {
   const S = getState();
   const R = (S && S.rpg) || {};
   const n = Math.max(0, Math.floor(Number(points) || 0));
@@ -291,6 +293,8 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   const onWeapon = (cat) => { go('broCombat'); if (isWeapon(cat)) go(COMBAT_PAGES[cat]); };
   if (door === 'combat') return <CombatHub S={S} who={who == null ? null : who} />;
   if (isWeapon(door)) return <WeaponPage S={S} cat={door} who={who == null ? null : who} />;
+  if (door === 'shared') return <SharedPage S={S} who={who == null ? null : who} />;
+  if (door === 'tree') return <StatTree S={S} page={page} />;
   if (door === 'character') return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
 
@@ -480,7 +484,7 @@ export function BroDoorPage({ id, points, who }) {
   useEffect(() => { heroSectionBus.request('Card'); }, []);
   return (
     <div data-bro-door-page={door} style={{ height: '100%', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <BroCard door={door} who={who} points={points} onPoints={onPoints} />
+      <BroCard door={door} page={id} who={who} points={points} onPoints={onPoints} />
     </div>
   );
 }

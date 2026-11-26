@@ -51,6 +51,7 @@ import { achvLive, sendAchvTitle } from '@/game/achievements.js';
 import { ACHIEVEMENTS, achvById, ACHV_MEDAL_SRC } from '@/data/achievements.js';
 import { clanPartyOn } from '@/game/alliance.js';
 import { broPassport, broHubOpen, titleActions, TITLE_HOLDS } from '@/game/broHub.js';
+import { combatPools } from '@/game/combatHub.js';   /* v2.3.6686: the passport's weapon counts, the hub's one rule */
 import { pendingInit, pendingStep, pendingMark, pendingHolds } from '@/game/pending.js';
 import { Ui2Group, Ui2Zones, Ui2Actions, Ui2Empty, Ui2Badge, ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/charPage.js';
@@ -81,10 +82,14 @@ export function readPassport(S) {
   const R = (S && S.rpg) || {};
   const a = S && S._achv;
   const weapons = Object.create(null);
+  const pools = combatPools(R, !!(S && S._serverCaps && S._serverCaps.prog3Chan));
   WEAPON_SKILLS.forEach((sk, i) => {
     let k = null;
     try { k = combatSkillState(R, sk); } catch (e) { k = null; }
-    weapons[BRO_WEAPONS[i].cat] = k ? { lvl: k.lvl, unspent: k.unspent } : {};
+    /* v2.3.6686 (card UI2-combat PR 2, PR 1's flag): the count is Combat's hub's, one rule
+       (combatHub.js combatPools: a weapon's pool + the free remainder, in every lane), so the
+       passport and the hub never disagree; combatSkillState put the remainder in ONE lane */
+    weapons[BRO_WEAPONS[i].cat] = k ? { lvl: k.lvl, unspent: Number(pools[BRO_WEAPONS[i].cat]) || 0 } : {};
   });
   let party = false;
   try { party = clanPartyOn(S); } catch (e) { party = false; }

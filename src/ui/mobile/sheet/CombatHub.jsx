@@ -5,8 +5,8 @@
  * level, its XP bar and its points' count; under them one wide tile, Shared
  * Attributes, with the shared count.  A weapon's tile opens its own page
  * (sheet/WeaponPage.jsx; "Return to the Combat hub to switch": the header's
- * Back); Shared opens today's Points window on its Shared column until PR 2's
- * Shared page.
+ * Back); Shared opens the Shared page (sheet/SharedPage.jsx, v2.3.6686; until
+ * then the Points window on its Shared column).
  *
  * What each tile shows is src/game/combatHub.js combatHubDoors' word (the
  * pools as the worker holds them, the words of a count from one rule, the
@@ -19,7 +19,6 @@
  * picture, word and count (its XP bar under the word). */
 import React, { useEffect } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { heroSectionBus } from './heroSectionBus.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { combatHubDoors, combatPools, combatLevel } from '@/game/combatHub.js';
 import { broHubOpen } from '@/game/broHub.js';
@@ -69,13 +68,8 @@ export function CombatHub({ S, who, live }) {
     try { window.__btCombatHub = { doors: doors.map((d) => ({ id: d.id, lv: d.progress ? d.progress.level : null, points: d.points })) }; } catch (e) { /* no window */ }
   });
   useEffect(() => () => { try { window.__btCombatHub = null; } catch (e) { /* no window */ } }, []);
+  /* v2.3.6686 (PR 2): every door opens a page of its own, Shared too (sheet/SharedPage.jsx) */
   const open = (d) => {
-    if (d.opens === 'points:shared') {
-      /* today's Points window, on its Shared column (HeroExpanded's lane request), pushed over the hub */
-      heroSectionBus.request('Build', 'shared');
-      dashboardPanelBus.push('hero');
-      return;
-    }
     const o = broHubOpen(d.opens);
     if (o && o.kind === 'page') dashboardPanelBus.go({ type: 'push', id: o.page, who: who == null ? undefined : who });
   };
