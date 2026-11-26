@@ -33,6 +33,8 @@ import { isCapeItemKey } from './InventoryPanel.jsx';
 import { getEquippedSlots, weaponDisplayName } from '../sheet/equipModel.js';
 import { getEquipReqLabel } from '../../../data/gameSystems.js';
 import { gemElementName } from '@/data/gems.js';
+import { SAY } from '@/data/say/itemInspect.js';
+import { say } from '@/game/say.js';
 
 /* the page's one source: what was opened, and a number for each change (a
    pin toggled) so the page draws again */
@@ -134,7 +136,7 @@ function fromCell(R, id) {
      piece, a cape) and none for the amulet (the worker would destroy it:
      gearCells.js) */
   const actions = target ? itemActionList(target, card)
-    : (ct.unequip ? [{ id: 'unequip', label: 'Unequip', tone: 'primary', off: false, why: '', attrs: null }] : []);
+    : (ct.unequip ? [{ id: 'unequip', label: say(SAY, 'itemInspect.unequip'), tone: 'primary', off: false, why: '', attrs: null }] : []);
   const kind = c.field ? (KIND_OF_FIELD[c.field] || 'sword') : id;
   return {
     target, card, place: 'worn', unequip: ct.unequip,

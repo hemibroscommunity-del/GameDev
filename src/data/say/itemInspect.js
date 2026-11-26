@@ -29,4 +29,5 @@ export const SAY = Object.freeze({
   'itemInspect.readOnly': 'Look only: it is not yours',
   'itemInspect.gone': 'This item is no longer here.',
   'itemInspect.detailsAria': 'Details of {name}',
+  'itemInspect.unequip': 'Unequip',
 });
