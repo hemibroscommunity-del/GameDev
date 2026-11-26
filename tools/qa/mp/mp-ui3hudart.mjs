@@ -164,9 +164,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.devOp(wsPort, 'testmode', me, { on: true }).catch(() => null);
   /* a quest in hand, so the one-line tracker stands under the group
      (mp-charhud's way: "Into the Wild", out of the givers' order in test mode) */
-  await A.page.evaluate(() => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'mayor_2' } }); });
-  const quest = await H.waitFor(A, (S) => ((S.rpg && S.rpg._quests) || {}).mayor_2 || null, (v) => v === 'active', { timeout: 15000, label: 'Into the Wild' }).catch(() => null);
-  rec.ok('setup: "Into the Wild" in hand (guard)', quest === 'active', quest);
+  const takeQuest = async (P, id) => {
+    await H.devOp(wsPort, 'testmode', id, { on: true }).catch(() => null);
+    await P.page.evaluate(() => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'mayor_2' } }); });
+    return H.waitFor(P, (S) => ((S.rpg && S.rpg._quests) || {}).mayor_2 || null, (v) => v === 'active', { timeout: 15000, label: 'Into the Wild' }).catch(() => null);
+  };
+  rec.ok('setup: "Into the Wild" in hand (guard)', (await takeQuest(A, me)) === 'active', null);
   await A.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
 
   /* ── 2 and 3 at the start: a new character, the sword in hand at 0 XP ── */
@@ -264,6 +267,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const playAtD = Date.now();
   await H.pastWelcome(D);
   const dId = await H.readState(D, (S) => S.myId);
+  rec.ok('setup: the computer\'s "Into the Wild" in hand too (guard)', (await takeQuest(D, dId)) === 'active', null);
   for (let round = 0; round < 3; round++) {
     const inParty = await H.readState(A, (S) => (S._party && S._party.members ? S._party.members.map((m) => m.id) : []));
     if (inParty.includes(dId)) break;
