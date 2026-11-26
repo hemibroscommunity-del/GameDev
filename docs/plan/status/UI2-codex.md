@@ -9,12 +9,13 @@ state: ready
 - The phone test mp-ui2codex (390 x 844, 375 x 667, 844 x 390, a computer; `?ui2=0`); pictures docs/shots/ui2-codex-*.png; states dash-encyclopedia, dash-codex-monster, dash-codex-loot, dash-codex-item; UI-DESIGN-NOTES "The Monster Codex".
 
 ## Next
-- Nothing: the PR waits for the gatekeeper.
+- Nothing: the PR waits for the gatekeeper.  Final runs (head 40829ee2, the test box): ui2codex 31/31, membudget 12/12, ui2gear 33/33.
 
 ## Found
 - The item card names a shard by its key when it has no row for it ("Sky" for the Wind Shard: ItemDetailPopup.jsx's fallback); the Codex uses the drop table's name.
 - CodexStage.jsx's header says "about 8 MB" for the Mummy's strips: the files' own sizes sum to 12.0 MB decoded (width x height x 4).
 - The one item page from the Codex reads "Look only: it is not yours" (ItemPage.jsx's note for every read-only place).
+- mp-codex (`?ui2=0`) 35/39 on the final code: four reds against data tables this PR does not change (creature types, dungeon names, "Ice Shard"); mp-townboard 28/29 (step 11 reads the frame's old-style stack root). Not confirmed on main.
 
 ## Needs
 - Nothing.
