@@ -61,7 +61,7 @@ async function touch(P, sel) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Pointbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
+  const P = await H.newPlayer(browser, { name: 'Pointbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, world: 'wheel', query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P, 15000);
@@ -91,7 +91,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!busy) break;
       await P.page.waitForTimeout(250);
     }
-    await touch(P, '[data-nav="hero"]');
+    await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(1500);
     const tab = await P.page.evaluate(() => { const e = document.querySelector('[data-section="Build"]'); if (!e) return null; const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
       return { w: r.width, top: r.top, bottom: r.bottom, vh: innerHeight, op: cs.opacity, vis: cs.visibility, top_el: (document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) || {}).className }; });
@@ -124,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 5. a computer ── */
-  const D = await H.newPlayer(browser, { name: 'Pointdesk', wsPort, webPort, viewport: { width: 1280, height: 800 }, world: 'wheel', wide: true });
+  const D = await H.newPlayer(browser, { name: 'Pointdesk', wsPort, webPort, viewport: { width: 1280, height: 800 }, world: 'wheel', wide: true, query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const derr = [];
   D.page.on('pageerror', (e) => derr.push(String((e && e.message) || e).slice(0, 200)));
   const stopD = H.keepAlive(D, 15000);

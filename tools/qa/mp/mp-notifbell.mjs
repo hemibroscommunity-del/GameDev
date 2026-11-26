@@ -57,7 +57,7 @@ const pushLines = (P, n, tag) => P.page.evaluate(([k, t]) => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Bellringer', wsPort, webPort, world: 'wheel',
-    touch: true, viewport: { width: 390, height: 844 }, dpr: 2 });
+    touch: true, viewport: { width: 390, height: 844 }, dpr: 2, query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
   await pushLines(P, 12, 'first');

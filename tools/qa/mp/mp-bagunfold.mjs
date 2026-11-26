@@ -34,7 +34,7 @@ const tapEl = async (P, sel) => {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Foldbag', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  const A = await H.newPlayer(browser, { name: 'Foldbag', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'ui2=0' }); /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   const errs = [];
   A.page.on('pageerror', (e) => errs.push(String(e && e.message || e).slice(0, 200)));
   try {

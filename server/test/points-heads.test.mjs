@@ -97,7 +97,8 @@ const DIGITS = ['gold', 'grey'].flatMap((t) => [...Array(10).keys()].map((d) => 
 
 /* ── 4. the Points tab reads them ── */
 {
-  const hx = src('src/ui/mobile/sheet/HeroExpanded.jsx');
+  /* v2.3.6685 (card UI2-combat): the spend window and its lanes moved whole to sheet/statWindow.jsx: read with it */
+  const hx = src('src/ui/mobile/sheet/HeroExpanded.jsx') + '\n' + src('src/ui/mobile/sheet/statWindow.jsx');
   check('4a HeroExpanded draws from the generated data', /from '\.\.\/\.\.\/\.\.\/data\/pointsHeadArt\.js'/.test(hx));
   check('4b the four icons are the sheet\'s files', ICONS.every((n) => hx.includes('`${POINTS_ART_DIR}' + n + '.png?v=${POINTS_ART_V}`')));
   check('4c the heads are the two frames (data-points-frame) and the numerals gold or grey',

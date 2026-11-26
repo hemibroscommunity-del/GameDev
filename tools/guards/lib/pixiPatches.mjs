@@ -89,7 +89,7 @@ export const NOT_PIXI = Object.freeze([
   n('src/ui/deskTeach.js', 'qa.forget', 'a QA handle, the game\'s own'),
   n('src/ui/guideArrow.js', 'qa.forget', 'a QA handle, the game\'s own'),
   n('src/ui/mobile/inventoryBus.js', 'inventoryBus.setItems', 'the game\'s own bus'),
-  n('src/ui/mobile/sheet/HeroExpanded.jsx', 'stayCheckRef.current', 'a React ref'),
+  /* v2.3.6685: HeroExpanded's stayCheckRef.current (a React ref) is no longer handed a function there: the check moved to sheet/statWindow.jsx (card UI2-combat) */
   n('src/ui/panels/TradeWindowPanel.jsx', 'weaponTapRef.current', 'a React ref'),
 ]);
 

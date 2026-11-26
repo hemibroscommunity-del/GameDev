@@ -95,8 +95,13 @@ export function stickTravel(sideways) {
 /** v2.3.6541 (sitting 57's mend): the turn ring's radius on the disc, CSS px:
  *  the page's turn border (`?turnzone`, turnShare) of the disc's drawn radius,
  *  to a tenth of a px.  TouchControls draws it only in mode 5 (twoButtonsOn). */
-export function turnRingRadius(sideways) {
-  return Math.round(turnShare() * stickTravel(sideways) * 10) / 10;
+export function turnRingRadius(sideways, drawnR) {
+  /* v2.3.6641 (card PAD part 4): `drawnR`, the base's radius where it is not
+     today's (the controller draws it at its well's size, about 41.5 px, both
+     ways up): stickDrive reads the zones off the base's drawn width, so the
+     ring follows the same radius or it marks a border the thumb never meets */
+  const r = drawnR > 0 ? drawnR : stickTravel(sideways);
+  return Math.round(turnShare() * r * 10) / 10;
 }
 
 /** Snap an angle to the nearest of the eight facings drawn today. */

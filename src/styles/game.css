@@ -7222,7 +7222,9 @@ html.bt-one-band:not(.bt-band-side) [data-band-box="page"]{width:100%}
    not start a walk under a page you are reading.  Lane D's controls are not
    edited for this: each is found by the hook it already carries. */
 html.bt-band-side-open :is([data-joyzone], .bt-joystick-zone, .bt-rjoy-zone, [data-sprint], [data-ride], [data-quickeat],
-  [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round]){
+  [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round],
+  [data-padhousing]){
+  /* v2.3.6640: + the controller's housings (PadHousings.jsx); v2.3.6641: its one shell */
   /* v2.3.4152: + the weapon pill (v2.3.4130), the triangle's successor */
   visibility:hidden!important;
   pointer-events:none!important;
@@ -7872,6 +7874,59 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   box-shadow:0 0 0 2px rgba(214,224,229,.42),inset 0 0 0 1px rgba(8,12,15,.6),inset 0 0 0 5px rgba(214,224,229,.07)}
 .bt-joystick-base>.bt-joystick-knob{background:radial-gradient(circle at 38% 30%,#B3BAC0 0%,#7D858C 34%,#4C5359 74%,#30353A 100%);
   box-shadow:0 0 0 1.5px rgba(8,12,15,.88),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 0 rgba(0,0,0,.25),0 2px 0 rgba(0,0,0,.25)}
+
+/* ═══ v2.3.6640: THE CONTROLLER (card PAD; game/padSkin.js; `?padskin=0` the looks above) ═══
+   v2.3.6641 (part 3, the owner's redesign): ONE shell on the band
+   (PadHousings.jsx), every control in a fixed well, each the owner's painted
+   face (controlSkin PadSkin: public/ui/pad/<name>.png).  The states, drawn
+   over the face with transform and opacity only, never a filter (an iPhone
+   pays a layer for one on a control always on screen):
+     pressed      the face 0.96 for 100 ms and a light wash
+     cooldown     a dark sector over the face, inside its ring (PadSkin's svg)
+     unavailable  the face dimmed (opacity; Attack's sword its own dim face)
+     ready        the accent glow; active (a raised guard, a ridden board) a
+                  quiet ring, its opacity only */
+.bt-pad-face{position:absolute;left:50%;top:50%;width:var(--pad-face);height:var(--pad-face);margin:calc(var(--pad-face) / -2) 0 0 calc(var(--pad-face) / -2);border-radius:50%;transition:transform 100ms ease-out}
+[data-pressed="1"] .bt-pad .bt-pad-face{transform:scale(.96)}
+.bt-pad-face>img{position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none}
+.bt-pad-face>img:not([data-pic="on"]){display:none}
+.bt-pad[data-state="disabled"] .bt-pad-face>img{opacity:.45}
+.bt-pad[data-state="quiet"] .bt-pad-face>img{opacity:.75}
+.bt-pad-shade{position:absolute;inset:12%;border-radius:50%;background:#05080B;opacity:0;transition:opacity 90ms linear;pointer-events:none}
+[data-pressed="1"] .bt-pad .bt-pad-shade{opacity:.22}
+.bt-pad-glow{position:absolute;left:50%;top:50%;width:var(--pad-face);height:var(--pad-face);transform:translate(-50%,-50%);border-radius:50%;opacity:0;pointer-events:none;
+  box-shadow:0 0 0 2px var(--pad-acc),0 0 8px 2px var(--pad-acc);transition:opacity .15s linear}
+.bt-pad[data-glow="1"] .bt-pad-glow{opacity:.85}
+.bt-pad[data-ring="1"] .bt-pad-glow{opacity:.6}
+.bt-pad[data-flash="1"] .bt-pad-glow{animation:bt-skin-flash 700ms ease-out 1}
+.bt-pad-arc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:visible;pointer-events:none}
+@media (prefers-reduced-motion: reduce){ .bt-pad-face,.bt-pad-shade,.bt-pad-glow{transition:none} .bt-pad[data-flash="1"] .bt-pad-glow{animation:none} }
+/* Attack (padSkin.js attackFace): the face of the weapon in hand (data-ricon:
+   the bow's, the staff's, else the sword's); idle unavailable (the sword's own
+   dim face, the bow and staff dimmed); hot the glow; a picture that is not an
+   attack's (a tool, a door, a bed, the farm's) on the empty well, its own
+   picture over it as before.  The reticle and the plain sword are the face's */
+.bt-rjoy-base[data-pad] .bt-rjoy-aim,.bt-rjoy-base[data-pad] .bt-rjoy-strike{display:none!important}
+.bt-rjoy-base[data-pad]:is([data-ricon="ranged"],[data-ricon="w-bow"]) .bt-pad-face>img[data-pic="on"],
+.bt-rjoy-base[data-pad]:is([data-ricon="staff"],[data-ricon="w-staff"]) .bt-pad-face>img[data-pic="on"]{display:none}
+.bt-rjoy-base[data-pad]:is([data-ricon="ranged"],[data-ricon="w-bow"]) .bt-pad-face>img[data-pic="bow"],
+.bt-rjoy-base[data-pad]:is([data-ricon="staff"],[data-ricon="w-staff"]) .bt-pad-face>img[data-pic="staff"]{display:block}
+.bt-rjoy-base[data-pad][data-rstate="idle"]:not([data-ricon="ranged"]):not([data-ricon="w-bow"]):not([data-ricon="staff"]):not([data-ricon="w-staff"]) .bt-pad-face>img[data-pic="on"]{display:none}
+.bt-rjoy-base[data-pad][data-rstate="idle"]:not([data-ricon="ranged"]):not([data-ricon="w-bow"]):not([data-ricon="staff"]):not([data-ricon="w-staff"]) .bt-pad-face>img[data-pic="off"]{display:block}
+.bt-rjoy-base[data-pad][data-rstate="idle"] .bt-pad-face>img:is([data-pic="bow"],[data-pic="staff"]){opacity:.45}
+.bt-rjoy-base[data-pad][data-rstate="hot"] .bt-pad-glow{opacity:.85}
+.bt-rjoy-base[data-pad][data-ricon]:not([data-ricon=""]):not([data-ricon="none"]):not([data-ricon="melee"]):not([data-ricon="ranged"]):not([data-ricon="staff"]):not([data-ricon^="w-"]) .bt-pad-face>img:not([data-pic="socket"]){display:none}
+.bt-rjoy-base[data-pad][data-ricon]:not([data-ricon=""]):not([data-ricon="none"]):not([data-ricon="melee"]):not([data-ricon="ranged"]):not([data-ricon="staff"]):not([data-ricon^="w-"]) .bt-pad-face>img[data-pic="socket"]{display:block}
+/* the stick: the owner's base and thumb (the shell draws them at rest) */
+.bt-joystick-base[data-pad]{background:center/100% 100% no-repeat;box-shadow:none}
+.bt-joystick-base[data-pad]>.bt-joystick-arrows{display:none}
+.bt-joystick-base>.bt-joystick-knob[data-pad]{background:center/100% 100% no-repeat;box-shadow:none}
+/* a weapon well pressed (WeaponPill in the controller) */
+[data-pad-well][data-pressed="1"]>img{transform:scale(.96);transition:transform 100ms ease-out}
+/* the sideways band's nudges were for the old places (bandSideways.js): in the
+   controller the disc and the stick sit in their wells */
+html.bt-padskin.bt-band-side .bt-rjoy-zone{transform:none}
+html.bt-padskin.bt-band-side .bt-joystick-zone{margin-bottom:0!important}
 
 /* ═══ v2.3.3030: THE QUEST WINDOWS IN THE OWNER'S PAINTED ART ═══
    Owner: "Add these for the new quest windows" -- three sheets of frames,

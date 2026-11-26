@@ -207,6 +207,12 @@
 }
 .ui2 .u2-head-side { flex: 0 0 auto; display: flex; gap: var(--ui2-space-m); }
 .ui2 .u2-head-side.is-start { min-width: 0; }
+/* v2.3.6681 (card UI2-frame): a long Back word gives way before the title does
+   (Back names its target: "‹ Leaderboards"); it ends in an ellipsis, never
+   under the title */
+.ui2 .u2-head-side.is-start { flex: 0 1 auto; max-width: 42%; }
+.ui2 .u2-head-side.is-start .u2-ctl { max-width: 100%; }
+.ui2 .u2-ctl > span:not(.u2-ctl-glyph) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-ctl {
   height: var(--ui2-size-header);
   min-width: var(--ui2-size-touch);
@@ -554,3 +560,26 @@
 @media (prefers-reduced-motion: reduce) {
   .ui2 *, .ui2 *::before, .ui2 *::after { animation: none !important; transition: none !important; }
 }
+
+/* ═══ v2.3.6683 (card UI2-bro): a screen's pieces (Zones.jsx, ActionRow.jsx, EmptyState.jsx, Confirm.jsx) ═══ */
+/* the zones under the header: drawn only where they hold something; the last above the actions grows */
+.ui2 .u2-zones { display: flex; flex-direction: column; gap: var(--ui2-space-m); height: 100%; min-height: 0; }
+.ui2 .u2-zone { flex: 0 0 auto; min-height: 0; min-width: 0; }
+.ui2 .u2-zone.is-grow { flex: 1 1 auto; }
+.ui2 .u2-zone.is-actions { margin-top: auto; }
+/* the row of actions: one fixed column a slot, an empty slot an empty cell */
+.ui2 .u2-actions { display: grid; gap: var(--ui2-space-m); align-items: start; min-width: 0; }
+.ui2 .u2-actcell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui2 .u2-actcell > .u2-act { width: 100%; }
+.ui2 .u2-actcell > .u2-why { text-align: center; }
+/* the empty state: recessed (it opens nothing), its picture, what is absent, why, how */
+.ui2 .u2-empty { display: flex; align-items: center; gap: var(--ui2-space-l); min-width: 0; padding: var(--ui2-space-m); border-radius: var(--ui2-radius-group); background: var(--ui2-well-soft); }
+.ui2 .u2-empty-art { width: 40px; height: 40px; object-fit: contain; flex: 0 0 auto; }
+.ui2 .u2-empty.is-locked .u2-empty-art { opacity: 0.45; }
+.ui2 .u2-empty-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui2 .u2-empty-title { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); }
+.ui2 .u2-empty-why, .ui2 .u2-empty-how { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); line-height: 1.25; }
+/* the one confirmation: in the actions' zone, never over the world */
+.ui2 .u2-confirm { display: flex; align-items: center; gap: var(--ui2-space-m); min-width: 0; }
+.ui2 .u2-confirm-q { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); }
+.ui2 .u2-confirm > .u2-act { flex: 0 0 auto; }

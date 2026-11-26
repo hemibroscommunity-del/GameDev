@@ -844,7 +844,31 @@ export const STATES = [
       if (!ok) return 'no monster card to open';
     },
   },
-  dash('more', 'More', 'The More page: eleven tiles (map, social, party, guild, pets, journey, settings, account, notifications with its unread count, feedback, about).'),
+  dash('more', 'Menu (More under ?ui2=0)', 'v2.3.6681 (card UI2-frame): the Menu\'s root, the directory -- eight equal tiles four by two (Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings), each its picture and one word, under the one header (\u2039 Gear, Menu, Close). Under ?ui2=0 the old More page: its fifteen tiles.'),
+  /* v2.3.6681 (card UI2-frame): the new frame's own screens */
+  { id: 'dash-frame-closed', group: 'Dashboard', title: 'The dashboard closed: Gear and Menu', about: 'The band closed: the slim row keeps two buttons, Gear and Menu (a count on Menu while points wait); the handle on its edge.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'close' }); }); } },
+  { id: 'dash-frame-gear', group: 'Dashboard', title: 'Gear\'s root under the one header', about: 'Gear: the header [Close] Gear [Menu \u203a] over today\'s Gear tab (the bag, your bro, the three weapons).',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); }); } },
+  { id: 'dash-frame-social', group: 'Dashboard', title: 'Social\'s hub', about: 'The Menu\'s Social tile: three equal tiles, Friends (today\'s Social page), Party (Clan under its kill switch) and Guilds; Back says Menu.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'socialHub' }); }); } },
+  { id: 'dash-frame-settings', group: 'Dashboard', title: 'Settings\' hub', about: 'The Menu\'s Settings tile: six equal tiles, Settings (today\'s page), Notifications, Account, Feedback, About and Journey (until Bro\'s Feats gives it a home).',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'settingsHub' }); }); } },
+  { id: 'dash-frame-homestead', group: 'Dashboard', title: 'Homestead', about: 'The Menu\'s Homestead tile: the farm\'s picture and what the Bro row says today (plots ready to harvest, and that the farm is reached from the Feed & Seed); nothing to manage from here.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
+  /* v2.3.6683 (card UI2-bro): Bro's landing and its two frame pages */
+  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: six doors', about: 'The Menu\'s Bro tile: six equal tiles, three by two (one row of six sideways) -- Character, Combat, Equipment / Life Skills, Feats, Pets -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close). No portrait, no banner, no page marks; the points glow on Combat while points wait. Under ?ui2=0 today\'s three pages.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },
+  { id: 'ui2-bro-combat', group: 'Dashboard', title: 'Bro: Combat, the hub', about: 'Bro\'s Combat door (v2.3.6685, card UI2-combat): four doors under the header (\u2039 Bro, Combat, Menu, Close) -- Sword, Bow, Staff in a row, each its picture, level, XP bar and "n points" (the worker\'s count, glowing while points wait), and Shared Attributes under them with the shared count (it opens today\'s Points window on its Shared column until the Shared page). Sideways one row of four.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); }); } },
+  /* v2.3.6684 (card UI2-bro PR 2): Character, the passport, and its Titles */
+  { id: 'ui2-bro-character', group: 'Dashboard', title: 'Bro: Character, the passport', about: 'Bro\'s Character door under the header (\u2039 Bro, Character, Menu, Close): the still face large with the combat level beside it, the name and the equipped title (or "No title equipped"); Sword, Bow and Staff, each its level and a door to the Combat page on that weapon; Clan, Guilds, AP and Quests done, each a door; Titles and Journey. A value on its way is a placeholder, never 0. Sideways one row; under 760 px of page Clan, Guilds, Titles and Journey are their pictures\' doors.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCharacter' }); }); } },
+  { id: 'ui2-bro-titles', group: 'Dashboard', title: 'Bro: Titles (from the passport)', about: 'The passport\'s Titles door: your title at the top with how many you have earned; the titles you have earned (a title is the name of an achievement you have earned), the one you wear marked "Equipped"; Equip and Remove title in the row of actions, each in its place, off with its reason beside it; the pressed one spins until the server answers, and says "Not confirmed yet" if no answer came.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCharacter' }); b.go({ type: 'push', id: 'broTitles' }); }); } },
+  /* v2.3.6685 (card UI2-combat): a weapon's page */
+  { id: 'ui2-combat-weapon', group: 'Dashboard', title: 'Combat: a weapon\'s page (Sword)', about: 'The hub\'s Sword door (\u2039 Combat, Sword, Menu, Close): the level and its XP bar (now / needed) with the one line a level gives ("Each Sword level gives 3 Sword points"); DPS the headline (a tap: what DPS is; its breakdown is the next step), Damage, Attack speed, Crit chance and Range beside it; "Attributes" with the Sword points to spend, and the six (Range, Power, Speed, Luck, Special, Element), each its points of its cap: a tap opens today\'s preview (stepper at 0, before and after, the fight, Spend). Sideways one row, the four stats one door, All stats, on a narrow phone.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broSword' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the
@@ -1565,6 +1589,20 @@ export const STATES = [
      by a real thumb on the left stick (a short push: the turn, not the walk),
      the sight line drawn and Block and the specials come.  Put back on
      today's combat after. */
+  /* v2.3.6640 (card PAD; game/padSkin.js, panels/PadHousings.jsx): the touch
+     controls as one game controller, the owner's mockup of 2026-11-25;
+     v2.3.6641 (part 3): one shell seated on the band */
+  {
+    id: 'pad-controller', group: 'Fighting', title: 'The controller: one shell on the band, every control in its well',
+    about: 'The touch controls as one housing seated on the dashboard (the owner\'s redesign, 2026-11-25): the stick\'s lobe at the left, three weapon wells on the rail, the right lobe with a row of three small wells (the skateboard or Charge, the middle well, Special) over the big left button (Jump; the shield in a fight, Jump then the middle well) and Attack. A control the game hides leaves its well empty. `?padskin=0` gives the old look.',
+    views: ['portrait', 'landscape'],
+    settle: 1200,
+    run: async ({ P }) => {
+      await wait(P, 600);
+      const ok = await evalIn(P, () => !!document.querySelector('[data-padhousing="shell"]') && !!document.querySelector('.bt-pad'));
+      return ok ? undefined : 'no controller drawn';
+    },
+  },
   {
     id: 'two-buttons', group: 'Fighting', title: 'The two buttons, nothing in sight',
     about: 'The two-button trial (`?manual=5`) with no monster in sight: on the right only the Attack button (raised, a bevel) and Jump, laid out for a right thumb (v2.3.6549: Attack low by the edge, Jump on the arc beside it). Block comes when a monster is in your sight (or hits you), Charge with a sword when one is in sight but too far, and the specials only once one is in reach.',

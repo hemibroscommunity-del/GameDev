@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1200);
 
     /* ── 1. the Overview ── */
-    await touch(P, '[data-nav="hero"]');
+    await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(1500);
     const a = await pages(P);
     const ov = a.overview || {};
@@ -265,7 +265,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1000);
     const g = await bus(P);
     rec.ok(`Equipment opens the Gear tab (${g && g.mode})`, !!g && g.mode === 'bar', g);
-    await touch(P, '[data-nav="hero"]');
+    await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(1200);
     const f = await pages(P);
     rec.ok('...and Bro again opens the Overview (a fresh visit)', f.there && f.open === 'overview', f.open);
@@ -291,9 +291,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 7. on its side ── */
     await P.page.setViewportSize({ width: 844, height: 390 });
     await P.page.waitForTimeout(1500);
-    await touch(P, '[data-nav="dashboard"]');
+    await H.dashOpen(P, 'dashboard');
     await P.page.waitForTimeout(900);
-    await touch(P, '[data-nav="hero"]');
+    await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(1500);
     const sd = await pages(P);
     rec.ok(`a phone on its side: the three side by side (${sd.w} x ${sd.h}, ${sd.dense ? 'the dense cut' : 'roomy'}), no marks`,
@@ -341,7 +341,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.enterWorld(O);
     await O.page.waitForTimeout(2000);
     await H.closeNpcDialogue(O).catch(() => {});
-    await touch(O, '[data-nav="hero"]');
+    await H.dashOpen(O, 'hero');
     await O.page.waitForTimeout(1500);
     const o = await O.page.evaluate(() => ({
       old: !!document.querySelector('[data-bro-card="v2"]'), pages: !!document.querySelector('[data-bro-card="pages"]'),

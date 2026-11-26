@@ -182,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1 ── the list */
     await H.unfoldBand(A).catch(() => {});
-    await tap(A, '.bt-navrail [data-nav="leaderboard"]');
+    await H.dashOpen(A, 'leaderboard');
     await A.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
     const L = await H.waitFor(A, () => {
       const t = document.querySelector('[data-lb-title]');
@@ -369,7 +369,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (inD) {
       await D.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
       await H.unfoldBand(D).catch(() => {});
-      await D.page.locator('.bt-navrail [data-nav="leaderboard"]').first().click().catch(() => {});
+      await H.dashOpen(D, 'leaderboard').catch(() => {});
       await D.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
       /* v2.3.5502: the page opens on Overall, which these players are not on (no weapon, no index): Melee */
       await D.page.locator('[data-lb-rail] [data-lb-cat="melee"]').first().click().catch(() => {});
