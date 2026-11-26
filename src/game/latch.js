@@ -22,6 +22,9 @@
  *                                -> idle                        (end 'killed')
  *   the target dead, others sighted -> the lock MOVES to the nearest of them,
  *                                   still active, no new press  ('moved')
+ *   v2.3.6556: the target out of view 400 ms (AWAY_MS) while one in view
+ *     is in range                -> the lock MOVES to the nearest in view
+ *                                   (latchAway; `?nearpick=0` never)
  *   your death                   -> idle                        (end 'death')
  *   a change of place, a rejoin  -> idle                        (end 'zone')
  *
@@ -45,7 +48,7 @@
  * Four imports, sight.js, and manualCombat.js and deviceProfile.js for the one gate (twoButtonsLive; v2.3.6542), and switches.js (v2.3.6546: `?sightline`): node tests it
  * (server/test/latch.test.mjs).
  */
-import { sightPick, sightStep, sightClear, sightRange, drawnFace, sightLine, lineTo } from './sight.js';   /* v2.3.6542; v2.3.6546: the line, latchLine */
+import { sightPick, sightStep, sightClear, sightRange, drawnFace, sightLine, lineTo, inSightView } from './sight.js';   /* v2.3.6542; v2.3.6546: the line, latchLine; v2.3.6556: the view */
 import { readerFor, sw, swValue } from './switches.js';   /* v2.3.6546: `?sightline=1` (switches.js imports nothing); v2.3.6548: `?holdauto=0`, `?autohold=<ms>` */
 import { twoButtonsOn } from './manualCombat.js';   /* v2.3.6542 (sitting 60): the one gate, twoButtonsLive, below */
 import { fineInput } from './deviceProfile.js';
@@ -90,6 +93,7 @@ export function latchTo(S, phase, id, end) {
   if (!S || typeof S !== 'object' || LATCH_PHASES.indexOf(phase) < 0) return false;
   if (phase !== 'idle') {
     if (id == null || id === '') return false;
+    S._latchAwayAt = 0;   /* v2.3.6556: a new lock's time out of view starts again (latchAway) */
     S._latchPhase = phase;
     S._latchId = id;
     S._latchEnd = null;
@@ -97,6 +101,7 @@ export function latchTo(S, phase, id, end) {
   }
   if (LATCH_ENDS.indexOf(end) < 0) return false;
   if (!latchLocked(S)) return false;
+  S._latchAwayAt = 0;
   S._latchPhase = 'idle';
   S._latchId = null;
   S._latchEnd = end;
@@ -220,6 +225,37 @@ export function latchCheck(S, target, out, others) {
   return null;
 }
 
+/* ═══ v2.3.6556: A LOCK OUT OF VIEW LETS GO TO ONE IN VIEW (card CT part 23) ═══
+ * The owner, 2026-11-25: "monsters off screen I may have shot accidentally
+ * while shooting around but the monster closest to me looks like the only
+ * threat and it's locking somewhere else."  While the latch holds a monster
+ * OUT of the view, and a monster IN the view is in range (the weapon's `in`
+ * range, any way you face: you face the lock), the lock moves to the nearest
+ * such once that has lasted AWAY_MS: the move latchCheck makes at a death,
+ * through latchTo, the phase kept.  A lock on a monster IN view is never
+ * taken by a nearer one: the player chose it.  The time is a note
+ * (`S._latchAwayAt`, 0 when none), never a phase; latchTo zeroes it at every
+ * write.  `?nearpick=0` (nearPickOn) never moves it. */
+export const AWAY_MS = 400;
+
+/** `?nearpick=0` gives back the least angle and the old hold (sight.js
+ *  sightPick's `old`, and no latchAway).  `search` is for tests. */
+export function nearPickOn(search) {
+  return !(typeof search === 'string' ? readerFor(search).sw('nearpick') : sw('nearpick'));
+}
+
+/** A frame while locked: `away` the locked monster is out of view, `near`
+ *  the nearest monster in view in range ({ id, d }) or null.  Returns
+ *  'moved' on the frame the lock moved, else null. */
+export function latchAway(S, now, away, near) {
+  if (!S || typeof S !== 'object') return null;
+  if (!latchLocked(S) || away !== true || !near || near.id == null || String(near.id) === String(S._latchId)) { S._latchAwayAt = 0; return null; }
+  if (!(S._latchAwayAt > 0)) { S._latchAwayAt = now; return null; }
+  if (!(now - S._latchAwayAt >= AWAY_MS)) return null;
+  latchTo(S, latchPhase(S), near.id);
+  return 'moved';
+}
+
 /** Your death ('death') or a change of place, a rejoin ('zone'): the latch
  *  lets go.  True when it was active. */
 export function latchClear(S, why) {
@@ -235,6 +271,27 @@ let _range = sightRange('melee');
 let _zoneWas;
 /* the locked monster, read each frame into one object (no garbage a frame) */
 const _T = { alive: false, d: NaN };
+/* v2.3.6556: the view, and the nearest in it, one object each (no garbage a frame) */
+const _V = { x: 0, y: 0, w: 0, h: 0 };
+const _N = { id: null, d: 0 };
+
+/* v2.3.6556: the size of the view the frame was handed (latchFrame's vw,
+   vh), for the press: the frame runs before any touch is read again */
+let _vw = 0, _vh = 0;
+
+/** v2.3.6556: the world's rectangle the page draws, as numbers: the
+ *  camera's top-left (S.camera) and the size the renderer draws (`vw`, `vh`,
+ *  world px: HANDED IN by the frame's one caller, BroTown's step `input`,
+ *  from the renderer's own numbers; nothing here reads or measures the view:
+ *  docs/specs/layout-reads.md, and TRAPS 237's census of the page rules
+ *  that read its size).  null when there is none (everything then counts as
+ *  in view).  One reused object. */
+export function sightView(S, vw, vh) {
+  const C = S && S.camera;
+  if (!C || !isFinite(C.x) || !isFinite(C.y) || !(vw > 0) || !(vh > 0)) return null;
+  _V.x = C.x; _V.y = C.y; _V.w = vw; _V.h = vh;
+  return _V;
+}
 
 function findMon(mons, id) {
   if (!Array.isArray(mons) || id == null) return null;
@@ -248,7 +305,8 @@ function monUp(m) { return !!m && !!m.alive && !(typeof m.curHp === 'number' && 
  *  reused object) or null. */
 export function sightNow(S, range) {
   if (!S || !S.player) return null;
-  return sightPick(S.player, drawnFace(S), S.monsters, range || _range, S._sightId == null ? null : S._sightId);
+  const near = nearPickOn();   /* v2.3.6556: the nearest threat first, in view first; `?nearpick=0` the old pick */
+  return sightPick(S.player, drawnFace(S), S.monsters, range || _range, S._sightId == null ? null : S._sightId, near ? sightView(S, _vw, _vh) : null, !near);
 }
 
 /** Is the latch's attack held now?  Active, and nothing that holds an attack
@@ -262,13 +320,15 @@ export function latchHolds(S) {
 
 /** The step `input`'s read for the two buttons, once a frame.  `dead` your
  *  death this frame; `slot` the active weapon's (S.rpg.activeSlot), `mult`
- *  its range multiplier.  Sights (sight.js sightStep), checks the lock
+ *  its range multiplier; v2.3.6556: `vw`, `vh` the view's size in world px
+ *  (the renderer's; sightView).  Sights (sight.js sightStep), checks the lock
  *  (latchCheck: its ends and the move) and returns what the held attack
  *  should be: true (attacking), false (let go: an end, or held off), or null
  *  (nothing to say: the latch is idle). */
-export function latchFrame(S, now, dead, slot, mult) {
+export function latchFrame(S, now, dead, slot, mult, vw, vh) {
   if (!S || typeof S !== 'object') return null;
   _range = sightRange(slot, mult);
+  _vw = vw; _vh = vh;   /* v2.3.6556: the view's size, world px (sightView) */
   const was = latchLocked(S);
   const zone = S.currentZone;
   if (_zoneWas !== undefined && zone !== _zoneWas) { latchClear(S, 'zone'); sightClear(S); }
@@ -301,6 +361,20 @@ export function latchFrame(S, now, dead, slot, mult) {
   }
   const end = latchCheck(S, m ? _T : null, _range.out, others);
   if (end && end !== 'moved') { latchRelease(S); return false; }
+  if (!end && nearPickOn()) {
+    /* v2.3.6556: the lock out of view, the nearest in view in range (only
+       scanned while the lock is out of view) */
+    const view = sightView(S, _vw, _vh), P = S.player;
+    const away = !!view && !inSightView(view, m.x, m.y);
+    let near = null;
+    if (away) for (const o of Array.isArray(S.monsters) ? S.monsters : []) {
+      if (!monUp(o) || !inSightView(view, o.x, o.y)) continue;   /* the locked one is out of view, and a place that is not numbers is in no view */
+      const d = Math.hypot(o.x - P.x, o.y - P.y);
+      if (d > _range.in || (near && d >= near.d)) continue;
+      near = _N; near.id = o.id; near.d = d;
+    }
+    latchAway(S, now, away, near);
+  }
   return latchHolds(S);
 }
 

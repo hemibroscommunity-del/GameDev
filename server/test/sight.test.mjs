@@ -13,7 +13,8 @@
  *      out it is lost past 550, not before;
  *   3. THE CONE: 45 degrees each side of the facing for a new one, 55 to keep
  *      one; a dead monster is never sighted;
- *   4. OF SEVERAL: the one nearest the facing's line wins, then the nearest;
+ *   4. OF SEVERAL (v2.3.6556: `?nearpick=0`, sightPick's `old`): the one
+ *      nearest the facing's line wins, then the nearest;
  *   5. NO FLICKER: the phase goes to sighted at once and to none only
  *      HOLD_MS after the last sighting; a monster walked back and forth
  *      across the edge changes it once; a zone change clears it at once;
@@ -62,6 +63,21 @@
  *      sightLineEarly reading `swHas` (any `?sightline=` draws); lineTo's
  *      `id == null` dropped (a kept id of none finds a monster called "null").
  *
+ *  12. (v2.3.6556, card CT part 23; the owner: "the monster closest to me
+ *      looks like the only threat and it's locking somewhere else") THE
+ *      NEAREST THREAT FIRST: the nearest in the cone and the range wins, the
+ *      angle only within 15% of its distance; a monster in view before one
+ *      out of it (out of view picked only when none in view is in the cone);
+ *      the kept one held against a newcomer under 20% nearer, given up to
+ *      one in view once it left the view; `old` (`?nearpick=0`) the least
+ *      angle and no view, the page's switch read by latch.js nearPickOn.
+ *      The card's plants, each FAILs 12: (a) the least angle kept (a near
+ *      monster 30 degrees off loses to a far one 2 off); (b) the view
+ *      dropped (an out-of-view one picked over one in view in the cone);
+ *      (c) out of view never picked (the only monster, out of view, not
+ *      picked); (d) no keep (the pick flickering between two 5% apart);
+ *      (g) `old` ignored (nearpick=0 not giving the old answers).
+ *
  * Break proof, tried by hand: `if (d > (kept ? range.out : range.in))` ->
  * `if (d > range.in)` -> FAIL 2 and 5; `S._sightPhase = 'none';` in
  * sightClear -> FAIL 6 (and the guard's §2).
@@ -74,7 +90,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
-import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
+import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine, inSightView } from '../../src/game/sight.js';   /* v2.3.6543: + the line; v2.3.6556: + the view */
 import { combatButtonsShown, combatReach, blockShown, specialsShown, chargeShown, playerFightHoldsLock } from '../../src/game/controlVisibility.js';   /* v2.3.6543; v2.3.6549: each button its own moment */
 import { latchTo, latchFrame, latchReach, latchLine, sightLineEarly, latchPress, latchCheck } from '../../src/game/latch.js';   /* v2.3.6543; v2.3.6546: the line is combat's */
 import { beamStream, sightStream } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543; v2.3.6544: the leaf only draws (main's leaves guard) */
@@ -137,15 +153,17 @@ const mon = (id, d, a = 0, alive = true) => ({ id, x: me.x + Math.cos(deg(a)) * 
   check('3. ...and the other way: facing west (+PI), a monster up-left (-135 deg) is 45 off', near(angleOff(deg(-135), Math.PI), deg(45)) && near(angleOff(deg(-179), deg(179)), deg(2)));
 }
 
-/* ── 4. of several ── */
+/* ── 4. of several, the old rule (v2.3.6556: `?nearpick=0`, sightPick's `old`) ── */
 {
   const R = sightRange('melee');
-  const p = sightPick(me, 0, [mon('near', 100, 20), mon('line', 400, 10)], R, null);
-  check('4. the one nearest the facing\'s line wins over a nearer one off it', p && p.id === 'line', p);
-  const q = sightPick(me, 0, [mon('far', 400, 10), mon('close', 150, 10)], R, null);
-  check('4. on the same line, the nearest', q && q.id === 'close', q);
-  const r = sightPick(me, 0, [mon('dead', 50, 0, false), mon('live', 300, 30)], R, null);
-  check('4. a dead one on the line does not win', r && r.id === 'live', r);
+  const p = sightPick(me, 0, [mon('near', 100, 20), mon('line', 400, 10)], R, null, null, true);
+  check('4. old: the one nearest the facing\'s line wins over a nearer one off it', p && p.id === 'line', p);
+  const q = sightPick(me, 0, [mon('far', 400, 10), mon('close', 150, 10)], R, null, null, true);
+  check('4. old: on the same line, the nearest', q && q.id === 'close', q);
+  const r = sightPick(me, 0, [mon('dead', 50, 0, false), mon('live', 300, 30)], R, null, null, true);
+  check('4. old: a dead one on the line does not win', r && r.id === 'live', r);
+  const r2 = sightPick(me, 0, [mon('dead', 50, 0, false), mon('live', 300, 30)], R, null);
+  check('4. new: a dead one near does not win either', r2 && r2.id === 'live', r2);
 }
 
 /* ── 5. no flicker ── */
@@ -490,6 +508,65 @@ function writesOutside(prop, doorFile, doorFn) {
   const r2 = rec();
   const ys2 = () => r2.ops.filter((o) => o[0] === 'lineTo').map((o) => o[2]);
   check('11. drawSightLine: combat on, drawn to the LOCK (south, 300 px), not the sighting (east)', drawSightLine(r2, R, 0, false, false) === true && Math.abs(Math.max(...ys2()) - 400) < 4, r2.ops.slice(0, 2));
+}
+
+/* ── 12. v2.3.6556: the nearest threat first (card CT part 23) ── */
+{
+  const R = sightRange('ranged');   /* the owner's bow: 675 in, 825 out */
+  const V = { x: me.x - 400, y: me.y - 300, w: 800, h: 600 };   /* the view: 400 px each side, 300 up and down */
+  const id = (p) => (p ? p.id : null);
+  /* (a) the nearest wins: a near one 30 degrees off against a far one 2 off */
+  check('12a. a near monster 30 degrees off beats a far one 2 off', id(sightPick(me, 0, [mon('far', 380, 2), mon('near', 150, 30)], R, null, V)) === 'near');
+  check('12a. ...whichever comes first in the list', id(sightPick(me, 0, [mon('near', 150, 30), mon('far', 380, 2)], R, null, V)) === 'near');
+  check('12a. the pick says its distance and angle', (() => { const p = sightPick(me, 0, [mon('near', 150, 30)], R, null, V); return p && near(p.d, 150) && near(p.off, deg(30)); })());
+  check('12a. a near-tie (under 15% apart): the one nearer the facing\'s line', id(sightPick(me, 0, [mon('off', 200, 40), mon('line', 225, 5)], R, null, V)) === 'line' && id(sightPick(me, 0, [mon('line', 225, 5), mon('off', 200, 40)], R, null, V)) === 'line');
+  check('12a. exactly 15% apart is still a tie; 16% is not', id(sightPick(me, 0, [mon('off', 200, 40), mon('line', 230, 5)], R, null, V)) === 'line' && id(sightPick(me, 0, [mon('off', 200, 40), mon('line', 232, 5)], R, null, V)) === 'off');
+  check('12a. a tie in distance and angle: the nearer', id(sightPick(me, 0, [mon('b', 210, 10), mon('a', 200, 10)], R, null, V)) === 'a' && id(sightPick(me, 0, [mon('a', 200, 10), mon('b', 210, 10)], R, null, V)) === 'a');
+  check('12a. three in the tie band: the least angle of them, not the first', id(sightPick(me, 0, [mon('x', 200, 30), mon('y', 210, 3), mon('z', 220, 20)], R, null, V)) === 'y');
+  check('12a. no view handed in: everything counts as in view (the nearest)', id(sightPick(me, 0, [mon('far', 380, 2), mon('near', 150, 30)], R, null)) === 'near' && id(sightPick(me, 0, [mon('far', 380, 2), mon('near', 150, 30)], R, null, { x: 0, y: 0, w: 0, h: 600 })) === 'near');
+  /* (b) in view first */
+  check('12b. one out of view (500 east, past the 400) loses to one in view (300, 40 degrees off)', id(sightPick(me, 0, [mon('off', 500, 0), mon('in', 300, 40)], R, null, V)) === 'in' && id(sightPick(me, 0, [mon('in', 300, 40), mon('off', 500, 0)], R, null, V)) === 'in');
+  check('12b. ...even when the one out of view is nearer (off the top, 320 up-right)', id(sightPick(me, -Math.PI / 4, [mon('in', 390, -10), mon('off', 340, -62)], R, null, V)) === 'in');
+  check('12b. the view\'s edges count as in it', id(sightPick(me, 0, [mon('edge', 400, 0), mon('in', 380, 44)], R, null, V)) === 'edge');
+  /* (c) out of view picked only when none in view is in the cone */
+  check('12c. the only monster, out of view: picked', id(sightPick(me, 0, [mon('off', 500, 0)], R, null, V)) === 'off');
+  check('12c. out of view, one in view BEHIND you (not in the cone): the one out of view', id(sightPick(me, 0, [mon('off', 500, 0), mon('behind', 100, 180)], R, null, V)) === 'off');
+  check('12c. two out of view: the nearer', id(sightPick(me, 0, [mon('o2', 650, 5), mon('o1', 520, 20)], R, null, V)) === 'o1');
+  /* (d) no flicker: the kept one against a newcomer */
+  check('12d. kept against one 5% nearer', id(sightPick(me, 0, [mon('k', 300, 10), mon('n', 285, 0)], R, 'k', V)) === 'k' && id(sightPick(me, 0, [mon('n', 285, 0), mon('k', 300, 10)], R, 'k', V)) === 'k');
+  check('12d. kept against one 19% nearer; given up to one exactly 20% nearer', id(sightPick(me, 0, [mon('k', 250, 0), mon('n', 203, 0)], R, 'k', V)) === 'k' && id(sightPick(me, 0, [mon('k', 250, 0), mon('n', 200, 0)], R, 'k', V)) === 'n');
+  let flips = 0, cur = null;
+  for (let i = 0; i < 40; i++) { const a = mon('a', i % 2 ? 300 : 315, 5), b = mon('b', i % 2 ? 315 : 300, -5); const p = sightPick(me, 0, [a, b], R, cur); if (cur && p && p.id !== cur) flips++; cur = id(p); }
+  check('12d. two 5% apart swapping places for 40 frames: no flip', flips === 0 && cur != null, flips);
+  check('12d. the kept one out of view, a newcomer in view: the newcomer (even a farther one)', id(sightPick(me, 0, [mon('k', 500, 0), mon('n', 390, 30)], R, 'k', V)) === 'n');
+  check('12d. the kept one in view, a nearer newcomer out of view: kept', id(sightPick(me, -Math.PI / 4, [mon('k', 390, -10), mon('n', 200, -80)], R, 'k', { x: me.x - 400, y: me.y - 100, w: 800, h: 400 })) === 'k');
+  check('12d. both out of view: the 20% rule', id(sightPick(me, 0, [mon('k', 650, 0), mon('n', 600, 5)], R, 'k', V)) === 'k' && id(sightPick(me, 0, [mon('k', 650, 0), mon('n', 500, 5)], R, 'k', V)) === 'n');
+  check('12d. the kept one alone: kept, out to the out range and the 55 degrees', id(sightPick(me, 0, [mon('k', 820, 50)], R, 'k', V)) === 'k');
+  check('12d. the kept one gone: the newcomer', id(sightPick(me, 0, [mon('k', 900, 0), mon('n', 400, 0)], R, 'k', V)) === 'n');
+  check('12d. the kept one dead: the newcomer, and the kept\'s distance is its own', (() => { const p = sightPick(me, 0, [mon('k', 100, 0, false), mon('n', 400, 0)], R, 'k', V); return p && p.id === 'n' && near(p.d, 400); })());
+  check('12d. kept: its own distance and angle', (() => { const p = sightPick(me, 0, [mon('k', 300, 10), mon('n', 285, 0)], R, 'k', V); return p && near(p.d, 300) && near(p.off, deg(10)); })());
+  /* (g) `old`: the least angle and no view, exactly the rule before */
+  check('12g. old: the far one 2 off beats the near one 30 off', id(sightPick(me, 0, [mon('near', 150, 30), mon('far', 380, 2)], R, null, V, true)) === 'far');
+  check('12g. old: no view (the one out of view on the line beats one in view off it)', id(sightPick(me, 0, [mon('in', 300, 40), mon('off', 500, 0)], R, null, V, true)) === 'off');
+  check('12g. old: a kept one gives way to any newcomer nearer the line', id(sightPick(me, 0, [mon('k', 300, 10), mon('n', 600, 0)], R, 'k', V, true)) === 'n');
+  check('12g. old: only exactly true (a truthy word is the new rule)', id(sightPick(me, 0, [mon('near', 150, 30), mon('far', 380, 2)], R, null, V, 1)) === 'near');
+  check('12g. nothing in sight: null either way', sightPick(me, 0, [mon('a', 100, 180)], R, null, V) === null && sightPick(me, 0, [mon('a', 100, 180)], R, null, V, true) === null && sightPick(me, 0, [], R, 'k', V) === null);
+  check('12. inSightView: inside, the edges, outside, and no view', inSightView(V, me.x, me.y) && inSightView(V, V.x, V.y) && inSightView(V, V.x + V.w, V.y + V.h) && !inSightView(V, V.x - 1, me.y) && !inSightView(V, me.x, V.y + V.h + 1) && !inSightView(V, V.x + V.w + 1, me.y) && !inSightView(V, me.x, V.y - 1) && inSightView(null, 1e9, 1e9) && inSightView({ x: NaN, y: 0, w: 5, h: 5 }, 1e9, 0) && inSightView({ x: 0, y: NaN, w: 5, h: 5 }, 1e9, 0) && inSightView({ x: 0, y: 0, w: 5, h: 0 }, 1e9, 0));
+  check('12. the numbers: a tie within 15%, a newcomer 20% nearer', SIGHT.NEAR_TIE === 0.15 && SIGHT.KEEP_NEARER === 0.8);
+  /* the mutants' edges (v2.3.6556): each kills a mutant of the added lines */
+  const O = { x: 0, y: 0 }, at = (id, x, y, extra) => Object.assign({ id, x, y, alive: true }, extra || {});
+  check('12. a monster at 0 hp is not in sight; one with hp is', id(sightPick(me, 0, [mon('a', 100, 0)].map((m) => Object.assign(m, { curHp: 0 })), R, null)) === null && id(sightPick(me, 0, [Object.assign(mon('a', 100, 0), { curHp: 5 })], R, null)) === 'a' && id(sightPick(me, 0, [Object.assign(mon('a', 100, 0), { curHp: 0 })], R, null, null, true)) === null);
+  check('12. a monster that is nowhere (x or y not a number) is not in sight', sightPick(O, 0, [at('a', NaN, 0)], R, null) === null && sightPick(O, 0, [at('a', 100, NaN)], R, null) === null && sightPick(O, 0, [at('a', NaN, 0)], R, null, null, true) === null);
+  check('12. a monster on your very spot (0 px) is in sight, whichever way you face', id(sightPick(O, Math.PI / 2, [at('a', 0, 0)], R, null)) === 'a' && id(sightPick(O, Math.PI / 2, [at('a', 0, 0)], R, null, null, true)) === 'a');
+  check('12. exactly 45 degrees is in the cone', id(sightPick(O, 0, [at('a', 100, 100)], R, null)) === 'a');
+  check('12. two on one spot: the first', id(sightPick(O, 0, [at('a', 100, 10), at('b', 100, 10)], R, null)) === 'a' && id(sightPick(O, 0, [at('a', 100, 10), at('b', 100, 10)], R, null, null, true)) === 'a');
+  check('12. exactly at the tie\'s edge (the nearest x (1 + 0.15)): in the tie', id(sightPick(O, 0, [at('off', 160, 120), at('line', 200 * (1 + SIGHT.NEAR_TIE), 0)], R, null)) === 'line');
+  check('12. a newcomer past the `in` range is out, even inside the tie band (bow: 650 at 20 deg, 700 on the line)', id(sightPick(O, 0, [at('a', 650 * Math.cos(deg(20)), 650 * Math.sin(deg(20))), at('b', 700, 0)], R, null)) === 'a');
+  check('12. the kept one on your very spot: kept', id(sightPick(O, 0, [at('k', 0, 0), at('n', 100, 0)], R, 'k')) === 'k');
+  check('12. the kept one on your very spot, in view; the only newcomer out of view: kept', id(sightPick(O, 0, [at('k', 0, 0), at('n', 500, 0)], R, 'k', { x: -400, y: -300, w: 800, h: 600 })) === 'k');
+  check('12g. old: the kept one keeps it past the cone (50 deg), a newcomer there does not get it', id(sightPick(me, 0, [mon('k', 200, 50)], R, 'k', null, true)) === 'k' && sightPick(me, 0, [mon('n', 200, 50)], R, 'k', null, true) === null && sightPick(me, 0, [mon('n', 200, 50)], R, null, null, true) === null);
+  check('12g. old: on one line, the nearest whichever comes first', id(sightPick(me, 0, [mon('close', 150, 10), mon('far', 400, 10)], R, null, null, true)) === 'close');
+  check('12. inSightView: a view of no width', inSightView({ x: 0, y: 0, w: 0, h: 5 }, 1e9, 0));
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
