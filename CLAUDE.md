@@ -134,8 +134,9 @@ spec. Add a line here only for a new RULE every session must follow.
   preview URL. **Server**: `.github/workflows/deploy-worker.yml` deploys
   `server/` on a merge to main touching `server/**`, once the suite passes on
   that commit (the token from the `production` environment).
-- **Every merge touching `server/**` deploys**, a new file in `server/test/`
-  included (TRAPS §277): merge a batch of them together.
+- **Every merge touching `server/**` deploys**, save one whose only files
+  there are under `server/test/` or `server/README.md` (v2.3.6700; TRAPS
+  §277): merge a batch of them together.
 - **NEVER deploy the worker from a local machine** (2026-06-10: a stale clone
   rolled back three weeks of server work and broke combat).
 - **REPO SAFETY** (`docs/REPO-SAFETY.md`):
