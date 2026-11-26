@@ -25,7 +25,11 @@ import { BroPages } from './BroPages.jsx';   /* v2.3.6600 (card BRO): the Bro ta
 import { BroLanding } from './BroLanding.jsx';   /* v2.3.6683 (card UI2-bro): six doors under the new frame */
 import { CharacterPage, TitlesPage, broCombatLevel } from './CharacterPage.jsx';   /* v2.3.6684: the passport, its Titles */
 import { BRO_HUB_PAGES } from '@/game/broHub.js';   /* v2.3.6684: Bro's own frame pages, by id */
-import { heroSectionBus } from './heroSectionBus.js';   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
+import { heroSectionBus } from './heroSectionBus.js';
+import { CombatHub } from './CombatHub.jsx';   /* v2.3.6685 (card UI2-combat): Combat's hub */
+import { WeaponPage } from './WeaponPage.jsx';   /* v2.3.6685: a weapon's page */
+import { COMBAT_PAGES } from '@/game/combatHub.js';
+const isWeapon = (c) => Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(c));   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
 /* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
    to be displayed together (instead of scrolling little by little)"): the Bro tab is three pages
@@ -107,7 +111,6 @@ export function broCols(w) {
    too is kept across the Points window and a page pushed under Bro, and a
    fresh visit opens the Overview */
 let _pick = null;
-let _askWeapon = null;   /* v2.3.6684: the passport's weapon door, taken by the Combat page (open or not) */
 dashboardPanelBus.subscribe(() => { if (dashboardPanelBus.state.mode === 'bar') _pick = null; });
 
 /* the explainer a stat's row opens (the Equipment window's own) */
@@ -166,13 +169,10 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   const cols = broCols(size.w);
   const L = broPagesLayout(size.w, size.h);
   const [bp, setBp] = useState(() => {
-    const b = _pick || broPagesStart(broStartWeapon(R));
-    /* v2.3.6683: Combat's door is today's Combat page alone */
-    return door === 'combat' ? broPageTo(b, { to: 'combat' }) : b;
+    return _pick || broPagesStart(broStartWeapon(R));   /* v2.3.6685: Combat's door is its hub now (CombatHub.jsx) */
   });
   /* v2.3.6600: the ONE transition (broPages.js broPageTo); the card's weapon is the pages' */
   const move = (a) => setBp((prev) => { const next = broPageTo(prev, a); _pick = next; return next; });
-  useEffect(() => { if (door === 'combat' && _askWeapon) { const c = _askWeapon; _askWeapon = null; move({ to: 'combat', weapon: c }); } });
   const weapon = bp.weapon;
   const setWeapon = (c) => move({ weapon: c });
   /* v2.3.4172: the skill tile showing its XP (one at a time), back to its
@@ -285,8 +285,12 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   if (!door && dashboardPanelBus.frameOn()) {
     return <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear} />;
   }
-  /* v2.3.6684 (card UI2-bro PR 2): the passport (CharacterPage.jsx); a weapon's door, today's Combat page on it */
-  const onWeapon = (cat) => { _askWeapon = cat; go('broCombat'); };
+  /* v2.3.6684 (card UI2-bro PR 2): the passport (CharacterPage.jsx).  v2.3.6685 (card UI2-combat): a weapon's
+     door opens Combat's hub and that weapon's page over it, so Back goes to the hub ("Return to the Combat hub
+     to switch") and then to the passport */
+  const onWeapon = (cat) => { go('broCombat'); if (isWeapon(cat)) go(COMBAT_PAGES[cat]); };
+  if (door === 'combat') return <CombatHub S={S} who={who == null ? null : who} />;
+  if (isWeapon(door)) return <WeaponPage S={S} cat={door} who={who == null ? null : who} />;
   if (door === 'character') return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
 
@@ -319,8 +323,7 @@ export const BroCard = ({ points, onPoints, door, who }) => {
         data-bro-wide={L.wide ? 1 : 0} data-bro-dense={L.dense ? 1 : 0}>
         <BroPages d={d} n={n} held={held} bp={bp} move={move} open={open} explain={explain}
           statsHeld={held === stats.cat ? stats : broWeaponStats(R, held)} statsPick={stats} skills={tiles}
-          wide={L.wide} dense={L.dense}
-          only={door === 'combat' ? 'combat' : undefined} pointsDoor={door === 'combat' ? { n, open: () => open('points') } : undefined} />
+          wide={L.wide} dense={L.dense} />
       </div>
     );
   }

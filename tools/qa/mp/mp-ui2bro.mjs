@@ -11,8 +11,9 @@
  *      the band, nothing clipped and nothing to scroll;
  *   2. every door opens its page under its name and Back (saying Bro) returns
  *      to Bro; Equipment opens Gear and the Menu button comes back to Bro;
- *   3. Combat's page has Points (today's Progress door), which opens the
- *      Points window and Back returns to Combat; the glow on Combat while
+ *   3. Combat's page has Points (today's Progress door; v2.3.6685: the hub's
+ *      Shared door), which opens the Points window and Back returns to
+ *      Combat; the glow on Combat while
  *      points wait;
  *   4. each of today's eight Progress doors still has its road;
  *   5. `?ui2=0` gives today's Bro (its pages, no landing).
@@ -22,7 +23,8 @@
  *   6. the specification's first acceptance task, "Find your combat level,
  *      then your Bow level": both on the passport, unscrolled, the combat
  *      level the WORKER's (its charLevel) right beside the face, the Bow
- *      level the seeded one; the Bow door opens the Combat page on the bow;
+ *      level the seeded one; the Bow door opens the Bow's own page over
+ *      Combat's hub (v2.3.6685): Back to the hub, Back to the passport;
  *   7. the passport shows the real name, title ("No title equipped" before),
  *      levels and counts, honest lines where the game has none (No clan,
  *      Skill guilds); every door 44 x 44 or more, inside the band, nothing
@@ -79,7 +81,9 @@ function landing() {
     band: B ? [Math.round(B.width), Math.round(B.height)] : null,
     page: page ? 1 : 0,
     pages: document.querySelector('[data-bro-card="pages"]') ? 1 : 0,
-    combatPoints: (() => { const e = document.querySelector('[data-bro-door-page="combat"] [data-bro-row="points"]'); return e ? { n: +e.getAttribute('data-bro-spend'), live: e.classList.contains('is-live') } : null; })(),
+    /* v2.3.6685 (card UI2-combat): Combat is its hub; the shared count's door opens the Points window */
+    combatPoints: (() => { const e = document.querySelector('[data-bro-door-page="combat"] [data-combat-hub] [data-combat-door="shared"]'); return e ? { n: +e.getAttribute('data-combat-points'), live: e.classList.contains('is-glow') } : null; })(),
+    hub: document.querySelector('[data-bro-door-page="combat"] [data-combat-hub]') ? 1 : 0,
     hero: window.__btHeroSection ? window.__btHeroSection.shown : null,
     nav: nv ? { ws: nv.ws, shown: nv.shown, menu: nv.menu.map((e) => e.id) } : null,
     rows8: Array.from(document.querySelectorAll('[data-bro-row]')).map((e) => e.getAttribute('data-bro-row')),
@@ -182,7 +186,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (k === 'combat') {
         await bandShot(P, 'ui2-bro-combat.png');
         /* 3b. Points from Combat: the Points window, Back returning to Combat */
-        await tap(P, '[data-bro-door-page="combat"] [data-bro-row="points"]', 1000);
+        await tap(P, '[data-bro-door-page="combat"] [data-combat-door="shared"]', 1000);   /* v2.3.6685: the hub's Shared door */
         const Pp = await read(P);
         await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 800);
         const Pb = await read(P);
@@ -201,8 +205,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('2a. each door opens its page under its name, Back saying Bro and returning to Bro',
       seen.every((s) => s.title === PAGES[s.k] && /Bro/.test(s.back || '') && s.after === 'hero'), seen.map((s) => ({ k: s.k, title: s.title, back: s.back, after: s.after })));
     const ch = seen[0], cb = seen[1];
-    rec.ok('2b. Character opens the passport (v2.3.6684), not today\'s pages; Combat today\'s Combat page alone, no marks, with Points',
-      !!ch.pass && !ch.pages && cb.pages && cb.marks === 0 && !!cb.combatPoints, { ch: [!!ch.pass, ch.pages], cb: [cb.pages, cb.marks, cb.combatPoints] });
+    rec.ok('2b. Character opens the passport (v2.3.6684), not today\'s pages; Combat its hub (v2.3.6685), no marks, with Points (its Shared door)',
+      !!ch.pass && !ch.pages && !cb.pages && cb.hub && cb.marks === 0 && !!cb.combatPoints, { ch: [!!ch.pass, ch.pages], cb: [cb.pages, cb.hub, cb.marks, cb.combatPoints] });
     await tap(P, '[data-dash-grid="bro"] [data-dest="equipment"]', 1000);
     const E = await read(P);
     await tap(P, '[data-dash-frame] [data-dash-ctl="menu"]', 900);
@@ -241,12 +245,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Q && { name: Q.name, me: myName, tline: Q.tline, sword: Q.sword, staff: Q.staff, clan: Q.clan, guilds: Q.guilds, ap: Q.ap, quests: Q.quests });
     rec.ok('7b. 390 x 844: every door 44 x 44 or more, inside the band, nothing clipped, nothing to scroll, no text under 11 px', passOk(Q), passBrief(Q));
     await bandShot(P, 'ui2-bro-character.png');
-    /* 6b. the Bow door: today's Combat page on the bow; Back to the passport */
+    /* 6b. the Bow door: the Bow's page over Combat's hub (v2.3.6685); Back to the hub, Back to the passport */
     await tap(P, '[data-char-door="weapon-bow"]', 900);
-    const cw = await P.page.evaluate(() => { const e = document.querySelector('[data-bro-door-page="combat"] [data-bro-pg="combat"]'); const t = document.querySelector('[data-dash-title]'); return { title: t && t.getAttribute('data-dash-title'), weapon: e && e.getAttribute('data-bro-weapon') }; });
+    const title = () => P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); const t = document.querySelector('[data-dash-title]'); return { title: t && t.getAttribute('data-dash-title'), weapon: e && e.getAttribute('data-weapon-page'), hub: !!document.querySelector('[data-combat-hub]') }; });
+    const cw = await title();
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 800);
+    const ch2 = await title();
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 800);
     const cb2 = await readPass(P);
-    rec.ok('6b. the Bow door opens the Combat page on the bow; Back returns to the passport', cw.title === 'broCombat' && cw.weapon === 'bow' && !!cb2, { cw, back: cb2 && cb2.title });
+    rec.ok('6b. the Bow door opens the Bow\'s page; Back returns to Combat\'s hub, then to the passport', cw.title === 'broBow' && cw.weapon === 'bow' && ch2.title === 'broCombat' && ch2.hub && !!cb2, { cw, hub: ch2, back: cb2 && cb2.title });
     /* 8. the title, changed from the passport: Titles, Blooded, Equip, the pending mark, the worker's word */
     await tap(P, '[data-char-door="titles"]', 900);
     const T0 = await P.page.evaluate(() => ({ title: (document.querySelector('[data-dash-title]') || { getAttribute: () => null }).getAttribute('data-dash-title'), rows: Array.from(document.querySelectorAll('[data-title-row]')).map((e) => e.getAttribute('data-title-row')), t: window.__btTitles }));

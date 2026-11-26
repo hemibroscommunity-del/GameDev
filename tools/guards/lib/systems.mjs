@@ -314,7 +314,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|broHub|screenZones|pending') /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|broHub|screenZones|pending|combatHub|progression') /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6685: Combat's hub and its pools, a skill's progress (card UI2-combat) */ /* v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

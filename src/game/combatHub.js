@@ -1,0 +1,122 @@
+/* ═══ v2.3.6685: COMBAT'S HUB, ITS FOUR DOORS AND ITS POOLS (card UI2-combat, the build's step 4, PR 1) ═══
+ *
+ * The owner, 2026-11-25: "Combat: Three independent weapon channels plus
+ * shared attributes. Dedicated weapon screen with level/XP, DPS, supporting
+ * stats and six attributes ... Existing allocation preview opens on
+ * selection, not a permanent panel."  The specification's 4.2: "Each weapon
+ * opens a dedicated screen (not a persistent weapon selector). Return to the
+ * Combat hub to switch." ... "Point availability must clearly distinguish
+ * weapon-specific and global pools. Allocation must not accidentally spend
+ * from another channel or another player's account."
+ *
+ * THE POINTS RULE IS THE GAME'S, NOT THE DOCUMENT'S (the builder's notes,
+ * table 1, line 1).  The pools as the worker holds them (src/data/prog3.js
+ * :714-782; the spend itself server/src/prog3.js _handleProg3Allocate):
+ *   poolBy[cat]  what that weapon's levels earned: spent only on that
+ *                weapon's six (an OFFENSE spend draws the named weapon's own
+ *                points, then the free ones);
+ *   shared       minted with the CHARACTER level (the best weapon's: one
+ *                level, v2.3.3538), spent only on the seven shared (a BODY
+ *                spend draws the shared pool, then the free ones: "never a
+ *                lane's points", server/src/prog3.js:1420-1426);
+ *   the rest of `pool` past the three channels: points banked before
+ *                channels existed, spendable anywhere -- so they are in
+ *                every count (prog3PoolAny), and `free` names them.
+ * So each count here is what a Spend from that door can draw on, read by the
+ * game's readers, never worked out from a level ("3 shared a weapon level"
+ * is the document's rule, not the game's).  Against a worker without the
+ * channels (no caps.prog3Chan) every lane reads the whole total, as the
+ * Points window always has (HeroExpanded's laneAvail / sharedAvail now read
+ * this, one rule for both screens).
+ *
+ * The words for a count come from ONE rule (pointsWords): "n points", 0
+ * included; nothing on the hub says how points are earned.  ONE vocabulary:
+ * Sword, Bow, Staff (the builder's notes, line 9).  Another player's page
+ * (`who`) shows no count of theirs and offers no Spend. */
+import {
+  PROG3, prog3Pool, prog3Shared, prog3PoolFor, prog3PoolShared, prog3PoolAny, prog3CharLevel,
+  isProg3SharedEnabled, prog3AtkMeta, prog3AtkPts, prog3StatCap,
+} from '../data/prog3.js';
+import { weaponProgress } from './progression.js';
+import { POINTS_ART_DIR, POINTS_ART_V } from '../data/pointsHeadArt.js';
+
+/* the frame's page of each door (src/game/dashDests.js FRAME_PAGES; src/game/broHub.js BRO_HUB_PAGES) */
+export const COMBAT_PAGES = Object.freeze({ sword: 'broSword', bow: 'broBow', staff: 'broStaff' });
+
+/* the four doors, in the hub's order: three weapons in a row, Shared under them.  The pictures are
+   the game's own (the passport's weapons; Shared: the Points tab's gold bust, POINTS_ICONS.shared):
+   Combat and Shared have no door picture of their own yet (missing art, the card says). */
+export const COMBAT_DOORS = Object.freeze([
+  Object.freeze({ id: 'sword', cat: 'sword', word: 'combatHub.sword', art: '/icons/ui/combat-melee.webp', opens: 'page:' + COMBAT_PAGES.sword }),
+  Object.freeze({ id: 'bow', cat: 'bow', word: 'combatHub.bow', art: '/icons/ui/combat-bow.webp', opens: 'page:' + COMBAT_PAGES.bow }),
+  Object.freeze({ id: 'staff', cat: 'staff', word: 'combatHub.staff', art: '/icons/ui/combat-magic.webp', opens: 'page:' + COMBAT_PAGES.staff }),
+  /* v2.3.6685: today's Points window on its Shared column, until PR 2's Shared page (6686) */
+  Object.freeze({ id: 'shared', cat: null, word: 'combatHub.shared', art: `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`, opens: 'points:shared' }),
+]);
+
+const WEAPON_OF = Object.freeze({ broSword: 'sword', broBow: 'bow', broStaff: 'staff' });
+/** The weapon of a frame page (null: not a weapon's page). */
+export function weaponOfPage(id) {
+  return Object.prototype.hasOwnProperty.call(WEAPON_OF, String(id)) ? WEAPON_OF[String(id)] : null;
+}
+
+/**
+ * The counts a Spend can draw on, by door: { sword, bow, staff, shared, free }.
+ * rpg   S.rpg
+ * chan  the worker's channels (S._serverCaps.prog3Chan)
+ */
+export function combatPools(rpg, chan) {
+  const total = prog3Pool(rpg) + prog3Shared(rpg);
+  const lane = (c) => (chan ? prog3PoolFor(rpg, c) : total);
+  const shared = isProg3SharedEnabled() || chan ? prog3PoolShared(rpg) : total;
+  return Object.freeze({ sword: lane('sword'), bow: lane('bow'), staff: lane('staff'), shared, free: chan ? prog3PoolAny(rpg) : 0 });
+}
+
+/** The words of a count: the one rule ("n points", 0 included). */
+export function pointsWords(n) {
+  const v = Number.isFinite(Number(n)) ? Math.max(0, Math.floor(Number(n))) : 0;
+  return Object.freeze({ key: v === 1 ? 'combatHub.point' : 'combatHub.points', n: v });
+}
+
+/** The combat level: the game's reader (the best weapon's while `onelevel` is on). */
+export function combatLevel(rpg) {
+  return prog3CharLevel(rpg);
+}
+
+/**
+ * The hub's four doors with what each shows.
+ * rpg   S.rpg;  chan  caps.prog3Chan;  who  whose page (null: yours)
+ */
+export function combatHubDoors(rpg, chan, who) {
+  const self = who == null;
+  const pools = combatPools(rpg, chan);
+  return COMBAT_DOORS.map((d) => {
+    const pts = self ? pools[d.id] : null;
+    return Object.freeze({
+      ...d,
+      progress: d.cat ? weaponProgress(rpg, d.cat) : null,
+      points: pts,
+      pointsWords: self ? pointsWords(pts) : null,
+      glow: self && pts > 0,
+    });
+  });
+}
+
+/**
+ * Which pool a Spend from a page draws on, named before the press: a weapon's
+ * own six draw on that weapon's count; a shared stat on the shared count.
+ * stat   a stat's key;  pageCat  the weapon the page is (null: the shared page)
+ */
+export function spendPool(stat, pageCat) {
+  const k = String(stat || '');
+  const atk = Object.prototype.hasOwnProperty.call(PROG3.ATK || {}, k);
+  if (atk) return Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(pageCat)) ? String(pageCat) : null;
+  return Object.prototype.hasOwnProperty.call(PROG3.BODY || {}, k) ? 'shared' : null;
+}
+
+/** A weapon's six attributes as tiles: the game's names and the points each holds of its cap. */
+export function weaponAttributes(rpg, cat) {
+  return prog3AtkMeta().map((m) => Object.freeze({
+    key: m.key, label: m.label, art: m.iconSrc, pts: prog3AtkPts(rpg, cat, m.key), cap: prog3StatCap(rpg, m.key),
+  }));
+}

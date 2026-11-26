@@ -37,4 +37,8 @@ export const SAY = Object.freeze({
   'dashFrame.points': 'Points',
   /* v2.3.6684 (card UI2-bro PR 2): the passport's Titles page */
   'dashFrame.titles': 'Titles',
+  /* v2.3.6685 (card UI2-combat): a weapon's page, its header */
+  'dashFrame.sword': 'Sword',
+  'dashFrame.bow': 'Bow',
+  'dashFrame.staff': 'Staff',
 });
