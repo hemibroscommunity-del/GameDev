@@ -26,6 +26,7 @@ import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/she
 import { computerFrame } from '@/game/deviceProfile.js';   /* a computer's window: the band is one block, 480 px at most */
 import { winVw, winVh } from '../mobile/playViewport.js';
 import { readKitPlayer, KIT_ART } from './sampleData.js';
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* the band's room on this screen: the game's own functions, and its rule for a
    phone on its side and a computer (never over 243, never over a third) */
@@ -128,9 +129,9 @@ function SlotsPlate({ room }) {
   const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
   const slots = (
     <div style={row({ alignItems: 'center', flex: '0 0 auto' })}>
-      {UI2_GRADES.map((g, i) => <Ui2Slot key={g} grade={g} size={s} art={art + pics[i]} name={g} />)}
-      <Ui2Slot grade="rare" size={s} art={art + pics[1]} state="selected" />
-      <Ui2Slot grade="elite" size={44} art={art + pics[2]} state="focused" onClick={() => {}} />
+      {UI2_GRADES.map((g, i) => <Ui2Slot key={g} grade={g} size={s} art={assetUrl(art + pics[i])} name={g} />)}
+      <Ui2Slot grade="rare" size={s} art={assetUrl(art + pics[1])} state="selected" />
+      <Ui2Slot grade="elite" size={44} art={assetUrl(art + pics[2])} state="focused" onClick={() => {}} />
       <Ui2Slot size={s} empty />
     </div>
   );

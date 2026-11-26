@@ -5,6 +5,7 @@ import { askFishBoard, subscribeFishWeigh } from '@/game/fishWeigh.js';
 import { SAY } from '@/data/say/fishBoard.js';   /* v2.3.6352: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';   /* v2.3.6352: a plain row goes through deskWords ("tap" reads "click" on a computer) */
 import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4393 */
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* ═══ v2.3.4036: THE BIGGEST FISH -- RANKS' FISH TAB ═══
  * The owner: "Include leaderboards for largest caught types of fish
@@ -50,7 +51,7 @@ export function FishBoard({ initial }) {
           <button key={f.id} type="button" data-fish-board-sp={f.id} onClick={() => setSp(f.id)} style={chipHit}>
             {/* v2.3.4393: each kind's own picture on its pill (the bag's fish) */}
             <span style={{ ...chip(f.id === sp), gap: 5, padding: '0 11px 0 7px' }}>
-              <img src={'/icons/items/fish-' + f.id + '.webp'} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none' }} />
+              <img src={assetUrl('/icons/items/fish-' + f.id + '.webp')} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none' }} />
               {f.name}
             </span>
           </button>

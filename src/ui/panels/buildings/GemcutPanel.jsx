@@ -10,6 +10,7 @@ import { ShardCrackPanel } from './ShardCrackPanel.jsx';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/gemcut.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -43,7 +44,7 @@ function lsHeader(icon, emoji, title, subtitle) {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
   }, /* v2.3.1224 pattern: UI Bible icon with emoji fallback */
   React.createElement("img", {
-    src: '/icons/ui/bldg-' + icon + '.webp', alt: '', draggable: false,
+    src: assetUrl('/icons/ui/bldg-' + icon + '.webp'), alt: '', draggable: false,
     style: { width: 26, height: 26, objectFit: 'contain', flexShrink: 0 },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
   }), React.createElement("div", { style: { minWidth: 0 } },

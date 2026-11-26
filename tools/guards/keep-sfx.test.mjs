@@ -31,6 +31,14 @@
  * The tree: @babel/parser (root or server/: what CI's suite has), JSX read
  * directly; a parser missing is a FAIL.  A later family (the card's PR 3
  * order) adds its row to FAMILIES and its prefix to PAGE_FAMILIES.
+ *
+ * v2.3.6743 (card KEEP PR 3b): the suite takes a FAMILY (FAMILIES: /sfx kept,
+ * /icons not yet), and 3-5 run for each: a built address on a folder const
+ * (`${POINTS_ART_DIR}x.png`) is built too; a hand `?v=` built onto one is
+ * 'hand', two `v=` handed to assetUrl 'twice'; an address passed through
+ * `a || b` or `c ? a : b` to the door is the door's.  LEFT lists the built
+ * addresses other cards' files hold (it only falls), and 5 holds a family
+ * not kept yet to NO block while its census reads hand or bare.
  */
 import { readFileSync, readdirSync, existsSync, mkdtempSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -42,9 +50,36 @@ import { ROOT, versionTable, pageTable, pageTableModule, PAGE_FAMILIES } from '.
 import { stampValue, readAddress, topFolders, unstampable } from '../assets/stamp.mjs';
 import { keepVersions } from '../assets/keepVersions.mjs';
 
-/* the families this card has kept so far: their folder (a `_headers` block)
-   and the census's row for it */
-const FAMILIES = [{ folder: '/sfx', prefix: '/sfx/' }];
+/* ═══ v2.3.6743: A FAMILY A ROW (card KEEP PR 3b, the icons) ═══
+   The suite takes a family: its folder (a `_headers` block and the census's
+   row), its prefix, and whether it is KEPT yet.  A family's PR 3 adds its row
+   with its loaders moved to assetUrl; `kept` turns true in the PR that adds
+   its block, which may land only when the census reads its hand + bare 0.
+   /icons is not kept yet: entityRenderer.js builds the three HUD bars'
+   addresses with a hand key (HUD_BAR_VER), and that file is card LOAD
+   part 2's (LEFT below): the block waits for it. */
+const FAMILIES = [
+  { folder: '/sfx', prefix: '/sfx/', kept: true },
+  { folder: '/icons', prefix: '/icons/', kept: false },
+];
+/* Built addresses another card's file holds, listed so the count can only
+   fall: each names its file (by its name: tests-by-system reads suites by
+   system), its line's text and who holds it.  A row whose address went
+   (moved to assetUrl) FAILS until it is struck from here. */
+export const LEFT = [
+  { file: 'entityRenderer.js', value: '/icons/ui/bar-hp.webp?v=', holder: 'card LOAD part 2 (HUD_BAR_VER)' },
+  { file: 'entityRenderer.js', value: '/icons/ui/bar-mp.webp?v=', holder: 'card LOAD part 2 (HUD_BAR_VER)' },
+  { file: 'entityRenderer.js', value: '/icons/ui/bar-stam.webp?v=', holder: 'card LOAD part 2 (HUD_BAR_VER)' },
+  /* not a request: weaponDiscIcon reads the file's NAME off it for a key
+     (data-ricon w-*), and an address with its version would change the key */
+  { file: 'controlSkin.jsx', value: '/icons/items/', holder: 'not a request (a key name)' },
+  /* the item icons' hand key ITEMS_V, kept for three lines only: two server
+     suites read their TEXT (a server file is not this card's: a change there
+     deploys the worker) */
+  { file: 'InventoryPanel.jsx', value: '/icons/items/bow.webp', why: 'built', holder: 'server/test/owner-icons.test.mjs 8g reads the line' },
+  { file: 'InventoryPanel.jsx', value: '/icons/items/', why: 'built', holder: 'server/test/bag-icons.test.mjs 5c reads the line' },
+  { file: 'ItemDetailPopup.jsx', value: '/icons/items/bow.webp', why: 'built', holder: 'server/test/owner-icons.test.mjs 8g reads the line' },
+];
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -137,18 +172,70 @@ function builtTop(path) {
   while (i > 0 && path[i - 1].type === 'BinaryExpression' && path[i - 1].operator === '+') { i--; top = path[i]; }
   return { top, i };
 }
+/* the doors: assetUrl(address), and BT_AUDIO.loadSample(key, address), which
+   calls it.  v2.3.6743: an address handed through `a || b` or `c ? a : b` (or
+   parentheses) to a door is the door's too. */
 function wrapped(path, i) {
-  const node = path[i], parent = path[i - 1];
+  let node = path[i], k = i - 1;
+  while (k >= 0 && (path[k].type === 'LogicalExpression' || path[k].type === 'ParenthesizedExpression'
+    || (path[k].type === 'ConditionalExpression' && path[k].test !== node))) { node = path[k]; k--; }
+  const parent = path[k];
   if (!parent || parent.type !== 'CallExpression') return false;
   const name = calleeName(parent.callee);
   return (name === 'assetUrl' && parent.arguments[0] === node) || (name === 'loadSample' && parent.arguments[1] === node);
 }
+/* v2.3.6743: a const bound to a family's folder ('/icons/ui/points/'), in
+   the file or imported from a file of src/: an address built on it is built
+   on that folder (`${POINTS_ART_DIR}gold-1.png?v=${POINTS_ART_V}`). */
+const constCache = new Map();
+function constsOf(file, code, starts) {
+  const ast = parse(code);
+  const own = new Map(), imported = new Map();
+  for (const st of (ast.program || ast).body) {
+    const decl = st.type === 'ExportNamedDeclaration' ? st.declaration : st;
+    if (decl && decl.type === 'VariableDeclaration' && decl.kind === 'const') {
+      for (const d of decl.declarations) {
+        const v = d.id && d.id.type === 'Identifier' ? stringOf(d.init) : null;
+        if (starts(v)) own.set(d.id.name, v);
+      }
+    }
+    if (st.type === 'ImportDeclaration' && file && typeof st.source.value === 'string') {
+      const src = st.source.value;
+      const to = src.startsWith('@/') ? join(ROOT, 'src', src.slice(2)) : src.startsWith('.') ? join(file, '..', src) : null;
+      if (!to || !existsSync(to)) continue;
+      for (const sp of st.specifiers) if (sp.type === 'ImportSpecifier') imported.set(sp.local.name, [to, sp.imported.name || sp.imported.value]);
+    }
+  }
+  /* local consts inside functions too (HeroExpanded's BADGE) */
+  (function walkInner(n) {
+    if (!n || typeof n.type !== 'string') return;
+    if (n.type === 'VariableDeclaration' && n.kind === 'const') for (const d of n.declarations) {
+      const v = d.id && d.id.type === 'Identifier' ? stringOf(d.init) : null;
+      if (starts(v) && !own.has(d.id.name)) own.set(d.id.name, v);
+    }
+    for (const k of Object.keys(n)) {
+      if (k === 'loc') continue;
+      const v = n[k];
+      if (Array.isArray(v)) v.forEach(walkInner); else if (v && typeof v.type === 'string') walkInner(v);
+    }
+  })(ast.program || ast);
+  for (const [local, [to, name]] of imported) {
+    if (!constCache.has(to)) { constCache.set(to, null); constCache.set(to, constsOf(null, readFileSync(to, 'utf8'), starts).own); }
+    const v = constCache.get(to) && constCache.get(to).get(name);
+    if (v) own.set(local, v);
+  }
+  return { own };
+}
 /** Every /sfx address in `code` that would reach the page without its
  *  version: [{ line, why, value }] */
-export function holes(code, alike, prefixes = FAMILIES.map((f) => f.prefix)) {
+export function holes(code, alike, prefixes = FAMILIES.map((f) => f.prefix), file = null) {
   const ast = parse(code);
   const found = [];
   const starts = (s) => typeof s === 'string' && prefixes.some((p) => s.startsWith(p));
+  const named = constsOf(file, code, starts).own;
+  /* the text of a built address's written parts (its hand key, if any, is in them) */
+  const partsOf = (n) => n.type === 'TemplateLiteral' ? n.quasis.map((q) => q.value.cooked).join('\u0000')
+    : n.type === 'BinaryExpression' ? partsOf(n.left) + '\u0000' + partsOf(n.right) : (stringOf(n) || '');
   (function walk(node, path) {
     if (!node || typeof node.type !== 'string') return;
     path.push(node);
@@ -156,14 +243,26 @@ export function holes(code, alike, prefixes = FAMILIES.map((f) => f.prefix)) {
     let s = stringOf(node);
     const isTpl = node.type === 'TemplateLiteral' && node.expressions.length > 0;
     if (isTpl) s = node.quasis[0].value.cooked;
+    /* `${DIR}x.png` and DIR + 'x.png', DIR a const on the folder */
+    if (isTpl && s === '' && node.expressions[0].type === 'Identifier' && named.has(node.expressions[0].name)) s = named.get(node.expressions[0].name);
+    const namedRef = node.type === 'Identifier' && named.has(node.name) && parent && parent.type === 'BinaryExpression' && parent.operator === '+' && parent.left === node;
+    if (namedRef) s = named.get(node.name);
     const skip = parent && ((parent.type === 'ObjectProperty' || parent.type === 'Property') && parent.key === node && !parent.computed
       || parent.type === 'ImportDeclaration' || parent.type === 'ExportNamedDeclaration' || parent.type === 'ExportAllDeclaration');
     if (starts(s) && !skip) {
       const { top, i } = builtTop(path);
       const built = isTpl || top !== node;
       const line = node.loc ? node.loc.start.line : 0;
-      if (wrapped(path, built ? i : path.length - 1)) { /* assetUrl gives it its version */ }
-      else if (built) found.push({ line, why: 'built', value: s });
+      /* v2.3.6743: a hand key built in ('x.webp?v=' + K, `x.webp${V}` where V is
+         '?v=..', or '?v=1?v=2' handed to the door): two `v=` once the table's
+         is added, or a key kept by hand */
+      const text = built ? partsOf(top) : s;
+      const vs = (text.match(/[?&]v=/g) || []).length;
+      if (wrapped(path, built ? i : path.length - 1)) {
+        if (vs > 1) found.push({ line, why: 'twice', value: s });
+      }
+      else if (namedRef && !built) { /* DIR alone, no address */ }
+      else if (built) found.push({ line, why: vs ? 'hand' : 'built', value: s });
       else {
         const r = stampValue(s, versionOf, folders, alike);
         if (r && r.left) found.push({ line, why: r.left, value: s });
@@ -192,6 +291,14 @@ const alikeOf = (code) => unstampable(code, parse(code), versionOf, folders);
     ['4a: a built address (+)', "B.play('/sfx/ui/' + n + '.mp3');", 'built'],
     ['4b: a built address (a template)', 'fetch(`/sfx/${g}/${n}.mp3`);', 'built'],
     ['4c: a built address held in a variable first', "const base = '/sfx/voice/' + who; B.loadSample(k, base);", 'built'],
+    /* v2.3.6743: the icons' */
+    ['3e: a bare /icons literal (a space: the build cannot read it whole)', "const u = '/icons/items/fish trout.webp';", 'unreadable'],
+    ['3f: an /icons literal compared somewhere (stamped nowhere)', "const u = '/icons/items/bow.webp'; if (x === '/icons/items/bow.webp') y();", 'alike'],
+    ['4d: a built /icons address that skips assetUrl', "img.src = '/icons/items/' + k + '.webp';", 'built'],
+    ['4e: a built /icons address on a folder const', "const DIR = '/icons/ui/points/'; const u = `${DIR}gold-${d}.png`;", 'built'],
+    ['4f: a hand ?v= built onto an /icons address', "const u = '/icons/items/' + k + '.webp?v=' + ICON_V;", 'hand'],
+    ['4g: a hand ?v= in a template on an /icons address', "const u = `/icons/shards/${k}.webp?v=2.3.4222`;", 'hand'],
+    ['4h: two v= handed to assetUrl', "const u = assetUrl('/icons/items/' + k + '.webp?v=2?v=' + K);", 'twice'],
   ];
   for (const [name, code, why] of plants) {
     const h = P(code);
@@ -208,6 +315,11 @@ const alikeOf = (code) => unstampable(code, parse(code), versionOf, folders);
     "// '/sfx/x y.mp3' + n\nconst t = 'Plays /sfx/ui/chime.mp3 now';",
     "if (url.startsWith('/sfx/')) y();",
     "const M = { '/sfx/ui/chime.mp3': 1 };",
+    "const u = assetUrl(cond ? '/icons/items/' + k + '.webp' : null);",
+    "const u = assetUrl(SRC[k] || ('/icons/popups/' + k + '.webp'));",
+    "const u = assetUrl('/icons/achievements/' + id + '.webp?v=' + K);",
+    "const DIR = '/icons/ui/points/'; const u = assetUrl(`${DIR}gold-${d}.png?v=${V}`); const d2 = DIR;",
+    "const u = '/icons/items/bow.webp?v=2.3.4222';",
   ];
   const noisy = clean.map((c) => [c, P(c)]).filter(([, h]) => h.length);
   check('3-4 clean: a stamped literal, assetUrl or loadSample around a built one, a comment, a sentence, a prefix test, a key: none flagged', noisy.length === 0, noisy);
@@ -224,15 +336,26 @@ const files = [];
   }
 })(join(ROOT, 'src'));
 const texts = new Map();
-for (const f of files) {
-  const t = readFileSync(f, 'utf8');
-  if (FAMILIES.some((x) => t.includes(x.prefix))) texts.set(f, t);
+const allText = new Map(files.map((f) => [f, readFileSync(f, 'utf8')]));
+for (const [f, t] of allText) if (FAMILIES.some((x) => t.includes(x.prefix))) texts.set(f, t);
+/* v2.3.6743: and a file that imports a folder const of one of them
+   (xpBarArt.js's POINTS_ART_DIR, from data/pointsHeadArt.js) */
+const exportedDirs = new Set();
+for (const t of texts.values()) for (const m of t.matchAll(/export const ([A-Za-z_$][\w$]*) = ['`](\/[^'`]*\/)['`]/g)) {
+  if (FAMILIES.some((x) => m[2].startsWith(x.prefix))) exportedDirs.add(m[1]);
 }
+for (const [f, t] of allText) if (!texts.has(f) && [...exportedDirs].some((n) => new RegExp('\\b' + n + '\\b').test(t))) texts.set(f, t);
 const alike = new Set();
 for (const t of texts.values()) for (const a of alikeOf(t)) alike.add(a);
 const real = [];
-for (const [f, t] of texts) for (const h of holes(t, alike)) real.push({ file: relative(ROOT, f).split(sep).join('/'), ...h });
-check(`3-4 real: every /sfx address in src/ (${texts.size} files) reaches the page with its version`, real.length === 0, real);
+for (const [f, t] of texts) for (const h of holes(t, alike, undefined, f)) real.push({ file: relative(ROOT, f).split(sep).join('/'), ...h });
+const leftIs = (l, h) => (h.file === l.file || h.file.endsWith('/' + l.file)) && l.value === h.value && (!l.why || l.why === h.why);
+const isLeft = (h) => LEFT.some((l) => leftIs(l, h));
+const open_ = real.filter((h) => !isLeft(h));
+if (process.env.KEEP_HOLES) for (const h of open_) console.log('hole', h.file + ':' + h.line, h.why, h.value);   /* the whole list, for the session moving a family */
+const stale = LEFT.filter((l) => !real.some((h) => leftIs(l, h)));
+check(`3-4 real: every ${FAMILIES.map((x) => x.folder).join(' and ')} address in src/ (${texts.size} files) reaches the page with its version, but the ${LEFT.length} LEFT rows`, open_.length === 0, open_);
+check('3-4 LEFT only falls: every row still names a built address in its file (strike a row once its address moved)', stale.length === 0, stale);
 {
   /* the break proof on the real code: the space put back in the death cut */
   const gd = join(ROOT, 'src', 'data', 'gameDisplay.js');
@@ -242,6 +365,25 @@ check(`3-4 real: every /sfx address in src/ (${texts.size} files) reaches the pa
   const door = /BT_AUDIO\.loadSample = function \(key, url\) \{[\s\S]{0,2000}?var tag = \(url = assetUrl\(url\)\) \+/;
   check('4 door: BT_AUDIO.loadSample gives a built address its version before its tag and its fetch (var tag = (url = assetUrl(url)) + ...)',
     door.test(t) && !door.test(t.replace('(url = assetUrl(url))', 'url')));
+}
+
+{
+  /* v2.3.6743: the icons' break proofs on the real code: the bag's cape icon
+     built again without assetUrl, and the shard icon's hand key put back in
+     its own file; and the 256-colour twins' door (p256.js p256Twin) */
+  const inv = join(ROOT, 'src', 'ui', 'mobile', 'dash', 'InventoryPanel.jsx');
+  const t = allText.get(inv) || '';
+  const cape = "return assetUrl(`/icons/items/${k.replace('cape_', 'cape-')}.webp`);";
+  const back = t.replace(cape, "return `/icons/items/${k.replace('cape_', 'cape-')}.webp`;");
+  check('4 break proof (icons): InventoryPanel.jsx\'s cape icon built without assetUrl -> red', t.includes(cape) && holes(back, alike, undefined, inv).some((h) => h.why === 'built' && h.value === '/icons/items/'));
+  const sh = join(ROOT, 'src', 'data', 'shards.js');
+  const st = allText.get(sh) || '';
+  const shard = 'assetUrl(`/icons/shards/${shardKey}.webp`)';
+  check('4 break proof (icons): shards.js\'s icon with its hand key back and no assetUrl -> red (hand)',
+    st.includes(shard) && holes(st.replace(shard, '`/icons/shards/${shardKey}.webp?v=2.3.4222`'), alike, undefined, sh).some((h) => h.why === 'hand'));
+  const p = readFileSync(join(ROOT, 'src', 'rendering', 'p256.js'), 'utf8');
+  const door = /if \(e\.twin\.startsWith\('\/icons\/'\)\) \{\s*const own = assetUrl\(e\.twin\.split\('\?'\)\[0\]\);/;
+  check('4 door (icons): p256Twin asks for an /icons twin at its own version (assetUrl), not its original\'s query joined on', door.test(p) && !door.test(p.replace("assetUrl(e.twin.split('?')[0])", "e.twin.split('?')[0]")));
 }
 
 /* ---- 5. _headers and the census ---------------------------------------------- */
@@ -277,17 +419,28 @@ export function keepFaults(headers, census, folder) {
   const censusFile = join(ROOT, 'docs', 'plan', 'census', 'KEEP-requests.md');
   const census = existsSync(censusFile) ? readFileSync(censusFile, 'utf8') : '';
   for (const f of FAMILIES) {
-    check(`5: public/_headers keeps ${f.folder}/* a year`, blocks(headers).has(f.folder + '/*'));
+    const has = blocks(headers).has(f.folder + '/*');
+    const row = censusRow(census, f.folder);
+    if (f.kept) check(`5: public/_headers keeps ${f.folder}/* a year`, has);
+    /* v2.3.6743: a family not kept yet has no block (rule 2: its census first) */
+    else check(`5: ${f.folder}/* is not kept yet (no block) while the census reads ${row ? row.hand + ' hand, ' + row.bare + ' bare' : 'no row'}`,
+      !has || (row && row.hand + row.bare === 0), row);
     const faults = keepFaults(headers, census, f.folder);
-    check(`5: ${f.folder}/* is /world/placed5/*'s text, and the census reads 0 hand and 0 bare for it`, faults.length === 0, faults);
-    const row = '| `' + f.folder + '` | 96 | 96 | 95 | 0 | 0 | yes |';
-    const plantBare = row.replace('| 95 | 0 | 0 |', '| 95 | 0 | 1 |');
-    check(`5 plant: the block present while the census reads 1 bare -> red`, keepFaults(headers, plantBare, f.folder).length > 0);
-    check(`5 plant: the census reads 1 bare and there is no block -> ok (the block waits)`,
-      keepFaults(headers.replace(f.folder + '/*', f.folder + '-gone/*'), plantBare, f.folder).length === 0);
-    check(`5 plant: the block without immutable -> red`,
-      keepFaults(headers.replace(new RegExp(`(${f.folder.replace('/', '\\/')}\\/\\*\\n\\s+Cache-Control: public, max-age=31536000), immutable`), '$1'), row, f.folder).length > 0);
-    check(`5 plant: the census has no row for ${f.folder} -> red`, keepFaults(headers, '', f.folder).length > 0);
+    check(`5: ${f.folder}/*, where present, is /world/placed5/*'s text, and the census reads 0 hand and 0 bare for it`, faults.length === 0, faults);
+    /* the plants run on the sounds' block, the one kept: the same text a family */
+    const kept = FAMILIES.find((x) => x.kept);
+    const like = headers.replace(kept.folder + '/*', f.folder + '/*');
+    const withBlock = has ? headers : like;
+    const clean = '| `' + f.folder + '` | 96 | 96 | 95 | 0 | 0 | yes |';
+    const plantBare = clean.replace('| 95 | 0 | 0 |', '| 95 | 0 | 1 |');
+    const plantHand = clean.replace('| 95 | 0 | 0 |', '| 95 | 1 | 0 |');
+    check(`5 plant (${f.folder}): the block present while the census reads 1 bare -> red`, keepFaults(withBlock, plantBare, f.folder).length > 0);
+    check(`5 plant (${f.folder}): the block present while the census reads 1 by hand -> red`, keepFaults(withBlock, plantHand, f.folder).length > 0);
+    check(`5 plant (${f.folder}): the census reads 1 bare and there is no block -> ok (the block waits)`,
+      keepFaults(withBlock.replace(f.folder + '/*', f.folder + '-gone/*'), plantBare, f.folder).length === 0);
+    check(`5 plant (${f.folder}): the block without immutable -> red`,
+      keepFaults(withBlock.replace(new RegExp(`(${f.folder.replace('/', '\\/')}\\/\\*\\n\\s+Cache-Control: public, max-age=31536000), immutable`), '$1'), clean, f.folder).length > 0);
+    check(`5 plant (${f.folder}): the census has no row for ${f.folder} -> red`, keepFaults(withBlock, '', f.folder).length > 0);
   }
   check('5: the `/*` block (the site\'s protection) is still the first block', [...blocks(headers).keys()][0] === '/*');
 }
