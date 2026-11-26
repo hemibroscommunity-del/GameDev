@@ -1,4 +1,4 @@
-card: UI2 (UI2-gear, PR 3)
+card: UI2
 branch: claude/plan-ui2-9c-equipment
 prs: UI2-gear PR 3, v2.3.6689 (draft, base main; ready once its checks are green)
 state: ready
