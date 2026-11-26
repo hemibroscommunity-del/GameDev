@@ -58,6 +58,7 @@ const FORMS = {
   'audioreset': '0',
   'autohold': '*',
   'avatarholdms': '*',
+  'bakekeep': '0',
   'bakeread': '0',
   'bakeurl': '0',
   'bandbeat': '0|off|false',

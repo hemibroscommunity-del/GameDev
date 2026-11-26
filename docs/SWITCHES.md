@@ -28,6 +28,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `?bakekeep` | page | switch | v2.3.6761 | 2026-11-26 | =0 | logic |  | no | The armour's masked frames are baked again at every login, not kept on the phone's disk. |
 | `?bodyworker` | page | switch | v2.3.4930 | 2026-11-12 | =0 | logic |  | no | Bodies are baked on the page, not on the bake worker. |
 | `?figround` | page | switch | v2.3.2922 | 2026-09-24 | =1 | chip |  | no | The old per-sprite pixel snap comes back. |
 | `?garmentspecks` | page | switch | v2.3.3658 | 2026-10-27 | =0 | logic |  | no | A garment's specks are drawn the old way (and the body bake goes back to the page). |

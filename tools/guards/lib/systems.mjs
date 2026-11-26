@@ -292,7 +292,9 @@ export const SYSTEMS = Object.freeze({
   },
   art: {
     what: 'loading art in play: strips of 256 colours, the readers off the page\'s thread, bakes on workers',
-    files: [f('src/rendering', 'zoneTextures|stripRead|stripPack|png8Decode|png8Worker|p256|webpImage|artBottoms|artHolds|workerCanvas|trimPack|trimRules|fxStrips|bodyBake|bodyBakeWorker|maskedBake|maskedBakeWorker|retintPalette|sharpPixels|tiledMaps')],
+    files: [f('src/rendering', 'zoneTextures|stripRead|stripPack|png8Decode|png8Worker|p256|webpImage|artBottoms|artHolds|workerCanvas|trimPack|trimRules|fxStrips|bodyBake|bodyBakeWorker|maskedBake|maskedBakeWorker|retintPalette|sharpPixels|tiledMaps'),
+      f('src/game', 'bakeKeep'),   /* v2.3.6761: the masked bakes kept on the disk, the key and the store's rules (card LOAD) */
+    ],
     words: ['art', 'strip', 'png', 'p256', 'bake', 'sprite', 'pic'],
     traps: ['art'],
     doors: [{ name: 'loadTrackedStrip', file: 'src/rendering/zoneTextures.js', what: 'art that loads while the world is in play' }],

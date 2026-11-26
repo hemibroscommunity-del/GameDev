@@ -174,6 +174,7 @@ import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
 import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, folkSheetsStep, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
 import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, resBarBoxes, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
+import { keepTell } from '../../game/bakeKeep.js';   /* v2.3.6761: the bakes kept on the disk (card LOAD PR 2) */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
 export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
 export { MONSTER_SIZE_MULT, MINE_TRAIT_MUL, FISH_TRAIT_MUL };   /* v2.3.5345: still the renderer's exports (moved to ../tables/) */
@@ -3637,7 +3638,10 @@ export function registerPrewarmRenderer(renderer) { _prewarmRenderer = renderer;
 export async function prewarmMaskedBodyFrames(opts) {
   /* v2.3.2874: start the bake worker behind the loading screen even with no
      armour on, so the first equip does not pay its start-up */
-  try { _getBakeWorker(); } catch (e) { /* inline path */ }
+  /* v2.3.6761: ...and tell it the keep's switch (`?bakekeep=0`) before its
+     first job of the session: a job kept on the disk is answered from there
+     (src/game/bakeKeep.js; docs/specs/bake-keep.md) */
+  try { keepTell(_getBakeWorker(), typeof window !== 'undefined' ? window : null); } catch (e) { /* inline path */ }
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;

@@ -338,6 +338,7 @@ What loads behind the loading screen, and what loads later on purpose.
 Loading art in play: strips of 256 colours, the readers off the page's thread, bakes on workers.
 
 - **Files**: `src/rendering/`: zoneTextures, stripRead, stripPack, png8Decode, png8Worker, p256, webpImage, artBottoms, artHolds, workerCanvas, trimPack, trimRules, fxStrips, bodyBake, bodyBakeWorker, maskedBake, maskedBakeWorker, retintPalette, sharpPixels, tiledMaps
+- **Files**: `src/game/`: bakeKeep
 - **Doors**: `loadTrackedStrip` in `src/rendering/zoneTextures.js` (art that loads while the world is in play)
 - **Switches**: [its rows in the switch table](SWITCHES.md#art)
 - **Words**: `art`, `strip`, `png`, `p256`, `bake`, `sprite`, `pic`
