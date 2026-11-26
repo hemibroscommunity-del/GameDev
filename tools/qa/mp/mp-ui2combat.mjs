@@ -402,14 +402,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok('4b1. 375 x 667: the fold follows the page\'s own height (under 172 px the line folds onto the level row; at 172 or more the four bands)',
           !!Mf && Mf.h > 0 && Mf.folded === (Mf.h < 172) && (Mf.folded ? Mf.lineInLevel : Mf.lineAbove && !Mf.lineInLevel) && Mf.lineText.includes('Sword points to spend'), Mf && { h: Mf.h, folded: Mf.folded, inLevel: Mf.lineInLevel, line: Mf.lineText });
         /* the fold itself, at the 168 px the master notes measured for 375 x 667: the page held to that height */
-        await P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); if (e) e.style.height = '168px'; });
+        /* the page fills its column (flex 1 1 auto): held by its basis and its largest height, not its height alone */
+        await P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); if (e) { e.style.flex = '0 0 168px'; e.style.height = '168px'; e.style.maxHeight = '168px'; } });
         await P.page.waitForTimeout(900);
         const Ff = await readRoom(P, PAGE);
         const Mh = await pageMarks(P);
         rec.ok('4b2. a page of 168 px (375 x 667 as the master notes measured it): the line on the level row\'s right end, its words whole, nothing clipped, no scroll, no text under 11 px',
           !!Mh && Mh.h === 168 && Mh.folded && Mh.lineInLevel && Mh.lineText.includes('Sword points to spend') && Ff && roomOk(Ff, 7), { h: Mh && Mh.h, folded: Mh && Mh.folded, line: Mh && Mh.lineText, room: roomBrief(Ff) });
         await bandShot(P, 'ui2-combat-sword-fold-168.png');
-        await P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); if (e) e.style.height = ''; });
+        await P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); if (e) { e.style.flex = ''; e.style.height = ''; e.style.maxHeight = ''; } });
         await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
         await tap(P, '[data-combat-door="bow"]', 900);
         const Wf = await readRoom(P, PAGE);
