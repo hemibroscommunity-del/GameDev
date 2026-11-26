@@ -22,8 +22,8 @@
  *
  * THE KEY is made from the job AS THE WORKER RECEIVES IT, every field of it:
  *   - an input (the body, the belt, each worn piece) by what the bake
- *     draws: a sheet by its address by the digest of its FILE's bytes (as
- *     fetched: the worker decodes that file) and the rectangle in it; a
+ *     draws: a sheet by its address by the digest of its FILE's bytes (the
+ *     very file the worker reads and decodes, sheetOf) and the rectangle in it; a
  *     frame of the gear's numbers by the digest of the sheet's numbers and
  *     its cell; a bitmap cut on the page by its PIXELS; and its placing
  *     (tx, ty, fw, fh, ow, oh).  A file is digested, not its picture read
@@ -37,7 +37,8 @@
  *   - the rod's mask on a fish frame;
  *   - the bake's own version: KEEP_V here, the worker's script (its file
  *     name carries a hash of its code in a build: any change to the bake
- *     makes a new name) and the browser (its canvas draws the bake).
+ *     makes a new name) and the browser (its canvas draws the bake; the
+ *     page's device profile says which, deviceProfile.js userAgent).
  * A field of the job or an input that is NOT in the lists below makes no key
  * (the job is baked, as today): a field added to the job later cannot be
  * forgotten by the key, only make it bake (the guard plants one).
@@ -65,40 +66,46 @@ export const KEEP_DB = 'bt-bakekeep';
 export const KEEP_CAP_MB = 20;
 export const KEEP_CAP_BYTES = KEEP_CAP_MB * 1024 * 1024;
 
+/* how a field is read (the lists below): its value in the key; where pixels
+   are (those pixels are read, or the file's or the numbers' digest); an
+   object read by its own list; or not at all (with why) */
+export const NONE = 0, KEY = 1, PIXELS = 2, FILE = 3, NUMBERS = 4, NESTED = 5;
+
 /* ═══ WHAT THE KEY READS ═══
-   Each field of a job, of an input and of a worn entry: `key` (its value is
-   in the key), `pixels` (it says WHERE the pixels are; the pixels read are in
-   the key), `nested` (an object read by its own list), or `none` (with why).
-   Any other field: no key. */
+   Each field of a job, of an input and of a worn entry: KEY (its value is
+   in the key), PIXELS / FILE / NUMBERS (it says WHERE the picture is; the
+   pixels, or the digest of its file or its sheet of numbers, are in the
+   key), NESTED (an object read by its own list), or NONE (with why).  Any
+   other field: no key. */
 export const JOB_FIELDS = Object.freeze({
-  id: 'none',            /* the page's number for the reply */
-  body: 'nested',        /* an input (INPUT_FIELDS) */
-  belt: 'nested',        /* an input, or null */
-  worn: 'nested',        /* [{ k, inp }] (WORN_FIELDS) */
-  look: 'nested',        /* a body from the look's numbers (LOOK_FIELDS) */
-  dilate: 'key',
-  poseInfo: 'key',
-  ds: 'key',
-  crop: 'key',
-  _urlRead: 'none',      /* the worker's own mark: its addresses read */
-  _sheets: 'none',       /* the worker's own list: the sheets it holds */
-  _qa: 'none',           /* QA: the address read against the page's cut */
-  _keyTried: 'none', _key: 'none', _verifyOut: 'none', _files: 'none', _numbersSeen: 'none',   /* the keep's own marks on a job */
+  id: NONE,            /* the page's number for the reply */
+  body: NESTED,        /* an input (INPUT_FIELDS) */
+  belt: NESTED,        /* an input, or null */
+  worn: NESTED,        /* [{ k, inp }] (WORN_FIELDS) */
+  look: NESTED,        /* a body from the look's numbers (LOOK_FIELDS) */
+  dilate: KEY,
+  poseInfo: KEY,
+  ds: KEY,
+  crop: KEY,
+  _urlRead: NONE,      /* the worker's own mark: its addresses read */
+  _sheets: NONE,       /* the worker's own list: the sheets it holds */
+  _qa: NONE,           /* QA: the address read against the page's cut */
+  _keyTried: NONE, _key: NONE, _verifyOut: NONE, _files: NONE, _numbersSeen: NONE,   /* the keep's own marks on a job */
 });
 export const INPUT_FIELDS = Object.freeze({
-  bm: 'pixels',                               /* a bitmap cut on the page: its pixels */
-  lb: 'numbers',                              /* the worker's picture of a frame of numbers, made from them */
-  url: 'file',                                /* a sheet by address: its FILE's bytes are read (read.file) */
-  ub: 'file',                                 /* ...and decoded from that file by the worker */
-  sx: 'key', sy: 'key',                       /* where in that sheet */
-  look: 'numbers', cell: 'key',               /* a frame of the gear's numbers: its sheet's digest (read.numbers) and its cell */
-  tx: 'key', ty: 'key', fw: 'key', fh: 'key', ow: 'key', oh: 'key',
-  qaBm: 'none',          /* QA: the page's own cut, compared, never drawn */
+  bm: PIXELS,                               /* a bitmap cut on the page: its pixels */
+  lb: NUMBERS,                              /* the worker's picture of a frame of numbers, made from them */
+  url: FILE,                                /* a sheet by address: its FILE's bytes are read (read.file) */
+  ub: FILE,                                 /* ...and decoded from that file by the worker */
+  sx: KEY, sy: KEY,                       /* where in that sheet */
+  look: NUMBERS, cell: KEY,               /* a frame of the gear's numbers: its sheet's digest (read.numbers) and its cell */
+  tx: KEY, ty: KEY, fw: KEY, fh: KEY, ow: KEY, oh: KEY,
+  qaBm: NONE,          /* QA: the page's own cut, compared, never drawn */
 });
-export const WORN_FIELDS = Object.freeze({ k: 'key', inp: 'nested' });
+export const WORN_FIELDS = Object.freeze({ k: KEY, inp: NESTED });
 export const LOOK_FIELDS = Object.freeze({
-  sheet: 'pixels', row: 'pixels',   /* the frame in the look's colours is read */
-  cell: 'key',
+  sheet: PIXELS, row: PIXELS,   /* the frame in the look's colours is read */
+  cell: KEY,
 });
 
 const known = (o, list) => {
@@ -273,7 +280,7 @@ export function keepStore(idb, version, cap) {
   const open = () => {
     if (S.opened) return S.opened;
     S.opened = (async () => {
-      if (!idb || typeof idb.open !== 'function') { fail('no store'); return false; }
+      if (!idb || typeof idb.open !== 'function') { fail('no-store'); return false; }
       const r = idb.open(KEEP_DB, 1);
       r.onupgradeneeded = () => {
         const db = r.result;
@@ -281,7 +288,7 @@ export function keepStore(idb, version, cap) {
       };
       r.onblocked = () => fail('blocked');
       S.db = await req(r);
-      S.db.onversionchange = () => fail('version change');
+      S.db.onversionchange = () => fail('version-change');
       let tx = S.db.transaction(['m'], 'readonly');
       const had = await req(tx.objectStore('m').get('v'));
       if (had !== version) {
@@ -352,14 +359,14 @@ export function keepStore(idb, version, cap) {
    port for the worker's counts.  Told once a worker.  -> the probe that asks
    for the counts (window.__btBakeKeep, read by mp-bakekeep), or null. */
 let _toldWorker = null;
-export function keepTell(wk, { on = true, verify = false } = {}) {
+export function keepTell(wk, { on = true, verify = false, ua = '' } = {}) {
   if (!wk || wk === _toldWorker) return null;
   _toldWorker = wk;
   let port = null, mine = null;
   try {
     if (typeof MessageChannel === 'function') { const ch = new MessageChannel(); port = ch.port2; mine = ch.port1; }
   } catch (e) { port = null; mine = null; }
-  try { wk.postMessage({ type: 'keep', on: !!on, verify: !!verify, port }, port ? [port] : []); } catch (e) { return null; }
+  try { wk.postMessage({ type: 'keep', on: !!on, verify: !!verify, ua: String(ua || ''), port }, port ? [port] : []); } catch (e) { return null; }
   if (!mine) return null;
   /* one answer an ask; the worker answers between jobs (a bake on a slow box takes seconds) */
   return (opts) => new Promise((res) => {

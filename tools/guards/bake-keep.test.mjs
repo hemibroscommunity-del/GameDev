@@ -44,7 +44,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { webcrypto } from 'node:crypto';
 
+import { readSystem } from './lib/filesOf.mjs';
+
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+/* the render system's code, read by system (tests-by-system: never a big file by its path) */
+const RENDER = [...readSystem('render').values()].join('\n');
 const read = (f) => readFileSync(join(ROOT, f), 'utf8');
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -185,7 +189,7 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
     for (let k = i; k < src.length; k++) { if (src[k] === '{') d++; else if (src[k] === '}' && --d === 0) return src.slice(i + 1, k); }
     return '';
   };
-  const ent = read('src/rendering/systems/entityRenderer.js');
+  const ent = RENDER;
   const posts = [];
   for (const m of ent.matchAll(/wk\.postMessage\(\{ id, /g)) posts.push(keysOf(objAfter(ent, m.index)));
   check('4. both jobs the page posts are found (_runBake, _runLookBake)', posts.length === 2, posts);
@@ -233,7 +237,7 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
   const SW = await import(pathToFileURL(join(ROOT, 'src/game/switches.js')).href);
   const off = (q) => SW.readerFor(q).sw('bakekeep');
   check('5. ?bakekeep=0 throws the switch (the switch table\'s reader), and only that', off('?a=1&bakekeep=0') && off('?bakekeep=0') && !off('?bakekeep=1') && !off('') && !off('?bakekeep=00'));
-  check('5. the page tells the worker the keep is on unless it is thrown', /keepTell\(_getBakeWorker\(\), \{ on: !sw\('bakekeep'\)/.test(read('src/rendering/systems/entityRenderer.js')));
+  check('5. the page tells the worker the keep is on unless it is thrown', /keepTell\(_getBakeWorker\(\), \{ on: !sw\('bakekeep'\)/.test(RENDER));
   /* the store on a stand-in that throws: off, silently */
   const st = K.keepStore({ open: () => { throw new Error('private mode'); } }, 'v', 100);
   check('5. a store that throws is off, and a get is a miss', (await st.get('k')) === null && st.state.off === true);
@@ -249,7 +253,7 @@ const keyOf = async (j, build) => K.keyOf(K.keyParts(j, reader(build)), digest);
   check('6. a job with a key and not kept is baked, then kept', /const b = j\.look \? lookNow\(j, !!key\) : runJob\(j, !!key\);/.test(wk) && /if \(key && b\.kept && keepReady\(\)\) keep\.store\.put\(key, b\.kept\)/.test(wk));
   check('6. kept only when the sheet drawn is the file the key read (urlInputs drops the key)', /if \(!want \|\| !got \|\| want\.length !== got\.length \|\| want\.some\(\(v, k\) => v !== got\[k\]\)\) j\._key = null;/.test(wk));
   check('6. the keep is off until the page says (`keep.on` starts false)', /const keep = \{ on: false,/.test(wk));
-  check('6. the worker keeps its store itself (IndexedDB from the worker)', /self\.indexedDB/.test(wk) && !/indexedDB/.test(read('src/rendering/systems/entityRenderer.js')));
+  check('6. the worker keeps its store itself (IndexedDB from the worker)', /self\.indexedDB/.test(wk) && !/indexedDB/.test(RENDER));
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nbake-keep: all ok');

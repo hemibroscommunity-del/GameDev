@@ -413,7 +413,6 @@ self.onmessage = (e) => {
      (urlInputs) comes only after that wait, and a stuck kill during it refused
      addresses that had read (the whole main tour's `armour`: 3 refused) */
   for (const x of [j.body, j.belt, ...((j.worn || []).map((w) => w && w.inp))]) {
-    if (keepReady()) break;   /* v2.3.6761: a kept job reads no sheet: its key comes first (keyFirst) */
     if (x && x.url) sheetOf(x.url).p.then((bm) => { if (bm && j.id) self.postMessage({ type: 'urlRead', id: j.id, url: x.url }); });
   }
   const wait = waitsFor(j);
@@ -573,8 +572,7 @@ function keepSet(m) {
   keep.on = !!m.on;
   keep.verify = !!m.verify;
   keep.port = m.port || null;
-  let ua = '';
-  try { ua = String((self.navigator && self.navigator.userAgent) || ''); } catch (e) { ua = ''; }
+  const ua = String(m.ua || '');   /* the browser, as the page's device profile says it (deviceProfile.js userAgent) */
   let at = '';
   try { at = String((self.location && self.location.pathname) || ''); } catch (e) { at = ''; }
   /* the bake's version: the keep's own, this script (hashed in a build), the browser */
@@ -589,7 +587,7 @@ function keepSet(m) {
 }
 function keepStats() {
   const S = keep.store ? keep.store.state : null;
-  return { on: keep.on && !!S && !S.off, verify: keep.verify, why: S ? S.why : (keep.on ? '' : 'switched off'),
+  return { on: keep.on && !!S && !S.off, verify: keep.verify, why: S ? S.why : (keep.on ? '' : 'switched-off'),
     hits: keep.hits, misses: keep.misses, stored: keep.stored, bad: keep.bad, nokey: keep.nokey,
     same: keep.same, differ: keep.differ, diffs: keep.diffs.slice(0, 6), ms: Math.round(keep.ms), missed: keep.missed.length,
     t: { px: Math.round(keep.t.px), digest: Math.round(keep.t.digest), get: Math.round(keep.t.get), out: Math.round(keep.t.out), n: keep.t.n, bm: keep.t.bm },
@@ -679,41 +677,33 @@ function verifyKept(j, out) {
   const b = j.look ? lookNow(j, false) : runJob(j, false);
   const a = out.reply, f = b.reply;
   let why = '';
-  if (f.err || f.raw) why = 'the bake again: ' + (f.err || 'raw');
+  if (f.err || f.raw) why = f.err ? 'rebake-failed' : 'rebake-raw';
   else if (!j.look) {
-    if (stableText(a.cell) !== stableText(f.cell)) why = 'cell';
-    else if (!!a.beltPending !== !!f.beltPending) why = 'belt';
-    else if (!sameBytes(bitmapPixels(a.bitmap), bitmapPixels(f.bitmap))) why = 'pixels';
+    if (stableText(a.cell) !== stableText(f.cell)) why = 'diff-cell';
+    else if (!!a.beltPending !== !!f.beltPending) why = 'diff-belt';
+    else if (!sameBytes(bitmapPixels(a.bitmap), bitmapPixels(f.bitmap))) why = 'diff-pixels';
   } else {
-    if (!sameBytes(a.show, f.show)) why = 'show';
-    else if (stableText(a.counts) !== stableText(f.counts)) why = 'counts';
-    else if (!!a.beltPending !== !!f.beltPending) why = 'belt';
-    else if (!!a.residue !== !!f.residue) why = 'residue';
+    if (!sameBytes(a.show, f.show)) why = 'diff-show';
+    else if (stableText(a.counts) !== stableText(f.counts)) why = 'diff-counts';
+    else if (!!a.beltPending !== !!f.beltPending) why = 'diff-belt';
+    else if (!!a.residue !== !!f.residue) why = 'diff-residue';
     else if (a.residue && (stableText([a.residue.x, a.residue.y, a.residue.w, a.residue.h]) !== stableText([f.residue.x, f.residue.y, f.residue.w, f.residue.h])
-      || !sameBytes(bitmapPixels(a.residue.bitmap), bitmapPixels(f.residue.bitmap)))) why = 'residue pixels';
+      || !sameBytes(bitmapPixels(a.residue.bitmap), bitmapPixels(f.residue.bitmap)))) why = 'diff-residue-pixels';
   }
   for (const t of b.transfer) { try { if (t && t.close) t.close(); } catch (e) { /* gone */ } }
   if (why) { keep.differ++; if (keep.diffs.length < 6) keep.diffs.push(((j.poseInfo && (j.poseInfo.pose + '/' + j.poseInfo.dir + ' #' + j.poseInfo.frameIdx)) || '?') + ': ' + why); } else keep.same++;
 }
-/* a sheet's file by address, digested (SHA-256 of its bytes as fetched),
-   once a session an address (a page's sheet at a blob address never changes;
-   a file on the server is read through its cache: the page fetched it to
-   draw it).  No time limit of its own (TRAPS §279: a file that is late is
-   waited for, never cut as if it hung); a worker that truly hangs is the
-   page's stuck watch's, as for any job (entityRenderer.js _BAKE_STUCK_MS) */
-const FILE_KEEP_N = 64;
-const _files = new Map();   /* url -> Promise<Uint8Array | null> */
-function fileDigest(url) {
-  let p = _files.get(url);
-  if (p) { _files.delete(url); _files.set(url, p); return p; }
-  p = fetch(url)
-    .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
-    .then((buf) => self.crypto.subtle.digest('SHA-256', buf))
-    .then((h) => new Uint8Array(h), () => null)
-    .then((v) => { if (!v) _files.delete(url); return v; });
-  _files.set(url, p);
-  while (_files.size > FILE_KEEP_N) _files.delete(_files.keys().next().value);
-  return p;
+/* a sheet's file by address, digested: the digest sheetOf makes of the very
+   file it reads (one read an address, its 4 s and its failure as before:
+   picture-door's row), and the job's hold on the sheet while it waits.  A
+   kept job then draws nothing from it; a job not kept finds it read. */
+async function sheetDigest(url) {
+  const e = sheetOf(url);
+  e.uses++;
+  try {
+    const bm = await e.p;
+    return bm && e.digest ? await e.digest : null;
+  } finally { e.uses--; sheetsTrim(); sheetsIdleSoon(); }
 }
 /* QA: a job not kept, said as its pose and where each input came from (a
    file's digest, its first bytes; a sheet of numbers'; a cut picture) */
@@ -740,7 +730,7 @@ async function keyFirst(j) {
     if (!worn.some((x) => x && x.look && !lookSheets.has(x.look))) {
       const files = new Map(), numbers = new Map();
       for (const x of [j.body, j.belt, ...worn]) {
-        if (x && x.url && !files.has(x.url)) files.set(x.url, await fileDigest(x.url));
+        if (x && x.url && !files.has(x.url)) files.set(x.url, await sheetDigest(x.url));
         if (x && x.look && !numbers.has(x.look)) numbers.set(x.look, await numbersDigest(x.look));
       }
       key = await keepKey(j, files, numbers);
