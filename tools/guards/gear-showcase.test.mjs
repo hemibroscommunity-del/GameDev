@@ -121,10 +121,12 @@ const hub = read('src/game/broHub.js');
 const card = read('src/ui/mobile/sheet/BroCard.jsx');
 check('2a. Bro\'s Equipment door opens the showcase page (broEquip), its page drawn by GearShowcase',
   /id: 'equipment'[^\n]*opens: 'page:broEquip'/.test(hub) && /broEquip: 'equip'/.test(hub) && /door === 'equip'\) return <GearShowcase/.test(card));
-const REQ = createRequire(path.join(ROOT, 'package.json'));
+/* the parser from the root's packages, else server/'s: Server CI installs only server/ (combat-hub.test's way) */
 let BAB = null;
-try { const tr = REQ('@babel/traverse'); BAB = { parse: REQ('@babel/parser').parse, traverse: tr.default || tr }; } catch (e) { BAB = null; }
-check('2. @babel/parser and @babel/traverse load (npm install in the root)', !!BAB);
+for (const pkg of ['package.json', 'server/package.json']) {
+  try { const REQ = createRequire(path.join(ROOT, pkg)); const tr = REQ('@babel/traverse'); BAB = { parse: REQ('@babel/parser').parse, traverse: tr.default || tr }; break; } catch (e) { BAB = null; }
+}
+check('2. @babel/parser and @babel/traverse load (npm install in the root or server/)', !!BAB);
 const progOf = (src) => {
   const ast = BAB.parse(src, { sourceType: 'module', plugins: ['jsx'] });
   let prog = null;
