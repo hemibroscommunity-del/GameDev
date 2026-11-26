@@ -213,13 +213,14 @@ export function codexItemName(drop) {
 }
 
 function fromCodex(src) {
+  if (!src.key) return null;
   const d = src.drop || {};
   const g = codexGear(src.key);
   const card = codexCard(src.key);
   const rows = [{ k: say(SAY_CP, 'codexPages.dropsFrom', { name: String(src.monster || '') }), v: String(d.chance || '') }];
   if (d.graded) rows.push({ k: say(SAY_CP, 'codexPages.grade'), v: say(SAY_CP, 'codexPages.gradeRolls') });
   return {
-    target: null, card: {}, place: 'codex',
+    target: null, card: {}, place: 'codex', unequip: null,
     input: {
       place: 'codex', kind: g ? g.kind : 'item',
       name: codexItemName({ key: src.key, name: d.name }),
@@ -235,7 +236,7 @@ function fromCodex(src) {
 export function itemPageInput(src) {
   if (!src) return null;
   if (src.peer) return fromPeer(src);
-  if (src.from === 'codex') return src.key ? fromCodex(src) : null;
+  if (src.from === 'codex') return fromCodex(src);   /* read-only: gear-showcase.test 2d holds its shape */
   if (!src.R) return null;
   if (src.entry) return fromEntry(src.R, src.entry);
   if (!src.cell) return null;

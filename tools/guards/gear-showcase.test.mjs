@@ -278,6 +278,19 @@ function wiring(T) {
     const fpRets = [];
     if (fp) fp.traverse({ ReturnStatement(r) { if (fnOf(r) === fp) fpRets.push(r.node.argument); } });
     const peerOk = fpRets.length === 1 && readOnly(fpRets[0], false) && fp.node.params.length === 1 && isId(fp.node.params[0], 'src');
+    /* v2.3.6693 (card UI2-codex, the orchestrator's leave): the Codex's road, read-only -- fromCodex's every
+       return null, or place 'codex', target and unequip null, its input's place 'codex' and actions an empty
+       array literal; reached only under a test of src.from === 'codex' */
+    const fc = fns.fromCodex;
+    const fcRets = [];
+    if (fc) fc.traverse({ ReturnStatement(r) { if (fnOf(r) === fc) fcRets.push(r.node.argument); } });
+    const codexOk = !!fc && fc.node.params.length === 1 && isId(fc.node.params[0], 'src') && fcRets.length > 0 && fcRets.every((a) => {
+      if (isNull(a)) return true;
+      const e = explicit(a);
+      const inp = e && explicit(e.input);
+      return !!inp && isStr(e.place, 'codex') && isNull(e.target) && isNull(e.unequip) && isStr(inp.place, 'codex') && isEmptyArr(inp.actions);
+    }) && fcRets.some((a) => !isNull(a));
+    const codexTest = (n) => !!n && n.type === 'BinaryExpression' && n.operator === '===' && isMem(n.left, 'src', 'from') && isStr(n.right, 'codex');
     /* itemPageInput: its returns, each one of the allowed; the owner's read-only return before the cell's own */
     const ipi = fns.itemPageInput;
     const rets = [];
@@ -292,6 +305,7 @@ function wiring(T) {
         if (isNull(a)) continue;
         if (a.type === 'CallExpression' && isId(a.callee, 'fromPeer') && a.arguments.length === 1 && isId(a.arguments[0], 'src') && isMem(test, 'src', 'peer')) continue;
         if (a.type === 'CallExpression' && isId(a.callee, 'fromEntry') && isMem(test, 'src', 'entry')) continue;   /* an owner's source carries no entry: 1's S2-S4 */
+        if (a.type === 'CallExpression' && isId(a.callee, 'fromCodex') && a.arguments.length === 1 && isId(a.arguments[0], 'src') && codexTest(test) && codexOk) continue;   /* v2.3.6693: the Codex's read-only road */
         if (a.type === 'ObjectExpression' && test && test.type === 'LogicalExpression' && test.operator === '&&' && isId(test.left, 'got') && isMem(test.right, 'src', 'owner') && readOnly(a, true)) { ownerAt = r.node.start; continue; }
         if (isId(a, 'got') && !ifp) {
           const gB = r.scope.getBinding('got');
@@ -367,6 +381,10 @@ wirePlant('W4 (the tap hands no owner)', 'show', 'showcaseItemSource(R, cell, sc
 wirePlant('W5 (openCardItem opens another player\'s slot as yours)', 'prof', 'profileItemSource(p, slot,', 'profileItemSource({ ...p, isSelf: true }, slot,');
 wirePlant('W6 (the owner\'s read-only return after the cell\'s own)', 'open', '  if (got && src.owner) return', '  if (got) return got;\n  if (got && src.owner) return');
 wirePlant('W7 (the owner\'s page handed the cell\'s actions)', 'open', "owner: src.owner, actions: [] } };", "owner: src.owner, actions: [] , ...got.input } };");
+/* v2.3.6693 (card UI2-codex): the Codex's road, each alone */
+wirePlant('W8 (fromCodex handed itemActionList)', 'open', "      actions: [],\n      doors: [{ id: 'codexFound'", "      actions: itemActionList({ kind: 'inventory', key: src.key }, card),\n      doors: [{ id: 'codexFound'");
+wirePlant('W9 (fromCodex with a target)', 'open', "    target: null, card: {}, place: 'codex', unequip: null,", "    target: { kind: 'inventory', key: src.key }, card: {}, place: 'codex', unequip: null,");
+wirePlant('W10 (the Codex\'s test loosened: another source reaches it)', 'open', "  if (src.from === 'codex') return fromCodex(src);", "  if (src.from) return fromCodex(src);");
 
 console.log(fails ? `gear-showcase: ${fails} FAIL` : 'gear-showcase: all ok');
 process.exit(fails ? 1 : 0);
