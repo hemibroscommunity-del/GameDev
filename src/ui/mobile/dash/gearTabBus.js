@@ -26,9 +26,14 @@
  * mockup, and their localStorage key, are gone).
  */
 import { gearCell } from './itemCategory.js';
-import { dashMinBus } from '../dashMinBus.js';   /* v2.3.4353: the band folding resets this tab */
+import { dashMinBus } from '../dashMinBus.js';
+import { wsStart, wsStep } from '@/game/workspace.js';   /* v2.3.6688: the two panels' one state (card UI2-gear PR 2) */   /* v2.3.4353: the band folding resets this tab */
 
-const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false };
+const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false, ws: wsStart() };
+/* v2.3.6688 (card UI2-gear PR 2): `ws`, the two panels' workspace (src/game/workspace.js: management, a
+   look from the bag (left) or from the worn cells (right), the item page), moved ONLY by wsStep through
+   wsDo below; under the frame `sel` is derived from it (a bag pick keeps its stash object by identity, as
+   tapBag's does).  Today's Gear (`?ui2=0`) never reads `ws`. */
 /* v2.3.4191: `more` -- the item card's "⋯" open (its Drop, Pin, Inspect...);
    it shuts with any new pick, put-down or filter.  (The skill tiles and their
    XP state left with the tiles, for the Bro page.) */
@@ -68,7 +73,29 @@ export const gearTabBus = {
     state.more = false;
     emit();
   },
+  /** v2.3.6688: one event of the two panels' workspace (wsStep's), `obj` a bag pick's stash object;
+   *  `quiet` records without a redraw (a scroll, read at the top of a frame). */
+  wsDo(ev, obj, quiet) {
+    const n = wsStep(state.ws, ev);
+    if (n === state.ws) return;
+    const was = state.ws;
+    state.ws = n;
+    if (n.pick == null) state.sel = null;
+    else if (n.from === 'left') state.sel = { bag: n.pick, obj: ev && ev.type === 'pick' ? (obj || null) : ((state.sel && state.sel.obj) || null) };
+    else state.sel = { cell: n.pick };
+    /* an empty cell picked in management filters the bag to its kind (the owner's 2026-11-02 rule); put
+       down, or a look begun, the automatic filter goes */
+    if (n.from === 'right' && n.mode === 'manage' && n.pick != null) {
+      const c = gearCell(n.pick);
+      if (c) state.filter = { id: c.filter, auto: true };
+    } else if (state.filter.auto && !(n.from === 'left' && was.from === 'right' && was.mode === 'manage')) {
+      state.filter = { id: 'all', auto: false };
+    }
+    if (n.pick !== was.pick) { state.menu = false; state.more = false; }
+    if (!quiet) emit();
+  },
   deselect() {
+    if (state.ws.pick != null) { gearTabBus.wsDo({ type: 'close' }); return; }
     if (!state.sel && !state.filter.auto) return;
     state.sel = null;
     state.more = false;
@@ -77,6 +104,7 @@ export const gearTabBus = {
   },
   /** After an Equip or an Unequip: the automatic filter and the pick go. */
   afterChange() {
+    state.ws = wsStep(state.ws, { type: 'close' });   /* v2.3.6688: back to management, the scroll kept */
     state.sel = null;
     state.more = false;
     if (state.filter.auto) state.filter = { id: 'all', auto: false };
@@ -87,6 +115,7 @@ export const gearTabBus = {
    *  and closed the dashboard"): the band closing puts everything back to the default -- no pick (the bro in the
    *  middle), "All Items", no menus open.  */
   reset() {
+    state.ws = wsStep(state.ws, { type: 'reset' });   /* v2.3.6688 */
     if (!state.sel && state.filter.id === 'all' && !state.filter.auto && !state.menu && !state.more) return;
     state.sel = null;
     state.more = false;
@@ -122,7 +151,7 @@ try { dashMinBus.subscribe((min) => { if (min) gearTabBus.reset(); }); } catch (
 
 if (typeof window !== 'undefined') {
   window.__btGearTab = {
-    state: () => ({ sel: state.sel ? { cell: state.sel.cell || null, bag: state.sel.bag || null } : null, filter: { ...state.filter }, menu: state.menu, more: state.more, view: state.sel ? 'item' : 'overview' }),
+    state: () => ({ sel: state.sel ? { cell: state.sel.cell || null, bag: state.sel.bag || null } : null, filter: { ...state.filter }, menu: state.menu, more: state.more, view: state.sel ? 'item' : 'overview', ws: { mode: state.ws.mode, from: state.ws.from, pick: state.ws.pick, scroll: { ...state.ws.scroll } } }),   /* v2.3.6688: + the two panels' workspace */
     bus: gearTabBus,
   };
 }

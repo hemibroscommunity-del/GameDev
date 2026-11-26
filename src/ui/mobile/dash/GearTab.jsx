@@ -1,15 +1,14 @@
 import React from 'react';
 import { COL, getState, qualityInk, QUALITY_LABEL, QUALITY_COLOR } from './common.js';
 import { getBagEntries } from './bagModel.js';
-import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.4233: a "?" piece never stacks */
 import { BagTile, GEAR_SEL_RING, GEAR_SEL_BLUE, GEAR_SEL_TINT } from './InventoryPanel.jsx';
-import { GEAR_FILTER_GROUPS, GEAR_FILTERS, GEAR_CELLS, gearCell } from './itemCategory.js';
+import { GEAR_FILTERS, GEAR_CELLS, gearCell } from './itemCategory.js';
 import { gearTabBus } from './gearTabBus.js';
+import { groupSpare } from './gearBag.js';   /* v2.3.6688: shared with the two panels (card UI2-gear PR 2) */
+import { GearFilterMenu } from './GearFilterMenu.jsx';   /* v2.3.6688: likewise */
 import { cellContent, HAND_FIELD } from './gearCells.js';   /* v2.3.6687: the nine cells' reader, shared with the one item page (card UI2-gear) */
-import { openItemPage } from './itemPageOpen.js';   /* v2.3.6687: Gear's Details opens the one item page (card UI2-gear) */
 import { ui2FrameOn } from '../ui2Frame.js';
-import { SAY as SAY_ITEM } from '@/data/say/itemInspect.js';
-import { say } from '@/game/say.js';
+import { GearPanels } from './GearPanels.jsx';   /* v2.3.6688: the two panels, under the frame (card UI2-gear PR 2) */
 import { itemActionList, runItemAction, entryTarget } from './itemActions.js';
 import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
@@ -20,7 +19,7 @@ import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4191: the 
 import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4191: the item card's stat pictures, the Points window's own */
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
-import { WEAPON_STASH_MAX, toDisplayHp } from '../../../data/gameSystems.js';
+import { toDisplayHp } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon } from '@/data/gems.js';
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4151: the coins beside the filter */
 import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' badge says a big purse short, as the top bar does */
@@ -113,28 +112,7 @@ const FONT_MIN = 11;   /* the owner's floor for anything in the card */
    cap of its own.  (Against #1386's 1056 px box the card had stretched to
    ~740 px: the 840 px block is what makes dropping the cap right.) */
 
-/* v2.3.4233, the owner: "Armor should be able to stack right? The only way it
-   comes different is if the rarity tier or the hardness tier is different."
-   Identical spare armour (same kind, material, quality, hardness, all
-   revealed) shows as ONE cell with its count, like ore.  Display only: the
-   server keeps every piece; the cell stands for the first of the group, so
-   Equip and Drop act on one piece.  Weapons never stack. */
-const PIECE_ID_KEY = /^(id|gid|uid|serial|stamp|seq|t|at|ts|time|created|acquired|slotIndex|index)/i;
-function groupSpare(entries) {
-  const seen = new Map();
-  const out = [];
-  for (const e of entries) {
-    if (!/^stash(Shield|Armor|Legs|Gear)$/.test(e.kind) || !e.obj || shownUnrevealed(e.kind, e.index, e.obj)) { out.push(e); continue; }
-    const sig = e.kind + '|' + Object.keys(e.obj).filter((k) => !PIECE_ID_KEY.test(k)).sort()
-      .map((k) => k + '=' + JSON.stringify(e.obj[k])).join('|');
-    const first = seen.get(sig);
-    if (first) { first.count = (first.count || 1) + 1; continue; }
-    const g = { ...e, count: 1 };
-    seen.set(sig, g);
-    out.push(g);
-  }
-  return out;
-}
+/* v2.3.4233's groupSpare (identical spare armour as ONE cell with its count): v2.3.6688, in gearBag.js, shared with the two panels */
 
 /* v2.3.4273: the card's ✕ button, its side, and the card width under which the head's picture steps aside for it */
 const CARD_X_WIDE_AT = 150;   /* a card this wide (a computer, a tablet) has the room for the full 36 px button and its head room */
@@ -450,32 +428,19 @@ const GearCellView = ({ c, R, slots, selCell, hand, t }) => {
   );
 };
 
-/* ═══ v2.3.6687: GEAR'S DOOR TO THE ONE ITEM PAGE (card UI2-gear PR 1) ═══
-   Under the new frame (?ui2=0 the way back) a picked item's picture and
-   name are ONE button, "Details of <name>": it opens the one item page
-   (dash/ItemPage.jsx) on Gear's stack, Back returning here with the pick
-   kept.  The card's foot is left as it was (one gold button, mp-geartab's
-   measure); the door's mark is the "›" in the head's corner, drawn over
-   the room the ✕ already keeps, so nothing in the card moves.  PR 2's
-   summary carries the Details button of the specification's part 5. */
-const HeadBox = ({ door, name, style, children }) => {
-  if (!door) return <div style={style}>{children}</div>;
-  /* a div with the button's role and keys, not a <button>: the head keeps
-     its box exactly as it was (mp-geartab and mp-oneband count the card's
-     buttons against its edges, and the head was never one of them) */
-  const go = (e) => { e.stopPropagation(); door(); };
-  return (
-    <div role="button" tabIndex={0} data-gear-details="" aria-label={say(SAY_ITEM, 'itemInspect.detailsAria', { name: name || '' })}
-      onClick={go}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } }}
-      style={{ ...style, position: 'relative', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}>
-      {children}
-      <span aria-hidden="true" data-gear-details-mark="" style={{ position: 'absolute', right: 2, bottom: 0, fontSize: 18, fontWeight: 900, lineHeight: 1, color: COL.accent, pointerEvents: 'none' }}>{'›'}</span>
-    </div>
-  );
+/* v2.3.6687's door to the one item page (the picked card's head) left with the middle column: under the frame
+   Gear is the two panels, whose summary carries the Details button (v2.3.6688, GearPanels.jsx). */
+
+/* ═══ v2.3.6688: UNDER THE NEW FRAME, GEAR IS TWO PANELS (card UI2-gear PR 2) ═══
+   Inventory left, Equipped right in a body's shape, the quick look in the panel opposite the source, no middle
+   column: dash/GearPanels.jsx.  `?ui2=0` (the frame's way back) keeps today's three panels below, whole. */
+export const GearTab = (props) => {
+  const frameOn = (() => { try { return ui2FrameOn(); } catch (e) { return false; } })();
+  if (frameOn) return <GearPanels R={props.R} />;
+  return <GearTabToday {...props} />;
 };
 
-export const GearTab = ({ R: Rin, desk }) => {
+const GearTabToday = ({ R: Rin, desk }) => {
   const R = Rin || {};
   const [rootRef, box] = useMeasure();
   const [, tick] = React.useReducer((n) => (n + 1) % 1000000, 0);
@@ -701,55 +666,8 @@ export const GearTab = ({ R: Rin, desk }) => {
         <span data-gear-bag-shade="top" aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 16, pointerEvents: 'none', borderRadius: '6px 6px 0 0', background: 'linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0))', opacity: bagEdge.top ? 1 : 0, transition: 'opacity 120ms' }} />
         </div>
       )}
-      {/* the menu: down over the bag panel only */}
-      {st.menu && (
-        <div data-gear-menu="" style={{
-          position: 'absolute', left: pp + padX, right: pp + padX, top: pp + hdr, bottom: pp, zIndex: 6,
-          background: COL.bg, border: `1px solid ${COL.borderStrong}`, borderRadius: 8,
-          boxShadow: '0 8px 18px rgba(4,7,9,.45)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        }}>
-          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 8px', borderBottom: `1px solid ${COL.divider}` }}>
-            <span style={{ flex: 'none', fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: COL.muted }}>Show</span>
-            {/* the weapon bag's fill -- no cap on the bag (only the weapon bag has one) */}
-            <span data-gear-fill="" style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 10, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>
-              weapons {weaponsHeld}/{WEAPON_STASH_MAX}
-            </span>
-            <button type="button" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the filter menu"
-              onClick={(e) => { e.stopPropagation(); gearTabBus.setMenu(false); }}
-              style={{ position: 'relative', flex: 'none', width: 34, height: 32, padding: 0, border: 'none', background: 'transparent', color: COL.text, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>{'✕'}</button>
-          </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', padding: 3 }}>
-            {[{ id: 'all', label: 'All items', rows: ['all'] }].concat(GEAR_FILTER_GROUPS).map((g) => {
-              const n = g.rows.reduce((a, id) => a + (id === 'all' ? allEntries.length : (counts[id] || 0)), 0);
-              const multi = g.rows.length > 1;
-              return (
-                <div key={g.id} data-gear-group={g.id} style={{ opacity: n ? 1 : 0.42 }}>
-                  {multi && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, padding: '5px 6px 2px' }}>{g.label}</div>}
-                  {g.rows.map((id) => {
-                    const c = id === 'all' ? allEntries.length : (counts[id] || 0);
-                    const word = id === 'all' ? 'All items' : multi ? GEAR_FILTERS[id].pill : g.label;
-                    const cur = fid === id;
-                    return (
-                      <button type="button" key={id} data-gear-filter-row={id} data-count={c}
-                        onClick={(e) => { e.stopPropagation(); gearTabBus.pickFilter(id); }}
-                        style={{
-                          width: '100%', minHeight: 34, display: 'flex', alignItems: 'center', gap: 6,
-                          padding: multi ? '0 8px 0 14px' : '0 8px', boxSizing: 'border-box', borderRadius: 6,
-                          border: `1px solid ${cur ? COL.accent : 'transparent'}`, background: cur ? COL.accentFill : 'transparent',
-                          color: c ? COL.text : COL.disabled, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
-                          textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation',
-                        }}>
-                        <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{word}</span>
-                        <span style={{ flex: 'none', fontSize: 11, fontWeight: 800, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>{c}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* the menu: down over the bag panel only (v2.3.6688: its own file, shared with the two panels) */}
+      {st.menu && <GearFilterMenu fid={fid} allEntries={allEntries} counts={counts} weaponsHeld={weaponsHeld} box={{ left: pp + padX, right: pp + padX, top: pp + hdr, bottom: pp }} />}
     </div>
   );
 
@@ -810,7 +728,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const head = (pic, name, quality, opts) => {
     const o = opts || {};
     return (
-      <HeadBox door={o.door} name={name} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: cardXRoom ? cardX + 4 : 5 } : null) }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: cardXRoom ? cardX + 4 : 5 } : null) }}>
         {pic}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nameEl(name, quality)}
@@ -821,7 +739,7 @@ export const GearTab = ({ R: Rin, desk }) => {
             {o.extra && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.extra}</span>}
           </div>
         </div>
-      </HeadBox>
+      </div>
     );
   };
   /* v2.3.4191: the owner's "basic number line hardness 0/5" -- the word,
@@ -855,7 +773,6 @@ export const GearTab = ({ R: Rin, desk }) => {
 
   let footer = null;
   let body;
-  const frameDoors = (() => { try { return ui2FrameOn(); } catch (e) { return false; } })();   /* v2.3.6687: the door to the one item page, under the new frame only */
   let moreList = [];
   let morePress = null;
   if (selCell) {
@@ -877,7 +794,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           </>
         ) : ct.item ? (
           <>
-            {head(cellPic, ct.name, ct.quality, { door: frameDoors && Rin ? () => openItemPage({ from: 'gear', R: Rin, cell: selCell }) : null })}
+            {head(cellPic, ct.name, ct.quality)}
             {!short && hardLine(c.field ? hardOf(ct.item) : null)}
             {ct.rows.length > 0 ? <StatPills rows={ct.rows} w={iw} line={short} /> : sentence(SLOT_SENTENCE[selCell], null, short ? 1 : 2)}
           </>
@@ -962,7 +879,6 @@ export const GearTab = ({ R: Rin, desk }) => {
         {head(art(card.thumb, card.glyph, hidden), name, q, {
           hidden, info: card.info, infoColor: card.infoColor,
           qty: selEntry.count || 0,
-          door: frameDoors && Rin ? () => openItemPage({ from: 'gear', R: Rin, entry: selEntry }) : null,
         })}
         {!short && hardLine(!hidden && selEntry.kind === 'stashWeapon' ? hardOf(o) : null)}
         {rows && rows.length > 0

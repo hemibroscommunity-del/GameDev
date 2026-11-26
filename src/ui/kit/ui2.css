@@ -646,3 +646,6 @@
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
+/* v2.3.6688: a control smaller than the finger's floor in a label row reaches 44 px tall all the same */
+.ui2 .u2-hit { position: relative; }
+.ui2 .u2-hit::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: var(--ui2-size-touch); margin-top: calc(var(--ui2-size-touch) / -2); }

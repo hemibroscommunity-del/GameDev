@@ -1,0 +1,62 @@
+/* ═══ v2.3.6688: GEAR'S TWO PANELS (dash/GearPanels.jsx; card UI2-gear PR 2) ═══
+   The kit's tokens only (src/ui/kit/ui2.css): no colour of its own. */
+.ui2.u2-gp { width: 100%; height: 100%; box-sizing: border-box; padding: 4px; font-family: var(--ui2-font); color: var(--ui2-text-ivory); }
+.ui2 .u2-gp-ctl {
+  flex: 0 1 auto; min-width: 44px; height: 30px; padding: 0 8px; box-sizing: border-box;
+  border-radius: var(--ui2-radius-button); border: 1px solid rgba(126, 143, 151, 0.45);
+  background: linear-gradient(180deg, var(--ui2-raised-top), var(--ui2-raised-bottom));
+  color: var(--ui2-text-ivory); font: 700 var(--ui2-fs-small) var(--ui2-font); letter-spacing: 0; text-transform: none;
+  display: flex; align-items: center; cursor: pointer; touch-action: manipulation; overflow: hidden;
+}
+.ui2 .u2-gp-ctl[data-on] { border-color: var(--ui2-brass-highlight); color: var(--ui2-text-gold); }
+.ui2 .u2-gp-ctl-word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui2 .u2-gp-coins { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; font: 700 var(--ui2-fs-small) var(--ui2-font); color: var(--ui2-text-gold); letter-spacing: 0; text-transform: none; }
+.ui2 .u2-gp-coins img { width: 18px; height: 18px; object-fit: contain; }
+.ui2 .u2-gp-shortrow { display: flex; gap: 3px; height: 100%; align-items: stretch; }
+.ui2 .u2-gp-shorthead { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.ui2 .u2-gp-shorthead .u2-gp-ctl { width: 100%; height: 26px; padding: 0 4px; }
+.ui2 .u2-gp-shorthead .u2-gp-coins { justify-content: center; }
+.ui2 .u2-gp-none { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); }
+/* the body */
+.ui2 .u2-gp-worn { width: 100%; height: 100%; display: block; cursor: pointer; touch-action: manipulation; outline: none; }
+.ui2 .u2-gp-worn > .u2-slot { width: 100%; height: 100%; box-sizing: border-box; }
+.ui2 .u2-gp-worn > .u2-slot.is-hand { box-shadow: inset 0 0 0 2px var(--ui2-brass-highlight), inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow)); }
+.ui2 .u2-gp-worn:focus-visible > .u2-slot { outline: 2px solid var(--ui2-brass-highlight); outline-offset: 1px; }
+.ui2 .u2-gp-ghost { width: 78%; height: 78%; object-fit: contain; opacity: 0.45; }
+.ui2 .u2-gp-gems { display: flex; gap: 1px; }
+.ui2 .u2-gp-gems img { width: 42%; min-width: 16px; object-fit: contain; }
+.ui2 .u2-gp-bodyrow { height: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; }
+.ui2 .u2-gp-group { display: flex; gap: 2px; padding: 0 2px; border-radius: var(--ui2-radius-slot); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+/* the summary */
+.ui2 .u2-gp-sum { height: 100%; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ui2 .u2-gp-sum.is-row { flex-direction: row; align-items: center; gap: 6px; }
+.ui2 .u2-gp-id { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ui2 .u2-gp-sum.is-row .u2-gp-id { flex: 0 1 34%; }
+.ui2 .u2-gp-name { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.ui2 .u2-gp-name-t { font-size: var(--ui2-fs-small); font-weight: 700; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.ui2 .u2-gp-where { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-gp-x {
+  flex: 0 0 auto; width: 44px; height: 44px; padding: 0; border-radius: var(--ui2-radius-button);
+  border: 1px solid rgba(126, 143, 151, 0.45); background: linear-gradient(180deg, var(--ui2-raised-top), var(--ui2-raised-bottom));
+  color: var(--ui2-text-ivory); font: 700 var(--ui2-fs-body) var(--ui2-font); cursor: pointer; touch-action: manipulation;
+}
+.ui2 .u2-gp-facts { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.ui2 .u2-gp-sum.is-row .u2-gp-facts { flex: 1 1 auto; min-width: 0; justify-content: center; }
+.ui2 .u2-gp-head { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; padding: 2px 4px; border-radius: var(--ui2-radius-slot); background: rgba(0, 0, 0, 0.22); }
+.ui2 .u2-gp-head .u2-gp-k { flex: 0 0 100%; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.ui2 .u2-gp-head .u2-gp-v { font-size: var(--ui2-fs-body); font-weight: 700; }
+.ui2 .u2-gp-row { display: flex; align-items: baseline; gap: 4px; padding: 0 4px; font-size: var(--ui2-fs-small); white-space: nowrap; }
+.ui2 .u2-gp-row .u2-gp-k { flex: 1 1 auto; min-width: 0; color: var(--ui2-text-muted); overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-gp-row .u2-gp-v { flex: 0 0 auto; }
+.ui2 .u2-gp-sub { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); font-weight: 400; }
+.ui2 .u2-gp-chg { flex: 0 0 auto; display: inline-flex; gap: 2px; font-size: var(--ui2-fs-small); font-weight: 700; }
+.ui2 .u2-gp-chg.is-big { font-size: var(--ui2-fs-body); }
+.ui2 .u2-gp-chg.is-good { color: var(--ui2-green-face-0); }
+.ui2 .u2-gp-chg.is-bad { color: var(--ui2-red-face-0); }
+.ui2 .u2-gp-chg.is-same { color: var(--ui2-text-muted); }
+.ui2 .u2-gp-line, .ui2 .u2-gp-why { margin: 0; padding: 0 4px; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ui2 .u2-gp-acts { flex: 0 0 auto; display: flex; gap: 4px; }
+.ui2 .u2-gp-acts > .u2-act { flex: 1 1 0; min-width: 0; }
+.ui2 .u2-gp-sum.is-row .u2-gp-acts { flex: 0 0 auto; }
+.ui2 .u2-gp-sum.is-row .u2-gp-acts > .u2-act { flex: 0 0 auto; }
+.ui2 .u2-gp-acts > .u2-act { padding: 0 6px; }

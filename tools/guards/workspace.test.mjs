@@ -145,9 +145,11 @@ for (const [p, c, what, M] of PLANTS) {
   const gear = rd('src/ui/mobile/dash/GearTab.jsx');
   const bus = rd('src/ui/mobile/dash/gearTabBus.js');
   check('Gear\'s two panels draw from wsPanels', /\bwsPanels\(/.test(panels));
-  check('the workspace moves only by wsStep (gearTabBus.ws)', /\bwsStep\(/.test(bus) && !/\bwsStep\(/.test(panels) && !/\bws\s*=\s*\{/.test(panels));
-  check('the summary\'s Details opens the ONE item page', /import \{ openItemPage \} from '\.\/itemPageOpen\.js'/.test(panels) && /openItemPage\(\{ from: 'gear'/.test(panels) && !/data-item-page=/.test(panels));
-  check('the picked square wears the kit\'s selected state', /state=\{[^}]*'selected'/.test(panels) || /stateClass\('selected'\)/.test(panels));
+  check('the workspace moves only by wsStep (gearTabBus.ws)', /\bwsStep\(/.test(bus) && !/\bwsStep\(/.test(panels) && !/\bws\s*=\s*\{\s*mode/.test(panels));
+  check('the summary\'s Details opens the ONE item page', /import \{ openItemPage[^}]*\} from '\.\/itemPageOpen\.js'/.test(panels) && /openItemPage\(\{ from: 'gear'/.test(panels) && !/data-item-page=/.test(panels));
+  const cell = rd('src/ui/kit/ItemGrid.jsx');
+  check('the picked square wears the kit\'s selected state (the grid\'s selectedKey, the worn cell\'s selected; the kit cell draws is-sel)',
+    /selectedKey=\{selKey\}/.test(panels) && /selected=\{picked\}/.test(panels) && /' is-sel'/.test(cell) && /\bwsPicked\(/.test(panels));
   check('the summary is the page\'s model cut short (itemSummary of inspectItem)', /\bitemSummary\(/.test(panels) && /\binspectItem\(/.test(panels) && /\bcompareSet\(/.test(panels) && /\bprojectEquip\(/.test(panels));
   check('today\'s Gear stays under ?ui2=0: GearTab hands over only under the frame', /if \(frameOn\) return <GearPanels\b/.test(gear) && /\bui2FrameOn\(\)/.test(gear));
   check('no middle column in the panels (no figure, no bars)', !/CharacterView|VitalBar/.test(panels));

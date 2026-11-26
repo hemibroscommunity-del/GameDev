@@ -227,8 +227,9 @@ for (const [p, c, what, plant] of PLANTS) {
   const bd = rd('src/ui/mobile/BottomDashboard.jsx');
   const rows = bd.match(/^\s*item:\s*\{[^\n]*Component:\s*ItemPage\b/mg) || [];
   check('the frame has ONE \'item\' page, drawn by ItemPage', rows.length === 1, rows.length);
-  const gear = rd('src/ui/mobile/dash/GearTab.jsx');
-  check('Gear\'s card opens the one item page (openItemPage)', /import \{ openItemPage \} from '\.\/itemPageOpen\.js'/.test(gear) && /openItemPage\(\{ from: 'gear'/.test(gear));
+  /* v2.3.6688: under the frame Gear is the two panels (GearPanels.jsx), whose summary's Details is the door */
+  const gear = rd('src/ui/mobile/dash/GearPanels.jsx');
+  check('Gear\'s Details opens the one item page (openItemPage)', /import \{ openItemPage, itemPageInput \} from '\.\/itemPageOpen\.js'/.test(gear) && /openItemPage\(\{ from: 'gear'/.test(gear));
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks pass');
