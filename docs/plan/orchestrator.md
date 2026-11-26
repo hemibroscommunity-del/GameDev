@@ -106,6 +106,13 @@ deploy settings or anything that cannot be undone).
 and the limits. A card the orchestrator writes names every file it can
 foresee and chooses its readings, so the questions come up rarely.
 
+## When a part fills up
+
+At 250,000 tokens (`finish.md` part 6 rule 1) a part starts its own
+successor WITHOUT ASKING, and tells the owner the new session's title: the
+owner's standing leave, 19:54 UTC 2026-11-26 (v2.3.5664): *"Next time it
+fills up you can just create new sessions as orchestrator yourself"*.
+
 ## What it does not do
 
 - Ask the owner about files, tags, cards or order.
