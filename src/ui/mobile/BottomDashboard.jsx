@@ -85,6 +85,7 @@ import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests
 import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
 import { BroDoorPage } from './sheet/BroCard.jsx';
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
+import { DashGrowBox } from './dash/DashGrowBox.jsx';   /* v2.3.6682: the page grows out of the tile tapped (card UI2-frame PR 2) */
 import { ui2RootClass } from '@/ui/kit/index.js';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
 import { SAY } from '@/data/say/bottomDashboard.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
@@ -1711,7 +1712,7 @@ export const BottomDashboard = () => {
           {/* v2.3.4152: data-band-box -- the band's content box (the page, the nav
               row, the resting columns), centred at the world's width and at
               most 1200 px on a wide screen (game.css html.bt-one-band block) */}
-          <div data-band-box="page" ref={ui2 ? dashScrollBox : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
+          <DashGrowBox data-band-box="page" boxRef={ui2 ? dashScrollBox : undefined} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
             {/* ═══ v2.3.2320b: THE DRILL TITLE COMES BACK DOWN HERE ═══
                 v2.3.1922 moved it UP into the toolbar row, and its reasoning
                 was sound at the time: the 44px header it replaced sat in the
@@ -1812,7 +1813,7 @@ export const BottomDashboard = () => {
                       wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
               </div>
             ) : Active && <Active />}
-          </div>
+          </DashGrowBox>
         </>
       ) : null /* v2.3.1350: bar mode — toolbar only, the game's resting
            default (owner: maximum world visibility).  The compact
@@ -2029,7 +2030,7 @@ export const BottomDashboard = () => {
           destination already shows all of this at full size, and the
           panel keeps its height. */}
       {mode !== 'expanded' && !dashMin && !land && (
-        <div data-band-box="cols" style={{
+        <DashGrowBox data-band-box="cols" style={{
           position: 'absolute',
           left: 0, right: 0,
           bottom: 'var(--sab, 0px)',
@@ -2047,7 +2048,7 @@ export const BottomDashboard = () => {
           {oneBandActive()
             ? <OneBandColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
             : <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />}
-        </div>
+        </DashGrowBox>
       )}
 
 

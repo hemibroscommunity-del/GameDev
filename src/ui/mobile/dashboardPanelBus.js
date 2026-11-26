@@ -24,12 +24,14 @@
 // never collapses the sheet — play with menus open (v2.3.1307); the
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
-import { playIsLandscape, bandResize } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below; v2.3.6241: + bandResize */
+import { playIsLandscape, bandResize, winVw, winVh } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below; v2.3.6241: + bandResize; v2.3.6682: + the kept window's size (a tap's point as a `from`) */
 import { dashMinBus } from './dashMinBus.js';   /* v2.3.6681: the fold follows the frame's `shown` */
 import { ui2FrameOn } from './ui2Frame.js';     /* v2.3.6681: the new frame, ON (?ui2=0 the way back) */
 import {
   dashNavInit, dashNavStep, dashNavView, dashNavLegacy, dashNavOpen, dashNavKey,
 } from '../../game/dashNav.js';                 /* v2.3.6681: the one state and its one transition */
+import { dashGrowOf, dashGrowTapFrom } from '../../game/dashGrow.js';   /* v2.3.6682: the page grows out of the tile tapped */
+import { dashGrowOn } from './dash/dashGrowSwitch.js';                /* v2.3.6682: ?dashgrow=0 and reduced motion give none */
 
 const listeners = new Set();
 const emit = () => {
@@ -124,12 +126,44 @@ let _opener = null;
 let _offers = null;
 const nav = () => { if (!_nav) _nav = dashNavInit(!dashMinBus.min); return _nav; };
 const frameOn = () => { try { return ui2FrameOn(); } catch (e) { return false; } };
-function step(a, quiet) {
+/* ═══ v2.3.6682: THE MOTION (card UI2-frame PR 2, reading 8) ═══
+   Each step that moves the screen says which motion it makes (dashGrow.js:
+   grow out of the tile, shrink back on Back, or from nothing), numbered, and
+   the band's page container wears it as a class until the animation's own end
+   (dash/DashGrowBox.jsx).  A page pushed with no tile's cell grows from the
+   tap's point: the last pointer press, its clientX/Y from the event itself and
+   the kept window size -- nothing measured at the tap or in a frame. */
+let _grow = null;
+let _growN = 0;
+let _tap = null;
+try {
+  window.addEventListener('pointerdown', (e) => {
+    _tap = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+  }, { capture: true, passive: true });
+} catch (e) { /* no window: node */ }
+const TAP_FRESH_MS = 1500;   /* a press older than this did not ask for the page */
+function tapFrom() {
+  if (!_tap) return null;
+  let now = 0;
+  try { now = performance.now(); } catch (e) { return null; }
+  if (!(now - _tap.t <= TAP_FRESH_MS)) return null;
+  try { return dashGrowTapFrom(_tap.x, _tap.y, winVw(), winVh()); } catch (e) { return null; }
+}
+function withFrom(a) {
+  if (!a || (a.type !== 'push' && a.type !== 'arrive') || a.from != null) return a;
+  const from = tapFrom();
+  return from ? { ...a, from } : a;
+}
+function step(a0, quiet) {
+  const a = withFrom(a0);
   const prev = nav();
   const next = dashNavStep(prev, a);
   if (next === prev) return false;
   _nav = next;
   if (quiet) return true;   /* a kept scroll: nothing to draw */
+  let m = null;
+  try { m = dashGrowOn() ? dashGrowOf(prev, next, a) : null; } catch (e) { m = null; }
+  _grow = m ? Object.freeze({ ...m, n: ++_growN }) : null;
   if (dashMinBus.min === next.shown) {
     _syncing = true;
     try { dashMinBus.set(!next.shown); } finally { _syncing = false; }
@@ -184,6 +218,9 @@ export const dashboardPanelBus = {
      A kept scroll moves nothing on screen and draws nothing (quiet). */
   frameOn() { return frameOn(); },
   nav() { return nav(); },
+  /* v2.3.6682: the motion the last step made ({ kind, origin, n }) or null
+     (dash/DashGrowBox.jsx wears it until the animation's own end) */
+  grow() { return frameOn() ? _grow : null; },
   go(a) {
     if (!a) return false;
     if (a.type === 'menu' && _offers) return step({ ...a, offers: _offers });

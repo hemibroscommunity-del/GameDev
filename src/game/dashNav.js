@@ -87,6 +87,11 @@ function put(s, patch) { return Object.freeze({ ...s, ...patch }); }
  *               way home (ret);
  *   'back'      the header's Back: the page you came from, to its spot;
  *   'close'     Close: the dashboard hidden, both workspaces as they were;
+ *   'fold'      the band's handle (dash/BandGrip.jsx): shown, it is Close
+ *               (v2.3.6682: it used to be "to the bar" then the fold, which
+ *               reset Gear's own pages: the owner, "Closing temporarily hides
+ *               the dashboard without resetting either workspace"); hidden,
+ *               it is Gear as it was left;
  *   'keep'      the frame keeps a page's scroll or selection (`a.key`,
  *               `a.scroll`, `a.sel`).
  * Returns the next state (the same object when nothing changes).
@@ -152,6 +157,8 @@ export function dashNavStep(s, a) {
     case 'close':
       if (!s.shown) return s;
       return put(s, { shown: false, menu: dropRets(s.menu) });
+    case 'fold':
+      return dashNavStep(s, { type: s.shown ? 'close' : 'gear' });
     case 'keep': {
       const fix = (stack) => {
         const i = stack.findIndex((e) => e.key === a.key);
