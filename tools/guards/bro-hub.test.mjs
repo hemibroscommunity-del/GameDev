@@ -18,6 +18,18 @@
  *   D6 a locked door loses its reason
  *   D7 one of today's eight Progress doors loses its road
  *   D8 another player's page drawn with no owner named
+ * v2.3.6684 (PR 2, Character, the passport: src/game/broHub.js broPassport,
+ * titleActions; part 3):
+ *   P1 the combat level worked out (the best weapon, or the sum) instead of
+ *      read by the game's reader (prog3.js prog3CharLevel)
+ *   P2 a title shown as equipped that is not earned
+ *   P3 a clan name shown with no party
+ *   P4 a value still on its way shown as 0
+ *   P5 Equip (or any title action) offered on another player's title
+ *   P6 unspent points shown on another player's page
+ *   P7 your phone's own records (Journey) on another player's page
+ *   P8 a title change asks for confirmation, or Equip is on for the title
+ *      you already wear (its reason lost)
  *
  * Run: node tools/guards/bro-hub.test.mjs
  */
@@ -30,6 +42,10 @@ import {
 import { BRO_DOORS } from '../../src/game/broPages.js';
 import { MENU_DESTS, FRAME_PAGES, menuGridShape } from '../../src/game/dashDests.js';
 import { SAY } from '../../src/data/say/dashFrame.js';
+import { SAY as CSAY } from '../../src/data/say/charPage.js';
+import { broPassport, titleActions, PASSPORT_DOORS, PASSPORT_WEAPONS } from '../../src/game/broHub.js';
+import { screenActions } from '../../src/game/screenZones.js';
+import { DASH_HUBS, MORE_ROADS } from '../../src/game/dashDests.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 let failed = 0;
@@ -136,6 +152,95 @@ for (const [name, want, impl] of PLANTS) {
   try { res = suite(impl); } catch (e) { res = [{ name: want + ' (threw)', ok: false }]; }
   const red = res.filter((r) => !r.ok).map((r) => r.name.split(' ')[0]);
   check(`2. plant ${name}: turns ${want} red`, red.includes(want), 'red: ' + (red.join(', ') || 'nothing'));
+}
+
+/* ── 3. v2.3.6684: Character, the passport ── */
+console.log('3. the passport (broPassport, titleActions)');
+/* the readings of a seeded character: the reader's combat level (17) is neither the best weapon
+   (21) nor the sum (39), so a level worked out again cannot pass by luck */
+const R0 = Object.freeze({
+  name: 'Sunburn', combat: 17,
+  weapons: { sword: { lvl: 21, unspent: 2 }, bow: { lvl: 9, unspent: 0 }, staff: { lvl: 9, unspent: 1 } },
+  titleId: 'combat_10', earned: (id) => id === 'combat_10', titleText: (id) => (id === 'combat_10' ? 'Blooded' : id === 'first_blood' ? 'First Blood' : null),
+  clanParty: true, party: { state: 'open', members: [1, 2, 3], ally: null }, oldClan: { tag: 'OLD', name: 'Old Clan' },
+  ap: 415, quests: 12,
+});
+const OTHER = Object.freeze({ name: 'Sunburn' });
+const sumOf = (P, id) => P.summary.find((x) => x.id === id) || {};
+function passportSuite(I) {
+  const out = [];
+  const c = (name, ok, detail) => out.push({ name, ok: !!ok, detail });
+  const me = I.passport(R0, null);
+  c('P1 the combat level is the game\'s reader\'s, never worked out again (17, not 21 or 39)', me.combat === 17, me.combat);
+  c('P1b the three weapons, Sword, Bow, Staff, each its level and a door to Combat',
+    me.weapons.map((w) => w.cat + ':' + w.lvl).join(',') === 'sword:21,bow:9,staff:9' && me.weapons.every((w) => w.opens === PASSPORT_DOORS.weapon), me.weapons.map((w) => w.cat + ':' + w.lvl));
+  c('P2 an earned title is shown', me.title && me.title.id === 'combat_10' && me.title.text === 'Blooded', JSON.stringify(me.title));
+  const fake = I.passport({ ...R0, titleId: 'first_blood' }, null);
+  c('P2 a title that is not earned is never shown as equipped', fake.title === null, JSON.stringify(fake.title));
+  const alone = I.passport({ ...R0, party: null }, null);
+  const al = sumOf(alone, 'clan');
+  c('P3 no party: "No clan", no clan name (not an older worker\'s clan, not a party\'s)', al.none && al.key === 'charPage.noClan' && al.v == null, JSON.stringify(al));
+  const pt = sumOf(me, 'clan');
+  c('P3b a party with no tag: "Party of 3"; an alliance: its tag and name', pt.key === 'charPage.inParty' && pt.n === 3
+    && sumOf(I.passport({ ...R0, party: { state: 'open', members: [1], ally: { on: true, tag: 'SUN', name: 'Sunburnt' } } }, null), 'clan').v === '[SUN] Sunburnt', JSON.stringify(pt));
+  const wait = I.passport({ ...R0, ap: null, quests: null, combat: null }, null);
+  const wa = sumOf(wait, 'ap'), wq = sumOf(wait, 'quests');
+  c('P4 a value on its way is the placeholder, never 0 (AP, Quests done)', wa.loading && wa.v == null && wq.loading && wq.v == null && wait.combat === null, JSON.stringify([wa, wq, wait.combat]));
+  c('P4b a real 0 is shown as 0', sumOf(I.passport({ ...R0, ap: 0, quests: 0 }, null), 'ap').v === 0 && !sumOf(I.passport({ ...R0, ap: 0 }, null), 'ap').loading);
+  const acts = I.actions(OTHER, 'combat_10', null, R0.earned);
+  c('P5 no title action on another player\'s page', Array.isArray(acts) && acts.length === 0, JSON.stringify(acts));
+  const them = I.passport(R0, OTHER);
+  c('P6 another player\'s page shows no unspent points', them.weapons.every((w) => !w.points), them.weapons.map((w) => w.points));
+  c('P6b your page: a weapon\'s points waiting, on its door', me.weapons[0].points === 2 && me.weapons[2].points === 1 && me.weapons[1].points === 0);
+  c('P7 Journey (your phone\'s records) on your page only; Titles on both', me.doors.map((d) => d.id).join(',') === 'titles,journey' && them.doors.map((d) => d.id).join(',') === 'titles', [me.doors.map((d) => d.id), them.doors.map((d) => d.id)]);
+  c('P7b another player\'s page names its owner; yours is not labelled', me.whose === null && them.whose && them.whose.name === 'Sunburn');
+  const mine = screenActions(I.actions(null, 'combat_10', 'combat_10', R0.earned));
+  c('P8 a title change is routine (no confirmation); Equip on your worn title is off with its reason, Remove on',
+    mine.length === 2 && mine.every((x) => x && !x.confirm) && !mine[0].on && mine[0].why === 'charPage.alreadyWorn' && CSAY[mine[0].why] && mine[1].on, JSON.stringify(mine));
+  const pick = screenActions(I.actions(null, 'combat_10', null, R0.earned));
+  c('P8b Equip on for an earned title you do not wear; Remove off with its reason when you wear none',
+    pick[0].on && !pick[1].on && CSAY[pick[1].why], JSON.stringify(pick));
+  return out;
+}
+const PREAL = { passport: broPassport, actions: titleActions };
+for (const r of passportSuite(PREAL)) check('3. ' + r.name, r.ok, r.detail);
+
+console.log('3b. what the page reads, and the tables it moved');
+const CP = fs.readFileSync(path.join(ROOT, 'src/ui/mobile/sheet/CharacterPage.jsx'), 'utf8');
+check('3b. the page reads the combat level by the game\'s reader (prog3CharLevel), nothing summed',
+  /export function broCombatLevel\(R\)\s*\{[^}]*prog3CharLevel\(R\)/.test(CP) && /combat:\s*S && S\.rpg \? broCombatLevel\(R\)/.test(CP) && !/\.reduce\(|Math\.max\(\.\.\./.test(CP));
+check('3b. a title is changed only through the game\'s own ask (sendAchvTitle: the action door)', /sendAchvTitle\(S, want\)/.test(CP) && !/\bact\(/.test(CP));
+check('3b. the pending mark is pending.js\'s (one state, its one transition)', /pendingStep\(/.test(CP) && /pendingMark\(pend, 'title:equip'/.test(CP));
+check('3b. every passport word is a row of the table', ['charPage.combatLv', 'charPage.noTitle', 'charPage.noClan', 'charPage.skillGuilds', 'charPage.notShared']
+  .concat(PASSPORT_WEAPONS.map((w) => w.word)).every((k) => typeof CSAY[k] === 'string'));
+check('3b. Journey left the Settings hub for the passport (one row), and More\'s road follows it',
+  !DASH_HUBS.settingsHub.some((d) => d.id === 'journey') && MORE_ROADS.journey === 'bro:character' && PASSPORT_DOORS.journey === 'page:journey' && panelHas('journey'));
+check('3b. Titles is a frame page of Bro\'s', Object.prototype.hasOwnProperty.call(FRAME_PAGES, 'broTitles') && isBroHubPage('broTitles') && PASSPORT_DOORS.titles === 'page:broTitles');
+for (const [k, o] of Object.entries(PASSPORT_DOORS)) {
+  const pg = o.slice(5);
+  check(`3b. the passport's ${k} door opens a page the dashboard has (${o})`, Object.prototype.hasOwnProperty.call(FRAME_PAGES, pg) || panelHas(pg));
+}
+
+console.log('3c. each dodge, planted, turns its check red');
+const pwrap = (patch) => Object.assign({}, PREAL, patch);
+const withP = (fn) => (r, w) => fn(broPassport(r, w), r, w);
+const PPLANTS = [
+  ['P1 the best weapon as the level', 'P1', pwrap({ passport: withP((P, r) => ({ ...P, combat: Math.max(...Object.values(r.weapons).map((x) => x.lvl)) })) })],
+  ['P1 the sum as the level', 'P1', pwrap({ passport: withP((P, r) => ({ ...P, combat: Object.values(r.weapons).reduce((n, x) => n + x.lvl, 0) })) })],
+  ['P2 the worn id shown without asking if earned', 'P2', pwrap({ passport: withP((P, r) => ({ ...P, title: r.titleId ? { id: r.titleId, text: r.titleText(r.titleId) } : null })) })],
+  ['P3 an older worker\'s clan shown with no party', 'P3', pwrap({ passport: withP((P, r) => ({ ...P, summary: P.summary.map((x) => (x.id === 'clan' && x.none && r.oldClan ? { ...x, none: false, key: undefined, v: r.oldClan.name } : x)) })) })],
+  ['P4 AP on its way shown as 0', 'P4', pwrap({ passport: withP((P) => ({ ...P, summary: P.summary.map((x) => (x.loading ? { ...x, loading: false, v: 0 } : x)) })) })],
+  ['P5 Equip on another player\'s title', 'P5', pwrap({ actions: (w, ...rest) => titleActions(null, ...rest) })],
+  ['P6 points on another player\'s page', 'P6', pwrap({ passport: (r, w) => ({ ...broPassport(r, w), weapons: broPassport(r, null).weapons }) })],
+  ['P7 Journey on another player\'s page', 'P7', pwrap({ passport: (r, w) => ({ ...broPassport(r, w), doors: broPassport(r, null).doors }) })],
+  ['P8 a title change asks first', 'P8', pwrap({ actions: (...a) => titleActions(...a).map((x) => ({ ...x, cost: 'costly' })) })],
+  ['P8 Equip on for the title you wear', 'P8', pwrap({ actions: (...a) => titleActions(...a).map((x) => (x.id === 'equip' ? { ...x, check: () => null } : x)) })],
+];
+for (const [name, want, impl] of PPLANTS) {
+  let res;
+  try { res = passportSuite(impl); } catch (e) { res = [{ name: want + ' (threw)', ok: false }]; }
+  const red = res.filter((r) => !r.ok).map((r) => r.name.split(' ')[0]);
+  check(`3c. plant ${name}: turns ${want} red`, red.includes(want), 'red: ' + (red.join(', ') || 'nothing'));
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks pass');

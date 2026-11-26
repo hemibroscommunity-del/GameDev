@@ -38,7 +38,7 @@ export const PACKETS = [
   /* v2.3.6680: the new dashboard's kit (card UI2), beside the Bro tab it will replace */
   { slug: 'ui2-kit', title: 'The new dashboard kit (?uikit=1: its pieces and two samples)', screens: ['ui2-kit'] },
   /* v2.3.6683 (card UI2-bro) */
-  { slug: 'ui2-bro', title: 'Bro under the new dashboard: six doors, Combat, Character until the passport', screens: ['ui2-bro-landing', 'ui2-bro-combat', 'ui2-bro-character'] },
+  { slug: 'ui2-bro', title: 'Bro under the new dashboard: six doors, Combat, Character (the passport) and its Titles', screens: ['ui2-bro-landing', 'ui2-bro-combat', 'ui2-bro-character', 'ui2-bro-titles'] },   /* v2.3.6684: the passport, its Titles */
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   /* v2.3.4172: the rare fish's weigh-in card and Ranks' Biggest fish

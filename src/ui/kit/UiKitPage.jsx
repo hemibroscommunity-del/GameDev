@@ -205,7 +205,7 @@ function CharacterSample({ room, me }) {
   );
   const facts = [
     fact('Clan', none ? '—' : (me.clan || 'No clan'), none || !me.clan),
-    fact('Guild', 'No guilds', true),   /* the game has no guilds: the honest empty line */
+    fact('Guild', 'Skill guilds', false),   /* v2.3.6684: the ten skill guilds every player is in (the passport's line; no guild name invented) */
     fact('Feats', none ? '—' : me.ap.toLocaleString('en-US') + ' pts', none),
     fact('Quests', none ? '—' : me.quests + ' done', none),
   ];

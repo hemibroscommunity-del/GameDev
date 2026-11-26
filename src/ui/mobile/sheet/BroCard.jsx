@@ -11,7 +11,6 @@ import { SkillTile, SKILL_XP_HOLD_MS } from '../dash/SkillTiles.jsx';   /* v2.3.
 import { registerXpCard, displayXp, xpEasing } from '../../xpLanding.js';   /* v2.3.4191 (Lane A): the XP flight lands on these tiles */
 import { combatSkillState, WEAPON_SKILLS } from '../dash/combatSkill.js';
 import { SKILL_ROSTER, hasUnseenLevelUps } from './skillsModel.js';
-import { prog3Live, prog3CharLevel } from '../../../data/prog3.js';
 import { achvLive, achvApTotal, achvSummary, askTitlePicker } from '@/game/achievements.js';
 import { ACHV_MEDAL_SRC } from '@/data/achievements.js';
 import { clanPartyOn } from '@/game/alliance.js';
@@ -24,6 +23,8 @@ import { sw } from '@/game/switches.js';
 import { broPagesStart, broPageTo, broPagesLayout, broOpen } from '@/game/broPages.js';   /* v2.3.6600: the pages' rules */
 import { BroPages } from './BroPages.jsx';   /* v2.3.6600 (card BRO): the Bro tab in pages */
 import { BroLanding } from './BroLanding.jsx';   /* v2.3.6683 (card UI2-bro): six doors under the new frame */
+import { CharacterPage, TitlesPage, broCombatLevel } from './CharacterPage.jsx';   /* v2.3.6684: the passport, its Titles */
+import { BRO_HUB_PAGES } from '@/game/broHub.js';   /* v2.3.6684: Bro's own frame pages, by id */
 import { heroSectionBus } from './heroSectionBus.js';   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
 /* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
@@ -99,11 +100,6 @@ export function broCols(w) {
   return w >= BRO_COLS_3 ? 3 : w >= BRO_COLS_2 ? 2 : 1;
 }
 
-/* the level the game shows everywhere else: the best weapon's (v2.3.3538) */
-function levelOf(R) {
-  try { if (prog3Live(R)) return prog3CharLevel(R); } catch (e) { /* the old blob */ }
-  return Math.max(1, Number(R && R.level) || 1);
-}
 
 /* the weapon picked here, kept while the page is visited (the Points window
    over it and back keeps it); a fresh visit starts on the weapon out.
@@ -111,6 +107,7 @@ function levelOf(R) {
    too is kept across the Points window and a page pushed under Bro, and a
    fresh visit opens the Overview */
 let _pick = null;
+let _askWeapon = null;   /* v2.3.6684: the passport's weapon door, taken by the Combat page (open or not) */
 dashboardPanelBus.subscribe(() => { if (dashboardPanelBus.state.mode === 'bar') _pick = null; });
 
 /* the explainer a stat's row opens (the Equipment window's own) */
@@ -170,11 +167,12 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   const L = broPagesLayout(size.w, size.h);
   const [bp, setBp] = useState(() => {
     const b = _pick || broPagesStart(broStartWeapon(R));
-    /* v2.3.6683: Combat's door is today's Combat page alone; Character's opens on the Overview */
-    return door === 'combat' ? broPageTo(b, { to: 'combat' }) : door === 'character' ? broPageTo(b, { to: 'overview' }) : b;
+    /* v2.3.6683: Combat's door is today's Combat page alone */
+    return door === 'combat' ? broPageTo(b, { to: 'combat' }) : b;
   });
   /* v2.3.6600: the ONE transition (broPages.js broPageTo); the card's weapon is the pages' */
   const move = (a) => setBp((prev) => { const next = broPageTo(prev, a); _pick = next; return next; });
+  useEffect(() => { if (door === 'combat' && _askWeapon) { const c = _askWeapon; _askWeapon = null; move({ to: 'combat', weapon: c }); } });
   const weapon = bp.weapon;
   const setWeapon = (c) => move({ weapon: c });
   /* v2.3.4172: the skill tile showing its XP (one at a time), back to its
@@ -242,7 +240,7 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   let p = null;
   try { p = profileFromSelf(S); } catch (e) { p = null; }
   const name = (p && p.name) || say(SAY, 'broCard.you');
-  const level = levelOf(R);
+  const level = broCombatLevel(R);   /* the best weapon's (v2.3.3538): the passport's reader (v2.3.6684) */
   const ap = achvApTotal(S);
   let sum = null;
   if (apOn) { try { sum = achvSummary(S); } catch (e) { sum = null; } }
@@ -287,6 +285,10 @@ export const BroCard = ({ points, onPoints, door, who }) => {
   if (!door && dashboardPanelBus.frameOn()) {
     return <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear} />;
   }
+  /* v2.3.6684 (card UI2-bro PR 2): the passport (CharacterPage.jsx); a weapon's door, today's Combat page on it */
+  const onWeapon = (cat) => { _askWeapon = cat; go('broCombat'); };
+  if (door === 'character') return <CharacterPage S={S} who={who == null ? null : who} onWeapon={onWeapon} />;
+  if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
 
   if (BRO_PAGES_ON) {
     const held = broStartWeapon(R);
@@ -468,7 +470,7 @@ export const BroCard = ({ points, onPoints, door, who }) => {
    opens the Bro page's own Points window (HeroExpanded's 'Build'), pushed over this page so the
    header's Back returns to it. */
 export function BroDoorPage({ id, points, who }) {
-  const door = id === 'broCombat' ? 'combat' : 'character';
+  const door = BRO_HUB_PAGES[id] || 'character';   /* v2.3.6684: and Titles */
   const onPoints = () => { heroSectionBus.request('Build'); dashboardPanelBus.push('hero'); };
   /* the Bro page remembers its last window (HeroExpanded's section): coming back here from the
      Points window, the Bro page under this one is asked to come back as its landing, not as Points */

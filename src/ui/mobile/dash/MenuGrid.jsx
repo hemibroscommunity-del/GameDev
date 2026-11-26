@@ -58,6 +58,7 @@ export function doorWord(key) {
     case 'dashFrame.lifeSkills': return say(SAY, 'dashFrame.lifeSkills');
     case 'dashFrame.feats': return say(SAY, 'dashFrame.feats');
     case 'dashFrame.pets': return say(SAY, 'dashFrame.pets');
+    case 'dashFrame.titles': return say(SAY, 'dashFrame.titles');   /* v2.3.6684: the passport's Titles */
     default: return say(SAY, 'dashFrame.page');
   }
 }
