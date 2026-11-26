@@ -258,7 +258,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.unfoldBand(A).catch(() => {});
     await H.openDest(A, 'More');
     await A.page.waitForSelector('[data-more-tile]', { timeout: 8000 }).catch(() => {});
-    const moreNow = await A.page.evaluate(() => ({ achv: !!document.querySelector('[data-more-tile="achievements"]'), journey: !!document.querySelector('[data-more-tile="journey"]') }));
+    const moreNow = await A.page.evaluate(() => ({ achv: !!document.querySelector('[data-more-tile="achievements"]') || !!document.querySelector('[data-dash-grid="menu"] [data-dest="achievements"]'), journey: !!document.querySelector('[data-more-tile="journey"]') }));
+    /* v2.3.6681 (card UI2-frame): under the frame the Menu's root has no More tiles, and Journey sits in the Settings hub for this step (it moves under Bro at step 3): look for its door there */
+    if (!moreNow.journey && await A.page.evaluate(() => !!document.querySelector('[data-dash-frame]'))) {
+      await A.page.evaluate(() => { const b = document.querySelector('[data-dash-grid="menu"] [data-dest="settings"]'); if (b) b.click(); });
+      await A.page.waitForSelector('[data-dash-grid="settingsHub"]', { timeout: 6000 }).catch(() => {});
+      moreNow.journey = await A.page.evaluate(() => !!document.querySelector('[data-dash-grid="settingsHub"] [data-dest="journey"]'));
+    }
     await H.openDest(A, 'Bro');
     const tile = await A.page.waitForSelector('[data-bro-row="achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
       const t = document.querySelector('[data-bro-row="achievements"]');
@@ -401,8 +407,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       stack: window.__broDashPanelBus ? window.__broDashPanelBus.state.stack.slice() : null,
     }))).catch(() => null);
     /* v2.3.4172: the dashboard keeps the page under Bro, whoever asks */
+    /* v2.3.6681 (card UI2-frame): under the frame the chip's page arrives from play, so its Back is the Menu and the stack is the page alone (Back follows the player's own journey: the owner's 2026-11-25 master specification) */
+    const frame6 = await A.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
     rec.ok(`6b the card's title chip opens the page under Bro ("${fromCard && fromCard.back}", ${fromCard && fromCard.stack}), the summary on its header`,
-      !!fromCard && !fromCard.card && /ACHIEVEMENTS/i.test(fromCard.back) && fromCard.head && !!fromCard.stack && fromCard.stack.join() === 'hero,achievements', fromCard);
+      !!fromCard && !fromCard.card && fromCard.head && !!fromCard.stack
+        && (frame6 ? /Menu/i.test(fromCard.back) && fromCard.stack.join() === 'achievements'
+          : /ACHIEVEMENTS/i.test(fromCard.back) && fromCard.stack.join() === 'hero,achievements'), fromCard);
     await H.closeDest(A).catch(() => {});
 
     /* ── 7 ── */
