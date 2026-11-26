@@ -208,6 +208,7 @@ export const SYSTEMS = Object.freeze({
     files: [
       f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
       f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
+      f('src/game', 'hereCells'),   /* v2.3.6720: the last few cells' answers to "what is under my feet" (card PRT) */
     ],
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],
@@ -271,7 +272,7 @@ export const SYSTEMS = Object.freeze({
   },
   'page-thread': {
     what: 'the page\'s one thread: the frame\'s pace and clock, what holds the page',
-    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame')],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
+    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame'), f('src/game', 'drawOnChange') /* v2.3.6720: a polled view drawn again only on a change (card PRT) */],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
     words: ['frame', 'held', 'pacer', 'thread', 'jank', 'smooth'],
     traps: ['page-thread'],
     doors: [{ name: 'beforeDraw', file: 'src/game/framePacer.js', what: 'a read that waits for the graphics chip runs at the top of a frame' }],
