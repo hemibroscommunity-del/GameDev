@@ -1,29 +1,28 @@
 card: Z
-branch: claude/plan-z-sitting-68
-prs: 4 lines listed (12 PRs); this PR (tag 5661, Z's block 5660 to 5679), the last line
+branch: claude/plan-z-sitting-69
+prs: 5 lines listed (10 PRs); this PR (tag 5662, Z's block 5660 to 5679), the last line
 state: ready
 
-## Done (sitting 68, main d42e48ac; the lighter review: no server/src, wire, money, login, .github or wrangler.toml in any)
-- Heads by ls-remote, all twelve as the orchestrator listed. Bug read by
-  three lanes on each PR's own landing diff: no bug in behaviour; the
-  hold of 67 (RideButton's redraw) mended at RideButton.jsx:101 with
-  mp-padskin 5b/5c. Unsure findings: UI2 (68) in debts.md, next jobs.
-- Rehearsed the whole order with every mend made (scratch, the trees
-  below): gatekeeper.mjs on the final tree
-  0837fc090270e6c3454319a56f5e533406459786: precheck 0 FAIL,
-  switches-thrown --whole (94), claims-gain --whole, build, questline
-  187/187 all PASS; heldsweep's sample 5/6 then 6/6 (main's own ride
-  noise, red on main too). Precheck on the camera's mended head 0 FAIL.
-- Phone: ui2bro 27/27, ui2combat 51/51, boards 37/37, oneband 55/56
-  (main's sideways fit), onboarding 4/5 then 5/5 (main's flake) on
-  86ae15a1; twobuttons 93/112 (main's families, the run cut short by a
-  closed browser) on e1467159; on the final tree camfollow 11/11,
-  contextbuttons 26/27 (5, mode 4's chop: red on main too).
+## Done (sitting 69, main 7ec316e9; the owner's leave for an extra sitting, 18:1x UTC 11-26)
+- Heads from each PR, all ten as the orchestrator gave them; every check
+  green on each head (test, lint-build, playable, memory-budget, Pages).
+- Purpose review on the top model: KEEP (#2385/#2388/#2389) every card
+  dodge for `/sfx` RED, the named question answered (no hold); PRT
+  (#2384) the card's break proofs RED; TD #2382's deletions none acting;
+  LOAD #2386 read: no bug in behaviour. Next jobs: debts.md (69).
+- Rehearsed the whole order with every mend (the trees in log.md, 69):
+  gatekeeper.mjs on bbc8222cf59a8ff434aa65edc1a9a5d476170398: precheck 0
+  FAIL, switches-thrown --whole (94), claims-gain --whole, build,
+  questline 187/187 PASS; heldsweep's sample noisy on every tree (final
+  2 of 5 green, each prefix 1 of 2, main 2 of 2; a different job each
+  red): the box's, no branch's. `npm run lint` clean on the whole.
 ## The list (merge commits; each mend by the orchestrator, precheck before each push)
-1 PAD: #2354, #2363, #2378.
-2 The camera #2361 after PAD, with GR (67)'s mend: tree 5ab1088e.
-3 UI2: #2369, #2370, #2374, #2376, #2377, #2373, #2375, #2371.
-4 Z (5661, a draft: mark it ready first).
-The whole list, heads, mends and trees: docs/plan/log.md, sitting 68.
+1 KEEP: #2385, #2388, #2389 (unchanged).
+2 PAD #2387; 3 LOAD #2386 (unchanged).
+4 PRT #2384 (mend: tag-blocks.json, with LOAD's block).
+5 TD #2380 (the owner's Approve; mend: tag-blocks.json), #2381, #2382, #2383.
+6 Z (5662, a draft: mark it ready first).
+Not this sitting: UI2-grip #2390 (forwarded after the rehearsal began).
 ## Found
-- debts.md PAD (68), UI2 (68), Found (68).
+- debts.md KEEP (69), PRT (69), LOAD (69), TD (69).
+- `docs/plan/status/LOAD.md` on #2386 still says `working`: stale.
