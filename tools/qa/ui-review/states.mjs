@@ -519,6 +519,11 @@ export const STATES = [
   { id: 'charhud-desk', group: 'The world (HUD)', title: 'The character HUD, top left (a computer)', views: ['desktop'],
     about: 'The same HUD on a computer playing wide (184 x 52): a click on it opens Bro and never swings; its tooltip says "Click to open Bro".',
     run: async ({ P }) => { await wait(P, 600); } },
+  /* v2.3.6786 (card UI3, PR 7): the gold on the top bar, between BroTown and
+     the daily spin (ZoneHeader.jsx, game/topGold.js).  Every layout. */
+  { id: 'topbar-gold', group: 'The world (HUD)', title: 'The top bar: your gold, between BroTown and the daily spin',
+    about: 'The top bar in the world: LOGOUT at the left, the BroTown logo centred on the screen, and to its right your gold (a coin and the number, as Gear says it: "9,999", "12.4K", "2.55M") just left of the free daily spin\'s button. The gold keeps its place when the spin\'s button is not shown; it takes no tap. `?topgold=0` takes it off the bar.',
+    run: async ({ P }) => { await wait(P, 600); } },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
      told), its window, and (until v2.3.4163) the player frame top-left.  v2.3.4113: the chip
