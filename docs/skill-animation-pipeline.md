@@ -81,7 +81,7 @@ detail. Regenerate them any time with `python tools/silhouettes/make_silhouettes
 
 Compose every prompt from these blocks. Only `[CHARACTER]`, `[TOOL]`, `[FRAME]` change
 per target; `[STYLE]` and `[CONSTRAINTS]` are boilerplate (kept in sync with
-`creative-reference.md` §1.1.1 and the tileset doc's footer).
+`docs/archive/root/creative-reference.md` §1.1.1 and the tileset doc's footer).
 
 ### A. ChatGPT — first-frame reference image
 
@@ -231,4 +231,4 @@ follows the same blocks:
    `POSES` locally (or render a GIF with an existing `tools/preview_*.py`) and confirm
    it loops, keys clean, and sits at the right scale beside the `stand`/`jog` sprites —
    the "belongs next to the other sprites" / material-fidelity test from
-   `creative-reference.md`.
+   `docs/archive/root/creative-reference.md`.

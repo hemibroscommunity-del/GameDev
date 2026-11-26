@@ -9,7 +9,7 @@
    Captures (depth-aware scope scan; build can't run in this env): `P` is
    the player; `pixiRef`, `setRpgState`, `setLevelUpMsg` arrive via deps;
    everything else is a module import below. S is stateRef.current. */
-import { BT_AUDIO, WEAPON_STASH_MAX, WEAPON_TYPES, ZONES, meetsStatReq, recalcDerived } from '@/data/index.js';
+import { BT_AUDIO, WEAPON_STASH_MAX, WEAPON_TYPES, ZONES, meetsStatReq } from '@/data/index.js';
 import { isRemnantSkull, remnantInvKey } from '@/data/monsterVariants.js';
 import { shardByKey } from '@/data/shards.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';

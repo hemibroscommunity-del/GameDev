@@ -1,6 +1,6 @@
 card: UI2
-branch: claude/plan-ui2-7b-grow
-prs: the kit's draft PR #2368 (ready); the frame's draft PR #2369 (stacked on it; ready); the growing motion's draft PR (stacked on #2369; ready)
+branch: claude/plan-ui2-grip
+prs: #2368, #2369 and the growing motion's (step 2; merged with sitting 68); the grip's draft PR (ready)
 state: ready
 
 ## Done
@@ -9,10 +9,13 @@ state: ready
 
 - v2.3.6682, step 2 PR 2 (branch claude/plan-ui2-7b-grow, base claude/plan-ui2-7-frame): the growing motion (`src/game/dashGrow.js`, `dash/DashGrowBox.jsx`, `dash/dashGrow.css`, `dash/dashGrowSwitch.js`; `?dashgrow=0` and reduced motion give none; its switch row); leftover A, the handle hides and keeps both workspaces (dashNav's `fold`, BandGrip.jsx); leftover B, the words and arrows that named a moved button (`src/data/say/dashGuide.js`: the guide arrow, the coach's reward, points and Login Key lessons, the controls tour's two rings). dash-nav.test 78 checks (P14, P15, M1 to M5 planted, each red); mp-ui2frame's steps 12a-g and 13.
 
+- v2.3.6697, card UI2-grip (the owner's request of 2026-11-26; branch claude/plan-ui2-grip): the band's pull handle gone (the owner, 2026-11-26), `?bandgrip=1` the way back; the fold's hook `data-dash-fold` worn by the row's own control (the frame's Gear and Close; CLOSE under ?ui2=0), so no finder moved; the coach's "Tap the handle" only with the handle; `tools/guards/band-grip.test.mjs` (G1 to G6 planted, each red); `mp-bandgrip` (32 of 32 on the test box); UI-DESIGN-NOTES' band section.
+
 ## Next
-- Nothing on this card: step 2 is done once the gatekeeper takes both PRs.
+- Nothing: the grip's PR waits for the gatekeeper.  Phone runs on its final code (the test box): questline 187/187, contextbuttons 27/27, bandgrip 32/32, ui2frame 34/34, guidearrow, revealbag, bagunfold green; padskin's rider part 9/9 twice (one earlier sideways 5b/5c red was the rider falling off: a flake).  Main's own reds (the same on main 7ec316e9): oneband 3 (sideways), questguide 7, pointstips 1 ("Tap Menu, then Bro."), dmgsize 4 (the marks' sizes).
 
 ## Found
+- mp-pointstips step 6 expects "Tap Bro." but the frame's points lesson says "Tap Menu, then Bro." (main's own red); mp-questguide's pins and mp-dmgsize's mark sizes red on main too.
 - (mended in PR 2) the guide arrow's "Tap Bro" on the Menu button; ControlsTutorial's rings; the handle that reset Gear's pages.
 - The points' flight (src/game/questFly.js QUEST_FLY_TARGETS.points) lands on the Menu button under the frame (it wears [data-nav="hero"]): the road to Bro, left as it is (server/test/points-fly.test pins the list; a file there deploys the worker).
 
