@@ -160,6 +160,10 @@ steps. So:
    the owner (a fresh session on the top model at high effort, saying "Continue
    as the orchestrator"), which starts again at 0; if the owner is away the
    orchestrator starts its own successor, and says so.
+   **The owner's standing leave** (19:54 UTC 2026-11-26, v2.3.5664): *"Next
+   time it fills up you can just create new sessions as orchestrator
+   yourself"*: a part that fills up starts its successor without asking and
+   tells the owner the new session's title.
 8. **Watch the week.** The owner's allowance is a week's, from Monday
    21:00 UTC; the last one was used to 99% between 2026-11-16 21:00 and
    11-19 17:00. The orchestrator's first lane sums `usage.cost_usd` over
