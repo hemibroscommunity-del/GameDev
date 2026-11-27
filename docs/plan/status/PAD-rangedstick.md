@@ -1,0 +1,17 @@
+card: PAD-rangedstick
+branch: claude/plan-pad-13-rangedstick
+prs: (opening: one draft PR, base main, tag 6648)
+state: working
+
+Done
+- tag 6648: in the two buttons a bow or a staff makes the Attack disc a stick (mode 4's held aim on the disc, a tap one shot the way the bro faces, nothing picked or locked); a sword keeps the latch whole; `?rangedstick=0` gives the latch back. src/game/rangedStick.js (one field S._discKind, one writer discKindTo), BroTown.jsx calls only, aimMarks.js (no frame for a stick), bowSpecialNow.js (no pick for a stick), the switch row, the phase row, the ledgers; tools/guards/ranged-stick.test.mjs (the nine dodges planted and seen red); tools/qa/mp/mp-rangedstick.mjs; docs/shots/rangedstick-*.png; UI-DESIGN-NOTES (the controller).
+
+Next
+- the phone runs on the final code, then the PR.
+
+Found
+- src/data/say/questCoach.js lines 6 and 8 (questCoach.attackTwo, attackHold) and the tour's controlsTutorial.attackBodyHold / attackBodyTwo (src/ui/mobile/ControlsTutorial.jsx line 61): the two buttons' Attack words speak of facing a monster, a tap's lock and the ring's hold; with a bow or a staff now the disc is a stick. Reported, not rewritten (the owner's words).
+- Block's "threat" moment for a bow or a staff (game/thumbSide.js thumbStep) no longer counts a monster in sight (nothing is sighted with a stick); it still comes at the weapon's reach and for a hit lately.
+
+Needs
+- nothing.
