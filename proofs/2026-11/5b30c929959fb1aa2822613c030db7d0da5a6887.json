@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5b30c929959fb1aa2822613c030db7d0da5a6887",
+  "tree": "92eff2d492d4219828aab7338aa617b6bb7a4a80",
+  "committedAt": "2026-11-26T21:51:59-08:00",
+  "subject": "Merge pull request #2409 from hemibroscommunity-del/claude/plan-pad-11-steelglow",
+  "files": 9025,
+  "bytes": 1036121087,
+  "listingSha256": "f1bd1cb8f98620344c65c567bd7f44338cdc0d97d3d90e59db15c424b4518048",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
