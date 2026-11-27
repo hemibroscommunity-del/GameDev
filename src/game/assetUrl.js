@@ -20,6 +20,7 @@
  * families a built address can name (versions.mjs PAGE_FAMILIES); in node and
  * `npm run dev` it is empty and every address is returned as written.
  * No imports but the table: node tests it (tools/guards/keep-sfx.test.mjs).
+ * v2.3.6743: the icons are a family of the table too (PR 3b, '/icons/').
  */
 import TABLE from './assetTable.js';
 

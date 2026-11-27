@@ -18,10 +18,11 @@ import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js'
 import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js'; /* v2.3.3524: the forge's ladder */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
 import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
-import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3667 */
+import { C, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3667 */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/smithy.js';   /* v2.3.6328: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say, sayPieces } from '@/game/say.js';
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -76,7 +77,7 @@ const GEM = '/icons/ui/cur-gem.webp';
 
 const weaponIcon = (type, tierKey) => {
   const base = type === 'greatsword' ? '/icons/items/great-sword.webp' : '/icons/items/sword.webp';
-  return { src: metalIconPath(base, weaponMaterial(type, tierKey)) + ITEMS_V, fallback: base };
+  return { src: assetUrl(metalIconPath(base, weaponMaterial(type, tierKey))), fallback: base };
 };
 const TYPE_LABEL = { greatsword: say(SAY, 'smithy.typeGreatsword'), sword: say(SAY, 'smithy.typeSword') };
 
@@ -98,16 +99,16 @@ export function SmithyPanel({ rpgState, stateRef }) {
        the copper great sword, an item's own picture */
     { id: 'forge', label: 'Forge', icon: '/icons/ui/tab-forge.webp?v=2.3.3526' },
     /* v2.3.3092: bars into armor (server armorforge.js) */
-    (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: say(SAY, 'smithy.tabArmor'), icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
+    (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: say(SAY, 'smithy.tabArmor'), icon: '/icons/items/chest-plate-copper.webp' },
     /* v2.3.3524: the hammer (the owner: "Make the upgrade tab icon different
        for smithing.  Like a hammer"), not the currency strip's gold gem */
     (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: say(SAY, 'smithy.tabUpgrade'), icon: OWNER_ICON.smithHammer.src },
     /* v2.3.3535: only to someone holding a nugget, a bar or an amulet
        (game/forgeTabs.js): a nugget is 1 kill in 10,000, so for nearly
        everyone it was a recipe they could never start */
-    (S._serverCaps && S._serverCaps.amuletForge) && amuletTabShown(R) && { id: 'amulet', label: say(SAY, 'smithy.tabAmulet'), icon: '/icons/items/amulet.webp' + ITEMS_V },
+    (S._serverCaps && S._serverCaps.amuletForge) && amuletTabShown(R) && { id: 'amulet', label: say(SAY, 'smithy.tabAmulet'), icon: '/icons/items/amulet.webp' },
     /* v2.3.3141: salvage for bars, and the grades' essences (server salvage.js) */
-    (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: say(SAY, 'smithy.tabSalvage'), icon: essenceIcon('essence_rare_iron') + ITEMS_V },
+    (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: say(SAY, 'smithy.tabSalvage'), icon: essenceIcon('essence_rare_iron') },
   ].filter(Boolean);
   const [tabWant, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
   const setTab = (id) => { S._smithyTab = id; setTabState(id); };
@@ -337,7 +338,7 @@ function ArmorTab({ S, inv, lvl, ask, busy }) {
         const def = armorDefReq(piece);
         const icon = armorIconFor(legs ? 'legs' : 'chest', r.mat);
         return (
-          <Row key={key} data-armor-row={key} icon={icon + ITEMS_V} iconFallback={icon} title={r.name}
+          <Row key={key} data-armor-row={key} icon={icon} iconFallback={icon} title={r.name}
             action={<Btn on={on} primary data-armor-go={key} onClick={() => ask('armor', { type: 'forge_armor', payload: { recipe: key } }, {
               kind: 'armor', workMs: SMITH_STRIKE_MS * 4,
               sig: () => String((S.rpg && S.rpg.inventory && S.rpg.inventory[r.bar]) || 0),
@@ -412,8 +413,8 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
     const gemOf = (item, slot) => (slot === 'weapon' ? !!(item && (item.element1 || item.element2)) : !!(item && item.gem));
     const slots = [
       { slot: 'weapon', item: R.weapon, icon: R.weapon ? weaponIcon(R.weapon.type, R.weapon.gearBase) : null },
-      { slot: 'amulet', item: R.amulet, icon: { src: '/icons/items/amulet.webp' + ITEMS_V } },
-      { slot: 'shield', item: R.shield, icon: { src: '/icons/items/shield.webp' + ITEMS_V } },
+      { slot: 'amulet', item: R.amulet, icon: { src: '/icons/items/amulet.webp' } },
+      { slot: 'shield', item: R.shield, icon: { src: '/icons/items/shield.webp' } },
     ];
     for (const s of slots) {
       if (!gemOf(s.item, s.slot)) continue;
@@ -462,7 +463,7 @@ function AmuletTab({ S, R, coins, lvl, ask, busy }) {
         const ok = skillOk && bars >= at.bars && coins >= at.goldCost;
         const worn = R.amulet && R.amulet.tier === key;
         return (
-          <Row key={key} data-amulet-row={key} icon={'/icons/items/amulet.webp' + ITEMS_V} title={say(SAY, 'smithy.amuletTitle', { tier: at.label, worn: worn ? say(SAY, 'smithy.amuletWornTail') : '' })}
+          <Row key={key} data-amulet-row={key} icon={'/icons/items/amulet.webp'} title={say(SAY, 'smithy.amuletTitle', { tier: at.label, worn: worn ? say(SAY, 'smithy.amuletWornTail') : '' })}
             action={<Btn on={ok && !busy} primary onClick={() => ask('amulet', {
               type: 'amulet_forge_request', payload: { op: 'craft', tierKey: key },
             }, {
@@ -596,12 +597,12 @@ function SalvageTab({ S, R, inv }) {
         const ess = SALVAGE.ESSENCE_GRADES.indexOf(p.grade) >= 0 ? essenceKey(p.grade, p.metal) : null;
         const on = !legacy && !wait;
         return (
-          <Row key={p.key} data-salvage-row={p.key} icon={p.icon + ITEMS_V} iconFallback={p.fallback || p.icon} title={p.name}
+          <Row key={p.key} data-salvage-row={p.key} icon={assetUrl(p.icon)} iconFallback={p.fallback || p.icon} title={p.name}
             action={<Btn on={on} primary={armed === p.key} data-salvage-go={p.key}
               onClick={() => press(p.key, 'smith_salvage', refOf(p))}>{btnLabel(p.key, say(SAY, 'smithy.salvageButton'))}</Btn>}>
             <GradeChip grade={p.grade} />
             {legacy ? <Lock>{say(SAY, 'smithy.salvageTooOld')}</Lock> : <Chip icon={BAR_THUMBS[SALVAGE.METALS[p.metal].bar]} color={C.good}>+{SALVAGE.BARS}</Chip>}
-            {!legacy && ess && <Chip icon={essenceIcon(ess) + ITEMS_V} color={C.good}>+1</Chip>}
+            {!legacy && ess && <Chip icon={essenceIcon(ess)} color={C.good}>+1</Chip>}
           </Row>
         );
       })}
@@ -614,7 +615,7 @@ function SalvageTab({ S, R, inv }) {
         return (
           <div key={k} data-essence={k} style={{ marginBottom: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 2px 6px' }}>
-              <Icon src={essenceIcon(k) + ITEMS_V} size={28} />
+              <Icon src={essenceIcon(k)} size={28} />
               <span style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{essenceName(k)}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: C.mute }}>×{Math.floor(inv[k] || 0)}</span>
             </div>
@@ -626,7 +627,7 @@ function SalvageTab({ S, R, inv }) {
             {targets.map((p) => {
               const key = k + '>' + p.key;
               return (
-                <Row key={key} data-essence-row={key} icon={p.icon + ITEMS_V} iconFallback={p.fallback || p.icon} title={p.name}
+                <Row key={key} data-essence-row={key} icon={assetUrl(p.icon)} iconFallback={p.fallback || p.icon} title={p.name}
                   action={<Btn on={!wait} primary={armed === key} data-essence-go={key}
                     onClick={() => press(key, 'essence_apply', { essence: k, ...refOf(p) })}>{btnLabel(key, say(SAY, 'smithy.useButton'))}</Btn>}>
                   <GradeChip grade={p.grade} showNormal />

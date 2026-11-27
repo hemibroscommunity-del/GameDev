@@ -38,6 +38,7 @@ import { isPaletteSource } from './paletteDraw.js';
 import { paletteDecided } from './paletteTex.js';
 import { addPictureRestorer } from './picsOnce.js';
 import { pageAddress } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 const _q = pageAddress();
 /* OFF by default (v2.3.3728, measured): at the memory check's Flame Fields
@@ -254,6 +255,15 @@ export function p256Twin(url) {
   /* a texture's frames are cut by its width: a twin is used only where its
      colour numbers need no padding (every one listed is) */
   if (e.w % 4) return null;
+  /* v2.3.6743 (card KEEP PR 3b, the icons): an /icons twin is asked for at
+     ITS OWN file's version (assetUrl), never its original's query joined on
+     (the build had stamped both, and the census read
+     'x.p256.png?v=<its own>?v=<the original's>').  The other folders' twins
+     keep the original's query until their own family's PR. */
+  if (e.twin.startsWith('/icons/')) {
+    const own = assetUrl(e.twin.split('?')[0]);
+    if (own.indexOf('?') >= 0) return own;
+  }
   return e.twin + queryOf(url);
 }
 

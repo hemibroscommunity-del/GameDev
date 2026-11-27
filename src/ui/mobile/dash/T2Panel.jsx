@@ -32,6 +32,7 @@ import {
   t2BenchLevel,
   t2SpendLevel,
 } from '../../../data/gameSystems.js';
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* v2.3.911: lets the dashboard open this panel jumped to a specific tab.
    The dashboard calls requestT2Category(cat) then pushes the 't2' panel;
@@ -429,7 +430,7 @@ export const T2Panel = () => {
             {/* v2.3.1313: per-category icon from the owner's T2 build
                 sheet (tools/process_t2_icons_sheet.py) — file names are
                 `${tab}-${channelKey}` by construction. */}
-            <img src={`/icons/ui/t2/${activeCat}-${ch.key}.webp?v=2.3.1313`} alt=""
+            <img src={assetUrl(`/icons/ui/t2/${activeCat}-${ch.key}.webp`) /* v2.3.6743: its file's version, not ?v=2.3.1313 */} alt=""
               draggable={false}
               style={{ width: 33, height: 33, objectFit: 'contain', flex: 'none' }} /* v2.3.1314: owner, +25% */
               onError={(e) => { e.currentTarget.style.display = 'none'; }} />
