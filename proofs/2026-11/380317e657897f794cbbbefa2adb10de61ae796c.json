@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "380317e657897f794cbbbefa2adb10de61ae796c",
+  "tree": "2cac9c453184ae6db015b810d684da2a371200c7",
+  "committedAt": "2026-11-26T23:18:23-08:00",
+  "subject": "Merge pull request #2421 from hemibroscommunity-del/claude/plan-en-deathshadow",
+  "files": 9060,
+  "bytes": 1039634263,
+  "listingSha256": "f84494aa81131f43cfc151016589d86527fe8d186aee0cf61288e014a33a6f90",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
