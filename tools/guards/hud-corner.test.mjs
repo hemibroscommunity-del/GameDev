@@ -14,7 +14,7 @@
  *      when the line is gone (never a line that is not there, never nothing),
  *      of the line stretched over the HUD with it, of main's card without
  *      the HUD;
- *   4. src/styles/game.css's TREE (postcss), its cascade worked out for each
+ *   4. src/styles/game.css's TREE (its blocks, cssTree below), its cascade worked out for each
  *      state: the status column's top and the party chip's top and left equal
  *      hudCorner()'s;
  *   5. QuestCard.jsx's TREE (Babel): `const corner = cornerQuest()` (the
@@ -34,7 +34,7 @@
  * the same on a real phone's layout.
  *
  * Run: node tools/guards/hud-corner.test.mjs  (needs @babel/parser,
- * @babel/traverse and postcss: npm install in the root or server/)
+ * @babel/traverse: npm install in the root or server/; CI has only server/'s)
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -52,17 +52,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const url = (rel) => pathToFileURL(path.join(ROOT, rel)).href;
 
 let B = null;
-let postcss = null;
 for (const pkg of ['package.json', 'server/package.json']) {
   try {
     const req = createRequire(path.join(ROOT, pkg));
     const tr = req('@babel/traverse');
     B = B || { parse: req('@babel/parser').parse, traverse: tr.default || tr };
   } catch (e) { /* the next */ }
-  try { postcss = postcss || createRequire(path.join(ROOT, pkg))('postcss'); } catch (e) { /* the next */ }
 }
-check('0. @babel/parser, @babel/traverse and postcss load (npm install in the root or server/)', !!B && !!postcss);
-if (!B || !postcss) process.exit(1);
+check('0. @babel/parser and @babel/traverse load (npm install in the root or server/)', !!B);
+if (!B) process.exit(1);
 const parse = (src) => B.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
 
 const MOD = 'src/game/hudCorner.js';
@@ -140,8 +138,49 @@ check('1-3. the rules in every state, the switch, the coach\'s box', bad.length 
 const CSS = 'src/styles/game.css';
 const cssSrc = read(CSS);
 const SIDE_MEDIA = '(max-height:480px)';
+/* the CSS's blocks as a tree (no package: CI installs only server/'s):
+   comments and strings skipped, braces walked; a node is
+   { type: 'rule', selectors, decls: [{ prop, value }], parent } or
+   { type: 'atrule', name, params, nodes, parent }, under { type: 'root', nodes } */
+function cssTree(src) {
+  const root = { type: 'root', nodes: [] };
+  let cur = root;
+  let buf = '';
+  const decls = (body) => body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
+    const i = d.indexOf(':');
+    return i < 0 ? null : { prop: d.slice(0, i).trim(), value: d.slice(i + 1).trim() };
+  }).filter(Boolean);
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '/' && src[i + 1] === '*') { const e = src.indexOf('*/', i + 2); i = e < 0 ? src.length : e + 1; continue; }
+    if (ch === '"' || ch === "'") { const e = src.indexOf(ch, i + 1); buf += src.slice(i, e < 0 ? src.length : e + 1); i = e < 0 ? src.length : e; continue; }
+    if (ch === '{') {
+      const head = buf.trim();
+      buf = '';
+      if (head.startsWith('@')) {
+        const m = /^@([\w-]+)\s*(.*)$/s.exec(head);
+        const node = { type: 'atrule', name: m ? m[1] : head, params: m ? m[2].trim() : '', nodes: [], parent: cur };
+        cur.nodes.push(node);
+        cur = node;
+      } else {
+        const node = { type: 'rule', selectors: head.split(',').map((x) => x.trim()), decls: [], parent: cur, open: true };
+        cur.nodes.push(node);
+        cur = node;
+      }
+      continue;
+    }
+    if (ch === '}') {
+      if (cur.type === 'rule') { cur.decls = decls(buf); delete cur.open; }
+      buf = '';
+      cur = cur.parent || root;
+      continue;
+    }
+    buf += ch;
+  }
+  return root;
+}
 function cssStack(src, st) {
-  const root = postcss.parse(src);
+  const root = cssTree(src);
   const decls = [];
   let order = 0;
   const attrs = (sel) => {
@@ -152,20 +191,23 @@ function cssStack(src, st) {
     return out;
   };
   const page = { 'data-charhud': st.hud ? '1' : null, 'data-questline': st.hud && st.questline ? '1' : null };
-  root.walkRules((r) => {
+  const rules = [];
+  const walk = (n) => { for (const c of n.nodes || []) { if (c.type === 'rule') rules.push(c); else walk(c); } };
+  walk(root);
+  for (const r of rules) {
     const p = r.parent;
     const media = p && p.type === 'atrule' && p.name === 'media' ? p.params.replace(/\s+/g, '') : null;
-    if (p && p.type !== 'root' && !media) return;
-    if (media && media !== SIDE_MEDIA) return;
-    if (media && !st.sideways) return;
+    if (p && p.type !== 'root' && !media) continue;
+    if (media && media !== SIDE_MEDIA) continue;
+    if (media && !st.sideways) continue;
     for (const sel of r.selectors) {
       const a = attrs(sel);
       if (!a) continue;
       if (!Object.keys(a).every((k) => page[k] === a[k])) continue;
       const spec = Object.keys(a).length;
-      r.walkDecls((d) => { if (d.prop.startsWith('--')) decls.push({ prop: d.prop, value: d.value, spec, order: order++ }); });
+      for (const d of r.decls) if (d.prop.startsWith('--')) decls.push({ prop: d.prop, value: d.value, spec, order: order++ });
     }
-  });
+  }
   decls.sort((x, y) => x.spec - y.spec || x.order - y.order);
   const vars = Object.create(null);
   for (const d of decls) vars[d.prop] = d.value;
