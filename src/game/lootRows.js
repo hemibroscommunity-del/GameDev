@@ -20,6 +20,9 @@
  * A row's `tier: 'common'` is a weapon's base tier, never a grade: it is not
  * read.
  *
+ * lootPage(kind, opts) is the page's one call: the rows and the roll's words
+ * from the same input (the mend of sitting 72).
+ *
  * lootSources(key) turns the table round: every monster that drops an item,
  * with its land and its chance (the item page's "Found from").
  *
@@ -63,6 +66,26 @@ export function lootRows(drops, opts) {
 /** The roll's true words, once under the table. */
 export function lootRollWords(shared) {
   return shared ? say(SAY, 'codexPages.rollShared') : say(SAY, 'codexPages.rollEach');
+}
+
+/**
+ * v2.3.6693 (the mend of sitting 72: "'at most one when each rolls alone'"
+ * and "'the same sword, different names'" were green at the page): a
+ * monster's whole Loot page from ONE input, so the rows, the roll's words and
+ * its mark cannot disagree.  `opts`: { shared, crack } as codexDropsFor's (the
+ * page passes the worker's caps: killroll, shardcrack) and `nameOf`, the one
+ * item page's namer.  The page draws `roll` and `mark` from here and never
+ * says the roll itself (loot-rows.test L8 and L10 read its tree).
+ * Returns { rows, shared, roll, mark, grades }.
+ */
+export function lootPage(kind, opts) {
+  const o = opts || {};
+  const shared = !!o.shared;
+  const rows = lootRows(codexDropsFor(kind, { shared, crack: !!o.crack }) || [], { nameOf: o.nameOf });
+  return Object.freeze({
+    rows, shared, roll: lootRollWords(shared), mark: shared ? 'shared' : 'each',
+    grades: rows.some((r) => r.graded) ? lootGrades() : Object.freeze([]),
+  });
 }
 
 /** The grades a dropped piece rolls, with their shares, in the game's words:
