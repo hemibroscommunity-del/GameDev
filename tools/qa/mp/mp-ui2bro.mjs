@@ -10,7 +10,7 @@
  *      portrait, no banner, no page marks; every tile 44 x 44 or more, inside
  *      the band, nothing clipped and nothing to scroll;
  *   2. every door opens its page under its name and Back (saying Bro) returns
- *      to Bro; Equipment opens Gear and the Menu button comes back to Bro;
+ *      to Bro; Equipment its showcase (v2.3.6689, Gear's PR 3: broEquip, no longer Gear);
  *   3. Combat's page has Points (today's Progress door; v2.3.6685: the hub's
  *      Shared door), which opens the Points window (v2.3.6686: the Shared
  *      page) and Back returns to Combat; the glow on Combat while
@@ -208,11 +208,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ch = seen[0], cb = seen[1];
     rec.ok('2b. Character opens the passport (v2.3.6684), not today\'s pages; Combat its hub (v2.3.6685), no marks, with Points (its Shared door)',
       !!ch.pass && !ch.pages && !cb.pages && cb.hub && cb.marks === 0 && !!cb.combatPoints, { ch: [!!ch.pass, ch.pages], cb: [cb.pages, cb.hub, cb.marks, cb.combatPoints] });
+    /* v2.3.6689 (card UI2-gear PR 3, its mend): Equipment opens its showcase (page broEquip), no longer Gear; Back to Bro */
     await tap(P, '[data-dash-grid="bro"] [data-dest="equipment"]', 1000);
     const E = await read(P);
-    await tap(P, '[data-dash-frame] [data-dash-ctl="menu"]', 900);
+    const showcase = await P.page.evaluate(() => (document.querySelector('[data-bro-door-page="equip"]') ? 1 : 0));
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 800);
     const E2 = await read(P);
-    rec.ok('2c. Equipment opens Gear; the Menu button comes back to Bro', E.kind === 'gear-root' && E2.title === 'hero', { gear: E.kind, back: E2.title });
+    rec.ok('2c. Equipment opens its showcase (broEquip, v2.3.6689: Gear\'s PR 3), Back to Bro', E.title === 'broEquip' && showcase === 1 && E2.title === 'hero', { title: E.title, showcase, back: E2.title });
     /* 4. today's eight Progress doors: their roads */
     const pd = (ch.pass && ch.pass.doors.map((d) => d.id)) || [];
     await H.dashMenuRoot(P);

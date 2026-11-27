@@ -48,6 +48,7 @@ import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
 import { inspectItem, itemSummary, reqWords } from '@/game/itemInspect.js';
 import { compareSet } from '@/game/compare.js';
 import { projectEquip } from '@/game/equipProject.js';
+import { GEAR_BODY, GEAR_BODY_ROW } from '@/game/gearShowcase.js';   /* v2.3.6689: the body's shape, shared with the showcase */
 import { wsPanels, wsPicked, wsScroll } from '@/game/workspace.js';
 import { beforeDraw } from '@/game/framePacer.js';
 import { coinArtFor } from '@/game/coinArt.js';
@@ -64,8 +65,9 @@ const MIN = 44;       /* no cell under the finger's floor */
 const G = 3;          /* between the bag's squares: a packed, regular grid */
 const BODY_G = 6;     /* between the body's cells: wider, so the shape reads apart from the grid */
 const COMPARE_KINDS = Object.freeze({ sword: 1, bow: 1, staff: 1, chest: 1, legs: 1, shield: 1 });
-/* the body: [column, row] of each of the nine cells (the weapons, the figure's line, the other side) */
-const BODY = Object.freeze({ sword: [0, 0], bow: [0, 1], staff: [0, 2], cape: [1, 0], chest: [1, 1], legs: [1, 2], shield: [2, 0], amulet: [2, 1], gem: [2, 2] });
+/* the body: [column, row] of each of the nine cells (v2.3.6689: ONE table, src/game/gearShowcase.js, which
+   Bro's Equipment showcase lays its cells out by too) */
+const BODY = GEAR_BODY;
 const SHORT_HEAD = 52;   /* sideways: the filter and the coins stacked at the bag's left (no label row in a 63 px page) */
 const HAND_OF = Object.freeze({ sword: 'melee', bow: 'ranged', staff: 'staff' });
 
@@ -73,6 +75,8 @@ const bagKeyOf = (e) => (e.kind === 'item' ? 'i-' + e.key : `${e.kind}-${e.index
 const safe = (f, d) => { try { const v = f(); return v == null ? d : v; } catch (e) { return d; } };
 
 /* the panels' box, from a ResizeObserver's own entry (docs/specs/layout-reads.md, way 5: not a read) */
+/* v2.3.6689: exported as useGearBox, Bro's Equipment showcase measures its page the same way */
+export function useGearBox() { return useBox(); }
 function useBox() {
   const ref = React.useRef(null);
   const [box, setBox] = React.useState({ w: 0, h: 0 });
@@ -136,26 +140,30 @@ function InventoryHead({ fid, coins, menu }) {
   );
 }
 
-/* ── one worn cell, its picture as today's Gear draws it ── */
-function WornCell({ c, R, slots, ws, size, w, hand }) {
+/* ── one worn cell, its picture as today's Gear draws it ──
+   v2.3.6689: `tap` (Bro's Equipment showcase) is the cell's own press instead of the workspace's pick
+   (no workspace there: `ws` null, nothing picked); `look` then says whether the page has anything for it */
+function WornCell({ c, R, slots, ws, size, w, hand, tap }) {
   const ct = safe(() => cellContent(R, c.id, slots), {});
   const filled = !!ct.item;
   const els = c.id === 'gem' ? (ct.els || []) : [];
   const has = c.id === 'gem' ? els.length > 0 : filled;
-  const picked = wsPicked(ws, 'right', c.id);
+  const picked = ws ? wsPicked(ws, 'right', c.id) : false;
   const inHand = !!(HAND_OF[c.id] && HAND_OF[c.id] === hand && filled);
   const look = !!safe(() => itemPageInput({ from: 'gear', R, cell: c.id }), null);
   const words = !has ? say(SAY, 'gearPanels.empty', { slot: c.label })
     : inHand ? say(SAY, 'gearPanels.inHand', { slot: c.label, name: ct.name || '' })
       : say(SAY, 'gearPanels.cell', { slot: c.label, name: ct.name || '' });
   const pic = c.id === 'gem' ? null : (ct.icon || GHOST_SRC[HAND_OF[c.id] ? 'weapon' : c.id]);
+  const press = () => { if (tap) { if (look) tap(c.id); } else gearTabBus.wsDo({ type: 'pick', side: 'right', key: c.id, look }); };
   return (
     <Ui2ItemCell cell={{ key: c.id, grade: ct.quality || 'normal', empty: !has }} size={size} selected={picked}
       style={{ width: w || size }}
       attrs={{ 'data-eqslot': c.id, 'data-gear-cell': c.id, 'data-gear-filled': filled ? '1' : '0', 'data-gear-active': inHand ? '1' : undefined }}>
       <div role="button" tabIndex={0} aria-pressed={picked} aria-label={words} title={words} className="u2-gp-worn"
-        onPointerUp={(e) => { e.stopPropagation(); gearTabBus.wsDo({ type: 'pick', side: 'right', key: c.id, look }); }}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gearTabBus.wsDo({ type: 'pick', side: 'right', key: c.id, look }); } }}>
+        data-gear-look={look ? '1' : '0'}
+        onPointerUp={(e) => { e.stopPropagation(); press(); }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(); } }}>
         <span className={'u2-slot' + (has ? '' : ' is-empty') + (inHand ? ' is-hand' : '')} data-grade={ct.quality || 'normal'}>
           {!has ? <img className="u2-gp-ghost" src={assetUrl(`/icons/bag/equip-${c.id}.webp`)} alt="" draggable={false} />
             : c.id === 'gem' ? (
@@ -167,18 +175,19 @@ function WornCell({ c, R, slots, ws, size, w, hand }) {
   );
 }
 
-/* ── the Equipped panel: a body ── */
-function EquippedBody({ R, ws, geo }) {
+/* ── the Equipped panel: a body ── (v2.3.6689: exported, Bro's Equipment showcase draws the same body,
+   its `tap` opening the one item page) */
+export function EquippedBody({ R, ws, geo, tap }) {
   const slots = safe(() => getEquippedSlots(R), []);
   const hand = R.activeSlot || 'melee';
   const s = geo.bodyCell;
   if (geo.short) {
-    const groups = [['sword', 'bow', 'staff'], ['cape', 'chest', 'legs'], ['shield', 'amulet', 'gem']];
+    const groups = GEAR_BODY_ROW;
     return (
       <div className="u2-gp-bodyrow" data-gear-body="row">
         {groups.map((g, i) => (
           <div key={i} className="u2-gp-group" data-gear-group-of={i}>
-            {g.map((id) => <WornCell key={id} c={GEAR_CELLS.find((x) => x.id === id)} R={R} slots={slots} ws={ws} size={s} hand={hand} />)}
+            {g.map((id) => <WornCell key={id} c={GEAR_CELLS.find((x) => x.id === id)} R={R} slots={slots} ws={ws} size={s} hand={hand} tap={tap} />)}
           </div>
         ))}
       </div>
@@ -193,7 +202,7 @@ function EquippedBody({ R, ws, geo }) {
         const [col, row] = BODY[c.id] || [0, 0];
         return (
           <div key={c.id} style={{ gridColumn: col + 1, gridRow: row + 1, justifySelf: 'center', position: 'relative' }}>
-            <WornCell c={c} R={R} slots={slots} ws={ws} size={s} w={col === 1 ? tw : s} hand={hand} />
+            <WornCell c={c} R={R} slots={slots} ws={ws} size={s} w={col === 1 ? tw : s} hand={hand} tap={tap} />
           </div>
         );
       })}
