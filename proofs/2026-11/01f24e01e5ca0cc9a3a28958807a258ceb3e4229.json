@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "01f24e01e5ca0cc9a3a28958807a258ceb3e4229",
+  "tree": "f2b56caf04635e882d051fc72c384cf29b8ce8d2",
+  "committedAt": "2026-11-27T11:42:46-08:00",
+  "subject": "Merge pull request #2417 from hemibroscommunity-del/claude/plan-ui2-16-feats",
+  "files": 9206,
+  "bytes": 1086894479,
+  "listingSha256": "38b7fd2ff7ca4ded50e633b243ce380bbb838d390c4a93cdcb3c8b521b3d2e51",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

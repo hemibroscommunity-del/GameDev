@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6563bac91e4eb7681166faf89ad78ca9452467f7",
+  "tree": "7481609ef80bafd5886000a5234971889b5f74e4",
+  "committedAt": "2026-11-27T11:42:31-08:00",
+  "subject": "Merge pull request #2415 from hemibroscommunity-del/claude/plan-ui2-15-life",
+  "files": 9179,
+  "bytes": 1085831961,
+  "listingSha256": "85378ea2c635c70bf4f77f35179b309bf610d55827ddbc2f33ad5371ad3a5bd1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
