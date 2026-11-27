@@ -2,6 +2,8 @@
 export const SAY = Object.freeze({
   /* a rise, said under the bar's right end */
   'zoneHeader.goldRise': '+{gold} gold',
+  /* v2.3.6786: the gold on the bar, between BroTown and the spin (game/topGold.js) */
+  'zoneHeader.gold': 'Gold: {gold}',
   /* the bar and its door */
   'zoneHeader.bar': 'Current zone',
   'zoneHeader.logOut': 'Log out',

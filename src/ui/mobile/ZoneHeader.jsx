@@ -13,6 +13,8 @@ import { XpTrack } from './XpTrack.jsx';                                  /* v2.
 import { XP_BAR_ICONS, XP_BAR_LABELS, TOPBAR_LOGO } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
 import { SAY } from '@/data/say/zoneHeader.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { topGoldOn, topGoldModel, topGoldChange } from '../../game/topGold.js';   /* v2.3.6786: the gold on the bar, between BroTown and the spin */
+import { coinArtFor } from '../../game/coinArt.js';                              /* v2.3.6786: its coin, Gear's pile */
 
 /* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
@@ -105,6 +107,7 @@ export const ZoneHeader = ({ onExit }) => {
      nothing, because every action it offers is an authenticated HTTP call
      (server/src/devtools.js). */
   const [showDev, setShowDev] = useState(false);
+  const topGold = useRef({ n: null, bump: 0, flip: 0 });   /* v2.3.6786: the bar's gold, last drawn, and its pops */
   const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip; v2.3.4183: the gain's word */
   /* v2.3.3553: the AP's rise, as the purse's (game/apChip.js) */
   const apSeen = useRef(null);
@@ -148,15 +151,15 @@ export const ZoneHeader = ({ onExit }) => {
      record has come -- and never in the first moments (the record loading,
      not a payday).  A pickup that already said "+N G" in the last 1.5 s is
      not said twice. */
-  const gold = (S.rpg && (S.rpg.coins || 0)) || 0;
-  if (goldSeen.current != null && gold > goldSeen.current && Date.now() - mountedAt.current > 2500) {
+  const purse = (S.rpg && (S.rpg.coins || 0)) || 0;
+  if (goldSeen.current != null && purse > goldSeen.current && Date.now() - mountedAt.current > 2500) {
     const now = Date.now();
     const said = (S._hudPopups || []).some((p) => p && p.target === 'goldIcon' && /G$|gold$/.test(p.text || '') && now - (p.ts || 0) < 1500);
     if (!said) {
-      try { pushHudPopup(S, { target: 'goldIcon', text: say(SAY, 'zoneHeader.goldRise', { gold: (gold - goldSeen.current).toLocaleString('en-US') }), color: '#D8A94D' }); } catch (e) { /* feedback only */ }
+      try { pushHudPopup(S, { target: 'goldIcon', text: say(SAY, 'zoneHeader.goldRise', { gold: (purse - goldSeen.current).toLocaleString('en-US') }), color: '#D8A94D' }); } catch (e) { /* feedback only */ }
     }
   }
-  goldSeen.current = gold;
+  goldSeen.current = purse;
   /* the points: the worker's number, only against a worker that grants them */
   const apOn = achvLive(S);
   const ap = apOn ? achvApTotal(S) : 0;
@@ -167,6 +170,16 @@ export const ZoneHeader = ({ onExit }) => {
     }
     apSeen.current = ap;
   }
+  /* v2.3.6786: the gold on the bar (game/topGold.js): the purse the page
+     holds, in Gear's form, nothing before the worker's record; a gain spins
+     its coin and bumps the number, a spend bumps the number (the old purse's
+     own pops, game.css .bt-purse-flip / .bt-purse-bump: transform only, a
+     new key replays them on the draw that saw the change, no timer) */
+  const gold = topGoldModel(S, topGoldOn());
+  const tg = topGold.current;
+  const moved = topGoldChange(tg.n, gold ? gold.n : null);
+  if (moved) { tg.bump++; if (moved === 'gain') tg.flip++; }
+  tg.n = gold ? gold.n : null;
   /* v2.3.3695: the XP bar -- the skill that last earned, while it is up */
   const xb = S._xpBar || null;
   /* (QA only: `window.__btXpHold` keeps it up while a slow box takes its
@@ -305,10 +318,12 @@ export const ZoneHeader = ({ onExit }) => {
             very top right"); v2.3.4183 took it away again (the owner: "I don't
             like the placement of where the gold count is (top right)").  The
             long note on it is in git history (docs/specs/ap-on-the-bar.md). */}
-        {/* v2.3.4183: the purse is gone (the gold is in the Gear tab's header);
-            this column stays, empty, as wide as the door's, so the bar's
+        {/* v2.3.4183: the purse was gone (the gold in the Gear tab's header);
+            this column stayed, empty, as wide as the door's, so the bar's
             centre (the XP bar, TEST MODE, the owner's hold) stays centred on
-            the SCREEN -- what it was first made for (v2.3.1333) */}
+            the SCREEN -- what it was first made for (v2.3.1333).  v2.3.6786:
+            the gold is back, between the name and the spin (below), and the
+            door's column is as wide as this one, so the centre still is. */}
         {/* ═══ v2.3.4295: THE FREE DAILY SPIN, ON THE RIGHT OF THE BAR ═══
             The owner: "Put free daily spin button on top bar ... only allow the
             wheel to spin if you're in a safe area."  The title plate of the
@@ -318,7 +333,21 @@ export const ZoneHeader = ({ onExit }) => {
             opens the window anywhere; the SPIN button there says "Spin in a
             safe area" where it cannot turn.  Transform and opacity only (this
             rail is over the WebGL canvas, TRAPS section 42). */}
-        <div className="bt-zone-header__balance">
+        {/* ═══ v2.3.6786: THE GOLD, BETWEEN BROTOWN AND THE SPIN ═══
+            The owner, 2026-11-26: "Move gold amount in between daily spin
+            and brotown on top bar".  A coin and the number, LEFT of the
+            spin's button, in a place of its own: the spin's slot keeps its
+            width when the button is not shown (no cap, the window open), so
+            the gold never slides into the corner the owner disliked.  Not
+            pressable.  `?topgold=0` hides it (game/topGold.js). */}
+        <div className={'bt-zone-header__balance' + (gold ? ' bt-zone-header__balance--gold' : '')}>
+          {gold ? (
+            <span className="bt-zone-header__gold" data-topbar-gold={gold.n} role="img" aria-label={gold.label}>
+              <img key={'f' + tg.flip} className={tg.flip ? 'bt-purse-flip' : undefined} src={coinArtFor(gold.n)} alt="" draggable={false} />
+              <span key={'b' + tg.bump} className={'bt-zone-header__goldnum' + (tg.bump ? ' bt-purse-bump' : '')} aria-hidden="true">{gold.text}</span>
+            </span>
+          ) : null}
+          <span className="bt-zone-header__spinslot">
           {spinSt.known && !spinSt.open && S._serverCaps && S._serverCaps.loginspin ? (
             <button type="button" className={'bt-zone-header__spin' + (spinSt.avail ? '' : ' is-spent')} data-login-spin-btn={spinSt.avail ? 'ready' : 'spent'}
               aria-label={say(SAY, spinSt.avail ? 'zoneHeader.spin' : 'zoneHeader.spinSpent')}
@@ -327,6 +356,7 @@ export const ZoneHeader = ({ onExit }) => {
               <img src={LOGIN_SPIN_URLS[2]} alt="" draggable={false} />
             </button>
           ) : null}
+          </span>
           {spinNote ? <span className="bt-zone-header__spinnote" data-login-spin-note="1" role="status">{spinNote}</span> : null}
         </div>
       </header>

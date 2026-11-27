@@ -313,6 +313,7 @@ const FORMS = {
   'thumbarc': '0',
   'tod': '*',
   'toolsolid': '0|off|false',
+  'topgold': '0',
   'townchat': '0',
   'townparts': '0',
   'townsfolkreset': '0',
