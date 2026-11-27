@@ -28,6 +28,8 @@ import { DISHES } from '../../../src/data/dishes.js';
 import { SALVAGE, essenceKey, essenceIcon } from '../../../src/data/salvage.js';
 import { HARDENED_WOOD_RECIPES, hardenedWoodIcon } from '../../../src/data/hardenedWood.js';
 export const lane = 'full';
+/* an address's file, its query dropped (the page's carries its version: v2.3.6743) */
+const file = (u) => String(u || '').split('?')[0];
 
 const VIEW = { width: 900, height: 700 };
 
@@ -94,7 +96,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the file is the picture's identity; its ?v= is only a cache-buster (the
        essences keep the bag's old ITEMS_V: /icons/ is revalidated, never
        immutable -- public/_headers -- so a file replaced in place is fetched) */
-    const file = (u) => String(u || '').split('?')[0];
     const wrong = [...want.keys()].filter((k) => !(t1[k] && t1[k].tile && t1[k].ok && file(t1[k].src) === file(want.get(k))));
     rec.ok(`1. the bag draws all ${want.size} as the owner's pictures, each its own file, decoded (no 🌱, no glyph, no skill icon)`,
       wrong.length === 0, wrong.slice(0, 8).map((k) => ({ k, ...t1[k], want: want.get(k) })));
@@ -114,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return rows.map((r) => { const i = r.querySelector('img[data-farm-icon]'); return { row: r.getAttribute('data-farm-row'), src: i ? i.getAttribute('src') : null, ok: !!(i && i.complete && i.naturalWidth > 0) }; });
     }, (v) => v.length >= 2 && v.every((r) => r.ok), { timeout: 8000, label: 'the Seeds tab' }).catch(() => null);
     rec.ok(`2. the Feed & Seed window sells seeds as their packets and compost as its sack (${seeds ? seeds.map((r) => r.row).join(', ') : 'no rows'})`,
-      !!seeds && seeds.every((r) => r.ok && r.src === farmIconFor(r.row)) && seeds.some((r) => r.row === 'compost') && seeds.some((r) => /^seed_/.test(r.row)), seeds);
+      !!seeds && seeds.every((r) => r.ok && file(r.src) === file(farmIconFor(r.row)))   /* v2.3.6743: by the file, the page's address carries its version (card KEEP PR 3b) */ && seeds.some((r) => r.row === 'compost') && seeds.some((r) => /^seed_/.test(r.row)), seeds);
     await A.page.waitForTimeout(400);
     await shot(A, 'feedseed');
     await A.page.evaluate(() => window.__btBuildingWindow.open(null));
@@ -127,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (v) => v.length >= 5 && v.every((r) => r.ok), { timeout: 8000, label: 'the Cookhouse rows' }).catch(() => null);
     const dishRows = cook ? cook.filter((r) => Object.prototype.hasOwnProperty.call(DISHES, r.makes)) : [];
     rec.ok(`3. the Cookhouse's rows lead with what they make, decoded: the five dishes as the owner drew them (${dishRows.map((r) => r.makes).join(', ')}), the tonics their bottles`,
-      dishRows.length === 5 && dishRows.every((r) => r.src === DISHES[r.makes].icon) && cook.some((r) => /potion-/.test(r.src)), cook);
+      dishRows.length === 5 && dishRows.every((r) => file(r.src) === file(DISHES[r.makes].icon)) && cook.some((r) => /potion-/.test(r.src)), cook);
     await A.page.waitForTimeout(300);
     await shot(A, 'cook');
     await A.page.evaluate(() => window.__btBuildingWindow.open(null));
@@ -156,7 +157,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the button must offer it; its picture's first fetch is the loading
        screen's warm-up (controlsPreload.js), long before the grant */
     rec.ok(`5. hurt with a Garden Stew, the quick-eat button shows the owner's stew, first fetched on the loading screen (${before.length ? 'at ' + before[0].at + ' ms' : 'not fetched before'})`,
-      !!qe && qe.src === DISHES.meal_garden_stew.icon && before.length > 0 && before[0].early, { qe, before });
+      !!qe && file(qe.src) === file(DISHES.meal_garden_stew.icon) && before.length > 0 && before[0].early, { qe, before });
     await shot(A, 'quickeat');
 
     rec.ok('6. no page errors', errors.length === 0, errors.slice(0, 5));

@@ -4,6 +4,7 @@ import { QUALITY_COLOR, QUALITY_LABEL, qualityInk } from '../mobile/dash/common.
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { metalIconPath } from '@/rendering/traits/materialTints.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the reveal heard */
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* ═══ v2.3.1925: THE MYSTERY REVEAL ═══
  *
@@ -68,7 +69,7 @@ function iconFor(r) {
         : r.itemType === 'sword' ? '/icons/items/sword.webp'
           : r.itemType === 'bow' ? '/icons/items/bow.webp'
             : r.itemType === 'staff' ? '/icons/items/staff.webp' : null;
-      return base ? metalIconPath(base, r.mat) : null;
+      return base ? assetUrl(metalIconPath(base, r.mat)) : null;   /* v2.3.6743: the metal's file's version */
     }
   } catch (e) { /* a missing picture is never worth breaking the ceremony */ }
   return null;

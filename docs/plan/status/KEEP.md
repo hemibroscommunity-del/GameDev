@@ -1,37 +1,40 @@
 card: KEEP
-branch: claude/plan-keep-3-sfx
-prs: PR 1 (6740, the census; draft #2385), PR 2 (6741, the plugin; draft #2388, on PR 1), PR 3a (6742, the sounds; draft, on PR 2)
+branch: claude/plan-keep-5-objects
+prs: PR 1 (6740; #2385), PR 2 (6741; #2388), PR 3a (6742, sounds; #2389), PR 3b (6743, icons; #2392), PR 3c (6744, objects; draft, on #2392)
 state: ready
 
 ## Done
 
-- PR 1 (6740), the census: `tools/assets/versions.mjs`, its guard,
-  `tools/qa/mp/mp-keepcensus.mjs`, `docs/plan/census/KEEP-requests.md`.
-- PR 2 (6741), the build stamps every written-out address:
-  `tools/assets/stamp.mjs`, `keepVersions.mjs` (the plugin), guard
-  `asset-stamp.test.mjs`; 1,167 stamped, 108 left; census bare 315 -> 128;
-  scripts +10.7 KB; heap 41.3 of 42.5 MB; precheck 0 FAIL.
-- PR 3a (6742), the sounds: `src/game/assetUrl.js` (one function; its
-  table `src/game/assetTable.js` is written by the build's `load` hook,
-  97 `/sfx` rows, 4.2 KB of script, about 0.01 MB of heap; committed
-  empty, so node and dev ask as written). No `/sfx` address is built from
-  parts; the one bare request was a whole literal with a space (Monster
-  death-bony.mp3), now `%20`, which the build stamps. `loadSample` calls
-  assetUrl (a built one later). `/sfx/*` kept a year in `_headers`. Guard
-  `tools/guards/keep-sfx.test.mjs`. Census: `/sfx` 96/0/0; bare 128 -> 127.
+- PR 1 (6740): the census (`versions.mjs`, `mp-keepcensus`, KEEP-requests.md).
+- PR 2 (6741): the build stamps written-out addresses; bare 315 -> 128.
+- PR 3a (6742): the sounds: `assetUrl` + its table; `/sfx/*` kept a year.
+- PR 3b (6743): the icons through assetUrl (679 rows, 30.1 KB); no block
+  (10 hand requests pinned by server tests' text; HUD bars are LOAD's).
+- PR 3c (6744), the objects: in PAGE_FAMILIES (760 rows, 33.7 KB, +3.6);
+  each sheet AND its page at its own version (Pixi copies a sheet's query
+  onto its page: the page posted to png8Worker, `data.texture` to Pixi,
+  sheetPage.js); the farm's copy `?v=<10>&farm=1`; the manifest posted to
+  the ground worker. Census 0/1/88 -> 89/0/0; `/world/objects/*` kept.
 
 ## Next
 
-- PR 3b (6743): the next family. `/icons` is 125 hand, 0 bare (the item
-  icons' ITEMS_V); traits-frames (285) waits on entityRenderer.js (LOAD).
+- PR 3c's last phone runs on its final code: a helper's (playable,
+  membudget, keepcensus, pagebases, palette, farmpalette). mp-palette
+  caught a fault of 3c's (Pixi kept a sheet's first page): forgetSheet.
+- `/icons/*` block: after LOAD part 2 moves HUD_BAR_VER, and a server-test
+  PR unpins owner-icons 8g, bag-icons 2a, 5c, achievements 9a, 9f.
+- The next family (my pick): `/ui`'s quest pictures (ui-quest, 31 bare:
+  questArt.jsx, questArtPreload.js, ownerIcons.js, townBoard.js; none held).
+  /ui's block also waits on ui-pad (18 hand: padSkin, PadHousings: PAD's).
 
 ## Found
 
-- 20 requests a load for trait frames that do not ship (PR 1's finding).
-- 161 requests read `x?v=<its own>?v=<key>`: a loader joins its hand key
-  to a stamped address (npcArtUrl, ITEMS_V, p256Twin, lookPalette): the
-  census lists them by shape; each goes with its family's PR 3.
+- picture-door's RAW skips `Assets.loader.load(` (sheetPage.js: the page
+  load Pixi's sheet loader made inside before, under its sheet's row).
+- held-sweep.test 3c pins `w.postMessage({ id, url, bases: _basesWay() })`:
+  the page's address goes first, as `{ pageOf: id, image }` (png8Worker).
 
 ## Needs
 
-- Nothing.
+- The orchestrator's call: a PR of server tests' text (it deploys the
+  worker) so the icons' last hand key and the `/icons/*` block can land.
