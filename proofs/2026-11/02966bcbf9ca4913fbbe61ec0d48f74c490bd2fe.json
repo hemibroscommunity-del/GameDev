@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "02966bcbf9ca4913fbbe61ec0d48f74c490bd2fe",
+  "tree": "f053bd3adae388adb1897060508e985dcf8504cf",
+  "committedAt": "2026-11-26T22:11:30-08:00",
+  "subject": "Merge pull request #2418 from hemibroscommunity-del/claude/plan-ui2-17-equipgreen",
+  "files": 9035,
+  "bytes": 1037740425,
+  "listingSha256": "476a3321948353ae828d800e8e11dabfdcc5efb544595a56653afb65dea97539",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
