@@ -463,7 +463,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift, stickFrom } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift, stickFrom } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchHolds, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */ import { discFrame, discPress, discMove, discLift, discLook } from '@/game/rangedStick.js';   /* v2.3.6648: the two buttons' Attack is a latch with a sword, a stick with a bow or a staff (card PAD part 13) */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -5363,7 +5363,7 @@ export var BroTown = function BroTown(_ref0) {
           S._dashStrike = null;
         }
         /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2; sitting 58: its idle clock its own, the walk read only through _in) */
-        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); var _lw = twoButtonsLive() ? latchFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1, S._viewW, S._viewH) : null; if (_lw !== null) S.autoAttack = _lw; if (twoButtonsLive()) thumbFrame(S, Date.now(), _playerDead); if (_steps) _steps.to(2, 0);   /* v2.3.6549: + the right thumb's phase (game/thumbGlue.js: the reach, the threat; card CT part 16) */   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3); v2.3.6556: + the view's size, a monster in view first (card CT part 23) */
+        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); var _lw = twoButtonsLive() ? discFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1, S._viewW, S._viewH) : null; if (_lw !== null) S.autoAttack = _lw; if (twoButtonsLive()) thumbFrame(S, Date.now(), _playerDead); if (_steps) _steps.to(2, 0);   /* v2.3.6549: + the right thumb's phase (game/thumbGlue.js: the reach, the threat; card CT part 16) */   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3); v2.3.6556: + the view's size, a monster in view first (card CT part 23) */
         var dx = _in.dx, dy = _in.dy;
 
         /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══
@@ -6702,7 +6702,7 @@ export var BroTown = function BroTown(_ref0) {
              Normal, not the grey, or the coach would ring a button that looks
              switched off. */
           var _stWant = _ghost ? 'ghost' : (!_rLitCtx ? 'idle' : (_hot ? 'hot' : 'lit'));
-          if (_rd && _rd.getAttribute('data-rstate') !== _stWant) _rd.setAttribute('data-rstate', _stWant); if (_rd && _tbOn) latchLook(_rd, S);   /* v2.3.6542: the two buttons' Attack wears the latch (data-latch: game.css's bevel) */
+          if (_rd && _rd.getAttribute('data-rstate') !== _stWant) _rd.setAttribute('data-rstate', _stWant); if (_rd && _tbOn) discLook(_rd, S);   /* v2.3.6542: the two buttons' Attack wears the latch (data-latch: game.css's bevel) */
           /* The sheet's Pressed: a thumb on this side (the same fact the 0.92
              step of the opacity ladder reads). */
           var _prWant = rJoyActive.current ? '1' : null;
@@ -11671,7 +11671,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2258: the opening lunge REPLACES this press's swing when it
          fires -- both would bill the same thumb twice, and castAbility has
          already set the swing window and the animation. */
-      if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack, rJoyRef.current); return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3); v2.3.6547: the press's road is game/freeAttack.js twoButtonPress (nothing on it moves the body: item 8) */
+      if (discPress(Sb) === 'stick') return; if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack, rJoyRef.current); return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3); v2.3.6547: the press's road is game/freeAttack.js twoButtonPress (nothing on it moves the body: item 8) */
       /* v2.3.4395: manual combat -- the disc's press attacks nothing: a
          stroke across it swings a sword (bM), a flick off it shoots (bE) */
       if (mcSwipes(stateRef.current)) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }   /* a staff: the press attacks, as it did */
@@ -11679,7 +11679,7 @@ export var BroTown = function BroTown(_ref0) {
       doSwing();
     };
     var bM = function bM(e) {
-      if (bTouchId.current === null) return; if (twoButtonsLive()) { var _tb = findT(e.touches, bTouchId.current); if (_tb) twoButtonSlide(stateRef.current, rJoyRef.current, _tb.clientX - bSwipe.sx, _tb.clientY - bSwipe.sy); return; }   /* v2.3.6542: the two buttons' Attack is a button: a drag on it aims nothing, slides to nothing (card CT PR 3); v2.3.6548: a finger slid off ends its hold (game/freeAttack.js twoButtonSlide: no layout read) */
+      if (bTouchId.current === null) return; if (twoButtonsLive()) { var _tb = findT(e.touches, bTouchId.current); if (_tb && !discMove(stateRef.current, _tb.clientX - bSwipe.sx, _tb.clientY - bSwipe.sy, function (still) { (still ? rKnobFollow : rJoyAim)(_tb.clientX, _tb.clientY, bSwipe.sx, bSwipe.sy); })) twoButtonSlide(stateRef.current, rJoyRef.current, _tb.clientX - bSwipe.sx, _tb.clientY - bSwipe.sy); return; }   /* v2.3.6542: the two buttons' Attack is a button: a drag on it aims nothing, slides to nothing (card CT PR 3); v2.3.6548: a finger slid off ends its hold (game/freeAttack.js twoButtonSlide: no layout read) */
       var t = findT(e.touches, bTouchId.current);
       if (t) {
         e.preventDefault();
@@ -11855,7 +11855,7 @@ export var BroTown = function BroTown(_ref0) {
         }
         doSpecialAttack();
       }
-      handleRBtnRelease('b');   /* v2.3.4799: the disc's own gather, never the stick's */
+      handleRBtnRelease('b'); discLift(stateRef.current, Date.now(), requestTapAttack, _bCancel);   /* v2.3.4799: the disc's own gather, never the stick's; v2.3.6648: a stick's lift lets its aim go, and a press that never aimed is the tap's one shot the way the bro faces (game/rangedStick.js) */
     };
     /* ═══ v2.3.3496: THE PAGE GOING AWAY LETS GO OF EVERY FINGER ═══
        The owner: "input dead after returning (needs tab switch)".  Every
@@ -11870,7 +11870,7 @@ export var BroTown = function BroTown(_ref0) {
        really still down is not harmed: it was never going to be heard again
        on a page that went away, and its next touch starts fresh. */
     var _releaseButton = function () {
-      bTouchId.current = null; twoButtonRelease(stateRef.current, rJoyRef.current);   /* v2.3.6548: the page going away ends Attack's hold too */
+      bTouchId.current = null; twoButtonRelease(stateRef.current, rJoyRef.current); discLift(stateRef.current, 0, null, true);   /* v2.3.6548: the page going away ends Attack's hold too; v2.3.6648: and a stick's press, no shot */
       bSwipe.harvest = false;
       bSwipe.toShield = false;
       rJoyActive.current = false;
