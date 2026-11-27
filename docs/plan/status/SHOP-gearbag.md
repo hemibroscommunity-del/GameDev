@@ -1,7 +1,7 @@
 card: SHOP-gearbag
 branch: claude/plan-shop-2-gearbag
-prs: the draft PR of this branch (tag 6801)
-state: working
+prs: the draft PR of this branch (tag 6801, ready)
+state: ready
 
 ## Done
 - The phone's bag adopts the worker's armour, legs, cosmetic and amulet
@@ -15,12 +15,19 @@ state: working
   syntax tree. Every dodge (a) to (i) planted: red. Mutation run: 149 of 150
   killed; the one survivor equivalent (a slot that is not a string is never
   worn: gearCatalog getEquip answers 'none').
+- Seen green on the final code: precheck 0 FAIL (the whole server suite in
+  it), mp-gearadopt 6 of 6.
 
 ## Next
-- The phone test mp-gearadopt, precheck, the PR.
+- Nothing: the PR waits for the gatekeeper. Only server/test/ changed under
+  server/: its merge does not deploy the worker.
 
 ## Found
-- (none yet)
+- The bag stacks look-alike pieces on one tile with a count (GearPanels):
+  not a fault; mp-gearadopt reads the counts.
 
 ## Needs
-- Nothing.
+- Nothing. Taken beyond the card's list (made by their own scripts):
+  src/game/switches.js and docs/SWITCHES.md (switch --write),
+  tools/guards/lib/systems.mjs and docs/SYSTEMS.md (the new file's system),
+  src/state/ui.js (state-census --ledger ui --write).
