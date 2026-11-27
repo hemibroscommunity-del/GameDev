@@ -463,7 +463,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift, stickFrom } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -601,10 +601,10 @@ import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedT
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW, BAND_ASSEMBLY_MAX_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { ctlLandscape } from './mobile/bandSideways.js'; /* v2.3.4152: the controls' sideways geometry over a folded band */
-import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
+import { playIsLandscape, winVw, winVh } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
-import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
+import { stampSheetH, sheetPx } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
@@ -10190,11 +10190,12 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     /* v2.3.6541: the two buttons (`?manual=5`, a trial): the stick's three zones, rest, turn and walk, by the thumb's share of the disc's DRAWN radius; the knob, the walk, the turn's facing and the phase are stickDrive's (game/stickZones.js; card CT PR 2) */
-    if (twoButtonsLive()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity, sprintTiredSay); return; }   /* v2.3.6545: + the thumb past the rim sprints (stickZones.js rimSprint; card CT item 6) */
+    if (twoButtonsLive()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity, sprintTiredSay, _lts && _lts.from); return; }   /* v2.3.6545: + the thumb past the rim sprints (stickZones.js rimSprint; card CT item 6) */
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
     var maxR = rect.width / 2 - 20;
-    var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
+    var S = stateRef.current;
+    var clampDist = stickAnalog(S, dist, angle, maxR, rect.width / 2, sprintTiredSay, _lts && _lts.from);   /* v2.3.6542: the analog read, moved whole to game/stickZones.js (the stick's one writer); v2.3.6644: + the thumb past the drawn rim sprints on a touch screen, the Sprint button gone (stickZones.js rimSprintLive; card PAD part 9); v2.3.6647: + where it landed: a FULL push sprints, reachable from anywhere, and the knob's length is the read's (card PAD part 12) */
     var knobX = Math.cos(angle) * clampDist;
     var knobY = Math.sin(angle) * clampDist;
     if (knobRef.current) {
@@ -10208,8 +10209,6 @@ export var BroTown = function BroTown(_ref0) {
       var _lRodOp = (base && base.style && base.style.opacity) || '0.5';
       lStickRef.current.style.opacity = clampDist > 4 ? _lRodOp : '0';
     }
-    var S = stateRef.current;
-    stickAnalog(S, dist, angle, maxR, rect.width / 2, sprintTiredSay);   /* v2.3.6542: the analog read, moved whole to game/stickZones.js (the stick's one writer); v2.3.6644: + the thumb past the drawn rim sprints on a touch screen, the Sprint button gone (stickZones.js rimSprintLive; card PAD part 9) */
     lTrail.current.push({
       x: rawDx,
       y: rawDy,
@@ -11154,6 +11153,7 @@ export var BroTown = function BroTown(_ref0) {
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
+      lts.from = stickFrom(t.clientX, t.clientY, winVw(), winVh(), sheetPx());   /* v2.3.6647: where it landed on the glass (the window: sideways the play column is centred in it), the full push's reach (stickZones.js stickReach; card PAD part 12) */
       lts.moved = false;
       /* No cycle fire on touchstart -- v2.3.98 moved the trigger to
          touchend so a quick re-press to start moving after a single

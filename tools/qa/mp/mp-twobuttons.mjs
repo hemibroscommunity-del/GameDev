@@ -150,16 +150,18 @@
  *   admin view:
  *   5a. in mode 5 the sprint button is not drawn (its probe: not shown, the
  *       rim live, the worker's sprint supported);
- *   5b. the thumb AT the rim (share 1.0, west): full walking speed, no
- *       sprint, the stamina still on the phone and on the worker;
- *   5c. pushed past it (1.4): the rim's sprint (how 'rim'), running, the
- *       turn ring lit (data-rimsprint), and the worker bills the moves
- *       marked `sp` (its stamina falls);
- *   5d. back to the rim (1.0): it ends ('rim'), the ring dark, the walk on;
+ *   v2.3.6647 (card PAD part 12): a FULL push sprints, the reach west from
+ *   the disc the room to the left edge less 16 px (or the drawn radius):
+ *   5b. a part push (0.7 of the reach, west): a walk, no sprint, the
+ *       stamina still on the phone and on the worker;
+ *   5c. the full push (1.0 of the reach): the rim's sprint (how 'rim'),
+ *       running, the turn ring lit (data-rimsprint), and the worker bills
+ *       the moves marked `sp` (its stamina falls);
+ *   5d. eased back to 0.7: it ends ('rim'), the ring dark, the walk on;
  *   5e. out again, then the worker's stamina set to 2: it runs dry
- *       ('empty'), and with the thumb still out (moved about past the rim,
- *       the bar mended) it does not start again; back inside, then out: it
- *       starts;
+ *       ('empty'), and with the thumb still out (moved about over 0.8 of
+ *       the reach, the bar mended) it does not start again; back under it,
+ *       then out: it starts;
  *   5f. the thumb lifted: it ends ('rim'), the stick at rest;
  *   5g. the mode off (part 2f's page, mode 4): v2.3.6644 (card PAD part
  *       9): the button NOT drawn, and a thumb far past the left disc's rim
@@ -174,6 +176,7 @@
 import * as H from './harness.mjs';
 import { SAY as TOUR } from '../../../src/data/say/controlsTutorial.js';   /* v2.3.6544: part 4's words */
 import { SAY as COACH } from '../../../src/data/say/questCoach.js';
+import { STICK_ZONES } from '../../../src/game/stickZones.js';   /* v2.3.6647: part 5's reach, the edge's margin (card PAD part 12) */
 export const lane = 'full';
 
 const UPRIGHT = { width: 390, height: 844 };
@@ -459,18 +462,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const a = await RIMV(P);
         rec.ok(`5a. ${label}: in mode 5 the sprint button is not drawn (shown ${a.btn && a.btn.shown}, the rim ${a.btn && a.btn.rim}, the worker's sprint ${a.btn && a.btn.supported})`,
           !!a.btn && a.btn.shown === false && a.btn.rim === true && a.btn.supported === true && !a.dom, a);
-        /* 5b: at the rim */
+        /* v2.3.6647 (card PAD part 12): a FULL push sprints, the reach west from
+           the disc the room to the left edge less 16 px when it is shorter than
+           the drawn radius (stickZones.js stickReach): the shares below are of
+           that reach (the test's own sum), never past the glass */
+        const RW = Math.min(R, c.x - STICK_ZONES.EDGE_PX);
+        /* 5b: a part push */
         await touch('touchStart', [{ x: c.x, y: c.y, id: 5 }]);
         await P.page.waitForTimeout(80);
-        await thumbTo(P, touch, c, R, 0, 1.0);
+        await thumbTo(P, touch, c, RW, 0, 0.7);
         await frames(P, 4);
         const b0 = await RIMV(P), s0 = await srvSt(wsPort, me5);
         await frames(P, 8);
         const b1 = await RIMV(P), s1 = await srvSt(wsPort, me5);
-        rec.ok(`5b. ${label}: the thumb at the rim walks at full speed (${b1.sx.toFixed(2)}) and does not sprint (${b1.on}); stamina still (phone ${b0.st} -> ${b1.st}, worker ${s0} -> ${s1})`,
-          b1.phase === 'walk' && b1.sx < -0.99 && !b0.on && !b1.on && b0.st === b1.st && s0 != null && s0 === s1, { b0, b1, s0, s1 });
-        /* 5c: past it */
-        await thumbTo(P, touch, c, R, 1.0, 1.4);
+        rec.ok(`5b. ${label}: a part push (0.7 of the reach, ${RW.toFixed(1)} px) walks (${b1.sx.toFixed(2)}) and does not sprint (${b1.on}); stamina still (phone ${b0.st} -> ${b1.st}, worker ${s0} -> ${s1})`,
+          b1.phase === 'walk' && b1.sx < -0.3 && !b0.on && !b1.on && b0.st === b1.st && s0 != null && s0 === s1, { b0, b1, s0, s1 });
+        /* 5c: the full push */
+        await thumbTo(P, touch, c, RW, 0.7, 1.0);
         const on = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.moving), (v) => v, { timeout: 20000, label: 'the rim sprint' }).catch(() => null);
         const c0 = await RIMV(P);
         /* the worker's bill, and its bar back on the phone: a page drawing a frame
@@ -483,38 +491,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
           s2 = await srvSt(wsPort, me5); c1 = await RIMV(P);
           if (s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1) break;
         }
-        rec.ok(`5c. ${label}: pushed past the rim (1.4) it sprints (how ${c1.how}, running ${c1.running}), the ring lit (${c1.ring}); the worker bills the sp moves (${s1} -> ${s2}), the phone's bar falls (${c0.st} -> ${c1.st} of ${s1})`,
+        rec.ok(`5c. ${label}: the full push (the thumb at the reach) sprints (how ${c1.how}, running ${c1.running}), the ring lit (${c1.ring}); the worker bills the sp moves (${s1} -> ${s2}), the phone's bar falls (${c0.st} -> ${c1.st} of ${s1})`,
           !!on && c1.on && c1.how === 'rim' && c1.running && c1.ring && s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1, { c0, c1, s1, s2 });
-        /* 5d: back to the rim */
-        await thumbTo(P, touch, c, R, 1.4, 1.0);
+        /* 5d: eased back under 0.8 */
+        await thumbTo(P, touch, c, RW, 1.0, 0.7);
         const off = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => !v, { timeout: 20000, label: 'the rim sprint ends' }).catch(() => null);
         await frames(P, 3);
         const d1 = await RIMV(P);
-        rec.ok(`5d. ${label}: back at the rim it ends (${d1.why}), the ring dark (${d1.ring}), the walk on (${d1.sx.toFixed(2)})`,
-          off === false && !d1.on && d1.why === 'rim' && !d1.ring && d1.sx < -0.99, d1);
+        rec.ok(`5d. ${label}: eased back to 0.7 it ends (${d1.why}), the ring dark (${d1.ring}), the walk on (${d1.sx.toFixed(2)})`,
+          off === false && !d1.on && d1.why === 'rim' && !d1.ring && d1.sx < -0.3, d1);
         /* 5e: out, run dry, no restart with the thumb out; back in and out: again */
-        await thumbTo(P, touch, c, R, 1.0, 1.4);
+        await thumbTo(P, touch, c, RW, 0.7, 1.0);
         const on2 = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => v, { timeout: 20000, label: 'the rim sprint again' }).catch(() => null);
         await H.devOp(wsPort, 'vitals', me5, { stamina: 2 });
         const dry = await H.waitFor(P, (S) => (S._sprint ? S._sprint.why : null), (v) => v === 'empty', { timeout: 120000, label: 'run dry (the worker\'s bar reaches a slow page late)' }).catch(() => null);
         await H.devOp(wsPort, 'vitals', me5, { heal: true });
         await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 50, { timeout: 120000, label: 'the bar mended on the phone' }).catch(() => null);
         let restarted = false;
-        for (const sh of [1.5, 1.3, 1.6, 1.35]) {
-          await thumbTo(P, touch, c, R, sh === 1.5 ? 1.4 : 1.45, sh);
+        let was = 1.0;
+        for (const sh of [1.1, 0.85, 1.05, 0.9]) {
+          await thumbTo(P, touch, c, RW, was, sh); was = sh;
           await frames(P, 2);
           const e = await RIMV(P);
           if (e.on) restarted = true;
         }
         const e1 = await RIMV(P);
-        await thumbTo(P, touch, c, R, 1.35, 0.9);
+        await thumbTo(P, touch, c, RW, 0.9, 0.5);
         await frames(P, 2);
-        await thumbTo(P, touch, c, R, 0.9, 1.4);
+        await thumbTo(P, touch, c, RW, 0.5, 1.0);
         const back = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.how === 'rim'), (v) => v, { timeout: 20000, label: 'the rim sprint after coming back' }).catch(() => null);
         rec.ok(`5e. ${label}: out again it sprints (${!!on2}); at 0 stamina it ends (${dry}); with the thumb still out and the bar mended (${e1.st}) it does not start again (${restarted}); back inside, then out: it starts (${!!back})`,
           !!on2 && dry === 'empty' && !restarted && !e1.on && e1.st >= 5 && !!back, { e1, restarted });
         /* 5f: lifted */
-        await touch('touchEnd', [{ x: c.x - 1.4 * R, y: c.y, id: 5 }]);
+        await touch('touchEnd', [{ x: c.x - RW, y: c.y, id: 5 }]);
         const lift = await H.waitFor(P, (S) => ({ on: !!(S._sprint && S._sprint.on), why: S._sprint && S._sprint.why, phase: S._stickPhase || 'rest' }), (v) => !v.on, { timeout: 20000, label: 'lifted' }).catch(() => null);
         rec.ok(`5f. ${label}: the thumb lifted, the sprint ends (${lift && lift.why}), the stick at rest (${lift && lift.phase})`, !!lift && lift.why === 'rim' && lift.phase === 'rest', lift);
         await frames(P, 3);

@@ -131,6 +131,7 @@ const FORMS = {
   'framepack': '0|off|false',
   'framesteps': '0',
   'freefire': '0',
+  'fullpush': '0',
   'fxmade': '0',
   'fxsheets': '0',
   'garmentspecks': '0',

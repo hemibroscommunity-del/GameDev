@@ -1,6 +1,6 @@
 card: PAD
-branch: claude/plan-pad-11-steelglow (on part 10's claude/plan-pad-10-steel)
-prs: #2354, #2363, part 6, #2387 part 8, #2393 part 9 (merged); #2402 part 10 (6645); part 11 (6646, draft)
+branch: claude/plan-pad-12-fullpush (part 12, from main)
+prs: #2354, #2363, part 6, #2387 part 8, #2393 part 9 (merged); #2402 part 10 (6645); part 11 (6646, draft); part 12 (6647, draft)
 state: ready
 
 ## Done
@@ -17,6 +17,13 @@ state: ready
   tier's rings a CSS steel ring; the energy strip a steel twin
   (tools/art/steel-strip.mjs: full/empty 9.37, gold 7.58); `?padgold=1`.
   Guard pad-steel.test (26; 13 plants red); mp-padskin 8g, 9.
+- 6647 part 12 (the owner's bug, card PAD-fullpush; branch
+  claude/plan-pad-12-fullpush): a FULL push sprints (1.0 of the reach on,
+  0.8 off), the reach the drawn radius or the room to the glass's edge less
+  16 px (the band's top going south), never under 18 (stickZones.js
+  stickReach); out of energy the bro walks on, no flicker; the words once
+  an emptying; `?fullpush=0` yesterday's 1.25.  Only server/test changes
+  under server/: deploys nothing.
 
 ## Found
 - The energy blocks show only briefly after a spend: no in-game picture
