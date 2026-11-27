@@ -151,6 +151,7 @@ import { SMALL_TEX, elemSmallKey } from '@/data/smallIcons.js';   /* v2.3.3279: 
 import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
+import { selfNameDrawn, ownPlateBuild, ownPlateSync, ownPlateBandHalf, ownPlateProbeArm, plateZoomFor } from '../ownPlateFx.js';   /* v2.3.6788: your own plate, only while the HUD does not say your name (game/ownPlate.js's rule), built or destroyed on a change */
 import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3481: a clone you spar with lifts its plate off yours (it imports nothing) */
 import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the hair clipped through the stencil, not a pass of its own */
 import { heapTrimOn } from '../heapTrim.js';   /* v2.3.5007: the heap trim's switch */
@@ -6204,9 +6205,9 @@ function _questPinTex(k) {
  *
  * The clamp is a sanity bound, not a design term: nothing in the game should
  * ever ask for a 20x plate, and if the world scale arrives as a near-zero from
- * a mid-transition frame the plate must not take the screen with it. */
-const PLATE_SCALE_MIN = 0.2;
-const PLATE_SCALE_MAX = 3;
+ * a mid-transition frame the plate must not take the screen with it.
+ * v2.3.6788: the clamp's two numbers and the arithmetic are ownPlateFx.js's
+ * plateZoomFor now (your own band is sized by it, plate or no plate). */
 let _plateWorldScale = 1;
 /* ═══ v2.3.2513: THE NOTICE CUE KEEPS THE OLD SQRT RULE ═══
    The "!" that pops over a monster that has just spotted you (v2.3.2295) rode
@@ -6232,8 +6233,7 @@ function _fitPlateToZoom(display) {
   const pill = display && display._namePill;
   if (!pill) return;
   const chain = display._pillChain || 1;
-  const s = Math.min(PLATE_SCALE_MAX, Math.max(PLATE_SCALE_MIN,
-    (display._plateLift || 1) / (chain * _plateWorldScale)));
+  const s = plateZoomFor(display, _plateWorldScale);   /* v2.3.6788: the arithmetic in ownPlateFx.js, so your band reads it with no plate */
   if (display._pillZoom === s) return;
   display._pillZoom = s;
   pill.scale.set(s);
@@ -7065,7 +7065,10 @@ function createPlayerDisplay() {
   /* v2.3.2513: 10 -> 15 CSS px (see the monster plate's note and setPlateZoom).
      Yours stays one step above your peers' -- 15 against their 14 -- which has
      been true since v2.3.1681. */
-  _attachNamePill(container, 15, undefined, uiLayer);   /* v2.3.2154: 13 -> 15; v2.3.2265: 15 -> 10; v2.3.2513: 10 -> 15 CSS px */
+  /* v2.3.6788: decided once here, as the figure is built (game/ownPlate.js;
+     ownPlateFx.js ownPlateBuild: the 15 CSS px and the band's two numbers
+     kept either way; ownPlateSync builds or destroys it after, on a change) */
+  ownPlateBuild(container, uiLayer, PLAYER_SIZE_MULT, selfNameDrawn(), _attachNamePill);   /* v2.3.2154: 13 -> 15; v2.3.2265: 15 -> 10; v2.3.2513: 10 -> 15 CSS px */
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -14895,11 +14898,16 @@ export class EntityRenderer {
        previous frame's.  16 ms against a 300 ms fade, and reordering update()
        to fix it would move the HUD pass ahead of the body placement it reads
        positions from — a real risk to buy an invisible one. */
+    /* v2.3.6788: your own plate only while the HUD does not say your name
+       (game/ownPlate.js; built or destroyed when the answer changes) */
+    ownPlateSync(display, selfNameDrawn(), _attachNamePill);
     /* v2.3.3313: your alliance's tag, from your party's roster */
     _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
       !S._dying && !_chatBubbleUp(S, S.myId, now), !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2); v2.3.3858: the bubble has its place */
-    /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn */
-    if (window.__btProbe && display._pillName) window.__btSelfPlate = display._pillName.text;
+    /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn;
+       v2.3.6788: none while it is not drawn, and (mp-ownplate) your plate
+       as built and what stays (ownPlateFx.js ownPlateProbeArm) */
+    if (window.__btProbe) ownPlateProbeArm(display, _plateWorldScale);
     if (display._namePill) {
       const _pH = (display._pillCss || 15) * PLATE_H_RATIO;
       const _pS = display._pillZoom || 1;
@@ -14934,8 +14942,8 @@ export class EntityRenderer {
        this line stays for its other reader: the chat bubble's point sits on
        it (effectsRenderer, v2.3.2896). */
     {
-      const _bandHalf = Math.max(8, display._namePill
-        ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+      /* v2.3.6788: the band's size, plate or no plate (ownPlateFx.js) */
+      const _bandHalf = ownPlateBandHalf(display, _plateWorldScale);
       S._selfBandTopY = display.visible
         ? display.y + (PLAYER_BAND_Y - _bandHalf) * Math.abs(display.scale.y || 1) : null;
       /* v2.3.3481: the 2026-10-19 UI review (p11/harvest-near #4, p03/
@@ -14978,7 +14986,7 @@ export class EntityRenderer {
          at its old -52, half hidden under the name.  No man's land's "a red
          skull above their head" is the first use that needs it seen. */
       if (_selfSkull) {
-        const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 15) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+        const _sbh = ownPlateBandHalf(display, _plateWorldScale);   /* v2.3.6788: over the band, plate or no plate */
         display._skullText.y = Math.round(PLAYER_BAND_Y - _sbh - 2) + bobY;
       }
     }

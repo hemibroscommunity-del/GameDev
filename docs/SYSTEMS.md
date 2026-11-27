@@ -392,6 +392,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: lifeProfile
 - **Files**: `src/game/`: feats
 - **Files**: `src/game/`: codexView, entityInspect, lootRows
+- **Files**: `src/game/`: ownPlate
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

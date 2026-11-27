@@ -729,6 +729,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?npcprox` | page | switch | v2.3.3583 | 2026-10-23 | present | logic |  | no | Walking up to a townsperson opens them again (the old opener), to compare. |
 | `?oneband` | page | switch | v2.3.4012 | 2026-11-03 (v2.3.4092) | =0 | logic |  | no | The old side column, not the one band at the bottom. |
 | `?owedrebuild` | page | switch | v2.3.3886 | 2026-10-29 | =0 | logic |  | no | A second graphics loss inside a rebuild is not owed a rebuild. |
+| `?ownplate` | page | switch | v2.3.6788 | 2026-11-26 | =1 (remembered; =0 forgets) | logic |  | no | Your own name plate (your name, alliance tag and level over your bro) is drawn on your own screen again while the character HUD shows your name (card UI3). Under ?hud=0 it is drawn whatever this says. Other players' plates never change. |
 | `?p3colour` | page | switch | v2.3.2597 | 2026-09-17 | =0 | logic |  | no | The hero sheet's stats lose their colours. |
 | `?p3cols` | page | lever | v2.3.2597 |  | =1 | none |  | no | The hero sheet in one column, for the comparison. |
 | `?playvwlive` | page | switch | v2.3.4875 | 2026-11-11 | =1 | logic |  | no | The play view is measured on every read, as before. |
