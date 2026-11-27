@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "eb48c22cd1bbec26160c6637bdde3febb260f00f",
+  "tree": "b5c3c1a4a396a422a9e7c1cd5b43a4ee353cff69",
+  "committedAt": "2026-11-27T12:33:35-08:00",
+  "subject": "Merge pull request #2428 from hemibroscommunity-del/claude/plan-pad-14-misslift",
+  "files": 9313,
+  "bytes": 1109321861,
+  "listingSha256": "f56a108bb1ca341706ce9dedbef2d60359e0c7c7526178556b4cc06061c37a81",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

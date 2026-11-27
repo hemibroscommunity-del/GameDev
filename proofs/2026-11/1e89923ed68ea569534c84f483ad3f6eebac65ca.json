@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1e89923ed68ea569534c84f483ad3f6eebac65ca",
+  "tree": "3ac82e9dd7e3a937aa0f60c700a5ed8773810127",
+  "committedAt": "2026-11-27T12:33:06-08:00",
+  "subject": "Merge pull request #2426 from hemibroscommunity-del/claude/plan-shop-2-gearbag",
+  "files": 9312,
+  "bytes": 1109304261,
+  "listingSha256": "4a5f89cf82da51052de1b49081e2016505278ae1dbe7aad99e43879090bc1ed6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
