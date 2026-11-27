@@ -34,6 +34,7 @@
  * from the page: node tests it (server/test/aim-marks.test.mjs).
  */
 import { sightNow, latchLocked, twoButtonsLive } from './latch.js';
+import { discKind } from './rangedStick.js';   /* v2.3.6648: the disc's kind (a stick frames nothing) */
 import { drawnFace } from './sight.js';
 import { isRiding } from './ride.js';
 import { sw, readerFor } from './switches.js';
@@ -99,7 +100,7 @@ export function aimMarks(S, gate) {
   const locked = latchLocked(S);
   const lm = locked ? monById(S, S._latchId) : null;
   const lockUp = up(lm);
-  if (g.frame) {
+  if (g.frame && discKind(S) !== 'stick') {   /* v2.3.6648: a bow's or a staff's stick picks nothing and locks nothing, so it frames nothing (game/rangedStick.js; card PAD part 13) */
     if (locked) {
       if (lockUp) { _OUT.frame = lm; _OUT.tone = 'lock'; }
     } else {
