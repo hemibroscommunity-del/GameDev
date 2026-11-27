@@ -8,6 +8,7 @@ import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.35
 import { apRise } from '../../game/apChip.js';  /* v2.3.3553; v2.3.4183: a rise is a word now */
 import { pushHudPopup } from '../XpFlyOverlay.jsx';  /* v2.3.4183: "+12 gold" / "+5 AP" under the bar */
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
+import { charHudOn } from '../../game/charHud.js';   /* v2.3.6781: the HUD's bar holds the weapon's XP now */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS, TOPBAR_LOGO } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
 import { SAY } from '@/data/say/zoneHeader.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
@@ -170,7 +171,10 @@ export const ZoneHeader = ({ onExit }) => {
   const xb = S._xpBar || null;
   /* (QA only: `window.__btXpHold` keeps it up while a slow box takes its
      picture, as __btLevelUpFreeze pins the level-up burst; mp-xpbar) */
-  const xpOn = xpBarShown(xb, Date.now()) || (!!xb && typeof window !== 'undefined' && window.__btXpHold === true);
+  /* v2.3.6781: while the character HUD is up (top left, ui/hud/) the weapon's
+     XP moves in ITS bar, so this slot -- which only ever showed weapon XP --
+     is quiet (never both); `?hud=0` brings it back */
+  const xpOn = !charHudOn() && (xpBarShown(xb, Date.now()) || (!!xb && typeof window !== 'undefined' && window.__btXpHold === true));
 
   const doExit = () => {
     /* v2.3.785/786 lineage (moved from the retired bt-exit-fab):

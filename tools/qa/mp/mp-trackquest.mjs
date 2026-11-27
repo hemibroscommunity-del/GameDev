@@ -48,7 +48,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
 const mini = (P) => P.page.evaluate(() => (window.__btMinimap ? JSON.parse(JSON.stringify(window.__btMinimap)) : null));
 const tracked = (P) => P.page.evaluate(() => (window.__btTrackedQuest ? window.__btTrackedQuest.get() : 'no handle'));
-const hudTitle = (P) => P.page.evaluate(() => { const el = document.querySelector('[data-quest-hud]'); return el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null; });
+/* v2.3.6781: under the character HUD (card UI3) the card is ONE line, "title · count · objective": its text whole (an ellipsis only clips its drawing) */
+const hudTitle = (P) => P.page.evaluate(() => {
+  const one = document.querySelector('[data-quest-hud-oneline] [data-quest-hud-line]');
+  if (one) return (one.textContent || '').replace(/\s+/g, ' ').trim();
+  const el = document.querySelector('[data-quest-hud]'); return el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : null;
+});
 
 /* the star as the minimap draws it, once it says `pred` (or the last read) */
 async function starWhen(P, pred, ms = 8000) {

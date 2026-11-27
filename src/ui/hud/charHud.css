@@ -1,0 +1,56 @@
+/* ═══ v2.3.6781: THE CHARACTER HUD, TOP LEFT (card UI3, PR 2) ═══
+   src/ui/hud/CharacterHud.jsx draws it; the sizes are src/game/charHud.js
+   CHAR_HUD's (the coach's avoidance reads them there).  Upright and on a
+   computer 184 x 52, the face 44; sideways 176 x 48, the face drawn 40 in
+   the 44 hit box.  The owner's palette of 2026-11-26 (UI_FEEDBACK part 6),
+   written here because the kit's tokens are not on this branch: the recessed
+   panel #0E1D29 at .88, the subtle border #4B6275, the text #F1F0E9, the
+   gold #EAC474 (progression and important numbers only).
+   Just under the top bar (--bt-hud-base, game.css), opposite the minimap;
+   the quest line, the status column and the party chip move down by
+   --bt-charhud-h while html[data-charhud="1"] (game.css).  Transform and
+   opacity only change while playing: this sits over the WebGL canvas
+   (TRAPS section 42). */
+.bt-charhud{position:absolute;top:var(--bt-hud-base,56px);left:8px;z-index:17;
+  width:184px;height:52px;box-sizing:border-box;padding:3px 6px 3px 3px;
+  display:flex;align-items:center;gap:6px;
+  background:rgba(14,29,41,.88);border:1px solid #4B6275;border-radius:8px;
+  color:#F1F0E9;font-family:'Source Sans 3',sans-serif;
+  /* an ancestor turns pointer events off so the world stays tappable */
+  pointer-events:auto;cursor:pointer;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.bt-charhud__face{flex:none;width:44px;height:44px;box-sizing:border-box;
+  border:1px solid #EAC474;border-radius:6px;overflow:hidden;background:#0E1D29;
+  display:flex;align-items:center;justify-content:center}
+.bt-charhud__face img{width:100%;height:100%;display:block;object-fit:cover;pointer-events:none}
+.bt-charhud__main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}
+.bt-charhud__top{display:flex;align-items:baseline;gap:6px;min-width:0}
+.bt-charhud__name{flex:1 1 auto;min-width:0;font-weight:700;font-size:13px;line-height:16px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#F1F0E9}
+.bt-charhud__lv{flex:none;font-weight:800;font-size:13px;line-height:16px;color:#EAC474;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+/* the weapon's row: its picture (14), its word (11), the gold bar (13 tall,
+   XpTrack's "45 / 120" in it); a gain on another weapon pops over its end */
+.bt-charhud__xp{position:relative;display:flex;align-items:center;gap:4px;min-width:0;height:16px}
+.bt-charhud__icon{flex:none;width:14px;height:14px;display:block;object-fit:contain;pointer-events:none}
+.bt-charhud__word{flex:none;font-weight:700;font-size:11px;line-height:1;color:#F1F0E9;white-space:nowrap}
+.bt-charhud .bt-xp-bar__track{flex:1 1 auto;min-width:0;height:13px;border-radius:5px;
+  background:#0E1D29;box-shadow:inset 0 0 0 1px rgba(234,196,116,.6)}
+.bt-charhud .bt-xp-bar__fill{background:#EAC474;border-radius:4px}
+.bt-charhud .bt-xp-bar__white{border-radius:4px}
+.bt-charhud .bt-xp-bar__num{font-size:9.5px}
+.bt-charhud__pop{position:absolute;right:0;bottom:100%;display:flex;align-items:center;gap:2px;
+  pointer-events:none;white-space:nowrap}
+.bt-charhud__pop img{width:12px;height:12px;display:block}
+.bt-charhud__pop .bt-xp-gain{font-size:11px}
+/* before the worker's record: the face and the name only (never "Lv 1") */
+.bt-charhud.is-waiting .bt-charhud__main{justify-content:center}
+/* sideways (a short screen): compact, 176 x 48, the face drawn 40 in its 44.
+   A media query, not html[data-orient]: with the one band playIsLandscape()
+   is always false (playViewport.js), so that mark never applies sideways. */
+@media (max-height:480px){
+  .bt-charhud{width:176px;height:48px;padding:1px 6px 1px 1px;gap:4px}
+  .bt-charhud__face{width:44px;height:44px;border:0;background:transparent}
+  .bt-charhud__face img{width:40px;height:40px;border:1px solid #EAC474;border-radius:6px;box-sizing:border-box;background:#0E1D29}
+  .bt-charhud__main{gap:3px}
+}
