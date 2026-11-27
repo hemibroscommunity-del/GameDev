@@ -766,6 +766,9 @@ stays with that PR until it lands, and is marked (held).
   `docs/specs/gear-stash.md`:328 lists it open). Cost: a dropped line before
   the reply leaves the piece paid for (5 bars, or the chest) and held by the
   worker but never shown, even after a reload. No card owns it.
+  MENDED (SHOP-gearbag, tag 6801): the phone adopts the four lists from every
+  `player_state` by id, and every reply's piece goes in by one way
+  (`src/game/gearAdopt.js`; `gear-adopt.test`; `?gearadopt=0`).
 - A bug on `main` (not reachable by the game's own phone): a join claiming
   one minted shield gid N times keeps one minted shield plus N-1 usable
   "legacy" copies (`gearstash.js` `mergeStashLists` merges claims by

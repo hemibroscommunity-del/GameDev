@@ -202,6 +202,7 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
 import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow between you and a player keeps the fight with them on (the shield; a chosen foe) */
 import { adoptHeldShields, shieldsInFrame } from '@/game/shieldAdopt.js'; /* v2.3.6800: the shields the worker holds, added to the phone's bag by id (sitting 71's hold) */
+import { gearBagPut } from '@/game/gearAdopt.js'; /* v2.3.6801: the mail's piece in by the bag's one way (card SHOP-gearbag) */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.6800: the arm said again after a "have" adopts a worn piece */
 import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group whose blow lands on you joins the fight you chose, no window */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
@@ -2121,9 +2122,11 @@ export function processGameEvent(type, payload, S, deps) {
                   var _gf = _ep.field;
                   var _gOk = _gf === 'armorStash' || _gf === 'legsStash' || _gf === 'shieldStash'
                           || _gf === 'gearStash' || _gf === 'amuletStash';
-                  if (_gOk && _ep.piece && typeof _ep.piece === 'object' && S.rpg) {
-                    if (!Array.isArray(S.rpg[_gf])) S.rpg[_gf] = [];
-                    S.rpg[_gf].push(_ep.piece);
+                  /* v2.3.6801 (card SHOP-gearbag): by the bag's one way in
+                     (src/game/gearAdopt.js gearBagPut 'mail'), which refuses a
+                     second copy of an id: the state's adopt may have put the
+                     worker's copy in first.  A piece with no id goes in as before. */
+                  if (_gOk && S.rpg && gearBagPut(S.rpg, _gf, _ep.piece, 'mail')) {
                     try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
                   }
                 }
