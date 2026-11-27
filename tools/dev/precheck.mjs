@@ -848,20 +848,25 @@ for (const r of storageKeyRows(root, changedServerSrc).rows) add(r.level, r.chec
  *
  * SKIPPED, NOT FAILED, when eslint is not installed: this must stay runnable
  * on a bare checkout, and "no linter here" is not a finding about the diff.
- * Only client files are linted because `npm run lint` is `eslint src`. */
-if (changedClient.length) {
-  const r = spawnSync('npx', ['--no-install', 'eslint', 'src'],
+ * v2.3.6701 (card TD PR 2): `npm run lint` is `eslint src server/src` now,
+ * the worker under the same eight rules (eslint.config.js's second block),
+ * so this step lints both trees, and runs when either changes or the
+ * config itself does. */
+const lintTouched = changedClient.length || changedServerSrc.length
+  || changed.includes('eslint.config.js') || changed.includes('package.json');
+if (lintTouched) {
+  const r = spawnSync('npx', ['--no-install', 'eslint', 'src', 'server/src'],
     { cwd: root, encoding: 'utf8', timeout: 4 * 60 * 1000, maxBuffer: 32 * 1024 * 1024 });
   if (r.error || r.status === null) {
     add('PASS', 'eslint', 'eslint not runnable here — check skipped (CI still runs it)');
   } else if (r.status === 0) {
-    add('PASS', 'eslint', 'npm run lint — clean');
+    add('PASS', 'eslint', 'npm run lint (src and server/src) — clean');
   } else {
     const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-12).join('\n    ');
     add('FAIL', 'eslint', `npm run lint exited ${r.status}:\n    ${tail}`);
   }
 } else {
-  add('PASS', 'eslint', 'no client changes — lint skipped');
+  add('PASS', 'eslint', 'no client or worker changes — lint skipped');
 }
 
 /* ---- 7. server tests ----------------------------------------------- */

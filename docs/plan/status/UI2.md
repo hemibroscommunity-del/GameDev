@@ -1,6 +1,6 @@
 card: UI2
-branch: claude/plan-ui2-9c-equipment
-prs: UI2-gear PR 3, v2.3.6689 (draft, base main; ready once its checks are green)
+branch: claude/plan-ui2-grip (and claude/plan-ui2-9c-equipment, UI2-gear PR 3)
+prs: #2368, #2369 and the growing motion's (step 2; merged with sitting 68); the grip's draft PR (ready); UI2-gear PR 3, v2.3.6689 (draft, base main)
 state: ready
 
 ## Done
@@ -11,10 +11,14 @@ state: ready
 
 - v2.3.6689, step 5 PR 3 (card UI2-gear; branch claude/plan-ui2-9c-equipment, base main): Bro's Equipment door opens a showcase (`sheet/GearShowcase.jsx`, page `broEquip`: the figure, the nine worn cells by Gear's one body table `src/game/gearShowcase.js GEAR_BODY`, no bag, Manage Gear for yourself only); each cell and the player card's equipment row open the one item page (`itemPageOpen.js`: showcase, profile and another player's read-only sources); `tools/guards/gear-showcase.test.mjs` (S1-S10 planted, each red); `mp-ui2gear` steps 8c, 9c, 11-14 (33 of 33 on the test box, the final code, by a helper); `ui2-bro-equipment` in states.mjs and the notes.
 
+- v2.3.6697, card UI2-grip (the owner's request of 2026-11-26; branch claude/plan-ui2-grip): the band's pull handle gone (the owner, 2026-11-26), `?bandgrip=1` the way back; the fold's hook `data-dash-fold` worn by the row's own control (the frame's Gear and Close; CLOSE under ?ui2=0), so no finder moved; the coach's "Tap the handle" only with the handle; `tools/guards/band-grip.test.mjs` (G1 to G6 planted, each red); `mp-bandgrip` (32 of 32 on the test box); UI-DESIGN-NOTES' band section.
+
 ## Next
 - Nothing on UI2-gear: its three PRs are up.  The Codex's road into the item page is UI2-codex's: it enters `openItemPage({ from: 'codex', ... })` (dash/itemPageOpen.js), place 'codex'.
+- Nothing: the grip's PR waits for the gatekeeper.  Phone runs on its final code (the test box): questline 187/187, contextbuttons 27/27, bandgrip 32/32, ui2frame 34/34, guidearrow, revealbag, bagunfold green; padskin's rider part 9/9 twice (one earlier sideways 5b/5c red was the rider falling off: a flake).  Main's own reds (the same on main 7ec316e9): oneband 3 (sideways), questguide 7, pointstips 1 ("Tap Menu, then Bro."), dmgsize 4 (the marks' sizes).
 
 ## Found
+- mp-pointstips step 6 expects "Tap Bro." but the frame's points lesson says "Tap Menu, then Bro." (main's own red); mp-questguide's pins and mp-dmgsize's mark sizes red on main too.
 - (mended in PR 2) the guide arrow's "Tap Bro" on the Menu button; ControlsTutorial's rings; the handle that reset Gear's pages.
 - The points' flight (src/game/questFly.js QUEST_FLY_TARGETS.points) lands on the Menu button under the frame (it wears [data-nav="hero"]): the road to Bro, left as it is (server/test/points-fly.test pins the list; a file there deploys the worker).
 

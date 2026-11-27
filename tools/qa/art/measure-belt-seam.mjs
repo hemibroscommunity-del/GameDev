@@ -11,7 +11,7 @@
  * "a frame or few" shape of the report.
  *
  * SOUTHEAST IS NOT A SHEET.  It is jog-southwest drawn mirrored
- * (docs/specs/gear-layer-spec.md), so if southwest measures clean and southeast
+ * (docs/archive/root/gear-layer-spec.md), so if southwest measures clean and southeast
  * does not, the belt art is innocent and the bug is in the mirror -- a very
  * different fix.  This measures the sheets, so it can only speak about the art;
  * a clean result here is what sends the next session to the renderer.

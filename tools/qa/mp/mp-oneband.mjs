@@ -196,7 +196,7 @@ async function sidewaysChecks(P, rec, { label, viewport }) {
 async function screen(browser, wsPort, webPort, rec, { label, viewport, touch, wide, query, before }) {
   const P = await H.newPlayer(browser, {
     name: 'One' + label.replace(/[^A-Za-z]/g, '').slice(0, 8), wsPort, webPort,
-    world: 'wheel', viewport, touch: !!touch, wide: !!wide, query: (query ? query + '&' : '') + 'ui2=0',   /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
+    world: 'wheel', viewport, touch: !!touch, wide: !!wide, query: (query ? query + '&' : '') + 'ui2=0&rimsprint=0',   /* v2.3.6644 (card PAD part 9): Sprint is one of the row's buttons measured; drawn only with `?rimsprint=0` now */   /* v2.3.6681: this check is about the old row of buttons, which ships under ?ui2=0 until the build's step 10 (card UI2-frame) */
   });
   try {
     await H.enterWorld(P);

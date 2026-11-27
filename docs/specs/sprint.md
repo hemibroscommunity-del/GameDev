@@ -6,6 +6,40 @@
 
 ## What the player sees
 
+> **v2.3.6644 (card PAD part 9): on a touch screen the Sprint button is
+> gone; the left stick pushed past its edge sprints.** The owner, 2026-11-26,
+> shown the controller (the button floated over its right side: their
+> drawing has no socket for it), asked *"Where do you think sprint should
+> go"*; told "no button; push the stick to its edge", as the two-button trial
+> already played (v2.3.6545): *"Yeah do that and remove sprint button"*.
+> - In the usual controls as in the trial: the thumb out past **1.25** of the
+>   disc's drawn radius sprints; back inside **1.05**, or lifted, it stops. A
+>   hold, like Shift. At the edge itself (up to 1.25) the bro walks at full
+>   speed and spends nothing. Every end below still ends it, and after an end
+>   or a refusal it starts again only once the thumb has come back in and gone
+>   out again. Too tired: "Not enough energy!" and the denied tick, once a
+>   push. The rules are `src/game/stickZones.js` (`rimSprint`, the gate
+>   `rimSprintLive`: a touch screen's main pointer and the switch); the usual
+>   stick feeds it through `stickAnalog`, handed the disc's drawn radius (the
+>   usual stick's walk is full 20 px inside the rim and its knob is drawn no
+>   further, but the thumb itself is never clamped). The stamina, the speed,
+>   the move's `sp` and the worker's bill are unchanged.
+> - The button's stamina rim went with it, and no new meter was built: the
+>   energy shows as the five blocks under the bro while it is spent (both ways
+>   up, the dashboard open or folded; on the test box), and the dashboard's
+>   EN bar is not on screen while it rests on its Gear page or is folded.
+>   Sideways the open dashboard hides the controls, so there is no stick to
+>   sprint with until it is folded. The tour's move step says "Drag the left
+>   joystick to move. Push it past its edge to sprint."
+> - A computer, and a touch screen whose main pointer is a mouse, keep the
+>   button and Shift as before. **`?rimsprint=0`** gives the button back and
+>   the edge does nothing, in both control modes.
+> - Tests: `server/test/stick-zones.test.mjs` 11 (the gate and the usual
+>   stick), `mp-rimsprint` (a phone, both ways up); `mp-sprint`,
+>   `shot-thumbbtn` and `mp-oneband` measure the button with `?rimsprint=0`.
+>
+> What follows is the button as it was, and still is with `?rimsprint=0`.
+
 - **On a phone:** a round button with the winged boot (the game's own "move
   speed" picture), just right of the movement stick and level with its middle.
   - Tap it and it lights up. While you move, you run **1.33 times** your walk.
