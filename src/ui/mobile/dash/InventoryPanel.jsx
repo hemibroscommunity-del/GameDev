@@ -517,7 +517,7 @@ const ShopQuoteBadge = ({ ikey }) => {
    the tile (its blue ring, `selected`) and the middle panel shows it, instead
    of opening the item card.  The shop's and the trade's taps still come first:
    while either window is open the bag is half of it, as before. */
-export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected }) => {
+export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected, kit }) => {
   /* v2.3.1228: owner correction — the bag showed category colors
      (weapons blue, armor green) that read as fake rarity and clashed
      with the popup's honest grey.  Materials/keys carry no quality, so
@@ -560,12 +560,15 @@ export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected
      sloshes, a fish flops, metal glints, a log lies still (null). */
   const life = lifeKindFor(ikey, classify(ikey));
   return (
-    <div onPointerUp={handleTap} data-inv-key={ikey} data-bag-key={`i-${ikey}`} data-gear-sel={selected ? '1' : undefined} style={{
+    <div onPointerUp={handleTap} data-inv-key={ikey} data-bag-key={`i-${ikey}`} data-gear-sel={selected ? '1' : undefined}
+      className={kit ? 'u2-slot' : undefined} data-grade={kit ? 'normal' : undefined} data-staged={kit && (shopSel || tradeStaged) ? '' : undefined} style={{
       width: '100%', aspectRatio: '1 / 1',
-      background: (shopSel || tradeStaged) ? 'rgba(234,198,117,.16)' : COL.tile,
-      border: (shopSel || tradeStaged) ? '1px solid #EAC675' : `1px solid ${color}`,
+      ...(kit ? null : {   /* v2.3.6784: under `kit` the kit's socket draws the face (u2-slot), never this */
+        background: (shopSel || tradeStaged) ? 'rgba(234,198,117,.16)' : COL.tile,
+        border: (shopSel || tradeStaged) ? '1px solid #EAC675' : `1px solid ${color}`,
+        borderRadius: 6,
+      }),
       ...(selected ? { boxShadow: GEAR_SEL_RING } : null),   /* v2.3.4151: the Gear tab's tap */
-      borderRadius: 6,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1360,12 +1363,14 @@ export const InventoryPanel = () => {
 /* v2.3.1070: dispatch a shared bag entry to the right tile so every bag
    surface renders identical tiles from one list.  v2.3.1350: `style`
    threads the measured row-fit override down to both tile kinds. */
-export const BagTile = ({ entry, style, onSelect, selected }) => {
+/* v2.3.6784 (card UI3-menus, reading 4): `kit` (off unless given; Gear's two panels alone pass it): the square
+   wears the kit's socket (u2-slot with the piece's data-grade), the worn cell's, every mark kept */
+export const BagTile = ({ entry, style, onSelect, selected, kit = false }) => {
   if (!entry) return null;
   if (entry.kind === 'item') {
-    return <ItemTile ikey={entry.key} count={entry.count} style={style} onSelect={onSelect} selected={selected} />;
+    return <ItemTile ikey={entry.key} count={entry.count} style={style} onSelect={onSelect} selected={selected} kit={kit} />;
   }
-  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} count={entry.count} style={style} onSelect={onSelect} selected={selected} />;
+  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} count={entry.count} style={style} onSelect={onSelect} selected={selected} kit={kit} />;
 };
 
 /* v2.3.4151: the Gear tab's blue ring -- "tapping on an item highlights it in
@@ -1387,7 +1392,7 @@ export const GEAR_SEL_RING = `0 0 0 1px rgba(8, 14, 18, 0.95), 0 0 0 4px ${GEAR_
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires
    it back into the matching loadout slot. */
-const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, selected }) => {
+const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, selected, kit }) => {
   /* v2.3.1070: anchored stash items show the same ⚓ badge as inventory
      tiles -- the popup anchors them under the matching index-based key. */
   const locked = itemIsLocked(`${kind}_${index}`);
@@ -1485,14 +1490,13 @@ const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, se
     /* v2.3.3049: data-gear names what it is (a weapon's type, or 'shield')
        so the first quest's flashes (gearFlash.js) can light the sword and the
        shield, then the bow and the staff, and nothing else in the bag */
-    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" data-bag-key={`${kind}-${index}`} data-unrevealed={hidden ? '' : undefined}
+    <div onPointerUp={handleTap} className={kit ? 'u2-slot' : rarityClass} data-grade={kit ? (q === 'rare' || q === 'elite' || q === 'godly' ? q : 'normal') : undefined}
+      data-tut="coach-gear" data-bag-key={`${kind}-${index}`} data-unrevealed={hidden ? '' : undefined}
       data-gear={kind === 'stashShield' ? 'shield' : kind === 'stashWeapon' ? String((obj && obj.type) || '') : undefined}
       data-gear-sel={selected ? '1' : undefined} style={{
       width: '100%', aspectRatio: '1 / 1',
-      background: COL.tile,
-      border: `${edgeWidth}px solid ${color}`,
+      ...(kit ? null : { background: COL.tile, border: `${edgeWidth}px solid ${color}`, borderRadius: 6 }),   /* v2.3.6784: `kit`: the socket's */
       ...(selected ? { boxShadow: GEAR_SEL_RING } : null),   /* v2.3.4151 */
-      borderRadius: 6,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       position: 'relative',
       cursor: 'pointer',

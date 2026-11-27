@@ -130,10 +130,10 @@ const PLANTS = [
     swap(PANEL, '(ui2FrameOn() ? <QuestsLanding getS={getState} /> : QUEST_PAGES ?', '(QUEST_PAGES ?'),
     swap(DASH, "  quests:       { title: say(SAY, 'bottomDashboard.titleQuests'),      Component: QuestsPanel },",
       "  quests:       { title: say(SAY, 'bottomDashboard.titleQuests'),      Component: QuestsPanel },\n  questsUi2: { title: say(SAY, 'bottomDashboard.titleQuests'), Component: QuestsLanding },"))],
-  ['D1', 'QuestDetailPanel drawing today\'s drill again under the frame', swap(DETAIL, '(ui2FrameOn() ? <QuestPage getS={getState} /> :', '(ui2FrameOn() ? <OldQuestDetailPanel getS={getState} /> :')],
-  ['D2', 'its choice made on questpages', swap(DETAIL, '(ui2FrameOn() ? <QuestPage getS={getState} /> :', '(!QUEST_PAGES ? <QuestPage getS={getState} /> :')],
-  ['D3', 'both mounted under the frame', swap(DETAIL, '(ui2FrameOn() ? <QuestPage getS={getState} /> :', '(ui2FrameOn() ? <><QuestPage getS={getState} /><OldQuestDetailPanel getS={getState} /></> :')],
-  ['D4', 'its choice turned round', swap(DETAIL, '(ui2FrameOn() ? <QuestPage getS={getState} /> :', '(!ui2FrameOn() ? <QuestPage getS={getState} /> :')],
+  ['D1', 'QuestDetailPanel drawing today\'s drill again under the frame', swap(DETAIL, '(ui2FrameOn() ? <QuestPage key={questPageAt()} getS={getState} /> :', '(ui2FrameOn() ? <OldQuestDetailPanel getS={getState} /> :')],
+  ['D2', 'its choice made on questpages', swap(DETAIL, '(ui2FrameOn() ? <QuestPage key={questPageAt()} getS={getState} /> :', '(!QUEST_PAGES ? <QuestPage key={questPageAt()} getS={getState} /> :')],
+  ['D3', 'both mounted under the frame', swap(DETAIL, '(ui2FrameOn() ? <QuestPage key={questPageAt()} getS={getState} /> :', '(ui2FrameOn() ? <><QuestPage key={questPageAt()} getS={getState} /><OldQuestDetailPanel getS={getState} /></> :')],
+  ['D4', 'its choice turned round', swap(DETAIL, '(ui2FrameOn() ? <QuestPage key={questPageAt()} getS={getState} /> :', '(!ui2FrameOn() ? <QuestPage key={questPageAt()} getS={getState} /> :')],
 ];
 for (const [id, what, over] of PLANTS) {
   if (over === null) { check(`${id} (${what}): its line is found once`, false, 'the plant\'s line moved: update the plant'); continue; }

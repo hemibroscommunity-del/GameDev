@@ -30,6 +30,22 @@ PURPOSE: open the Menu and the eight pictures are bigger, as big as the band let
 5. **The label rows**: `HEAD` 30 to 24 (the 6 px go to the cells through `gearPanelsGeometry`), the controls 24 px tall with their touch still 44, the label 11 px caps (`.ui2 .u2-gp .u2-pane-head` in `gearPanels.css`: never `ui2.css`). Sideways unchanged but for the pill.
 6. **The gold**: the kit's stat at pill size (`Ui2Stat size="pill"`, PR 1's reading 2): recessed, the coin 16 px, the number gold, `data-gear-gold` kept, NOT a button (it opens nothing).
 
+## The owner's word of 2026-11-26, 19:35 UTC (appended by the orchestrator's part 27): no cut row in the bag
+
+The owner, in the orchestrator's session: *"the inventory slots don't fit neatly on the new menu the third row gets cut off."* It is a bug in what a player sees, in THIS PR's file, so it is this PR's reading 7 (do it AFTER reading 5: the 6 px from `HEAD` count).
+
+7. **The bag shows whole rows only.** The cause on main: `bagCell` comes from the panel's WIDTH alone (`GearPanels.jsx`:109) and the scroller (`Ui2ItemGrid`, `height: 100%`) is the whole body, so the last row drawn is cut wherever the height happens to fall (`docs/shots/ui2-frame-gear.png` shows the third row cut). The reading:
+   - Upright, the geometry also gives `rows` and `bagH`. `rows` is the most whole rows that fit `below` (= H - HEAD - 2 * PAD) with a square of at least 44; where three rows of 44 fit (`below >= 3 * 44 + 2 * G`), there are at least three: the square shrinks from its width-fit size toward 44 until the third row is whole. Where three cannot fit at 44, two whole rows (the square the smaller of its width-fit size and what the height allows). `bagH = rows * bagCell + (rows - 1) * G`.
+   - `bagH` is handed to `Ui2ItemGrid`'s `height` (the prop exists: `src/ui/kit/ItemGrid.jsx`:29; the kit's file is NOT edited); what is left of `below` is space under the grid, never a part of a row. `rowsIn` and `fill` (:363-364) read the same `rows`.
+   - A scroll never rests on half a row: `scroll-snap-type: y mandatory` on `.ui2 .u2-gp .u2-grid` and `scroll-snap-align: start` on its cells, in `gearPanels.css` (never `ui2.css`). If the snap fights the kept scroll (`workspace.js`'s `left` scroll, :340-356) or iPhone's momentum, keep the whole-row height and SAY what was left out.
+   - A fade or shadow over the bag's last row, if one is drawn today, goes when the row is whole.
+   - Sideways (one row): check it is whole at 844 x 390 and 667 x 375, and say.
+   - The rule is a module (finish.md part 5, rule 5): the geometry moves to `src/game/gearGeometry.js` (pure, no import; `GearPanels.jsx` imports it and keeps exporting `gearPanelsGeometry` if a test reads it there).
+- `tools/guards/gear-geometry.test.mjs` tests what the geometry DOES, over W 300 to 900 and H 100 to 420: every upright result has `rows >= 1`, `bagCell >= 44`, `bagH <= below`, `below - bagH < bagCell + G` (no room left for another whole row), and `rows >= 3` whenever `below >= 138`. THE DODGES, each planted and seen red: `ceil` or `round` for the rows (a row past the body); the gap forgotten in `bagH`; `HEAD`'s old 30; the 44 floor dropped (a 40 px square to squeeze a row in); the height ignored (today's fault).
+- `mp-ui3menus` gains step 3b: at 390 x 844, 375 x 667, 844 x 390, 667 x 375 and a computer, with a bag of more rows than fit, EVERY bag square that meets the scroller's DRAWN box lies wholly inside it (1 px), at rest at the top and again after a scroll has settled; three whole rows wherever the rule says three. Moved in this PR if it pins the old size: `mp-ui2gear` 1 and 8.
+- Files added to "Yours": `src/game/gearGeometry.js`, `tools/guards/gear-geometry.test.mjs`.
+- In your ONE message: at each of the four phone shapes, how many whole rows and the square's size, and a picture of Gear upright at 390 x 844 (for the owner). If three rows do NOT fit at 44 on a phone shape, say which: whether the square may go under 44 there is the owner's.
+
 ## Flagged for the owner (never settled by this card)
 
 The picture's real size if the measured room is under 58 (or 35 sideways); 375 x 667 and 667 x 375 have 0 px to spare at the cap.

@@ -308,6 +308,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(600);
       const tr = await A.page.evaluate(() => (document.querySelector('[data-rank-fish="trout"]') || { getAttribute: () => null }).getAttribute('aria-pressed'));
       rec.ok('4d Biggest fish: its kinds on the top line, the trout picked (the weigh-in road: mp-fishvariants 5)', tr === 'true', tr);
+      /* v2.3.6692: the kind's icon by KEEP's address helper (its file's version, never a hand-built address) and loaded */
+      await A.page.waitForFunction(() => { const i = document.querySelector('[data-rank-fish="trout"] img'); return !!i && i.complete; }, null, { timeout: 8000 }).catch(() => {});
+      const fi = await A.page.evaluate(() => { const i = document.querySelector('[data-rank-fish="trout"] img'); return i ? { src: i.getAttribute('src'), w: i.naturalWidth, done: i.complete } : null; });
+      rec.ok('4e Biggest fish: the trout\'s icon loaded through the address helper (a version on its address)', !!fi && fi.done && fi.w > 0 && /\/icons\/items\/fish-trout\.webp\?v=/.test(fi.src || ''), fi);
       await tap(A, '[data-dash-frame] [data-dash-ctl="back"]');
       await A.page.waitForTimeout(500);
     } else rec.ok('4d no Biggest fish board on this worker (skipped)', true);

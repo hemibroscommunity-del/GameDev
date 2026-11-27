@@ -24,6 +24,8 @@
  *      history (handed in, its "Next:" line, Rewards, no Track or map);
  *   5. the pinned card's road (__btQuestDetail.open, QuestCard's
  *      openQuestPage): the quest's page, Back says World and closes;
+ *   5b. Box Traps' page open, Into the Blue's pinned card: Into the Blue's page,
+ *      and ONE Back leaves (v2.3.6691, the mend of sitting 71);
  *   6. 375 x 667, 844 x 390, 667 x 375, and a computer (`wide`, says no
  *      "tap"): the landing and the quest's page with nothing clipped, no
  *      press under 44 px, no word under 11 px;
@@ -294,6 +296,20 @@ async function phone({ P, wsPort, rec }) {
   await tap(P, '[data-dash-frame] [data-dash-ctl="back"]');
   const W2 = await read(P);
   rec.ok(`5. the pinned card's road lands on Box Traps' page (back "${W.back}"); Back closes the dashboard`, W.page === 'questDetail' && !!W.quest && W.quest.id === 'beast_1' && /World/.test(W.back) && !W2.shown, { page: W.page, quest: W.quest && W.quest.id, back: W.back, after: W2.kind });
+  /* ── 5b. v2.3.6691 (the mend of sitting 71): Box Traps' page open, Into the Blue's card tapped: Into the Blue's
+     page, and Back leaves in ONE press (on 79b820ea it still showed Box Traps, and Back needed two) ── */
+  await P.page.evaluate(() => window.__btQuestDetail && window.__btQuestDetail.open('beast_1'));
+  await P.page.waitForTimeout(1200);
+  const WA = await read(P);
+  await P.page.evaluate(() => window.__btQuestDetail && window.__btQuestDetail.open('tut_1'));
+  await P.page.waitForTimeout(1200);
+  const WB = await read(P);
+  await tap(P, '[data-dash-frame] [data-dash-ctl="back"]');
+  const WB2 = await read(P);
+  rec.ok(`5b. Box Traps' page open, Into the Blue's card: Into the Blue's page (back "${WB.back}"); ONE Back closes the dashboard`,
+    !!WA.quest && WA.quest.id === 'beast_1' && WB.page === 'questDetail' && !!WB.quest && WB.quest.id === 'tut_1' && /World/.test(WB.back) && !WB2.shown,
+    { before: WA.quest && WA.quest.id, quest: WB.quest && WB.quest.id, back: WB.back, afterOneBack: WB2.shown ? WB2.page : 'closed' });
+  if (WB2.shown) await tap(P, '[data-dash-frame] [data-dash-ctl="close"]').catch(() => {});
   /* ── 6. the other sizes ── */
   for (const [w, h] of [[375, 667], [844, 390], [667, 375]]) {
     await P.page.setViewportSize({ width: w, height: h });

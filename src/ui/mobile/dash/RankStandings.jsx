@@ -39,6 +39,7 @@ import { rankWord, rankBoardWord } from './rankWords.js';
 import { SAY } from '@/data/say/leaderboard.js';
 import { SAY as SAY_F } from '@/data/say/fishBoard.js';
 import { say } from '@/game/say.js';
+import { assetUrl } from '@/game/assetUrl.js';   /* v2.3.6692: a fish icon's address by KEEP's helper (its file's version), never by hand */
 
 /* a row and its 2 px gap: the rule's pitch (ranksUi2.css .u2-rk-row, .u2-rk-list's gap) */
 export const RANK_PITCH = 46;
@@ -154,7 +155,7 @@ function Choice({ kind, choice, onChoice }) {
   }
   if (kind === 'fish') {
     return FISH_SPECIES.map((f) => (
-      <Ui2Tile key={f.id} size="compact" selected={choice === f.id} art={'/icons/items/fish-' + f.id + '.webp'} label={f.name}
+      <Ui2Tile key={f.id} size="compact" selected={choice === f.id} art={assetUrl('/icons/items/fish-' + f.id + '.webp')} label={f.name}
         data-rank-fish={f.id} onClick={() => onChoice(f.id)} />
     ));
   }
