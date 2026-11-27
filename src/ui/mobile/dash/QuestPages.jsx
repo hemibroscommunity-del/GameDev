@@ -40,13 +40,13 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { deskWords } from '@/game/deskWords.js';
-import { coinArtFor } from '@/game/coinArt.js';
 import { sw } from '@/game/switches.js';
 import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { questJournalList, questJournalPage, journalCtx, questById, afterOf } from '../sheet/questJournalModel.js';
 import { useJournalTap, npcPortrait, showQuestOnMap } from './QuestJournalPage.jsx';
 import { useBoxSize } from './railKit.js';
 import { FaceIcon, pillStyle, pillHit, DonePane, DailyPane } from './questParts.jsx';
+import { pin, tileInner } from './questViews.jsx';   /* v2.3.6691: shared with the frame's pages (card UI2-quests) */
 import { thumbFor } from './InventoryPanel.jsx';
 import { DailyRewardsCard } from './DailyRewardsCard.jsx';
 import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
@@ -83,13 +83,7 @@ const CARD = {
 const ONE_LINE = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 };
 const LABEL = { fontSize: 13, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.accent, lineHeight: 1.1 };
 
-/* the map pin (drawn: nothing to load), as the old page's WHERE card */
-const pin = (px) => (
-  <svg width={px} height={px} viewBox="0 0 20 20" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
-    <path d="M10 1.8a5.6 5.6 0 0 0-5.6 5.6c0 4.1 5.6 10.8 5.6 10.8s5.6-6.7 5.6-10.8A5.6 5.6 0 0 0 10 1.8Z" fill="#D8AA58" stroke="#172126" strokeWidth="1" />
-    <circle cx="10" cy="7.4" r="2.1" fill="#172126" />
-  </svg>
-);
+/* v2.3.6691 (card UI2-quests): the map pin and a reward's tile are questViews.jsx's, shared with the frame's pages */
 /* the lock on a quest still ahead (drawn: the game has no lock picture) */
 const lock = (
   <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
@@ -105,25 +99,6 @@ const Bar = ({ frac }) => (
     <div style={{ width: `${Math.round(Math.max(0, Math.min(1, frac)) * 100)}%`, height: '100%', background: frac >= 1 ? GREEN : COL.accent, borderRadius: 3 }} />
   </div>
 );
-
-/* a reward as a tile: its picture over its name (gold, the points, an item) */
-const tileInner = (t, big) => {
-  const px = big ? 24 : 18;
-  let pic = null, word = '';
-  if (t.kind === 'gold') { pic = <img src={coinArtFor(t.n)} alt="" draggable={false} style={{ width: px, height: px, objectFit: 'contain' }} />; word = say(SAY_J, 'questJournal.gold', { gold: t.n }); }
-  else if (t.kind === 'ap') { pic = <span aria-hidden="true" style={{ fontSize: px - 2, lineHeight: `${px}px`, color: COL.accent }}>★</span>; word = say(SAY, 'questPages.ap', { ap: t.n }); }
-  else if (t.kind === 'xp') { pic = <span aria-hidden="true" style={{ fontSize: 15, fontWeight: 800, lineHeight: `${px}px`, color: '#9DB8FA' }}>XP</span>; word = say(SAY_J, 'questJournal.xp', { xp: t.n }); }
-  else { pic = t.icon ? <img src={t.icon} alt="" draggable={false} style={{ width: px, height: px, objectFit: 'contain', imageRendering: 'pixelated' }} onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} /> : null; word = t.label; }
-  return (
-    <span key={t.kind + (t.label || t.n)} data-quest-tile={t.kind} title={word} style={{
-      flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-      height: big ? 46 : 34, padding: '0 3px', boxSizing: 'border-box', borderRadius: 8, background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
-    }}>
-      <span style={{ height: px, display: 'flex', alignItems: 'center' }}>{pic}</span>
-      <span style={{ ...ONE_LINE, maxWidth: '100%', fontSize: 13, fontWeight: 700, lineHeight: '15px', color: COL.text }}>{word}</span>
-    </span>
-  );
-};
 
 export const QuestPages = ({ getS }) => {
   const [, force] = useState(0);

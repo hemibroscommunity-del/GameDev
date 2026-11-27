@@ -11,6 +11,11 @@
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { SHOP, isShopPotion, isCookhouseDish, isCookedFood, TOOL_SHELF, isToolKey, toolEarned } from '../src/shop.js';
+import { SHIELD_KEY, SHIELD_PRICE, SHIELD_ITEM, shieldEarned, shieldWhyNot } from '../src/shop.js';   /* v2.3.6800 */
+import { questShieldMint } from '../src/quests.js';   /* v2.3.6800: the one mint */
+import { goldLogOf } from '../src/gold.js';   /* v2.3.6800: which road the coins left by */
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { SHOP_ITEMS } from '../src/data.js';   /* v2.3.2063: his staple shelf */
 /* v2.3.3184: every key the game mints, read out of the tables that mint them */
 import * as DATA from '../src/data.js';
@@ -171,9 +176,10 @@ const room3 = new GameRoom(fresh, mockEnv);
 const seeded = await room3._shopList();
 /* v2.3.3316: ...but the three gathering tools he sells back (TOOL_SHELF), no
    count, never a staple */
-check('a brand-new world finds nothing on him but the tools he sells back: no seeded fish and no staples (v2.3.3132; the tools v2.3.3316)',
-  seeded.items.every((i) => i.tool === true && !i.staple && i.qty === null && isToolKey(i.key))
-    && seeded.items.map((i) => i.key).join(',') === 'fishing_pole,mining_pickaxe,woodcutting_axe' && Object.keys(SHOP.SEED).length === 0, seeded.items);
+/* v2.3.6800: ...and the Pine Shield he sells back (SHIELD_KEY), the same way */
+check('a brand-new world finds nothing on him but the tools and the shield he sells back: no seeded fish and no staples (v2.3.3132; the tools v2.3.3316; the shield v2.3.6800)',
+  seeded.items.every((i) => (i.tool === true ? isToolKey(i.key) : i.shield === true && i.key === 'pine_shield') && !i.staple && i.qty === null)
+    && seeded.items.map((i) => i.key).join(',') === 'fishing_pole,mining_pickaxe,pine_shield,woodcutting_axe' && Object.keys(SHOP.SEED).length === 0, seeded.items);
 /* A world whose pile took its six trout before v2.3.3132 still has them
    stored: they must neither show nor sell. */
 const oldPile = await room3._shopStock();
@@ -689,6 +695,309 @@ check('a refused drink keeps the bottle and heals nothing',
   await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
   check('kill switch: toolshop:false takes them off his shelf and refuses a buy', !offList.items.some((i) => i.tool) && result().ok === false && !t.inventory.mining_pickaxe);
   room._liveFlags = keep;
+}
+
+/* ═══ v2.3.6800 (card SHOP): A LOST SHIELD, BOUGHT BACK ═══
+   The owner, 2026-11-26: "make the store keeper sell shield I lost mine".
+   Diego sells the Pine Shield tut_1 mints, 100 coins burnt, ONE, to a player
+   a quest gave one who owns none (worn or spare).  In a running room, on a
+   v1 and a v2 phone both.  The planted mistakes this section was seen red
+   against: the give before the take with an await between (the "one run"
+   check), the take's road named shop_tool (the gold log), the owns-one check
+   reading only the arm (the spare), the price read from the message (a
+   `price: 1` buy), the switch read as "true is on" (the absent flag), and the
+   cap put on the old long line (the syntax tree of join.js). */
+{
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  const send = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await tick(); };
+  const joinV = async (ws, id, v) => {
+    room.sessions.set(ws, baseSession());
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, ...(v === 2 ? { protocolVersion: 2 } : null), data: { x: 0, y: 0, z: 'town' } }));
+  };
+  /* the rule, pure */
+  check('shield: the shelf sells tut_1\'s own Pine Shield, at the tools\' price', !!SHIELD_ITEM && SHIELD_ITEM.kind === 'shield' && SHIELD_ITEM.name === 'Pine Shield'
+    && SHIELD_PRICE === 100 && SHIELD_KEY === 'pine_shield'
+    && DATA.QUEST_REWARDS.tut_1.grantOnAccept.some((it) => it.kind === 'shield' && it.name === SHIELD_ITEM.name && it.gearBase === SHIELD_ITEM.gearBase && it.tierMult === SHIELD_ITEM.tierMult), SHIELD_ITEM);
+  check('...earned the way the quest pays it: tut_1 accepted or turned in, never before',
+    shieldEarned({ tut_1: 'active' }) && shieldEarned({ tut_1: 'turnedIn' }) && !shieldEarned({ tut_1: 'available' }) && !shieldEarned({}) && !shieldEarned(null));
+  const given = { tut_1: 'active' };
+  check('...the reasons, in lower case: off, have (worn), have (spare), quest, and none',
+    shieldWhyNot({ _quests: given }, true) === 'off' && shieldWhyNot(null, false) === 'off'
+    && shieldWhyNot({ _quests: given, shield: { name: 'x' } }, false) === 'have'
+    && shieldWhyNot({ _quests: given, shield: null, shieldStash: [{ name: 'x' }] }, false) === 'have'
+    && shieldWhyNot({ _quests: {}, shieldStash: [] }, false) === 'quest'
+    && shieldWhyNot({ _quests: given, shield: null, shieldStash: [] }, false) === null);
+
+  for (const v of [1, 2]) {
+    const S = fakeWs('shield' + v), id = 'shieldbro' + v;
+    await joinV(S, id, v);
+    const p = room.playerState[id];
+    const result = () => S.sent.filter((m) => m.type === 'shop_result').map((m) => m.payload).pop();
+    const quote = () => S.sent.filter((m) => m.type === 'shop_quoted').map((m) => m.payload).pop();
+    const nothing = (c0) => p.coins === c0 && !p.shield && (!Array.isArray(p.shieldStash) || p.shieldStash.length === 0);
+    const tag = 'shield (v' + v + '): ';
+    /* never given one */
+    p._quests = Object.create(null);
+    p.shield = null; p.shieldStash = []; p.coins = 150;
+    S.sent.length = 0;
+    await send(S, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    check(tag + 'never given one: quoted "quest", refused, no coin taken, no shield given',
+      quote().shield === true && quote().qty === 0 && quote().total === 0 && quote().why === 'quest' && result().ok === false && result().why === 'quest' && /Mayor Bro/.test(result().error) && nothing(150), { q: quote(), r: result() });
+    /* one worn */
+    p._quests.tut_1 = 'active';
+    p.shield = questShieldMint(SHIELD_ITEM);
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    check(tag + 'one worn: refused "have", nothing moves', result().ok === false && result().why === 'have' && /already/.test(result().error) && p.coins === 150 && p.shieldStash.length === 0, result());
+    /* one spare */
+    p.shield = null; p.shieldStash = [questShieldMint(SHIELD_ITEM)];
+    await send(S, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    check(tag + 'one spare in the bag: quoted and refused "have", nothing moves', quote().why === 'have' && result().ok === false && result().why === 'have'
+      && p.coins === 150 && p.shieldStash.length === 1 && !p.shield, { q: quote(), r: result() });
+    /* 99 coins */
+    p.shieldStash = []; p.coins = 99;
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    check(tag + '99 coins: refused "coins", nothing moves', result().ok === false && result().why === 'coins' && nothing(99), result());
+    /* the switch off */
+    p.coins = 150;
+    const keep = room._liveFlags;
+    room._liveFlags = { ...(keep || {}), shieldshop: false };
+    const offList = await room._shopList();
+    await send(S, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    check(tag + 'shieldshop:false: off his shelf, quoted and refused "off", nothing moves', !offList.items.some((i) => i.shield) && quote().why === 'off'
+      && result().ok === false && result().why === 'off' && nothing(150), { q: quote(), r: result() });
+    /* the flag ABSENT is on (present and false is off), and true is on */
+    room._liveFlags = { ...(keep || {}) }; delete room._liveFlags.shieldshop;
+    const onList = await room._shopList();
+    room._liveFlags = { ...(keep || {}), shieldshop: true };
+    const onList2 = await room._shopList();
+    room._liveFlags = keep;
+    const row = onList.items.find((i) => i.key === SHIELD_KEY);
+    check(tag + 'the flag absent (or true): on his shelf, one row at 100, no count', !!row && row.shield === true && row.sell === 100 && row.qty === null && row.name === 'Pine Shield'
+      && onList2.items.some((i) => i.key === SHIELD_KEY), row);
+    /* sold, with a price the message names that is never read */
+    S.sent.length = 0;
+    const log0 = goldLogOf(p).length;
+    await send(S, 'shop_quote', { key: SHIELD_KEY, qty: 3, mode: 'buy' });
+    check(tag + 'quoted ONE at 100, whatever the quantity asked', quote().qty === 1 && quote().total === 100 && !quote().why, quote());
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 3, price: 1, cost: 1, sell: 1 });
+    const r = result();
+    const st = state._store.get('rpg:' + id);
+    const sh = p.shieldStash[0];
+    const ref = { _quests: { tut_1: 'active' } };
+    room._grantQuestItem(ref, SHIELD_ITEM, null);
+    const same = (a, b) => ['tier', 'tierMult', 'gearBase', 'name'].every((k) => a && b && a[k] === b[k]) && Object.keys(a).filter((k) => k !== 'gid' && k !== 'prov').sort().join() === Object.keys(b).filter((k) => k !== 'gid' && k !== 'prov').sort().join();
+    check(tag + 'sold: coins fall by exactly 100, ONE Pine Shield in the bag, the quest\'s piece field for field, with its own id',
+      r.ok === true && r.bought === 1 && r.cost === 100 && p.coins === 50 && !p.shield && p.shieldStash.length === 1 && same(sh, ref.shield)
+        && typeof sh.gid === 'string' && !!sh.gid && r.shield && r.shield.gid === sh.gid && same(r.shield, sh), { r, coins: p.coins, sh, ref: ref.shield });
+    const lg = goldLogOf(p).slice(log0);
+    check(tag + '...the coins left by the road shop_shield, -100 (never shop_tool)', lg.length === 1 && lg[0].road === 'shop_shield' && lg[0].d === -100, lg);
+    check(tag + '...and SAVED with the shield before the answer went', !!st && st.coins === 50 && Array.isArray(st.shieldStash) && st.shieldStash.length === 1 && st.shieldStash[0].gid === sh.gid,
+      st && { coins: st.coins, ss: st.shieldStash });
+    const iRes = S.sent.findIndex((m) => m.type === 'shop_result');
+    const echo = S.sent.slice(iRes + 1).some((m) => m.type === 'player_state' || m.type === 'player_delta');
+    check(tag + '...the answer first, then the purse\'s echo', iRes >= 0 && echo, S.sent.map((m) => m.type));
+    /* the same buy again (the same opId), and again straight after */
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1, opId: 'shield-op-' + v });
+    await send(S, 'shop_buy', { key: SHIELD_KEY, qty: 1, opId: 'shield-op-' + v });
+    check(tag + 'the same buy twice: ONE shield, 100 taken once', p.shieldStash.length === 1 && p.coins === 50 && result().ok === false && result().why === 'have', result());
+    /* he never buys one back */
+    await send(S, 'shop_sell', { key: SHIELD_KEY, qty: 1 });
+    check(tag + 'he never buys a shield back (no gold for a shield)', result().ok === false && p.coins === 50 && p.shieldStash.length === 1, result());
+  }
+
+  /* ONE RUN: the take, the give and the save happen before _shopBuy's first
+     await -- read synchronously, before its promise is awaited */
+  {
+    const S = fakeWs('shieldsync'), id = 'shieldsync';
+    await joinV(S, id, 2);
+    const p = room.playerState[id];
+    p._quests = { tut_1: 'active' }; p.shield = null; p.shieldStash = []; p.coins = 100;   /* exactly the price: buys, to 0 */
+    const pr = room._shopBuy(p, SHIELD_KEY, 1, id);
+    const st = state._store.get('rpg:' + id);
+    const sync = p.coins === 0 && p.shieldStash.length === 1 && !!st && st.coins === 0 && st.shieldStash.length === 1;
+    const r = await pr;
+    check('shield: the take, the give and the save are one synchronous run (no await between)', sync && r.ok === true, { coins: p.coins, st: st && { coins: st.coins, n: (st.shieldStash || []).length } });
+  }
+
+  /* THE CAP ON ITS OWN LINE (TRAPS §316), read off join.js's syntax tree:
+     `shieldshop` is a property of the caps literal, on a line of its own,
+     not the literal's first (long) line, and above `accuracy` (TRAPS §333) */
+  {
+    const req = createRequire(import.meta.url);
+    const { parse } = req('@babel/parser');
+    const src = readFileSync(new URL('../src/join.js', import.meta.url), 'utf8');
+    const ast = parse(src, { sourceType: 'module', plugins: ['jsx', 'classProperties', 'optionalChaining'], errorRecovery: true });
+    let caps = null;
+    const walk = (n) => {
+      if (!n || typeof n !== 'object' || caps) return;
+      if (n.type === 'ObjectProperty' && n.key && (n.key.name === 'caps' || n.key.value === 'caps') && n.value && n.value.type === 'ObjectExpression'
+        && n.value.properties.some((q) => q.key && q.key.name === 'accuracy')) { caps = n.value; return; }
+      for (const k of Object.keys(n)) { if (k === 'loc' || k === 'leadingComments' || k === 'trailingComments') continue; const c = n[k]; if (Array.isArray(c)) c.forEach(walk); else if (c && typeof c.type === 'string') walk(c); }
+    };
+    walk(ast.program);
+    const props = caps ? caps.properties : [];
+    const at = props.findIndex((q) => q.key && q.key.name === 'shieldshop');
+    const me = props[at], first = props[0], acc = props.findIndex((q) => q.key && q.key.name === 'accuracy');
+    const alone = !!me && me.loc.start.line !== first.loc.start.line
+      && props.every((q, i) => i === at || (q.loc.start.line !== me.loc.start.line && q.loc.end.line !== me.loc.start.line));
+    check('shield: the cap `shieldshop` is on its own line of join.js\'s caps, never the old long first line, and above `accuracy`', alone && at < acc,
+      { found: !!caps, at, acc, line: me && me.loc.start.line, first: first && first.loc.start.line });
+  }
+}
+
+/* ═══ v2.3.6800 (the mend of sitting 71's hold): A LOST ANSWER LOSES NOTHING ═══
+   The gatekeeper: the phone learned of the bought shield ONLY from
+   `shop_result.shield`, so a lost answer (or a phone that lost its copy of
+   the bag) left the player 100 coins down, the shield unseen, and every buy
+   refused "You already have one".  THE PHONE here is the page's own rule
+   (src/game/shieldAdopt.js, called by gameEvents.js and wsClient.js with
+   caps.shieldshop): every frame it RECEIVES goes through shieldsInFrame and
+   adoptHeldShields, exactly as the page's handlers do; a frame it LOST never
+   reaches it.  Three ways to lose the answer, on a v1 and a v2 phone: (a) the
+   buy's answer is lost and the same reqId is sent again; (b) the phone
+   rejoins after a buy whose answer it never got; (c) a phone with no copy of
+   the piece opens the shelf (the quote) and asks to buy again (the refusal).
+   In each the player SEES the shield they paid for, and paid once.  Seen RED
+   on c36704eb (the phone adopting shop_result.shield alone, the worker's
+   "have" carrying no piece). */
+{
+  const { adoptHeldShields, shieldsInFrame } = await import('../../src/game/shieldAdopt.js');
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  const send = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await tick(); };
+  const joinV = async (ws, id, v) => {
+    room.sessions.set(ws, baseSession());
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, ws: [1, 5], ...(v === 2 ? { protocolVersion: 2 } : null), data: { x: 0, y: 0, z: 'town' } }));
+    await tick();
+  };
+  /* the phone: its caps from state_sync, then each frame it got, through the page's rule */
+  const newPhone = () => ({ caps: null, rpg: { shield: null, shieldStash: [] } });
+  const receive = (phone, frames) => {
+    for (const m of frames) {
+      if (m.type === 'state_sync') phone.caps = m.caps || (m.payload && m.payload.caps) || phone.caps;
+      if (!phone.caps || !phone.caps.shieldshop) continue;
+      if (m.type === 'player_state' || m.type === 'shop_result' || m.type === 'shop_quoted') adoptHeldShields(phone.rpg, shieldsInFrame(m.type, m.payload));
+    }
+  };
+  const sees = (phone, gid) => [phone.rpg.shield, ...phone.rpg.shieldStash].filter((x) => x && x.gid === gid).length;
+  const ready = (p) => { p._quests = Object.create(null); p._quests.tut_1 = 'active'; p.shield = null; p.shieldStash = []; p.coins = 150; };
+
+  for (const v of [1, 2]) {
+    const tag = 'lost answer (v' + v + '): ';
+    /* (a) the answer lost, the same reqId sent again on the same socket */
+    {
+      const ws = fakeWs('lostA' + v), id = 'lostabro' + v, phone = newPhone();
+      await joinV(ws, id, v);
+      receive(phone, ws.sent);
+      const p = room.playerState[id];
+      ready(p);
+      ws.sent.length = 0;
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1, reqId: 'rq-lost-a' + v });
+      const bought = p.shieldStash[0];
+      const paid = p.coins;
+      ws.sent.length = 0;   /* every frame of the first answer: LOST */
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1, reqId: 'rq-lost-a' + v });
+      receive(phone, ws.sent);
+      check(tag + '(a) the same reqId again: paid once (150 to 50), ONE shield on the worker, and the phone SEES it (by its id, once)',
+        !!bought && paid === 50 && p.coins === 50 && p.shieldStash.length === 1 && sees(phone, bought.gid) === 1,
+        { coins: p.coins, n: p.shieldStash.length, phone: phone.rpg.shieldStash, sent: ws.sent.map((m) => m.type) });
+    }
+    /* (b) a rejoin after a buy whose answer never came */
+    {
+      const ws = fakeWs('lostB' + v), id = 'lostbbro' + v, phone = newPhone();
+      await joinV(ws, id, v);
+      receive(phone, ws.sent);
+      const p = room.playerState[id];
+      ready(p);
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1, reqId: 'rq-lost-b' + v });   /* its answer: LOST */
+      const bought = p.shieldStash[0];
+      const ws2 = fakeWs('lostB2' + v);
+      phone.caps = null;   /* a new socket learns its caps again */
+      await joinV(ws2, id, v);
+      receive(phone, ws2.sent);
+      const p2 = room.playerState[id];
+      check(tag + '(b) the rejoin: paid once (50 left), and the phone SEES the shield it paid for (by its id, once)',
+        !!bought && p2.coins === 50 && Array.isArray(p2.shieldStash) && p2.shieldStash.length === 1 && sees(phone, bought.gid) === 1,
+        { coins: p2.coins, phone: phone.rpg.shieldStash, sent: ws2.sent.map((m) => m.type) });
+      /* ...and a second rejoin adds nothing twice */
+      const ws3 = fakeWs('lostB3' + v);
+      await joinV(ws3, id, v);
+      receive(phone, ws3.sent);
+      check(tag + '(b) ...and every later state adds it never twice', sees(phone, bought.gid) === 1 && phone.rpg.shieldStash.length === 1, phone.rpg.shieldStash);
+    }
+    /* (c) a phone with no copy: it opens the shelf, then asks to buy again */
+    {
+      const ws = fakeWs('lostC' + v), id = 'lostcbro' + v;
+      await joinV(ws, id, v);
+      const p = room.playerState[id];
+      ready(p);
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+      const bought = p.shieldStash[0];
+      /* the quote: the row it may not buy carries what it owns */
+      const q = newPhone();
+      receive(q, ws.sent.filter((m) => m.type === 'state_sync'));
+      ws.sent.length = 0;
+      await send(ws, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+      receive(q, ws.sent.filter((m) => m.type === 'shop_quoted'));
+      const quoted = ws.sent.filter((m) => m.type === 'shop_quoted').pop();
+      check(tag + '(c) a phone with no copy opens the shelf: quoted "have", and it SEES the shield it owns',
+        !!bought && !!quoted && quoted.payload.why === 'have' && sees(q, bought.gid) === 1, { q: quoted && quoted.payload, phone: q.rpg.shieldStash });
+      /* the buy: refused "You already have one", and that refusal shows it */
+      const b = newPhone();
+      b.caps = q.caps;   /* the same socket's caps */
+      ws.sent.length = 0;
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+      receive(b, ws.sent.filter((m) => m.type === 'shop_result'));
+      const res = ws.sent.filter((m) => m.type === 'shop_result').pop();
+      check(tag + '(c) ...asks to buy again: refused "You already have one", NO coin taken, and it SEES the shield it owns',
+        !!res && res.payload.ok === false && res.payload.why === 'have' && /already/.test(res.payload.error) && p.coins === 50 && p.shieldStash.length === 1 && sees(b, bought.gid) === 1,
+        { r: res && res.payload, coins: p.coins, phone: b.rpg.shieldStash });
+    }
+  }
+
+  /* (c) when the worker holds it on the ARM (the quest's grant puts a shield
+     there): the "have" carries that piece too */
+  {
+    const ws = fakeWs('lostArm'), id = 'lostarmbro';
+    await joinV(ws, id, 2);
+    const caps = (ws.sent.find((m) => m.type === 'state_sync') || {}).caps;
+    const p = room.playerState[id];
+    ready(p);
+    p.shield = { ...questShieldMint(SHIELD_ITEM), gid: 'arm-gid-1' };
+    ws.sent.length = 0;
+    await send(ws, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+    await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    const q = newPhone(); q.caps = caps;
+    receive(q, ws.sent.filter((m) => m.type === 'shop_quoted'));
+    const b = newPhone(); b.caps = caps;
+    receive(b, ws.sent.filter((m) => m.type === 'shop_result'));
+    check('lost answer: (c) the worker holds it on the arm: its "have" quote and refusal both carry it, the phone SEES it, no coin taken',
+      sees(q, 'arm-gid-1') === 1 && sees(b, 'arm-gid-1') === 1 && p.coins === 150, { q: q.rpg, b: b.rpg });
+  }
+
+  /* the page's rule, pure: add, never take; never twice; an old copy with no
+     id and the same signature counts as held; a piece with no id is never
+     adopted; a quote's `shield: true` is no piece */
+  {
+    const P = (gid, name) => ({ tier: 'common', tierMult: 1, gearBase: 'wood', name: name || 'Pine Shield', ...(gid ? { gid } : null) });
+    const r1 = { shield: P('g1'), shieldStash: [P('g2')] };
+    const n1 = adoptHeldShields(r1, [P('g1'), P('g2'), P('g3'), P(null)]);
+    const r2 = { shield: null, shieldStash: [P(null)] };
+    const n2 = adoptHeldShields(r2, [P('g9')]);
+    const n2b = adoptHeldShields(r2, [P('g8', 'Oak Shield')]);
+    const r3 = { shield: null, shieldStash: [P('keep')] };
+    adoptHeldShields(r3, []);
+    check('shieldAdopt: adds only the piece held nowhere (by id), once; an old id-less copy of the same piece counts as held; never takes',
+      n1 === 1 && r1.shieldStash.length === 2 && r1.shieldStash[1].gid === 'g3' && n2 === 0 && n2b === 1 && r2.shieldStash.length === 2 && r2.shieldStash[1].gid === 'g8' && r3.shieldStash.length === 1
+        && adoptHeldShields(r1, [P('g3')]) === 0,
+      { r1, r2, n1, n2, n2b });
+    check('shieldAdopt: what a frame carries -- a state\'s shieldStash, a buy\'s shield, a "have"\'s held; a quote\'s `shield: true` and any other frame, none',
+      shieldsInFrame('player_state', { shieldStash: [P('a')] }).length === 1 && shieldsInFrame('shop_result', { shield: P('b') }).length === 1
+        && shieldsInFrame('shop_quoted', { shield: true, held: [P('c'), P('d')] }).length === 2 && shieldsInFrame('shop_quoted', { shield: true }).length === 0
+        && shieldsInFrame('store_result', { shield: P('e') }).length === 0 && shieldsInFrame('player_state', null).length === 0);
+  }
 }
 
 /* ═══ v2.3.3981: ONE ORE A BAR, ONE LOG A HARDENED WOOD -- NO GOLD TAP ═══

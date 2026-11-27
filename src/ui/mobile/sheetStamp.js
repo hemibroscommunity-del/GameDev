@@ -70,6 +70,14 @@ if (AFTER_PAINT && typeof window !== 'undefined' && typeof window.addEventListen
   } catch (e) { /* read every time instead */ }
 }
 
+/* v2.3.6647 (card PAD part 12): the px last stamped, kept (a kept size,
+   docs/specs/layout-reads.md way 1): the left stick's reach going south
+   ends at the band's top (stickZones.js stickFrom), read at a touch with
+   no read of the page */
+let _sheetPxKept = 0;
+/** The band's height this file last stamped as --sheet-h, CSS px (0 before
+ *  the first stamp). */
+export function sheetPx() { return _sheetPxKept; }
 export function stampSheetH() {
   if (typeof document === 'undefined') return;
   const mode = dashboardPanelBus.state.mode;
@@ -131,6 +139,7 @@ export function stampSheetH() {
       : bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH);
   const root = document.documentElement;
   if (root.dataset.btSheet !== mode) root.dataset.btSheet = mode;
+  _sheetPxKept = px;
   const want = px + 'px';
   if (root.style.getPropertyValue('--sheet-h') !== want) {
     root.style.setProperty('--sheet-h', want);

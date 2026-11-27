@@ -41,6 +41,9 @@ import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page 
 import { drawAvatar, drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): another player's avatar and colour only in the game's own forms */
 import { SAY } from '@/data/say/inspectPlayer.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
+import { profileItemSource } from '@/game/gearShowcase.js';   /* v2.3.6689 (card UI2-gear PR 3): the equipment row's road */
+import { openItemPage } from '../mobile/dash/itemPageOpen.js';   /* v2.3.6689: the one item page */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -113,7 +116,7 @@ var PVP_OPEN = false;
 function socIcon(name, glyph) {
   return /*#__PURE__*/React.createElement("img", {
     className: "bt-pcard-ic",
-    src: '/icons/ui/soc-' + name + '.webp',
+    src: assetUrl('/icons/ui/soc-' + name + '.webp'),
     alt: "",
     draggable: false,
     onError: function onError(e) {
@@ -245,6 +248,17 @@ export function InspectPlayerPanel(props) {
   var closeCard = function onClick() {
     return setInspectPlayer(null);
   };
+  /* v2.3.6689 (card UI2-gear PR 3): a worn slot of the card's equipment row opens the ONE item page
+     (dash/itemPageOpen.js; the source by src/game/gearShowcase.js profileItemSource: yours by Gear's
+     own cell, with its actions; another player's read-only, as their card knows it), and the card
+     closes so the page is seen, as the card's other doors do (openFromCard) */
+  var openCardItem = function openCardItem(p, slot) {
+    var S = stateRef.current;
+    var src = profileItemSource(p, slot, p && p.isSelf ? S && S.rpg : null);
+    if (!src) return;
+    openItemPage(src);
+    setInspectPlayer(null);
+  };
   /* v2.3.2926: Party, Trade and Duel are on the Inspect card too (its
      command dock), so their handlers are hoisted out of the tiles into these
      three names and BOTH run the same function -- a dock Trade and a tile
@@ -341,6 +355,7 @@ export function InspectPlayerPanel(props) {
       openFromCard(id);
       setInspectPlayer(null);
     },
+    onItem: openCardItem,
     dock: null
   }) : showProfile ? /*#__PURE__*/React.createElement(PlayerProfilePanel, {
     getProfile: function getProfile() {
@@ -359,6 +374,7 @@ export function InspectPlayerPanel(props) {
       openFromCard(id);
       setInspectPlayer(null);
     },
+    onItem: openCardItem,
     /* the same caps gates as the tiles: no party tile, no party command */
     dock: {
       party: hasPartyCap ? { state: _partyMate ? 'member' : 'invite', onClick: sendPartyInvite } : null,

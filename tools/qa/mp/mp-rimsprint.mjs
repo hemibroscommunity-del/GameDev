@@ -1,43 +1,42 @@
-/* ═══ v2.3.6644: THE USUAL CONTROLS SPRINT FROM THE STICK'S RIM, THE SPRINT BUTTON GONE (card PAD part 9) ═══
+/* ═══ v2.3.6647: A FULL PUSH OF THE LEFT STICK SPRINTS, REACHABLE FROM ANYWHERE (card PAD part 12) ═══
  *
- * The owner, 2026-11-26, shown the controller (the Sprint button floats over
- * its right side: their drawing has no socket for it), asked "Where do you
- * think sprint should go"; told "no button; push the stick to its edge", as
- * the two-button trial already plays: "Yeah do that and remove sprint
- * button".  So on a touch screen, in the USUAL controls (no `?manual=`), the
- * left stick pushed past its drawn rim sprints, by the trial's own rules
- * (game/stickZones.js rimSprint: on at 1.25 of the drawn radius, off below
- * 1.05, a hold), and the Sprint button is not drawn; `?rimsprint=0` gives the
- * button back.  Played with REAL touches (CDP Input.dispatchTouchEvent), in
- * the Wheel's BroTown, upright AND sideways, each touch landing at the left
- * disc's centre:
+ * The owner, 2026-11-27, upright on an iPhone: "the sprint action isn't
+ * working correctly because you can't move a big enough distance off screen
+ * (in the southwest corner where the joystick is) when moving west or area
+ * too close to the edge of the screen".  v2.3.6644 (card PAD part 9) made the
+ * usual controls sprint from the stick's rim, the Sprint button gone, at 1.25
+ * of the drawn radius from where the thumb landed: about 52 px, and the disc
+ * is drawn about 55 px from the left edge.  Now (game/stickZones.js
+ * stickReach, rimSprint) the thumb AT the reach sprints (off below 0.8 of
+ * it), the reach the drawn radius or the room to the play area's edge less
+ * 16 px (the band's top going south), the smaller, never under 18 px.
+ * Played with REAL touches (CDP Input.dispatchTouchEvent) in the Wheel's
+ * BroTown, upright 375 x 667 and 390 x 844 and sideways 844 x 390:
  *
- *   r1. the usual controls (no `?manual=`: not mode 5): no sprint button (its probe: not shown,
- *       the rim live, the worker's sprint supported; nothing in the page);
+ *   r1. the usual controls: no sprint button (its probe: not shown, the rim
+ *       live, the worker's sprint supported; nothing in the page);
  *   r2. the controls tour's move step says "Push it past its edge to sprint";
- *   r3. the thumb AT the drawn rim: full walking speed, no sprint, the
- *       worker's stamina still;
- *   r4. pushed past it (1.4): the sprint (how 'rim', running), and the worker
- *       bills the moves marked `sp` (its stamina falls), the phone's too;
- *   r5. eased back to the rim (1.0): it ends ('rim'), the walk on;
- *   r6. with the dashboard the other way (folded if it arrived open, open if
- *       folded): out again it sprints; lifted, it ends ('rim') -- or, where
- *       the open band hides the controls (sideways), no stick is on screen
- *       to push (said, and the band folded back).  WHERE THE
- *       ENERGY SHOWS is printed for each band state (the card's reading 2:
- *       report, build no meter): the five blocks under the bro
- *       (window.__btResourceBars.en) and the dashboard's EN bar
- *       ([data-vital="stamina"], drawn and on screen);
- *   r7. tired (the worker's stamina set to 0, and the phone's bar held
- *       under SPRINT_MIN_START while the thumb plays: the worker refills a
- *       standing bro's bar within a second, faster than a slow page's push
- *       reaches the rim; the refusal is the phone's rule): a push past the rim held
- *       about says "Not enough energy!" once and sprints nothing; eased back
- *       in and out again, once more;
+ *   f1. landing ON the drawn disc and 20 px from the left edge, the thumb
+ *       (sideways the zone starts 46 px in: 20 px inside it) pushed west,
+ *       south, south-west and east in 3 px steps (never a
+ *       swipe), never past the edge less 16 px (or, where the landing point
+ *       is within 34 px of an edge, past 18 px, the floor: on the glass): the
+ *       phone sprints (how 'rim') by then and not before about the drawn
+ *       radius or the room (a part push walks), and THE WORKER bills the
+ *       moves (its stamina falls: the worker's word, not the page's wish).
+ *       RED on main 17124fc8 going west and south from the disc (its line
+ *       lay past the margin);
+ *   f2. (390 x 844) a full push held until the bar empties: the run ends
+ *       ('empty'), the bro walks on at full speed, the sprint never comes
+ *       back while held (no flicker, counted every 5 ms), no words; then
+ *       tired (the phone's bar held at 0), three more full pushes say "Not
+ *       enough energy!" ONCE;
  *   r8. no page errors;
- *   r9. (upright) `?rimsprint=0`: the button back, a thumb past the rim walks
- *       at full speed and sprints nothing, the tour's move step without the
- *       line.
+ *   r9. (390 x 844) `?rimsprint=0`: the button back, a thumb past the rim
+ *       walks and sprints nothing, the tour's move step without the line;
+ *   r10. (390 x 844) `?fullpush=0`: yesterday's rule whole: at the drawn rim
+ *       a walk, past 1.25 of it a sprint; and the owner's bug as main plays
+ *       it: from the disc west to the edge less 16 px, no sprint.
  *
  * The two-button trial's own rim (`?manual=5`) is mp-twobuttons' part 5;
  * the button itself (with `?rimsprint=0`) mp-sprint.
@@ -46,34 +45,34 @@ import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import * as H from './harness.mjs';
 import { SAY as TOUR } from '../../../src/data/say/controlsTutorial.js';
+import { STICK_ZONES } from '../../../src/game/stickZones.js';
 
 export const lane = 'full';
 
-const UPRIGHT = { width: 390, height: 844 };
-const SIDEWAYS = { width: 844, height: 390 };
-const TIRED = 'Not enough energy!';   /* SprintButton.jsx SPRINT_TIRED_NOTE, the refusal's words */
+const SCREENS = [
+  ['upright 375', { width: 375, height: 667 }],
+  ['upright 390', { width: 390, height: 844 }],
+  ['sideways 844', { width: 844, height: 390 }],
+];
+const EDGE = STICK_ZONES.EDGE_PX, FLOOR = STICK_ZONES.REACH_FLOOR;
+const STEP = 3;
+const WAYS = [['west', Math.PI], ['south', Math.PI / 2], ['south-west', (3 * Math.PI) / 4], ['east', 0]];
 
-/* the left disc's drawn box (its base: the share's radius is its half width) */
+/* the left disc's drawn box (its base: the drawn radius is its half width), and the left zone's bottom (the band's top) */
 const DISC = (P) => P.page.evaluate(() => {
   const el = document.querySelector('.bt-joystick-base');
-  if (!el) return null;
-  const b = el.getBoundingClientRect();
-  return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width };
+  const z = document.querySelector('[data-joyzone="L"]');
+  if (!el || !z) return null;
+  const b = el.getBoundingClientRect(), zb = z.getBoundingClientRect();
+  return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width, vw: innerWidth, bandTop: zb.bottom, zoneLeft: zb.left };
 });
-/* the sprint as the phone and its (absent) button see it, and where the energy shows */
+/* the sprint as the phone and its (absent) button see it */
 const RIMV = (P) => H.readState(P, (S) => {
   const sp = S._sprint || {};
   const b = window.__btSprintBtn ? window.__btSprintBtn() : null;
-  const v = document.querySelector('[data-vital="stamina"]');
-  const vb = v ? v.getBoundingClientRect() : null;
-  const rb = window.__btResourceBars || null;
-  const fold = document.querySelector('[data-dash-fold]');
   return { on: !!sp.on, how: sp.how || null, why: sp.why || null, running: !!(sp.on && sp.moving), st: S.rpg ? S.rpg.stamina : null,
-    sx: S.stickX || 0, mode: window.__btManual ? window.__btManual.mode() : null, f: S._frameCount || 0,
-    btn: b && { shown: b.shown, rim: b.rim, supported: b.supported }, dom: !!document.querySelector('[data-sprint]'),
-    blocks: rb ? rb.en : null,
-    bar: !!vb && vb.width > 0 && vb.height > 0 && vb.bottom > 0 && vb.top < innerHeight && vb.right > 0 && vb.left < innerWidth,
-    fold: fold ? fold.getAttribute('data-dash-fold') : null, tired: window.__rimTired || 0 };
+    sx: S.stickX || 0, sy: S.stickY || 0, mode: window.__btManual ? window.__btManual.mode() : null,
+    btn: b && { shown: b.shown, rim: b.rim, supported: b.supported }, dom: !!document.querySelector('[data-sprint]'), tired: window.__rimTired || 0 };
 });
 /* `n` of the renderer's own frames (TRAPS 200: never a clock's window) */
 async function frames(P, n) {
@@ -81,12 +80,6 @@ async function frames(P, n) {
   await H.waitFor(P, (S) => S._frameCount || 0, (v) => v >= f0 + n, { timeout: 90000, label: n + ' frames' }).catch(() => null);
 }
 const srvSt = async (wsPort, id) => { const v = await H.serverPlayer(wsPort, id).catch(() => null); return v && typeof v.stamina === 'number' ? v.stamina : null; };
-/* the thumb from `from` to `share` of the drawn radius `R` from the disc's centre `c`, toward `dir`
-   (-1 west, 1 east: the pushes take turns, so the bro stays near where he began), in slow steps (never a swipe) */
-async function thumbTo(P, touch, c, R, from, share, dir) {
-  const n = Math.max(1, Math.round(Math.abs(share - from) / 0.1));
-  for (let k = 1; k <= n; k++) { await touch('touchMove', [{ x: c.x + dir * (from + (share - from) * k / n) * R, y: c.y, id: 5 }]); await P.page.waitForTimeout(40); }
-}
 const tourMove = (P) => P.page.evaluate(() => {
   const t = window.__btTourWords ? window.__btTourWords() : [];
   const m = t.find((x) => x.key === 'move');
@@ -102,6 +95,52 @@ const COUNT_TIRED = (P) => H.readState(P, (S) => {
   window.__rimTiredOn = true;
   return true;
 });
+/* open ground near the bro with RAD world px clear west, south, south-west and east of it (the walk
+   grid, the Wheel's blockers, the townsfolk: mp-sprint's FIND_LANE's tests), so every push is billed
+   by the worker: going straight south from where players arrive the bro meets a wall.  The bro's own
+   place (his feet `feetDy` under it), nearest first */
+const RAD = 700;
+const FIND_OPEN = (P) => P.page.evaluate(({ rad, hs }) => {
+  const S = window._gameState.current;
+  const g = S._tiledWalkable && S._tiledWalkable[S.currentZone];
+  const Z = window.__btZones && window.__btZones[S.currentZone];
+  const at = window.__btSwimAt;
+  if (!g || !g.length || !Z) return { error: 'no grid', zone: S.currentZone };
+  const gr = window.__btPlayerGround ? window.__btPlayerGround() : null;
+  const feetDy = gr ? gr.y - S.player.y : 52;
+  const rows = g.length, cols = g[0].length, cell = (Z.h * 32) / rows;
+  const open = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && g[r][c] !== false && g[r][c] !== 0 && !(at && at((c + 0.5) * cell, (r + 0.5) * cell).swim);
+  const W = window.__btWheelObjects;
+  const bx = W && W.blockers ? W.blockers() : [];
+  const rays = [[-1, 0], [0, 1], [-Math.SQRT1_2, Math.SQRT1_2], [1, 0]];
+  const fy = S.player.y + feetDy, c0 = Math.floor(S.player.x / cell), r0 = Math.floor(fy / cell);
+  const out = [];
+  for (let r = r0 - 90; r <= r0 + 90; r += 2) {
+    for (let c = c0 - 90; c <= c0 + 90; c += 2) {
+      const x = (c + 0.5) * cell, y = (r + 0.5) * cell;
+      let ok = true;
+      for (const [ux, uy] of rays) {
+        for (let k = 0; ok && k <= rad; k += cell / 2) {
+          const px = x + ux * k, py = y + uy * k, rc = Math.floor(py / cell), cc = Math.floor(px / cell);
+          for (let dr = -1; ok && dr <= 1; dr++) for (let dc = -1; ok && dc <= 1; dc++) if (!open(rc + dr, cc + dc)) ok = false;
+          if (ok && bx.some((b) => b.x1 > px - hs - 8 && b.x0 < px + hs + 8 && b.y1 > py - hs - 8 && b.y0 < py + hs + 8)) ok = false;
+          if (ok && (S.npcs || []).some((m) => m && Math.abs(m.x - px) < 40 && Math.abs(m.y + feetDy - py) < 40)) ok = false;
+        }
+        if (!ok) break;
+      }
+      if (ok) out.push({ x, y: y - feetDy, d: Math.hypot(x - S.player.x, y - fy) });
+    }
+  }
+  out.sort((a, b) => a.d - b.d);
+  return { cell, list: out.slice(0, 6) };
+}, { rad: RAD, hs: 10 });
+/* the room from (x, y) along `a` to the play area's edge less EDGE (the test's own sum, not the module's) */
+function room(D, x, y, a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  const tx = c > 1e-9 ? (D.vw - EDGE - x) / c : c < -1e-9 ? (x - EDGE) / -c : Infinity;
+  const ty = s > 1e-9 ? (D.bandTop - EDGE - y) / s : s < -1e-9 ? (y - EDGE) / -s : Infinity;
+  return Math.max(0, Math.min(tx, ty));
+}
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const players = [];
@@ -109,8 +148,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   try {
-    for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
-      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Rimbro' : 'Rimside', wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel' });
+    for (const [label, viewport] of SCREENS) {
+      const P = await H.newPlayer(browser, { name: 'Rim' + label.replace(/\D/g, ''), wsPort, webPort, viewport, touch: true, dpr: 2, world: 'wheel' });
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ': ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(P);
@@ -134,132 +173,168 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`r2. ${label}: the controls tour's move step: "${words}"`, words === TOUR['controlsTutorial.moveBodyEdge'], words);
 
       const D = await DISC(P);
-      rec.ok(`${label}: the left disc is drawn (guard)`, !!D && D.w > 40, D);
+      rec.ok(`${label}: the left disc and its zone are drawn (guard)`, !!D && D.w > 40 && D.bandTop > D.y, D);
       if (!D) continue;
-      const c = { x: D.x, y: D.y }, R = D.w / 2;
-      const energy = [];   /* where the energy shows, each band state */
+      const R = D.w / 2;
 
-      /* r3: at the rim */
-      await touch('touchStart', [{ x: c.x, y: c.y, id: 5 }]);
-      await P.page.waitForTimeout(80);
-      await thumbTo(P, touch, c, R, 0, 1.0, -1);
-      await frames(P, 4);
-      const b0 = await RIMV(P), s0 = await srvSt(wsPort, me);
-      await frames(P, 8);
-      const b1 = await RIMV(P), s1 = await srvSt(wsPort, me);
-      rec.ok(`r3. ${label}: the thumb at the drawn rim (${Math.round(R)} px) walks at full speed (${b1.sx.toFixed(2)}) and does not sprint (${b1.on}); stamina still (phone ${b0.st} -> ${b1.st}, worker ${s0} -> ${s1})`,
-        b1.sx < -0.99 && !b0.on && !b1.on && b0.st === b1.st && s0 != null && s0 === s1, { b0, b1, s0, s1 });
-      /* r4: past it */
-      await thumbTo(P, touch, c, R, 1.0, 1.4, -1);
-      const on = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.moving), (v) => v, { timeout: 20000, label: 'the rim sprint' }).catch(() => null);
-      const c0 = await RIMV(P);
-      let s2 = null, c1 = null;
-      for (let k = 0; k < 40; k++) {
-        await frames(P, 2);
-        s2 = await srvSt(wsPort, me); c1 = await RIMV(P);
-        if (s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1) break;
+      /* open ground, and a hop there before every push (H.hopTo, mp-sprint's way) */
+      const spots = await FIND_OPEN(P);
+      let home = null;
+      for (const o of (spots.list || [])) {
+        await H.hopTo(P, o.x, o.y, { tries: 200 });
+        await P.page.waitForTimeout(800);
+        const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+        if (Math.abs(here.x - o.x) < 8 && Math.abs(here.y - o.y) < 8) { home = o; break; }
       }
-      rec.ok(`r4. ${label}: pushed past the rim (1.4) it sprints (how ${c1.how}, running ${c1.running}); the worker bills the sp moves (${s1} -> ${s2}), the phone's bar falls (${c0.st} -> ${c1.st})`,
-        !!on && c1.on && c1.how === 'rim' && c1.running && s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1, { c0, c1, s1, s2 });
-      energy.push({ band: c1.fold, blocks: c1.blocks, bar: c1.bar });
-      await P.page.screenshot({ path: join(OUT, `rimsprint-${label}-${c1.fold || 'band'}.png`) }).catch(() => null);
-      /* r5: eased back to the rim */
-      await thumbTo(P, touch, c, R, 1.4, 1.0, -1);
-      const off = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => !v, { timeout: 20000, label: 'the rim sprint ends' }).catch(() => null);
-      await frames(P, 3);
-      const d1 = await RIMV(P);
-      rec.ok(`r5. ${label}: eased back to the rim it ends (${d1.why}), the walk on (${d1.sx.toFixed(2)})`, off === false && !d1.on && d1.why === 'rim' && d1.sx < -0.99, d1);
-      await touch('touchEnd', [{ x: c.x - 1.0 * R, y: c.y, id: 5 }]);
-      await frames(P, 3);
+      rec.ok(`${label}: standing on open ground, ${RAD} px clear west, south, south-west and east (guard)`, !!home, { error: spots.error, n: (spots.list || []).length, home });
+      if (!home) continue;
+      /* back home when a push carried him more than 120 px off it */
+      const goHome = async () => {
+        const at = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+        if (Math.hypot(at.x - home.x, at.y - home.y) > 120) { await H.hopTo(P, home.x, home.y, { tries: 200 }); await P.page.waitForTimeout(400); }
+      };
 
-      /* r6: the band the other way, out again, lifted */
-      const was = (await RIMV(P)).fold;
-      const turned = was === 'min' ? await H.unfoldBand(P) : await H.foldBand(P);
-      await frames(P, 4);
-      const D2 = (await DISC(P)) || D;
-      const c2 = { x: D2.x, y: D2.y }, R2 = D2.w / 2;
-      await touch('touchStart', [{ x: c2.x, y: c2.y, id: 5 }]);
-      await P.page.waitForTimeout(80);
-      await thumbTo(P, touch, c2, R2, 0, 1.4, 1);
-      const on6 = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.how === 'rim'), (v) => v, { timeout: 20000, label: 'the rim sprint, the band turned' }).catch(() => null);
-      await frames(P, 6);
-      const e6 = await RIMV(P);
-      /* where the open band hides the controls (sideways) the thumb lands on the band: no walk at all */
-      const hidden = !on6 && e6.fold === 'open' && e6.sx === 0;
-      if (hidden) {
-        await touch('touchEnd', [{ x: c2.x + 1.4 * R2, y: c2.y, id: 5 }]);
-        console.log(`  ENERGY ${label}, the dashboard open: the controls are not on screen (no stick to sprint with); the five blocks under the bro ${e6.blocks > 0.01 ? 'SHOWN' : 'not shown'}; the dashboard's EN bar ${e6.bar ? 'ON SCREEN' : 'not on screen'}`);
-        await P.page.screenshot({ path: join(OUT, `rimsprint-${label}-open.png`) }).catch(() => null);
-        rec.ok(`r6. ${label}: the band turned (${turned && turned.arrived} -> ${turned && turned.now}): the open band hides the controls, a thumb there walks nothing (said; the band folded back)`,
-          !!turned && turned.now === 'open' && turned.arrived === 'min', { turned, e6 });
-        await H.foldBand(P);
-        await frames(P, 4);
-      } else {
-        energy.push({ band: e6.fold, blocks: e6.blocks, bar: e6.bar });
-        await P.page.screenshot({ path: join(OUT, `rimsprint-${label}-${e6.fold || 'band'}.png`) }).catch(() => null);
-        await touch('touchEnd', [{ x: c2.x + 1.4 * R2, y: c2.y, id: 5 }]);
-        const lift = await H.waitFor(P, (S) => ({ on: !!(S._sprint && S._sprint.on), why: S._sprint && S._sprint.why }), (v) => !v.on, { timeout: 20000, label: 'lifted' }).catch(() => null);
-        rec.ok(`r6. ${label}: the band turned (${turned && turned.arrived} -> ${turned && turned.now}): past the rim it sprints (${!!on6}, ${e6.how}); lifted, it ends (${lift && lift.why})`,
-          !!turned && turned.now !== turned.arrived && !!on6 && e6.how === 'rim' && !!lift && lift.why === 'rim', { turned, e6, lift });
-      }
-      for (const e of energy) {
-        console.log(`  ENERGY ${label}, the dashboard ${e.band === 'min' ? 'minimized' : e.band === 'open' ? 'open' : e.band}: the five blocks under the bro ${e.blocks != null && e.blocks > 0.01 ? 'SHOWN (alpha ' + e.blocks + ')' : 'not shown (' + e.blocks + ')'}; the dashboard's EN bar ${e.bar ? 'ON SCREEN' : 'not on screen'}`);
-      }
-      rec.ok(`${label}: where the energy shows was read while sprinting (guard; printed as ENERGY lines)`, energy.length >= 1, energy);
-
-      /* r7: tired */
-      const D7 = (await DISC(P)) || D2;
-      const c7 = { x: D7.x, y: D7.y }, R7 = D7.w / 2;
-      await COUNT_TIRED(P);
-      await H.devOp(wsPort, 'vitals', me, { stamina: 0 });
-      await H.readState(P, (S) => { clearInterval(window.__rimPin); window.__rimPin = setInterval(() => { if (S.rpg) S.rpg.stamina = 0; }, 5); return true; });
-      const low = await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 100), (v) => v < 5, { timeout: 20000, label: 'the low bar on the phone' }).catch(() => null);
-      const t0 = (await RIMV(P)).tired;
-      await touch('touchStart', [{ x: c7.x, y: c7.y, id: 5 }]);
-      await P.page.waitForTimeout(80);
-      await thumbTo(P, touch, c7, R7, 0, 1.4, -1);
-      for (const [f, t] of [[1.4, 1.6], [1.6, 1.3], [1.3, 1.5]]) { await thumbTo(P, touch, c7, R7, f, t, -1); await frames(P, 2); }
-      const t1 = await RIMV(P);
-      await thumbTo(P, touch, c7, R7, 1.5, 0.8, -1);
-      await frames(P, 2);
-      await thumbTo(P, touch, c7, R7, 0.8, 1.4, -1);
-      await frames(P, 3);
-      const t2 = await RIMV(P);
-      await touch('touchEnd', [{ x: c7.x - 1.4 * R7, y: c7.y, id: 5 }]);
-      await H.readState(P, () => { clearInterval(window.__rimPin); return true; });
-      rec.ok(`r7. ${label}: tired (${low}): one push past the rim held about says "${TIRED}" once (${t1.tired - t0}) and sprints nothing (${t1.on}, ${t1.why}); out again, once more (${t2.tired - t0})`,
-        low != null && t1.tired - t0 === 1 && !t1.on && t1.why === 'tired' && t2.tired - t0 === 2 && !t2.on, { t0, t1, t2 });
-      await H.devOp(wsPort, 'vitals', me, { heal: true });
-      await frames(P, 3);
-
-      /* r9: `?rimsprint=0`, upright */
-      if (label === 'upright') {
-        const u = new URL(P.page.url());
-        u.searchParams.set('rimsprint', '0');
-        await P.page.goto(u.toString()).catch(() => null);
-        await H.enterWorld(P);
-        const inH = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel, ?rimsprint=0' }).catch(() => null);
-        let h0 = null, h1 = null, w0 = null;
-        if (inH) {
-          await P.page.waitForFunction(() => !!(window.__btSprintBtn && window.__btTourWords), null, { timeout: 20000 }).catch(() => null);
+      /* f1: two landing points, four ways */
+      /* 20 px inside the stick's zone: the screen's own left edge upright; sideways the play column (and the zone) is centred, 46 px in on this box */
+      const zl = Math.round(D.zoneLeft || 0);
+      const LANDS = [['on the drawn disc', Math.round(D.x), Math.round(D.y)], [zl ? `20 px inside the zone (${zl} px in)` : '20 px from the left edge', zl + 20, Math.round(D.y)]];
+      for (const [where, x0, y0] of LANDS) {
+        for (const [way, ang] of WAYS) {
+          await goHome();
+          await H.devOp(wsPort, 'vitals', me, { heal: true });
+          await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 99, { timeout: 6000, label: 'the bar full on the phone' }).catch(() => null);
           await frames(P, 3);
-          const ch = await P.ctx.newCDPSession(P.page);
-          const th = (type, pts) => ch.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
-          h0 = await RIMV(P);
-          w0 = await tourMove(P);
-          const DH = await DISC(P);
-          if (DH) {
-            const ch5 = { x: DH.x, y: DH.y }, RH = DH.w / 2;
-            await th('touchStart', [{ x: ch5.x, y: ch5.y, id: 5 }]);
-            await P.page.waitForTimeout(80);
-            await thumbTo(P, th, ch5, RH, 0, 1.6, 1);
-            await frames(P, 6);
-            h1 = await RIMV(P);
-            await th('touchEnd', [{ x: ch5.x + 1.6 * RH, y: ch5.y, id: 5 }]);
+          const rm = room(D, x0, y0, ang);
+          const limit = Math.max(rm, FLOOR);   /* the farthest the thumb goes: the margin, or the floor's 18 px */
+          const want = Math.min(R, limit);      /* where the full push should be */
+          await touch('touchStart', [{ x: x0, y: y0, id: 5 }]);
+          await P.page.waitForTimeout(60);
+          let first = null, d = 0, early = false, walked = false;
+          while (d < limit + 1) {
+            d = Math.min(d + STEP, d < limit ? limit : limit + 1);
+            await touch('touchMove', [{ x: x0 + Math.cos(ang) * d, y: y0 + Math.sin(ang) * d, id: 5 }]);
+            await P.page.waitForTimeout(30);
+            const v = await RIMV(P);
+            if (Math.hypot(v.sx, v.sy) > 0.05) walked = true;
+            if (v.on && v.how === 'rim') { first = d; if (d < want - STEP - 1) early = true; break; }
+          }
+          const pos = first == null ? null : { x: +(x0 + Math.cos(ang) * first).toFixed(1), y: +(y0 + Math.sin(ang) * first).toFixed(1) };
+          const s0 = await srvSt(wsPort, me);
+          let s1 = s0, v1 = null;
+          for (let k = 0; k < 40 && first != null; k++) {
+            await frames(P, 2);
+            s1 = await srvSt(wsPort, me); v1 = await RIMV(P);
+            if (s0 != null && s1 != null && s1 < s0 - 1) break;
+          }
+          await touch('touchEnd', [{ x: x0 + Math.cos(ang) * d, y: y0 + Math.sin(ang) * d, id: 5 }]);
+          await frames(P, 3);
+          const floorCase = rm < FLOOR;
+          const onGlass = !!pos && pos.x >= 0 && pos.y <= D.bandTop;
+          const inMargin = !!pos && pos.x >= EDGE - 1 && pos.x <= D.vw - EDGE + 1 && pos.y <= D.bandTop - EDGE + 1 && pos.y >= EDGE - 1;
+          rec.ok(`f1. ${label}, ${where} (${x0}, ${y0}), ${way}: the phone sprints at ${first == null ? 'NEVER' : first.toFixed(1) + ' px'} (the room ${rm.toFixed(1)}, the full push ${want.toFixed(1)}; the thumb at ${pos ? pos.x + ', ' + pos.y : '-'}, ${floorCase ? 'the floor\'s case, on the glass' : 'inside the edge less ' + EDGE}), walking before it; the worker bills it (${s0} -> ${s1})`,
+            first != null && !early && walked && (floorCase ? onGlass : inMargin) && s0 != null && s1 != null && s1 < s0 - 1,
+            { first, want, rm, pos, early, walked, s0, s1, v1, D });
+        }
+      }
+      await P.page.screenshot({ path: join(OUT, `rimsprint-${label.replace(' ', '-')}.png`) }).catch(() => null);
+
+      if (label === 'upright 390') {
+        /* f2: held until the bar empties; then tired, the words once */
+        await goHome();
+        const x0 = Math.round(D.x), y0 = Math.round(D.y), lim = Math.max(room(D, x0, y0, Math.PI), FLOOR);
+        await COUNT_TIRED(P);
+        await H.devOp(wsPort, 'vitals', me, { stamina: 14 });
+        await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 100), (v) => v <= 15, { timeout: 20000, label: 'the low bar' }).catch(() => null);
+        await H.readState(P, (S) => {
+          clearInterval(window.__rimRec);
+          const R0 = window.__rimRecS = { starts: 0, stops: 0, was: !!(S._sprint && S._sprint.on) };
+          window.__rimRec = setInterval(() => { const o = !!(S._sprint && S._sprint.on); if (o && !R0.was) R0.starts++; if (!o && R0.was) R0.stops++; R0.was = o; }, 5);
+          return true;
+        });
+        const w0 = (await RIMV(P)).tired;
+        await touch('touchStart', [{ x: x0, y: y0, id: 5 }]);
+        await P.page.waitForTimeout(60);
+        for (let d = STEP; d <= lim; d = Math.min(d + STEP, d < lim ? lim : lim + 1)) {
+          await touch('touchMove', [{ x: x0 - d, y: y0, id: 5 }]);
+          await P.page.waitForTimeout(30);
+          if (d >= lim) break;
+        }
+        const ran = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => v, { timeout: 15000, label: 'the held sprint' }).catch(() => null);
+        const empty = await H.waitFor(P, (S) => (S._sprint && S._sprint.why) || null, (v) => v === 'empty', { timeout: 30000, label: 'the bar empty' }).catch(() => null);
+        await frames(P, 30);
+        const h = await RIMV(P);
+        const rs = await H.readState(P, () => Object.assign({}, window.__rimRecS));
+        rec.ok(`f2. ${label}: a full push held: it sprints (${!!ran}), the bar empties (${empty}), the bro walks on at full speed (${h.sx.toFixed(2)}), never sprinting again while held (starts ${rs.starts}, stops ${rs.stops}: no flicker), no words (${h.tired - w0})`,
+          !!ran && empty === 'empty' && h.sx < -0.99 && !h.on && rs.starts === 1 && rs.stops === 1 && h.tired - w0 === 0, { h, rs });
+        /* tired: the phone's bar held at 0 (the worker refills a walking bro's faster than a slow page's push) */
+        await H.devOp(wsPort, 'vitals', me, { stamina: 0 });
+        await H.readState(P, (S) => { clearInterval(window.__rimPin); window.__rimPin = setInterval(() => { if (S.rpg) S.rpg.stamina = 0; }, 5); return true; });
+        await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 100), (v) => v < 1, { timeout: 20000, label: 'the bar held at 0' }).catch(() => null);
+        const rsT = await H.readState(P, () => Object.assign({}, window.__rimRecS));
+        for (let k = 0; k < 3; k++) {
+          await touch('touchMove', [{ x: x0 - 0.4 * lim, y: y0, id: 5 }]); await frames(P, 2);
+          await touch('touchMove', [{ x: x0 - lim, y: y0, id: 5 }]); await frames(P, 3);
+        }
+        const t = await RIMV(P);
+        const rs2 = await H.readState(P, () => Object.assign({}, window.__rimRecS));
+        await touch('touchEnd', [{ x: x0 - lim, y: y0, id: 5 }]);
+        await H.readState(P, () => { clearInterval(window.__rimPin); clearInterval(window.__rimRec); return true; });
+        rec.ok(`f2. ${label}: tired, three more full pushes: "Not enough energy!" once (${t.tired - w0}), no sprint (starts ${rs2.starts - rsT.starts}, ${t.why})`,
+          t.tired - w0 === 1 && !t.on && rs2.starts === rsT.starts && t.why === 'tired', { t, rs2, rsT });
+        await H.devOp(wsPort, 'vitals', me, { heal: true });
+        await frames(P, 3);
+
+        /* r9 `?rimsprint=0`, r10 `?fullpush=0` */
+        for (const [sw, step] of [['rimsprint', 'r9'], ['fullpush', 'r10']]) {
+          const u = new URL(P.page.url());
+          u.searchParams.delete('rimsprint'); u.searchParams.delete('fullpush');
+          u.searchParams.set(sw, '0');
+          await P.page.goto(u.toString()).catch(() => null);
+          await H.enterWorld(P);
+          const inH = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel, ?' + sw + '=0' }).catch(() => null);
+          let h0 = null, h1 = null, h2 = null, h3 = null, w = null;
+          if (inH) {
+            await P.page.waitForFunction(() => !!(window.__btSprintBtn && window.__btTourWords), null, { timeout: 20000 }).catch(() => null);
+            await frames(P, 3);
+            await H.devOp(wsPort, 'vitals', me, { heal: true });
+            const ch = await P.ctx.newCDPSession(P.page);
+            const th = (type, pts) => ch.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+            h0 = await RIMV(P);
+            w = await tourMove(P);
+            const DH = await DISC(P);
+            if (DH) {
+              const cx = Math.round(DH.x), cy = Math.round(DH.y), RH = DH.w / 2;
+              await th('touchStart', [{ x: cx, y: cy, id: 5 }]);
+              await P.page.waitForTimeout(60);
+              for (let k = 1; k <= 10; k++) { await th('touchMove', [{ x: cx + RH * k / 10, y: cy, id: 5 }]); await P.page.waitForTimeout(30); }
+              await frames(P, 6);
+              h1 = await RIMV(P);
+              for (let k = 1; k <= 6; k++) { await th('touchMove', [{ x: cx + RH * (1 + 0.1 * k), y: cy, id: 5 }]); await P.page.waitForTimeout(30); }
+              await frames(P, 6);
+              h2 = await RIMV(P);
+              await th('touchEnd', [{ x: cx + 1.6 * RH, y: cy, id: 5 }]);
+              await frames(P, 3);
+              if (sw === 'fullpush') {
+                /* the owner's bug, yesterday's rule (main's): from the disc west to the edge less 16 px, no sprint */
+                await th('touchStart', [{ x: cx, y: cy, id: 5 }]);
+                await P.page.waitForTimeout(60);
+                for (let x = cx - STEP; x > EDGE; x -= STEP) { await th('touchMove', [{ x, y: cy, id: 5 }]); await P.page.waitForTimeout(30); }
+                await th('touchMove', [{ x: EDGE, y: cy, id: 5 }]);
+                await frames(P, 6);
+                h3 = await RIMV(P);
+                await th('touchEnd', [{ x: EDGE, y: cy, id: 5 }]);
+                await frames(P, 3);
+              }
+            }
+          }
+          if (sw === 'rimsprint') {
+            rec.ok(`r9. ${label}: \`?rimsprint=0\` (mode ${h0 && h0.mode}): the sprint button back (${h0 && h0.btn && h0.btn.shown}, in the page ${h0 && h0.dom}); a thumb past the rim walks at full speed (${h2 && h2.sx.toFixed(2)}) and sprints nothing (${h2 && h2.on}); the tour's move step: "${w}"`,
+              !!h0 && !!h0.btn && h0.btn.shown === true && h0.btn.rim === false && h0.dom && !!h2 && h2.sx > 0.9 && !h2.on && w === TOUR['controlsTutorial.moveBody'], { h0, h2, w });
+          } else {
+            rec.ok(`r10. ${label}: \`?fullpush=0\` (yesterday's rule): at the drawn rim a full-speed walk and no sprint (${h1 && h1.sx.toFixed(2)}, ${h1 && h1.on}); past 1.25 of it a sprint (${h2 && h2.on}, ${h2 && h2.how}); and the owner's bug, as main plays it: from the disc west to the edge less ${EDGE} px a walk (${h3 && h3.sx.toFixed(2)}) and NO sprint (${h3 && h3.on})`,
+              !!h1 && h1.sx > 0.99 && !h1.on && !!h2 && h2.on && h2.how === 'rim' && !!h3 && h3.sx < -0.99 && !h3.on, { h0, h1, h2, h3 });
           }
         }
-        rec.ok(`r9. ${label}: \`?rimsprint=0\` (mode ${h0 && h0.mode}): the sprint button back (${h0 && h0.btn && h0.btn.shown}, in the page ${h0 && h0.dom}); a thumb past the rim walks at full speed (${h1 && h1.sx.toFixed(2)}) and sprints nothing (${h1 && h1.on}); the tour's move step: "${w0}"`,
-          !!h0 && !!h0.btn && h0.btn.shown === true && h0.btn.rim === false && h0.dom && !!h1 && h1.sx > 0.9 && !h1.on && w0 === TOUR['controlsTutorial.moveBody'], { h0, h1, w0 });
       }
     }
     rec.ok('r8. no page errors', errs.length === 0, errs.slice(0, 4));

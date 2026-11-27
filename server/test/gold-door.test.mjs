@@ -78,6 +78,7 @@ const EXPECT = {
   clan_create:         (c, n) => c - n,                                   // ps.coins -= CLANS.CREATE_COST
   arena_entry:         (c, n) => c - n,                                   // ps.coins -= ARENA.ENTRY_FEE
   shop_tool:           (c, n) => Math.floor(Number(c) || 0) - n,          // purse = Math.floor(Number(ps.coins) || 0); ps.coins = purse - cost
+  shop_shield:         (c, n) => Math.floor(Number(c) || 0) - n,          // v2.3.6800: the shield's, as the tool's
   shop_staple:         (c, n) => Math.floor(Number(c) || 0) - n,          // (the same)
   shop_pile:           (c, n) => Math.floor(Number(c) || 0) - n,          // (the same)
   shop_sell:           (c, n) => Math.max(0, Math.floor(Number(c) || 0) + n),   // ps.coins = Math.max(0, Math.floor(Number(ps.coins) || 0) + paid)
@@ -442,7 +443,7 @@ const FORWARDERS = [
   const counts = {};
   for (const r of Object.values(GOLD_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
   /* v2.3.5285: + the restore's two (restore, restore_vault: mints judged by their difference) */
-  check('8. at v2.3.5285: 16 mints, 15 burns (+ nml_lost), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 16 && counts.burn === 15 && counts.escrow === 13 && counts.move === 3, counts);
+  check('8. at v2.3.6800: 16 mints, 16 burns (+ nml_lost; v2.3.6800: + shop_shield), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 16 && counts.burn === 16 && counts.escrow === 13 && counts.move === 3, counts);
   /* a move lands on the other player by the mail; the mail is the escrow
      every credit passes */
   const moves = Object.entries(GOLD_ROADS).filter(([, r]) => r.class === 'move');

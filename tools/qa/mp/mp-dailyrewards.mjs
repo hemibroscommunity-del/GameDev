@@ -238,7 +238,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cardText = () => P.page.evaluate(() => { const c = document.querySelector('[data-daily-card-open]'); return c ? (c.textContent || '').trim() : null; });
       card = await waitFor(cardText, 3000);
       /* v2.3.5645: the journal keeps the daily card under its own "Daily" pill when a quest
-         is in focus (QuestsPanel '@daily'); with none to show it is on the pane itself */
+         is in focus (QuestsPanel '@daily'); with none to show it is on the pane itself;
+         v2.3.6691 (card UI2-quests): under the new dashboard the landing's Daily door wears the
+         same mark and opens the card's own page */
       if (!card) {
         await P.page.evaluate(() => { const n = document.querySelector('[data-quest-nav="daily"]'); if (n) { n.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); n.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); n.click(); } });
         card = await waitFor(cardText, 6000);

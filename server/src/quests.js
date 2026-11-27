@@ -28,6 +28,21 @@ import { QUEST_REWARDS, QUEST_DORMANT, QUEST_FIRST, QUEST_RETIRED, WOODWORKING_T
 import { PROG3 } from './prog3.js';
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+
+/* v2.3.6800 (card SHOP): THE SHIELD A QUEST GIVES, MADE IN ONE PLACE.  Lifted
+   out of _grantQuestItem's shield branch so Diego's replacement (shop.js
+   SHIELD_SHELF) is the very piece tut_1 mints, field for field: one shape
+   `{tier, tierMult, gearBase, name}`, never a second copy of it.  `item` is
+   a quest table's shield row (data.js tut_1 grantOnAccept); a new object
+   each call (the provenance ledger stamps `gid` on it). */
+export function questShieldMint(item) {
+  return {
+    tier: 'common',
+    tierMult: Math.max(0, Math.min(8, Number(item && item.tierMult) || 1)),
+    gearBase: String((item && item.gearBase) || 'wood'),
+    name: String((item && item.name) || 'Quest Shield'),
+  };
+}
 import { questStateSet, questCountAdd, questKeep, questKeptTake } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 
 /* ═══ v2.3.3525: THE KINDS A QUEST COUNTS ═══
@@ -697,12 +712,7 @@ export const questMethods = {
            R._shieldBonus), so the two views cannot disagree about anything
            that affects damage. */
         if (ps.shield) return false;
-        ps.shield = {
-          tier: 'common',
-          tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
-          gearBase: String(item.gearBase || 'wood'),
-          name: String(item.name || 'Quest Shield'),
-        };
+        ps.shield = questShieldMint(item);   /* v2.3.6800: the one mint, shared with Diego's shelf (shop.js SHIELD_SHELF) */
         /* v2.3.2534: the starter shield is the FIRST piece of gear most
            characters ever own (tut_1 grantOnAccept), so it is also the first
            test of whether provenance reaches a real wardrobe. */

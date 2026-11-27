@@ -9,7 +9,9 @@ import { QuestJournalPage, useJournalTap } from './QuestJournalPage.jsx';
 import { useBoxSize, sideBySide, FOOT_FADE, railHeading } from './railKit.js';   /* v2.3.4394: a list beside what it opens */
 /* v2.3.6620 (card QP): the pills, the quest path switch, Done and Daily are questParts.jsx's, shared with the pages */
 import { PathSwitch, FaceIcon, PinIcon, pillStyle, pillHit, DonePane, DailyPane } from './questParts.jsx';
-import { QuestPages, QUEST_PAGES } from './QuestPages.jsx';   /* v2.3.6620: the Quests tab in pages; `?questpages=0` this page */
+import { QuestPages, QUEST_PAGES } from './QuestPages.jsx';
+import { QuestsLanding } from './QuestsLanding.jsx';   /* v2.3.6691: the frame's landing (card UI2-quests) */
+import { ui2FrameOn } from '../ui2Frame.js';   /* v2.3.6620: the Quests tab in pages; `?questpages=0` this page */
 import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
 import { SAY } from '@/data/say/questsPanel.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
@@ -234,4 +236,7 @@ const OldQuestsPanel = ({ getS }) => {
    rules game/questPages.js); `?questpages=0` gives back the page above,
    the list beside the quest (v2.3.4394), as it was. */
 /* the page's one reader of the game, handed to whichever page draws (the open hand: grand plan 5.7) */
-export const QuestsPanel = () => (QUEST_PAGES ? <QuestPages getS={getState} /> : <OldQuestsPanel getS={getState} />);
+/* v2.3.6691 (card UI2-quests): under the new dashboard the landing, your quests as rows (QuestsLanding.jsx);
+   today's tab only under `?ui2=0`, where `?questpages=0` still gives the older list.  Chosen at render, by the
+   frame's ONE switch (tools/guards/quests-mount.test.mjs follows it by the syntax tree) */
+export const QuestsPanel = () => (ui2FrameOn() ? <QuestsLanding getS={getState} /> : QUEST_PAGES ? <QuestPages getS={getState} /> : <OldQuestsPanel getS={getState} />);

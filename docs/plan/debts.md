@@ -504,12 +504,298 @@ stays with that PR until it lands, and is marked (held).
   tapping a monster lock onto it?": *"No tapping in monsters"*. A tap on a
   monster never locks onto it (v2.3.5664).
 
+## SHOP (71: #2400 held)
+
+- HELD (#2400, c36704eb), a bug in money: the phone learns of the bought
+  shield only from `shop_result.shield` (`src/networking/gameEvents.js`:523-529);
+  `player_state` carries `shieldStash` but no client code adopts it
+  (`wsClient.js`:3087-3110 adopts only the worn `shield`), a re-sent reqId is
+  answered with `player_state` only, and a rejoin adopts nothing. So a lost
+  `shop_result` (or a phone that lost its bag copy) leaves the player 100
+  coins down, the piece unseen, and every buy refused "You already have
+  one". Mend: the `have` refusal or quote carries the worker's held piece
+  and the phone adopts it by gid (or adopts `player_state.shieldStash` by
+  gid). All six card dodges RED; the review's notes: scratchpad rv-shop.
+- Next job: `server/test/shop.test.mjs`: one shared piece object for every
+  buyer (`shop.js`:839 `this._shopShield || (...)`) passes.
+
+## LOAD (71: #2401 held)
+
+- HELD (#2401, 27b95a09): the card's own proof ("derive the key from the
+  job's inputs AS THE WORKER RECEIVES THEM ... change any input, the key
+  changes") is GREEN at the worker's readers: `maskedBakeWorker.js`:613 the
+  look reader with `NO_ROW`, :609 a cut input read as its size only, :630 the
+  file reader answering the address / numbers by name / rod null, :579 the
+  version without script or browser. `tools/guards/bake-keep.test.mjs` holds
+  the worker and the store by text. Also green: `put` never evicting
+  (`bakeKeep.js`:340), a version that does not empty the store (:294), a
+  throwing store not switched off (:331). Mend: drive `keepStore` on a fake
+  IndexedDB and the worker's readers in node.
+- Next jobs: drop `_tables`/`_bms` when a sheet of numbers is replaced
+  (`maskedBakeWorker.js`:406); `prewarmAltWornSets` waits on `_wornPass` with
+  no limit (`entityRenderer.js`:3801). Its status file
+  (`docs/plan/status/LOAD.md` on the branch) still says part 1 "working".
+
+## UI2 (71)
+
+- HELD (#2399 Quests, 79b820ea): the card's own dodge "a {steps.length}
+  beside the title" is GREEN (`questViews.jsx`:161, a bare
+  `{page.who.steps.length}`, "2/6", "4 steps": W2/J3 match only "N of M" and
+  "%"); and a bug: with quest A's page open, a tap on quest B's pinned card
+  still shows A (`QuestPage.jsx`:83 `useState(selOf)` reads once, `<Active />`
+  at `BottomDashboard.jsx`:1822 has no key; the road stacks questDetail(A) >
+  questDetail(-), so Back needs two presses). The mend's ui3-weights claim
+  HOLDS (42 ok with the kit). Next jobs: `quests-ui2` over QuestsLanding's
+  ctx (`dailyOn`, `known`) and QuestPage's `onRewards` (`replace`), a
+  `where.map` undefined fixture, future labels in attributes;
+  `journeyToNow` (`questPages.js`:314-317) with every step ticked.
+- #2391 (Gear, acda23f2), listed: sitting 70's two roads RED in every
+  spelling. Still GREEN, next jobs (`gear-showcase.test.mjs`): `(sc.manage ||
+  who)` (`GearShowcase.jsx`:49); a spread at Gear's body's USE
+  (`GearPanels.jsx`:201); `import * as Kit` + a computed name
+  (`GearShowcase.jsx`:25); another player's owner `''` (`gearShowcase.js`:69);
+  NEW: 2b passes a mutation of the maker's result at the tap (`delete
+  src.owner`, `GearShowcase.jsx`:47; red only by W3's anchor); 2c passes
+  `p.isSelf = true` in openCardItem (`InspectPlayerPanel.jsx`:255); 2b does
+  not read `showcaseOf`'s argument (`GearShowcase.jsx`:43).
+
+## UI3 (71)
+
+- The owner, 23:13 UTC 2026-11-26, asked whether Combat one tap inside the
+  Bro menu is enough or stat points should be spent on the Bro page itself:
+  *"Keep it one tap in"* (card UI3's facts; v2.3.5665).
+- HELD (#2406 UI3-hud, 8042b993): the card's own dodge "the HUD drawn under
+  `?hud=0`" is GREEN in `char-hud` and `char-hud-mount` (`CharacterHud.jsx`:80
+  `if (!on || !rpg)` -> `if (!rpg)`; replanted by the gatekeeper). Also green:
+  "Lv 1" before the record at the component (`:109`, the span without
+  `model.ready` and `model.level || 1`). Next jobs: computed keys, spreads,
+  an array-alias mount and a dynamic import (eight plants, scratchpad
+  rv-pad-hud); the other weapon's "+N" pop keeps its icon with no clock
+  (`CharacterHud.jsx`:121).
+- #2395 kit, listed. Next jobs (`ui3-weights.test.mjs`): a class through
+  `'u2-' + 'raised'`, `.filter().join()`, a props spread, a member lookup, a
+  tile under an alias, a named no-op handler (`UiKitPage.jsx`:206, :278);
+  `className={className || cls}` (`Group.jsx`:40); `.u2-facts > *` and
+  `.u2-fact-*` children; `-webkit-text-fill-color`. ItemPage.jsx:101's
+  doors to `Ui2Tile size="compact"`: done by #2403 (its row fell).
+- #2398 type, listed. Next jobs (`menu-font.test.mjs`): inline `fontFamily`
+  in `src/ui/mobile/dash` and `sheet` JSX (`MenuGrid.jsx`:102); folders read
+  recursively and non-`.css` sheets; `--ui2-font` held wherever written
+  (`src/styles/game.css`, an inline `'--ui2-font'` key); computed keys and
+  `.style.fontFamily =`; `ui2-tokens` 10 over every HTML under `src/`
+  (`src/quest-harness.html`:10); `CREDITS.md`:27 still lists Merriweather.
+- #2405 bro, listed. Next jobs (`bro-hub.test.mjs`): the handed reader's
+  `name`/`combat` drawn (`BroLanding.jsx`:78); a face through
+  `.u2-bro-strip > *` (`broStrip.css`).
+- #2407 combat, listed. Next jobs (`combat-hub.test.mjs`): `flex-flow` and
+  rem bases (`combatPage.css`); a branch on an alias of `cat`
+  (`WeaponPage.jsx`:139); SharedPage only counted (`SharedPage.jsx`:143);
+  `doors` rewritten by a map (`CombatHub.jsx`:66).
+- #2403 menus, listed. Next jobs: `menu-tile` and `gear-geometry` read the
+  modules only (`MenuGrid.jsx`:110, :127; `GearPanels.jsx`:351, :364);
+  `gear-socket`: `kit` through an alias or spread (`GearTab.jsx`:658),
+  `BagTile` forcing `kit={true}` (`InventoryPanel.jsx`:1366), a computed key
+  or `Object.assign` in a tile's style (`:560`), a border in Gear's override
+  (`GearPanels.jsx`:366); `mp-ui3menus`: the gold pill sideways with 1,000+
+  gold (`GearPanels.jsx`:382).
+
+## LOCK (71)
+
+- #2397, listed: every card dodge RED in `lockPick` (the card's suite reads
+  the pure pick). Next jobs: a node suite over `updateTargeting`'s glue (the
+  clock in ms, the push's sign, `?locknear=0`, the held `inReach`;
+  `targeting.js`:755, :766, :770, :773); a guard that a tap never writes a
+  monster lock outside mode 0 (`BroTown.jsx`:13413: the owner's "No tapping
+  in monsters"); scenes for a third candidate 30% out along the push and
+  `near:false` with a rival 10% nearer (`lockPick.js`:157, :138).
+
+## KEEP (71)
+
+- #2392 and #2396, listed: sitting 70's two addresses RED unstamped. Still
+  GREEN (69's, next jobs): a slash-less folder template and `.join`, now
+  reaching `/world/objects` too. NEW: after the door
+  (`assetUrl(x).split('?')[0]`, `url.replace('.json','.png')` at
+  `wheelObjects.js`:413); a template opening on an expression
+  (`${BASE}/icons/...`); `ground-worker.js` built `/world/objects` addresses
+  (:1021) and `keptManifest` (:1011); `sheetPage.js` `loadSheetPage`.
+
+## PAD (71)
+
+- #2402, listed. Next jobs (`server/test/pad-skin.test.mjs`): 6b compares
+  `padPictures()` by length, not as a set (`padSkin.js`:452); housing.png
+  against padArt's `inside` and a rim-colour check (a gold piece under a
+  steel name passes); `PAD_ART_VER` (`controlSkin.jsx`:157) still
+  '2.3.6641' with all 18 files changed (harmless while `/ui/*` is not
+  immutable).
+
+## SHOP (72: #2400 listed at d782aed2, its mend)
+
+- Sitting 71's hold RED in every path (a lost `shop_result`, a re-sent
+  reqId, a rejoin): `shop.test` "A LOST ANSWER LOSES NOTHING" (v1 and v2);
+  the six card dodges RED again. Next jobs: nothing tests that the phone
+  calls the adoption on the quote and the refusal (`gameEvents.js`:460,
+  :487: drop either call, green); `shieldAdopt.js`: a gid not added to the
+  seen set, one old copy with no gid hiding every twin of its signature,
+  the cap check dropped in `adoptStateShields`: green; a shield that comes
+  in the mail (`gameEvents.js`:2120 `inbox_delivered`) is added without the
+  gid check: send it through `adoptHeldShields`.
+
+## LOAD (72: #2401 held at f56dfa3b, its mend: on main 380317e6 four-lines 1b red)
+
+- HELD by the rehearsal on main 380317e6 (after #2421): merged with main,
+  `four-lines` 1b is RED (`src/rendering/systems/entityRenderer.js` 7985
+  code lines over its line 7984; it adds about 40): mend: move the worn
+  pass's gate (`_wornPassBegin`, `_wornPass`) out of the big file (rule 5).
+  Green on main 2bd82b3b. Its review LANDS:
+- Sitting 71's plants RED (`maskedBakeWorker.js`:613, :609, :630, :579;
+  `bakeKeep.js`:341, :295), `bake-keep.test` 6-7 on the real worker in
+  node. Next jobs (`tools/guards/bake-keep.test.mjs`): 6b changes inputs
+  only between logins (a memo by sheet+cell in `lookPixels`, or the
+  `_numbers.delete` on `lookSheet` dropped: green; two jobs in one login
+  would catch both); 6b changes one fixed pixel (every other pixel keyed:
+  green); `keptBytes` (`bakeKeep.js`:245) leaving out `px` (green: 7 reads
+  the disk through the index's own `b`); `runJob` keeping a frame whose
+  belt is pending (green); `bakeWorkerRig.mjs` never detaches transferred
+  buffers (`show` kept without `.slice()`: green); `keyFirst` answering an
+  error for an unreadable kept value instead of baking again (green); the
+  key cut to `KEEP_V` with the version compared by its prefix (green each;
+  together an old tab across a deploy writes bakes the new tab is served);
+  `?bakekeep=0` ignored in the worker is held only by `mp-bakekeep`:244.
+  "Masks within 3 s" (95 s on the box) is LOAD part 3's (part 29).
+  f56dfa3b is a status-only push (docs/plan/README.md forbids it).
+
+## UI2 (72: #2408, #2413, #2412, #2415 held)
+
+- #2399 Quests (7c3c6b4a), listed: sitting 71's dodge RED in every
+  spelling (W2b); the pinned-card bug mended (dash-nav 3i). Next jobs:
+  `quests-ui2` W2b draws only `short: false` (`{short ? ' ' +
+  page.who.steps.length : ''}`, a count only when `tight`: green,
+  `questViews.jsx`:160, :215); a count in a `title=` or `aria-label`
+  (green); `quests-mount` to require QuestPage's `key={questPageAt()}`
+  (`QuestDetailPanel.jsx`:113 key dropped: green in the node guards, held
+  only by `mp-ui2quests` 5b). The owner's to judge: with A's Rewards open,
+  B's pinned card stacks on top, so Back goes to A's Rewards, not World.
+- HELD (#2408 Codex, 5acd2917): the card's dodges "at most one when each
+  rolls alone" (`MonsterShowcase.jsx`:161 `lootRollWords(true)`) and "the
+  same sword with different names" (:59 `nameOf: codexItemName` dropped)
+  GREEN. Next job: `itemPageOpen.js` `CODEX_GEAR.iron_torso.kind` 'chest'
+  -> 'torso' green (loot-rows L10 checks the sword's kind word only).
+- HELD (#2413 Pets, 85710851): the card's dodges "Release with no
+  confirmation" (`PetsPage.jsx`:~263 onPress sends `sendPetRelease`
+  directly), "a second press of Take out sent while the first is out" (sent
+  without `press()`) GREEN; also Sell's `check: () => null`, More room
+  bought with no confirm: green. `petPages.js`'s `cost` is read by nothing
+  that asks (Ui2Actions ignores `cell.confirm`). Part 31's "storeListPet
+  posts /list with no action row" is NOT real (`storeApi.js`:121 through
+  `act()`, `actions.js`:442); the note at `traps-economy-social.test.mjs`:728
+  is stale.
+- HELD (#2412 Ranks, e08554a2, its mend: the fish icon through KEEP's
+  helper RED): the card's dodge "'nobody' shown while loading" GREEN
+  (`RankStandings.jsx`:221 `loading={false}`), and LIVE: `useFlip`
+  (:106) returns `loading: false` and `aceFlipBus.board` starts
+  `{wins:[],losses:[]}` (`aceFlipBus.js`:47), so the Coin flip board says
+  "Nobody has won a flip against Ace yet." before the answer comes.
+- HELD (#2415 Life, 220e6140): the card's dodge "another player's XP shown"
+  GREEN (`LifeSkillPage.jsx`:47 `lifeSkillProgress(R, skill, null)`: your
+  XP on their page; the How it works door :87 and page :124 the same). Its
+  merge with Ranks' mend: systems.mjs (Ranks' list, `lifeProfile` added),
+  SYSTEMS.md made again, UI_ARCHITECTURE_V2.md both lines.
+- The class, all four: the suites test the rule module, and nothing checks
+  the page hands the rule's field to the kit (the roll words, `cost` -> the
+  ask, `press()`, `loading`, `who`): one shared jsxMount check would close
+  it.
+
+## UI3 (72: #2406 on main 17124fc8 by the owner's 04:49 rule; #2414, #2411 held)
+
+- #2406 HUD (5ecce925) merged ALONE at 04:51 UTC 11-27 by the owner's rule
+  of 04:49 (a screen-only change lands on its own green, read after): no bug
+  in behaviour found. Sitting 71's plants RED (char-hud 9h, 9i); its card's
+  dodges GREEN in new spellings, now its NEXT JOBS: "Lv 1 before the record" as
+  a waiting placeholder (`CharacterHud.jsx`:109 `: <span
+  className="bt-charhud__lv">Lv 1</span>`, or through `say(..., {n:1})`, or
+  a second span reading `rpg.level || 1`: 9i reads only `model.level` and
+  the one marked span; mend: render the component with ready false and
+  allow only the name); "a quest line that can wrap" (`QuestCard.jsx`:189
+  `{ ...LINE_TEXT, whiteSpace: 'normal' }`, :191 a `<br />`: 9e reads only
+  LINE_TEXT's declaration). Next jobs: 9c `(xpOn || xb)` in
+  `ZoneHeader.jsx`:286's class (green); 9d `export * from
+  '@/rendering/characterPortrait.js'` under src/ui/hud (green); 9a/9b
+  `rpg['h'+'p']`, `{...{ onPointerUp: open }}` (green).
+- HELD (#2414 HUD art, 91a7246c): the card's dodges GREEN at the drawing
+  (`hud-art.test` reads `hudArtModel` only): the pill showing the combat
+  level (`HudArt.jsx`:142 `art.level`), the badge reading the weapon's
+  level (:135 `art.weaponLevel`), "1" in the badge before the record (:135
+  `: 1`). Mend: read HudArt.jsx's tree (`[data-charhud-lv]` `art.ready ?
+  art.level : ''`, `[data-hudart-pill]` `art.ready ? art.weaponLevel :
+  ''`). Next job: `rpg["h"+"p"]` drawn (green).
+- HELD (#2411 Own plate, 6b99b2df), by the rehearsal: merged with main,
+  `four-lines` 1 and 1b are RED (`src/rendering/systems/entityRenderer.js`
+  8025 statements over its line 8008, 7997 code lines over 7984): the PR
+  adds 33 lines to the big file; mend: move them into `ownPlateFx.js`
+  (rule 5). Its HUD art sibling #2414 merged with main turns `char-hud` 9i
+  RED (the art form's Lv outside `model.ready`).
+- #2410 Purse (59b965bd) LANDS by review; #2411 by review too, but for the
+  red above. Next jobs: `top-gold.test` to read
+  `topGold.js`'s tree so the number is only `S.rpg.coins` (:68 `S._purseGuess
+  ?? c`: green; `topGoldOn` memo never re-read: green); `own-plate.test`:
+  the factory builds the pill only under `_ownPlateOn`
+  (`entityRenderer.js`:7071 unconditional: green), the Texts destroyed
+  (`pill.removeChildren()` before destroy: green). #2411's diff against
+  main has nothing under `.github/`.
+
+## PAD (72: #2409 on main 5b30c929 at 56287163, by the owner's 04:49 rule)
+
+- The card's dodges RED (`pad-steel.test` 1f, 1g, 2d, 2e, 3d, 4d). Next job:
+  a spread override after the literal line (`AbilityButtons.jsx`:339
+  `...(kind==='whirl'?{metal:undefined}:{})`) green: render Skin for an
+  in-tier Whirlwind and Bash and read `data-metal`. `mp-padskin` 6d is the
+  slow box by reading (wall-clock 600 ms waits, the held page delaying the
+  press past pressGate's window: `ShieldButton.jsx`:890-897).
+
 ## Found (no card's debt)
 
-- A merge that adds or changes a file in `server/test/` deploys the worker
-  (TRAPS §277): #2355/#2357 and #2356 carry no worker code but each
-  merge redeploys it (one brief disconnect each; the last deploy wins).
-  The orchestrator's note "none deploys" read `server/src` only (66).
+- FOR THE OWNER (72), a bug on `main` today: the phone's gear bag
+  (`armorStash`, `legsStash`, `gearStash`) never reads the worker's echo.
+  The worker sends them in every `player_state` (`server/src/persistence.js`:831-834);
+  the phone's handler (`src/networking/wsClient.js`:2716) never reads them and
+  adds a piece only from the reply that brought it (chest :2172, forge :2430,
+  quest :3843, loot :4430, mail `gameEvents.js`:2089). `forge_armor_result` has
+  no reqId (`armorforge.js`:115); a re-sent chest open is answered only while
+  `_reqRecall` holds it (`dailychest.js`:116-119); a rejoin sends the phone's
+  own list and `state_sync` carries no stashes (`gearstash.js` "gearheld";
+  `docs/specs/gear-stash.md`:328 lists it open). Cost: a dropped line before
+  the reply leaves the piece paid for (5 bars, or the chest) and held by the
+  worker but never shown, even after a reload. No card owns it.
+- A bug on `main` (not reachable by the game's own phone): a join claiming
+  one minted shield gid N times keeps one minted shield plus N-1 usable
+  "legacy" copies (`gearstash.js` `mergeStashLists` merges claims by
+  signature; the shield-claim check should drop repeated gids). Plant: a
+  join claiming one minted gid twice (72).
+- The 42 px sideways button (72): on the Quests page it was the page's own
+  sheet (`questsUi2.css`:80, :82 `min-width:0`), not the kit (its tokens are
+  unchanged; `.u2-act` keeps 44 px, `ui2.css`:506-507); main's narrower font
+  (UI3-type) made "Map" 42 px; #2399 floors it (:100). Also under 44 px
+  sideways on main, by estimate: Gear's summary "Eat" about 32 px
+  (`gearPanels.css`:67 `min-width:0`, :70 `padding:0 6px`, :69 `flex:0 0
+  auto`; `itemActions.js`:61): card UI2-gear's files.
+- precheck's [version-tag] WARN "already carry v2.3.N" on a stacked branch
+  (72): `tools/dev/precheck.mjs`:437's `git log main..ref` reads the commits
+  the other branch shares with this one; :434 skips only an ancestor. Fix:
+  `git log ref --not baseRef HEAD`. A tool's debt.
+
+- precheck's [version-tag] reads every commit SUBJECT on main
+  (`tools/dev/precheck.mjs` near :395), so a card that renumbers leaves its
+  old number "used" for ever (#2380's mend at sitting 70 failed on one): a
+  tool's debt (71).
+- `mp-ui2frame` step 2 is red on `main` e4f08ed6 and on the final tree
+  alike: the tap on `[data-dash-ctl="gear"]` times out in 6 s (the locator
+  finds the `data-key="I"` button). The grip (#2390, sitting 70) moved the
+  fold onto DashHeader's Gear tile: card UI2-grip's files (71).
+- BUFFERS read 25.0 and 25.2 MB on sitting 71's final tree against its
+  25.2 line (#2392's raise): no headroom left (71).
+
+- ~~A merge that adds or changes a file in `server/test/` deploys the
+  worker (66)~~: mended by #2380's filter (sitting 70; struck at 71).
 
 - The Deploy worker on c2da80bf failed 14:57 on `login-keys` 12g ("...that
   join is put out and handed nothing": the join got its whole state);

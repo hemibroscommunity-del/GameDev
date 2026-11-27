@@ -1,7 +1,7 @@
 {
   "about": "v2.3.5027: every file git tracks under assets/, named by the SHA-256 of its bytes (grand plan step 9.0). Written by tools/assets/weights.mjs --write-sources; never by hand.",
-  "files": 382,
-  "bytes": 415106806,
+  "files": 384,
+  "bytes": 416994779,
   "rows": [
     {"path":"assets/armor boards/fullset-steel-jog-east.png","bytes":2441342,"sha256":"c0b8f40f4f2345599442937916311a82d65ab4e00a98e8f99f1b5bb0cda2bbbc"},
     {"path":"assets/character animations/hit-east.mov","bytes":869586,"sha256":"5cb25f298075213288d907bf9c753026e5a8f8247348a6bbd443ac2e01ebe3f4"},
@@ -99,6 +99,8 @@
     {"path":"assets/icons-source/owner-2026-11-25/talk-icon-owner.png","bytes":81122,"sha256":"4dc0ba2ebcb284645eee914a7b381fb3d7eae3bf054cacb9753f295100834a7c"},
     {"path":"assets/icons-source/owner-2026-11-26-hud/layout.json","bytes":1153,"sha256":"36b0bc77d8fe031c53819a032a5528828f7e2bde6a105d1b975a0639665b18f8"},
     {"path":"assets/icons-source/owner-2026-11-26-hud/sheet.png","bytes":1242170,"sha256":"2a61337b8420c0de1e3c5f0233336ad2cc79fe86e5ca58608dfca2063fba6bd9"},
+    {"path":"assets/icons-source/owner-2026-11-26-pad4/layout.json","bytes":1650,"sha256":"72cd11eb2465a56a3380383712a9d3fcab14035e50bdb449b0bbf608bfbf302a"},
+    {"path":"assets/icons-source/owner-2026-11-26-pad4/sheet.png","bytes":1886323,"sha256":"e633336ae9f117a17e67ffb746d3ebbfc722db2072439a58e6d88368fbcdf882"},
     {"path":"assets/icons-source/rank-trophies-2026-11-09/rank-trophies.png","bytes":2619860,"sha256":"40bed050f61a20ac5ce92af408484c3631349a162ed2b18fd3ffc6f423fa6cfd"},
     {"path":"assets/icons-source/sheet-a.png","bytes":1284333,"sha256":"642a2a5d729e6fb008079d34ad91403b0a48e5be4eb7218dd14dc6ae726cd52c"},
     {"path":"assets/icons-source/sheet-arrow-special.png","bytes":193496,"sha256":"b46789fc17a7e1a44ce2bb6d7e68084d51cd1aaf1762772035d3175571b256f3"},

@@ -10,12 +10,16 @@ export { Ui2Frame } from './Frame.jsx';
 export { Ui2Header } from './Header.jsx';
 export { Ui2Tile } from './Tile.jsx';
 export { Ui2Group, Ui2Value, Ui2Stat } from './Group.jsx';
+/* v2.3.6780 (card UI3-kit): the THREE WEIGHTS -- raised (Ui2Tile, the header's controls: a destination or an
+   action only), the stat (Ui2Stat: sunk, a large number; `size="pill"` one line), facts (Ui2Facts, Ui2Fact: flat
+   rows in one sunk container) -- and `?ui2look=0`, yesterday's look (ui2LookWas) */
+export { Ui2Facts, Ui2Fact } from './Facts.jsx';
 export { Ui2Action, Ui2ActionRow, Ui2Disabled } from './Action.jsx';
 export { Ui2Slot } from './Slot.jsx';
 export { Ui2Progress } from './Progress.jsx';
 export { Ui2Badge } from './Badge.jsx';
 export { Ui2Loading } from './Loading.jsx';
-export { ui2RootClass } from './shine.js';
+export { ui2RootClass, ui2LookWas } from './shine.js';
 /* v2.3.6683 (card UI2-bro): a screen's pieces -- its zones, its row of actions, its empty state, its one confirmation */
 export { Ui2Zones } from './Zones.jsx';
 export { Ui2Actions } from './ActionRow.jsx';

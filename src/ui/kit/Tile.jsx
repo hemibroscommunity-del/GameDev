@@ -8,8 +8,10 @@ import React from 'react';
 import { stateClass } from './shine.js';
 import { Ui2Badge } from './Badge.jsx';
 
-export function Ui2Tile({ art, label, sub, size = 'primary', selected, locked, state, badge, dot, glow, onClick, style, artSize, ...rest }) {
-  const cls = ['u2-raised', 'u2-tile', 'is-' + size].join(' ') + stateClass(state) + (locked ? ' is-off' : '') + (glow ? ' is-glow' : '');
+export function Ui2Tile({ art, label, sub, size = 'primary', selected, locked, state, badge, dot, glow, onClick, className, style, artSize, ...rest }) {
+  /* v2.3.6780 (card UI3-kit): RAISED, so a destination or an action only: a tile with no handler is red in
+     tools/guards/ui3-weights.test.mjs.  A caller's className is joined to the kit's, never put in its place. */
+  const cls = ['u2-raised', 'u2-tile', 'is-' + size].join(' ') + stateClass(state) + (locked ? ' is-off' : '') + (glow ? ' is-glow' : '') + (className ? ' ' + className : '');
   return (
     <button type="button" className={cls} aria-pressed={selected ? 'true' : undefined} onClick={onClick} style={style} {...rest}>
       {art ? <img className="u2-tile-art" src={art} alt="" draggable={false} style={artSize ? { width: artSize, height: artSize } : undefined} /> : null}

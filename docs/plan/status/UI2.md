@@ -1,6 +1,6 @@
 card: UI2
-branch: claude/plan-ui2-grip
-prs: #2368, #2369 and the growing motion's (step 2; merged with sitting 68); the grip's draft PR (ready)
+branch: claude/plan-ui2-11-quests (this session: the Quests mend); claude/plan-ui2-9c-equipment (UI2-gear PR 3)
+prs: Quests #2399 (draft, step 6, tag 6691; base claude/plan-ui2-grip); UI2-gear PR 3, v2.3.6689 (draft, base main; ready once its checks are green)
 state: ready
 
 ## Done
@@ -10,14 +10,23 @@ state: ready
 - v2.3.6682, step 2 PR 2 (branch claude/plan-ui2-7b-grow, base claude/plan-ui2-7-frame): the growing motion (`src/game/dashGrow.js`, `dash/DashGrowBox.jsx`, `dash/dashGrow.css`, `dash/dashGrowSwitch.js`; `?dashgrow=0` and reduced motion give none; its switch row); leftover A, the handle hides and keeps both workspaces (dashNav's `fold`, BandGrip.jsx); leftover B, the words and arrows that named a moved button (`src/data/say/dashGuide.js`: the guide arrow, the coach's reward, points and Login Key lessons, the controls tour's two rings). dash-nav.test 78 checks (P14, P15, M1 to M5 planted, each red); mp-ui2frame's steps 12a-g and 13.
 
 - v2.3.6697, card UI2-grip (the owner's request of 2026-11-26; branch claude/plan-ui2-grip): the band's pull handle gone (the owner, 2026-11-26), `?bandgrip=1` the way back; the fold's hook `data-dash-fold` worn by the row's own control (the frame's Gear and Close; CLOSE under ?ui2=0), so no finder moved; the coach's "Tap the handle" only with the handle; `tools/guards/band-grip.test.mjs` (G1 to G6 planted, each red); `mp-bandgrip` (32 of 32 on the test box); UI-DESIGN-NOTES' band section.
+- v2.3.6689, step 5 PR 3 (card UI2-gear; branch claude/plan-ui2-9c-equipment, base main): Bro's Equipment door opens a showcase (`sheet/GearShowcase.jsx`, page `broEquip`: the figure, the nine worn cells by Gear's one body table `src/game/gearShowcase.js GEAR_BODY`, no bag, Manage Gear for yourself only); each cell and the player card's equipment row open the one item page (`itemPageOpen.js`: showcase, profile and another player's read-only sources); `tools/guards/gear-showcase.test.mjs` (S1-S10 planted, each red); `mp-ui2gear` steps 8c, 9c, 11-14 (33 of 33 on the test box, the final code, by a helper); `ui2-bro-equipment` in states.mjs and the notes.
+- v2.3.6689, the mend (sitting 70's gatekeeper held #2391: 2b to 2d read the wiring as text): `tools/guards/gear-showcase.test.mjs` 2b to 2e read the showcase's tap, `openCardItem`, `openItemPage`, `itemPageInput` and the item page off Babel's tree, an ALLOW list holding `owner` to where the actions are offered (plants W1 to W7 red; S2 and S4 also refuse an owner's source carrying a bag entry); mp-ui2bro 2c reads the showcase.
+
+- v2.3.6691, card UI2-quests (step 6; branch claude/plan-ui2-11-quests, stacked on claude/plan-ui2-grip): the landing (your quests as rows; Daily, Completed (n), On offer (n) doors; the empty and loading states), a quest's own page (the steps behind, NOW dominant, "The adventure continues", Track, Show on map, the Rewards door; a done quest's whole history and "Next:"; an offer's talk), the frame pages questRewards, questsDaily, questsDone, questsOffers; `questDetail` out of HANDS_OVER (dash-nav 3h rewritten, its plant red); the rules `questLanding`, `journeyToNow`, `questActions`, `questOpens` (src/game/questPages.js); the drawing `dash/questViews.jsx` run in node by `tools/guards/lib/jsxText.mjs`; `tools/guards/quests-ui2.test.mjs` (R1-R12, V1-V6 planted, each red; 81 mutants, 3 equivalent survivors listed); `tools/guards/quests-mount.test.mjs` (P1-P5, D1-D4 red) on `tools/guards/lib/jsxMount.mjs` (gear-mount's follower moved there); `mp-ui2quests`; the older tests moved (mp-trackquest, mp-dailyrewards 7, mp-deskwords 4, mp-ui2frame 8; mp-questpages and mp-questjournal to `?ui2=0`); states `ui2-quest-*`; UI-DESIGN-NOTES "Quests under the new dashboard".
+- v2.3.6691, the mend of sitting 71 (the gatekeeper held #2399 at 79b820ea): quests-ui2 W2b, an ALLOW list (every word a quest's page draws is the game's own or a fixed label; plants V3b-d, the bare `{page.who.steps.length}`, "2/6" and "4 steps" beside the title, each red; W2 was green on all three); the pinned card's road to a second quest: `questPageSel` / `questPageKey` (src/game/questPages.js; the page keyed per entry, QuestDetailPanel.jsx), dashNav's push in one breath takes the same page under the opener with its way home (Back leaves in one press); quests-ui2 S1-S2 (plants R13-R14 red), dash-nav 3i (its plant red), mp-ui2quests 5b (red on 79b820ea: "beast_1" still shown, Back "‹ Quest"; green on the mend, Back "‹ World"); the sideways actions floored at the touch size (questsUi2.css).
 
 ## Next
-- Nothing: the grip's PR waits for the gatekeeper.  Phone runs on its final code (the test box): questline 187/187, contextbuttons 27/27, bandgrip 32/32, ui2frame 34/34, guidearrow, revealbag, bagunfold green; padskin's rider part 9/9 twice (one earlier sideways 5b/5c red was the rider falling off: a flake).  Main's own reds (the same on main 7ec316e9): oneband 3 (sideways), questguide 7, pointstips 1 ("Tap Menu, then Bro."), dmgsize 4 (the marks' sizes).
+- Quests (#2399): nothing, it waits for the gatekeeper.  The mend's runs on its final code (main e8ccff26 merged; the test box): ui2quests 34/34 (by a helper; 5b green, red on 79b820ea), membudget 12/12 (buffers 25.1 at its highest, home again, under the one line 25.2 that now carries both reasons, KEEP's and Quests').  After the merge, ui2quests 6 sideways was red ("Map" 42 px wide with main's kit spacing): questsUi2.css floors the sideways actions at the touch size.
+- Nothing on UI2-gear: its three PRs are up.  The Codex's road into the item page is UI2-codex's: it enters `openItemPage({ from: 'codex', ... })` (dash/itemPageOpen.js), place 'codex'.
 
 ## Found
-- mp-pointstips step 6 expects "Tap Bro." but the frame's points lesson says "Tap Menu, then Bro." (main's own red); mp-questguide's pins and mp-dmgsize's mark sizes red on main too.
-- (mended in PR 2) the guide arrow's "Tap Bro" on the Menu button; ControlsTutorial's rings; the handle that reset Gear's pages.
-- The points' flight (src/game/questFly.js QUEST_FLY_TARGETS.points) lands on the Menu button under the frame (it wears [data-nav="hero"]): the road to Bro, left as it is (server/test/points-fly.test pins the list; a file there deploys the worker).
+- mp-deskwords 4 (More's 0 tiles under the frame: the check wants 32 pages) and mp-oneband's three sideways checks: main's own reds, untouched by Quests.
+- mp-pointstips step 6, mp-questguide's pins, mp-dmgsize's mark sizes, mp-oneband 3 sideways: main's own reds (the grip's status).
+- (UI2-quests) the frame's PANELS pages carry no `.ui2` root: each new page wears `ui2RootClass()` itself, as Bro's and Combat's do.
+
+- (UI2-gear PR 3) `ItemTooltip.jsx` is not mounted (its parent `InventorySurface` left GameApp): no road to move, listed in the PR.
+- (UI2-gear PR 3, mended in its mend) mp-ui2bro's step 2c read "Equipment opens Gear": it now reads the showcase (page broEquip), Back to Bro, as #2405 reads it.
 
 ## Needs
-- Nothing.  Answered by the orchestrator (part 20, 00:38 UTC 11-26, "go"): the Social and Settings hubs, and Journey in the Settings hub for this step only ("moves under Bro at step 3").
+- Nothing.

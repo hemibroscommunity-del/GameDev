@@ -16,7 +16,9 @@
  *   3. his first quest taken: "Gear up" (and the arrow at the glow's target);
  *      the sword and the shield worn end it;
  *   4. "Your map" ringing the minimap box, then going by itself;
- *   5. "Your quest" ringing the quest card at the top left, then going;
+ *   5. "Your quest" ringing the quest card at the top left, then going
+ *      (v2.3.6790: with the character HUD alone there, "Your quests are in
+ *      the Menu." ringing the Menu button; the quest card under ?hud=0);
  *   then 25 s of quiet: no other card;
  *   6. the cards seen, in order, are exactly mayor, equip, minimap,
  *      questPill -- none of the retired ones (move, attack, chat, ...); the
@@ -170,10 +172,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
       /* 5. the quest card */
       const c5 = await waitCard(P, 'questPill', 20000);
-      const pill = await P.page.evaluate(() => { const e = document.querySelector('[data-quest-hud]'); if (!e) return null; const r = e.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; });
+      /* v2.3.6790 (card UI3 PR 10): with the character HUD alone in the top
+         left no quest card is drawn, so the card rings the Menu button (the
+         Quests door's): "Your quests are in the Menu."; under ?hud=0 (the
+         laptopcol view) the quest card at the top left, as before */
+      const pill = await P.page.evaluate(() => {
+        const card = document.querySelector('[data-quest-hud]');
+        const e = card || document.querySelector('[data-nav="hero"]');
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return { card: !!card, left: r.left, top: r.top, width: r.width, height: r.height };
+      });
       await P.page.waitForTimeout(600);
       await shot('5-quest');
-      rec.ok(`${V.id} 5. then "${c5 && c5.text}" rings the quest card at the top left`, !!c5 && c5.id === 'questPill' && ringOn(c5, pill) && !!pill && pill.top < 200, { c5, pill });
+      const hudOff = /(?:^|&)hud=0(?:&|$)/.test(V.opts.query || '');
+      rec.ok(`${V.id} 5. then "${c5 && c5.text}" rings ${hudOff ? 'the quest card at the top left' : 'the Menu button (no quest card in the world)'}`,
+        !!c5 && c5.id === 'questPill' && ringOn(c5, pill) && !!pill && pill.card === hudOff
+          && (hudOff ? pill.top < 200 && /how far along/i.test(c5.text) : /in the Menu/i.test(c5.text)), { c5, pill });
 
       /* v2.3.6781: under the character HUD the card is ONE line (the folded
          form: no fold); the fold is ?hud=0's (the laptopcol view) */
@@ -183,8 +198,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const d = e.firstElementChild, r = d && d.getBoundingClientRect();
         return { folded: e.hasAttribute('data-quest-hud-folded'), h: r ? Math.round(r.height) : 0, hud: !!document.querySelector('[data-charhud-box]') };
       });
+      const hudUp = await P.page.evaluate(() => !!document.querySelector('[data-charhud-box]'));
       if (one) {
         rec.ok(`${V.id} 5b. under the character HUD the quest card is one line (${one.h} px), no fold`, one.hud && !one.folded && one.h > 0 && one.h <= 30, one);
+      } else if (hudUp) {
+        /* v2.3.6790: the HUD alone in the top left: no quest card, no fold */
+        const any = await P.page.evaluate(() => !!document.querySelector('[data-quest-hud]'));
+        rec.ok(`${V.id} 5b. under the character HUD no quest card is drawn in the world (the HUD alone in the top left)`, !any, { any });
       } else {
       /* v2.3.4207: a tap on the quest card folds it to its title, a second one opens it again */
       const foldState = () => P.page.evaluate(() => { const e = document.querySelector('[data-quest-hud-folded]'); return e ? { f: e.getAttribute('data-quest-hud-folded'), line: !!e.querySelector('[data-quest-hud-line]') } : null; });

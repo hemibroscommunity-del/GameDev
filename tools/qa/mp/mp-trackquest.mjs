@@ -34,7 +34,9 @@ const PHONE = { width: 390, height: 844 };
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Tracker', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });
+  /* v2.3.6790 (card UI3 PR 10): the quest line left the world (the HUD alone in
+     the top left); the card this test reads is ?questline=1's now */
+  const P = await H.newPlayer(browser, { name: 'Tracker', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'questline=1' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 300)));
   const stopAlive = H.keepAlive(P);
@@ -71,8 +73,10 @@ async function trackByTaps(P, qid, want) {
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Quests');
   /* v2.3.6620 (card QP): in the pages your quests are picked from the head's picker (the old page's list
-     was always on screen); the row, its tap and Track are as they were */
-  await P.page.waitForSelector('[data-quests-page]', { timeout: 8000 }).catch(() => {});
+     was always on screen); the row, its tap and Track are as they were.
+     v2.3.6691 (card UI2-quests): under the new dashboard the landing's row opens the quest's own page,
+     its Track in the action row (the same marks); the pages' picker only under ?ui2=0 */
+  await P.page.waitForSelector('[data-quests-page], [data-quests-ui2="landing"]', { timeout: 8000 }).catch(() => {});
   if (!(await P.page.locator(`[data-quest-row="${qid}"]`).first().isVisible().catch(() => false)) && await P.page.$('[data-quest-picker="open"]')) {
     await P.page.locator('[data-quest-picker="open"]').first().click();
   }
