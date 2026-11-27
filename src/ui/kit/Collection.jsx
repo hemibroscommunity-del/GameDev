@@ -24,7 +24,7 @@ export function Ui2Collection({ shelves = [], shelf, onShelf, side, big, head, l
       {shelves.length ? (
         <div className="u2-coll-shelves" role="group" aria-label={label}>
           {shelves.map((s) => (
-            <Ui2Tile key={s.id} size="compact" label={s.word} selected={s.id === shelf} className="u2-coll-shelf"
+            <Ui2Tile key={s.id} size="compact" label={s.word} selected={s.id === shelf} intent={s.id === shelf ? 'selected' : 'go'} className="u2-coll-shelf"
               data-u2-shelf={s.id} onClick={() => { if (onShelf) onShelf(s.id); }} />
           ))}
         </div>
@@ -39,7 +39,7 @@ export function Ui2Collection({ shelves = [], shelf, onShelf, side, big, head, l
 
 export function Ui2CollectionCard({ art, name, sub, subArt, line, mark, dim, onClick, className, ...rest }) {
   return (
-    <button type="button" className={'u2-raised u2-cc' + (dim ? ' is-dim' : '') + (className ? ' ' + className : '')} onClick={onClick} {...rest}>
+    <button type="button" className={'u2-raised u2-cc' + (dim ? ' is-dim' : '') + (className ? ' ' + className : '')} data-u2-role="go" onClick={onClick} {...rest}>
       <span className="u2-cc-art">{art}{mark ? <span className="u2-cc-mark">{mark}</span> : null}</span>
       <span className="u2-cc-words">
         <span className="u2-cc-name">{name}</span>

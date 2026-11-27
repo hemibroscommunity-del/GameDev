@@ -800,3 +800,37 @@
    "?" (reveal/UnrevealedMark.jsx).  Today's card draws a silhouette by a CSS filter; the kit draws no filter
    (ui2-tokens 8d: a filter is a pass of its own on a phone), so opacity, which is not one. */
 .ui2 .u2-slot.is-hidden .u2-slot-art { opacity: 0.22; }
+
+/* ═══ v2.3.6840 (card UI4 PR 1, the owner's V17:49): the five pieces V17 names that the kit lacked, in TODAY'S
+   look (PR 2, `?v17look`, gives V17's).  The Tab is a compact raised tile, the chosen one pushed in (the
+   selected rule above reads aria-selected); the Stepper's buttons the neutral dismiss face; the Comparison's
+   difference coloured only to repeat its sign and its word; the Overlay a frame whose body scrolls. ═══ */
+.ui2 .u2-tabs { display: flex; gap: var(--ui2-space-m); min-width: 0; }
+.ui2 .u2-tabs > .u2-tab { flex: 1 1 0; min-width: 0; min-height: var(--ui2-size-touch); justify-content: center; }
+.ui2 .u2-step { display: inline-flex; align-items: center; gap: var(--ui2-space-s); }
+.ui2 .u2-step-b { width: var(--ui2-size-touch); padding: 0; font-size: var(--ui2-fs-value); }
+.ui2 .u2-step-v {
+  min-width: 56px;
+  min-height: var(--ui2-size-touch);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--ui2-space-l);
+  border-radius: var(--ui2-radius-group);
+  background: linear-gradient(180deg, var(--ui2-well), var(--ui2-well-soft));
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow));
+  color: var(--ui2-text-ivory);
+  font-size: var(--ui2-fs-value);
+  font-variant-numeric: tabular-nums;
+}
+.ui2 .u2-step-of { color: var(--ui2-text-muted); font-size: var(--ui2-fs-label); }
+.ui2 .u2-cmp { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ui2-space-l); min-width: 0; font-size: var(--ui2-fs-label); }
+.ui2 .u2-cmp-k { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui2-text-muted); }
+.ui2 .u2-cmp-end { display: inline-flex; align-items: baseline; gap: var(--ui2-space-m); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ui2 .u2-cmp-was, .ui2 .u2-cmp-to { color: var(--ui2-text-muted); }
+.ui2 .u2-cmp-now { color: var(--ui2-text-ivory); font-size: var(--ui2-fs-value); font-weight: 700; }
+.ui2 .u2-cmp-d { color: var(--ui2-text-muted); font-weight: 700; }
+.ui2 .u2-cmp-d.is-good { color: var(--ui2-green-face-0); }
+.ui2 .u2-cmp-d.is-bad { color: var(--ui2-red-face-0); }
+.ui2 .u2-over { max-width: 100%; }
+.ui2 .u2-over-body { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }

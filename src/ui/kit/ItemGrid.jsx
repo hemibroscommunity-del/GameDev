@@ -19,7 +19,7 @@ export function Ui2ItemCell({ cell, size, selected, onPick, children, attrs, sty
   const own = { 'data-ws-key': c.key, 'data-grade': c.grade || 'normal', 'data-ws-sel': selected ? '1' : undefined, ...(attrs || null) };
   if (children) return <div className={cls} style={box} {...own}>{children}</div>;
   return (
-    <button type="button" className={cls} style={box} {...own} aria-pressed={!!selected}
+    <button type="button" className={cls} style={box} {...own} data-u2-role="slot" aria-pressed={!!selected}
       aria-label={c.label || undefined} onClick={onPick ? () => onPick(c.key) : undefined}>
       <Ui2Slot grade={c.grade || 'normal'} art={c.art} size={size} empty={!!c.empty} />
     </button>

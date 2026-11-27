@@ -12,6 +12,7 @@
  * tools/guards/ui3-weights.test.mjs). */
 import React from 'react';
 import { stateClass } from './shine.js';
+import { ui2Role } from '@/game/uiRoles.js';   /* v2.3.6840 (card UI4): the role, decided in one place */
 
 export function Ui2Group({ k, children, style, ...rest }) {
   return (
@@ -27,8 +28,12 @@ export function Ui2Value({ v, none }) {
   return <span className={'u2-group-v' + (none ? ' is-none' : '')}>{v}</span>;
 }
 
-export function Ui2Stat({ v, k, art, size, state, selected, onClick, className, style, ...rest }) {
-  const opens = typeof onClick === 'function';
+/* v2.3.6840 (card UI4, the owner's V17:49 "explicit semantic role props at component creation"): `intent`
+   'info' (a fact to read: a div) or 'inspect' (it opens: a button with its chevron).  A stat made without one
+   is given it by src/game/uiRoles.js from its handler, as before; the guess is no longer written here. */
+export function Ui2Stat({ v, k, art, size, state, selected, intent, onClick, className, style, ...rest }) {
+  const r = ui2Role('Ui2Stat', { intent, onClick });
+  const opens = r.press;
   const cls = 'u2-stat' + (size === 'pill' ? ' is-pill' : '') + stateClass(state) + (className ? ' ' + className : '');
   const words = size === 'pill'
     ? <><span className="u2-stat-v">{v}</span>{k ? <span className="u2-stat-k">{k}</span> : null}</>
@@ -37,10 +42,10 @@ export function Ui2Stat({ v, k, art, size, state, selected, onClick, className, 
   const art_ = art ? <img className="u2-stat-art" src={art} alt="" draggable={false} /> : null;
   if (opens) {
     return (
-      <button type="button" className={cls} aria-pressed={selected ? 'true' : undefined} onClick={onClick} style={style} {...rest}>
+      <button type="button" className={cls} data-u2-role={r.role} aria-pressed={selected ? 'true' : undefined} onClick={onClick} style={style} {...rest}>
         {art_}{words}{chev}
       </button>
     );
   }
-  return <div className={cls} style={style} {...rest}>{art_}{words}{chev}</div>;
+  return <div className={cls} data-u2-role={r.role} style={style} {...rest}>{art_}{words}{chev}</div>;
 }

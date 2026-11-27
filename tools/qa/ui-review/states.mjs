@@ -2250,5 +2250,32 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     },
-  },
+  },  /* v2.3.6840 (card UI4 PR 1, the owner's V17): the nine roles, and the five pieces V17 names that the kit
+     lacked, each a plate of ?uikit=1 in today's look (no screen uses them yet); like ui2-kit, last */
+  ...[
+    ['roles', 'The kit\'s nine roles (?uikit=1)', 'The nine roles of the owner\'s V17 (a fact, a stat you inspect, a way to go, the chosen one, adjust, commit, danger, disabled, an item slot), each drawn by a kit piece made with that role, in today\'s look.'],
+    ['tab', 'The kit\'s tab (?uikit=1)', 'A real tab row (Active, Daily, Completed): the chosen one pushed in and its word always written; not yet used by a screen.'],
+    ['stepper', 'The kit\'s stepper (?uikit=1)', 'The trade window\'s quantity stepper as a kit piece: one fewer, the number with what you have, one more, each end off at its end; not yet used by a screen.'],
+    ['inspect', 'The kit\'s stat you inspect (?uikit=1)', 'A stat that always opens (its chevron, or the word Details), beside a stat that does not.'],
+    ['compare', 'The kit\'s comparison (?uikit=1)', 'Before, after, and the difference signed and in words (better, worse, no change); the colour only repeats them.'],
+    ['overlay', 'The kit\'s overlay (?uikit=1)', 'A town window\'s frame as a kit piece: its header and close fixed, its body scrolling under them, at a sample size; no window uses it yet.'],
+  ].map(([plate, title, about]) => ({
+    id: 'ui4-kit-' + plate, group: 'The new dashboard (in build)', title, about,
+    run: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.set('uikit', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      const up = await P.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 60000 }).then(() => true, () => false);
+      if (!up) return 'the kit\'s page did not come up';
+      const at = await P.page.evaluate((id) => { const el = document.querySelector('[data-u2-plate="' + id + '"]'); if (!el) return false; el.scrollIntoView({ block: 'start' }); return true; }, plate);
+      if (!at) return 'the plate ' + plate + ' is not on the kit\'s page';
+      await wait(P, 800);
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.delete('uikit');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    },
+  })),
 ];

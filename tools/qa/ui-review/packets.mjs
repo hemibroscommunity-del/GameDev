@@ -37,6 +37,8 @@ export const PACKETS = [
     screens: ['guide-arrow', 'dash-bro', 'dash-bro-combat', 'dash-bro-progress', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
   /* v2.3.6680: the new dashboard's kit (card UI2), beside the Bro tab it will replace */
   { slug: 'ui2-kit', title: 'The new dashboard kit (?uikit=1: its pieces and two samples)', screens: ['ui2-kit'] },
+  /* v2.3.6840 (card UI4 PR 1): the nine roles and the five pieces V17 names, on ?uikit=1 */
+  { slug: 'ui4-kit', title: 'The kit\'s roles and its five new pieces (?uikit=1: V17\'s tab, stepper, inspect stat, comparison, overlay)', screens: ['ui4-kit-roles', 'ui4-kit-tab', 'ui4-kit-stepper', 'ui4-kit-inspect', 'ui4-kit-compare', 'ui4-kit-overlay'] },
   /* v2.3.6683 (card UI2-bro) */
   { slug: 'ui2-bro', title: 'Bro under the new dashboard: six doors, Combat, Character (the passport) and its Titles', screens: ['ui2-bro-landing', 'ui2-bro-combat', 'ui2-bro-character', 'ui2-bro-titles'] },   /* v2.3.6684: the passport, its Titles */
   /* v2.3.6691 (card UI2-quests): the Quests pages under the new dashboard (today's under ?ui2=0 only) */
