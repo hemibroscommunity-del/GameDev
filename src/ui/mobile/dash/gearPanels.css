@@ -1,8 +1,9 @@
 /* ═══ v2.3.6688: GEAR'S TWO PANELS (dash/GearPanels.jsx; card UI2-gear PR 2) ═══
-   The kit's tokens only (src/ui/kit/ui2.css): no colour of its own. */
+   The kit's tokens only (src/ui/kit/ui2.css): no colour of its own, save the Equipped panel's ground (v2.3.6698, below). */
 .ui2.u2-gp { width: 100%; height: 100%; box-sizing: border-box; padding: 4px; font-family: var(--ui2-font); color: var(--ui2-text-ivory); }
 .ui2 .u2-gp-ctl {
-  flex: 0 1 auto; min-width: 44px; height: 30px; padding: 0 8px; box-sizing: border-box;
+  flex: 0 1 auto; min-width: 44px; height: 24px; padding: 0 8px;   /* v2.3.6784: 30 -> 24 (the owner: "shrink their headers"); the touch still 44 (.u2-hit) */
+  box-sizing: border-box;
   border-radius: var(--ui2-radius-button); border: 1px solid rgba(126, 143, 151, 0.45);
   background: linear-gradient(180deg, var(--ui2-raised-top), var(--ui2-raised-bottom));
   color: var(--ui2-text-ivory); font: 700 var(--ui2-fs-small) var(--ui2-font); letter-spacing: 0; text-transform: none;
@@ -10,8 +11,15 @@
 }
 .ui2 .u2-gp-ctl[data-on] { border-color: var(--ui2-brass-highlight); color: var(--ui2-text-gold); }
 .ui2 .u2-gp-ctl-word { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ui2 .u2-gp-coins { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; font: 700 var(--ui2-fs-small) var(--ui2-font); color: var(--ui2-text-gold); letter-spacing: 0; text-transform: none; }
-.ui2 .u2-gp-coins img { width: 18px; height: 18px; object-fit: contain; }
+/* v2.3.6784 (card UI3-menus, reading 6): the gold is the kit's stat at pill size (recessed, the number gold); here
+   only its place in the label row and its coin, 16 px */
+.ui2 .u2-gp-coins.u2-stat { flex: 0 0 auto; letter-spacing: 0; text-transform: none; }
+.ui2 .u2-gp-coins.u2-stat .u2-stat-art { width: 16px; height: 16px; }
+/* v2.3.6784 (reading 5): the label row thinner: its words 11 px caps (the kit's 13 in ui2.css is the other panes') */
+.ui2.u2-gp .u2-pane-head { font-size: var(--ui2-fs-small); }
+/* v2.3.6784 (reading 7): a scroll never rests on half a row (the scroller is its whole rows tall: gearGeometry.js) */
+.ui2.u2-gp .u2-grid { scroll-snap-type: y mandatory; }
+.ui2.u2-gp .u2-grid .u2-cell { scroll-snap-align: start; }
 .ui2 .u2-gp-shortrow { display: flex; gap: 3px; height: 100%; align-items: stretch; }
 .ui2 .u2-gp-shorthead { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
 .ui2 .u2-gp-shorthead .u2-gp-ctl { width: 100%; height: 26px; padding: 0 4px; }
@@ -62,3 +70,25 @@
 .ui2 .u2-gp-acts > .u2-act { padding: 0 6px; }
 /* v2.3.6688 (the mends): a "?" piece's "Rare or better" under its name, in the rare blue (today's card's) */
 .ui2 .u2-gp-hidden { display: block; font-size: var(--ui2-fs-small); font-weight: 700; color: var(--ui2-grade-rare); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* v2.3.6784 (reading 4): a bag square staged in the shop or a trade, on the kit's socket (today's square tints
+   its own face; the socket keeps its grade's edge and takes the gold ring inside it) */
+.ui2.u2-gp .u2-slot[data-staged] { box-shadow: inset 0 0 0 1px var(--ui2-text-gold), inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow)); }
+/* ═══ v2.3.6698: THE EQUIPPED PANEL IN PALE GREEN, ITS PICTURES FILLING THEIR SLOTS (card UI2-equipgreen) ═══
+   The owner, 2026-11-27, on an iPhone: "Also on equipped page might the background color a pale green color and
+   make the thumbnail icons fill each slot better like the inventory icons do".  ON by default (src/game/equipLook.js;
+   the root wears data-equip-look); `?equiplook=0` yesterday's panel.  The panel's ONE colour of its own, a pale
+   sage (the kit's palest green #B4E8C9 greyed, so it sits calm beside the dark Bag panel, not a neon mint): the
+   Equipped panel's BODY only, never the Bag panel, a look's summary (`is-summary`) or Bro's Equipment showcase.
+   The words on it take the kit's dark ink (the guard tools/guards/equip-look.test.mjs holds 4.5 to 1); a slot keeps
+   its own dark well and border, so an empty slot still reads as a slot. */
+.ui2.u2-gp { --u2-gp-equip-ground: #C6DCCD; }
+.ui2.u2-gp[data-equip-look] .u2-pane.is-worn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.06)), var(--u2-gp-equip-ground);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.28);
+}
+.ui2.u2-gp[data-equip-look] .u2-pane.is-worn .u2-pane-head { color: var(--ui2-text-on-action); }
+/* the line down the figure and the sideways groups' edge, dark on the light ground as on the dark */
+.ui2.u2-gp[data-equip-look] .u2-pane.is-worn .u2-gp-group { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22); }
+/* a worn item's picture 94% of its slot, as a bag cell's (BagTile); the worn cells only (Gear's and the showcase's:
+   both draw WornCell, which marks the picture `is-fill`), never every kit slot (`?uikit=1` keeps its 72%) */
+.ui2 .u2-gp-worn .u2-slot-art.is-fill { width: 94%; height: 94%; }

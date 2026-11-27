@@ -97,7 +97,9 @@
 .ui2.u2-qp.is-short .u2-qp-acts { margin-top: 0; flex: 0 0 auto; align-self: center; }
 .ui2.u2-qp.is-short .u2-qp-id { height: auto; }
 .ui2.u2-qp.is-short .u2-qp-acts .u2-actrow { gap: var(--ui2-space-s); }
-.ui2.u2-qp.is-short .u2-qp-acts .u2-actrow > .u2-act, .ui2.u2-qp.is-short .u2-qp-door { flex: 0 0 auto; padding-left: var(--ui2-space-l); padding-right: var(--ui2-space-l); }
+.ui2.u2-qp.is-short .u2-qp-acts .u2-actrow > .u2-act, .ui2.u2-qp.is-short .u2-qp-door { flex: 0 0 auto; padding-left: var(--ui2-space-l); padding-right: var(--ui2-space-l); min-width: var(--ui2-size-touch); }
+/* v2.3.6691 (the mend of sitting 71): a floor, never under the touch size: with main's kit spacing (UI3) merged the
+   sideways "Map" measured 42 px wide (mp-ui2quests 6, 844 x 390 and 667 x 375) */
 .ui2.u2-qp.is-short .u2-qp-steps { min-height: 0; }
 
 /* ── Rewards ── */

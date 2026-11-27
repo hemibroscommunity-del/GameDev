@@ -201,6 +201,8 @@ export function pvpDealtColor(payload) {
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { notePvpHit, noteDealt } from '@/game/fightFood.js'; /* v2.3.3133: a pvp_hit starts a fight with a player (the one-bite rule); v2.3.3260: so does a hit you land on a monster */
 import { notePvpBlow } from '@/game/sparTargets.js'; /* v2.3.3268: a blow between you and a player keeps the fight with them on (the shield; a chosen foe) */
+import { adoptHeldShields, shieldsInFrame } from '@/game/shieldAdopt.js'; /* v2.3.6800: the shields the worker holds, added to the phone's bag by id (sitting 71's hold) */
+import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.6800: the arm said again after a "have" adopts a worn piece */
 import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group whose blow lands on you joins the fight you chose, no window */
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
@@ -283,6 +285,20 @@ function _reconcileFacing(other, ang) {
   if (!other || typeof ang !== 'number' || !isFinite(ang)) return;
   var sector = Math.round(ang / (Math.PI / 4));
   other._renderFacing = _FACING8[((sector % 8) + 8) % 8];
+}
+
+/* v2.3.6800 (card SHOP; the mend of sitting 71's hold): the shields a shop
+   frame carries for the bag, added by id to the phone's copy
+   (src/game/shieldAdopt.js), only against a worker that says `shieldshop`.
+   `sayArm`: a "have" frame may name a piece the worker holds on the ARM,
+   which this copy now holds in the bag: the arm is said again
+   (game/shieldWear.js), as the player_state case does for its `shield`. */
+function _adoptShopShields(S, type, payload, sayArm) {
+  if (!S || !S.rpg || !S._serverCaps || !S._serverCaps.shieldshop) return;
+  if (adoptHeldShields(S.rpg, shieldsInFrame(type, payload)) > 0) {
+    try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (_le) { /* the next join adopts it */ }
+    if (sayArm) { try { syncShieldWorn(S); } catch (_se) { /* the next change reports it */ } }
+  }
 }
 
 export function processGameEvent(type, payload, S, deps) {
@@ -418,6 +434,10 @@ export function processGameEvent(type, payload, S, deps) {
           /* v2.3.2057: a stack price, quoted without moving anything. */
           case 'shop_quoted': {
             const _sq = payload || {};
+            /* v2.3.6800 (sitting 71's hold, mended): a shield's "have" quote
+               carries what the worker holds for you (`held`), BEFORE the
+               panel redraws, so the row of a shield you own goes */
+            _adoptShopShields(S, 'shop_quoted', _sq, true);
             shopBus.setQuote(_sq.ok ? _sq : null);
             break;
           }
@@ -515,6 +535,13 @@ export function processGameEvent(type, payload, S, deps) {
               } catch (_pe) { /* ignore */ }
             } else if (_sr.ok && _sr.kind === 'shop_buy') {
               shopBus.setNote(`Bought ${_sr.bought} for ${_sr.cost} coins.`, true);
+              /* v2.3.6800 (card SHOP): Diego's Pine Shield lands in the worker's
+                 copy of the bag (shop.js, the stashes' door); the phone's
+                 copy catches up here, as the auction house's gear credit
+                 does (kind 'gear' below).  Only against a worker that says
+                 `shieldshop`, never twice (the same id is already held):
+                 _adoptShopShields, the one way (src/game/shieldAdopt.js). */
+              _adoptShopShields(S, 'shop_result', _sr, false);
               /* v2.3.3343: a purchase is heard as a sale always was -- coins
                  handed over and the thing into the bag, on the worker's ok
                  (selling rang since v2.3.2606; buying was silent) */
@@ -523,6 +550,12 @@ export function processGameEvent(type, payload, S, deps) {
               /* His refusal, in his words -- "He's full of those" reads as a
                  shopkeeper; "error" reads as a broken game. */
               shopBus.setNote(_sr.error || 'He shakes his head.', false);
+              /* v2.3.6800 (sitting 71's hold, mended): "You already have one"
+                 carries the shields the worker holds for you (`held`): a
+                 phone that never got the buy's answer sees the one it paid
+                 for.  The worker may hold it on the arm, so the arm is said
+                 again after (the player_state case's own rule). */
+              _adoptShopShields(S, 'shop_result', _sr, true);
             }
             break;
           }

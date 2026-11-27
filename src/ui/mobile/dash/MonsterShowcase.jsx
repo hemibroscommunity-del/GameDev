@@ -37,12 +37,11 @@ import { Ui2Showcase, Ui2Facts, Ui2Fact, Ui2Empty, ui2RootClass } from '@/ui/kit
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { CodexIdle, CodexStage } from './CodexStage.jsx';
 import { codexFactsAt, CODEX_OPEN_AT } from '@/data/monsterCodex.js';
-import { codexDropsFor } from '@/data/codexDrops.js';
 import { codexCounts, codexSeen } from '@/game/monsterCodex.js';
 import { killRollLive } from '@/game/killRoll.js';
 import { codexMet } from '@/game/codexView.js';
 import { monsterShowcase, monsterCombat, monsterHabitat, monsterStory } from '@/game/entityInspect.js';
-import { lootRows, lootRollWords, lootGrades, lootSources } from '@/game/lootRows.js';
+import { lootPage, lootSources } from '@/game/lootRows.js';
 import { SAY } from '@/data/say/codexPages.js';
 import { SAY as SAY_CX } from '@/data/say/monsterCodex.js';
 import { say } from '@/game/say.js';
@@ -54,9 +53,12 @@ import './codexUi2.css';
 const revOf = (S) => String(S && S._codex ? S._codex.rev : -1);
 const dropOpts = (S) => ({ shared: killRollLive(S), crack: !!(S && S._serverCaps && S._serverCaps.shardcrack) });
 
-/** A monster's loot rows, as its Loot page and its door's count read them. */
+/** A monster's Loot page (its rows, the roll's words), as its Loot page and
+ *  its door's count read them.  v2.3.6693: ONE call of the rule, the worker's
+ *  caps and the one item page's namer in it, so the rows and the words come
+ *  from one input (loot-rows.test L8, L10 read this call). */
 function lootOf(S, kind) {
-  return lootRows(codexDropsFor(kind, dropOpts(S)) || [], { nameOf: codexItemName });
+  return lootPage(kind, { ...dropOpts(S), nameOf: codexItemName });
 }
 
 /* ── the showcase ── */
@@ -66,7 +68,7 @@ function Showcase({ kind }) {
   const met = codexMet(counts[0]);
   const [ref, room] = useRoom();
   useEffect(() => { if (met) codexSeen(codexS(), kind); }, [kind, met]);
-  const m = monsterShowcase(kind, { counts, loot: met ? lootOf(S, kind) : [] });
+  const m = monsterShowcase(kind, { counts, loot: met ? lootOf(S, kind).rows : [] });
   if (!m) return null;
   const short = room.short;
   const fh = short ? Math.max(40, Math.min(60, room.h - 2)) : Math.max(72, Math.min(150, room.h - 4));
@@ -133,8 +135,8 @@ function Loot({ top }) {
   const S = codexS();
   const [n] = codexCounts(S, kind);
   if (!codexMet(n)) return null;
-  const rows = lootOf(S, kind);
-  const shared = dropOpts(S).shared;
+  const page = lootOf(S, kind);
+  const rows = page.rows;
   const name = monsterShowcase(kind, { counts: [n, 0] }).title;
   const open = (r) => {
     keepCodexRow(top, r.id);
@@ -158,12 +160,12 @@ function Loot({ top }) {
             v={r.chance} gold={r.every} onClick={() => open(r)} />
         ))}
       </Ui2Facts>
-      <p className="u2-cxl-roll" data-cx-roll={shared ? 'shared' : 'each'}>{lootRollWords(shared)}</p>
-      {rows.some((r) => r.graded) ? (
+      <p className="u2-cxl-roll" data-cx-roll={page.mark}>{page.roll}</p>
+      {page.grades.length ? (
         <>
           <h4 className="u2-cxw-title">{say(SAY, 'codexPages.gradesHead')}</h4>
           <Ui2Facts dir="row" className="u2-cxl-grades" data-cx-grades="">
-            {lootGrades().map((g) => <Ui2Fact key={g.q} k={g.word} v={g.pct} data-cx-grade={g.q} />)}
+            {page.grades.map((g) => <Ui2Fact key={g.q} k={g.word} v={g.pct} data-cx-grade={g.q} />)}
           </Ui2Facts>
         </>
       ) : null}

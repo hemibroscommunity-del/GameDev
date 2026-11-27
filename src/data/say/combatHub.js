@@ -38,4 +38,6 @@ export const SAY = Object.freeze({
   'combatHub.sharedPoint': '{n} shared point to spend',
   'combatHub.sharedPoints': '{n} shared points to spend',
   'combatHub.dpsTreeAria': 'DPS {v}: open what makes it',
+  /* v2.3.6783 (card UI3-combat): a tile's words for a screen reader while its gold "+" shows */
+  'combatHub.plusAria': '{text}, points to spend',
 });

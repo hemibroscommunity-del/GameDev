@@ -143,7 +143,7 @@ Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 - **Files**: `src/rendering/tables/`: combat
 - **Files**: `server/src/`: combat, hits, abilities, accuracy, burst, freeswing, fightlock, killroll, threat, telegraph, elemental, oneformula, statcap, arrowblast, swordconvert, shieldwear, shieldgem, weapongem, amulet, pvpbalance, pvpextras, pvplunge
-- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
+- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, lockPick, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
 - **Doors**: `_monsterHit` in `server/src/hits.js` (MONSTER_HITS: every monster hit on a player)
 - **Switches**: [its rows in the switch table](SWITCHES.md#combat)
 - **Words**: `combat`, `hit`, `ability`, `abilit`, `bow`, `arrow`, `sword`, `staff`, `shield`, `weapon`, `pvp`, `damage`, `whirl`, `dodge`, `elemental`, `accuracy`
@@ -168,7 +168,7 @@ Gold, the bag, the bank, the market and shops, trades, drops, chests and daily r
 - **Files**: `src/rendering/tables/`: economy
 - **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, econcard, worldsum, valuepause, inbox, itemdrop, deathpile, gearstash, stash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
 - **Files**: `server/src/`: playerroads
-- **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, arenaStakes, econCard
+- **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, shieldAdopt, arenaStakes, econCard
 - **Doors**: `_goldGive` in `server/src/gold.js` (GOLD_ROADS: every change to a player's gold (_goldGive, _goldTake, _goldSet)); `bagGive` in `server/src/bag.js` (BAG_ROADS: every change to a bag count (bagGive, bagTake, bagSet))
 - **Switches**: [its rows in the switch table](SWITCHES.md#economy)
 - **Words**: `gold`, `bag`, `bank`, `market`, `shop`, `store`, `trade`, `inbox`, `drop`, `loot`, `chest`, `salvage`, `gamble`, `dice`, `daily`, `auction`, `gear`, `coin`
@@ -273,8 +273,8 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin
-- **Files**: `src/ui/`: tapDismiss, swallowTapClick
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin, tutorClear
+- **Files**: `src/ui/`: tapDismiss, swallowTapClick, tutorSpot
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
 - **Words**: `touch`, `control`, `tap`, `thumb`, `swallow`
@@ -331,6 +331,8 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
 - **Files**: `src/game/`: assetUrl, assetTable
+- **Files**: `src/rendering/`: sheetPage
+- **Files**: `src/game/`: spareLater, spareTime
 - **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
@@ -341,6 +343,7 @@ What loads behind the loading screen, and what loads later on purpose.
 Loading art in play: strips of 256 colours, the readers off the page's thread, bakes on workers.
 
 - **Files**: `src/rendering/`: zoneTextures, stripRead, stripPack, png8Decode, png8Worker, p256, webpImage, artBottoms, artHolds, workerCanvas, trimPack, trimRules, fxStrips, bodyBake, bodyBakeWorker, maskedBake, maskedBakeWorker, retintPalette, sharpPixels, tiledMaps
+- **Files**: `src/game/`: bakeKeep
 - **Doors**: `loadTrackedStrip` in `src/rendering/zoneTextures.js` (art that loads while the world is in play)
 - **Switches**: [its rows in the switch table](SWITCHES.md#art)
 - **Words**: `art`, `strip`, `png`, `p256`, `bake`, `sprite`, `pic`
@@ -365,7 +368,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
 - **Files**: `src/rendering/tables/`: render
-- **Files**: `src/game/`: poseHides, cameraFollow
+- **Files**: `src/game/`: poseHides, cameraFollow, frameFoot
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)
@@ -380,7 +383,12 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
 - **Files**: `src/game/`: itemInspect
 - **Files**: `src/game/`: compare, equipProject, workspace
+- **Files**: `src/game/`: equipLook
 - **Files**: `src/game/`: gearShowcase
+- **Files**: `src/game/`: menuTile, gearGeometry
+- **Files**: `src/game/`: charHud
+- **Files**: `src/game/`: hudCorner
+- **Files**: `src/game/`: topGold
 - **Files**: `src/game/`: codexView, entityInspect, lootRows
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`

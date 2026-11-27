@@ -26,6 +26,13 @@
  *       names the iron greatsword by the bag's own reader (weaponDisplayName
  *       of the worker's MONSTER_IRON_WEAPON_DROP type and gearBase) and gives
  *       it the bag's kind word (a greatsword is a Sword);
+ *   L12 (folded into L8 and L10, the mend of sitting 72) the page's loot is
+ *       the rule's: MonsterShowcase.jsx makes its rows AND the roll's words by
+ *       ONE call, lootPage(kind, { ...dropOpts(S), nameOf: codexItemName })
+ *       (codexItemName the one item page's namer, imported from
+ *       itemPageOpen.js), and draws `.roll` and `.mark` from it: it never
+ *       calls lootRows, lootRollWords, lootGrades or codexDropsFor itself,
+ *       never says the roll's words, and never sets `shared` beside the caps;
  *   L11 no action on a Codex item: the one page's place `codex` offers none
  *       and the road hands none over; and no grade (src/game/itemInspect.js:
  *       the entry rolls one as it drops), every other place's unchanged.
@@ -37,6 +44,13 @@
  *   R8 the page's drops read without shardcrack (a raw gem row under it)
  *   R9 the Codex's sword named by the table, not the bag's reader
  *   R10 a Codex piece that rolls its grade shown with one ("Normal ★")
+ *   the mend of sitting 72 (the gatekeeper's words: "'at most one when each
+ *   rolls alone' (MonsterShowcase.jsx:161 `lootRollWords(true)`) and 'the same
+ *   sword, different names' (:59 `nameOf` dropped)", green at the page):
+ *   R11 lootPage's words hard-coded "at most one"   R12 lootPage drops the namer
+ *   R13 the page's words lootRollWords(true)        R14 the page's nameOf dropped
+ *   R15 the page's mark typed "shared"              R16 `shared: true` beside the caps
+ *   R17 the page names by the table ((d) => d.name)
  *
  * Run: node tools/guards/loot-rows.test.mjs  (L5, L7, L10, L11 read the syntax
  * tree: @babel/parser and @babel/traverse, npm install in the root or server/)
@@ -82,6 +96,54 @@ function dropOptsReads(src) {
     VariableDeclarator(p) { if (p.node.id.name === 'dropOpts' && p.node.init) body = src.slice(p.node.init.start, p.node.init.end); },
   });
   return { killroll: /killRollLive\(\s*S\s*\)/.test(body), crack: /_serverCaps\s*&&\s*S\._serverCaps\.shardcrack/.test(body), body };
+}
+/* v2.3.6693 (the mend of sitting 72): the page's loot is the rule's, read from
+ * MonsterShowcase.jsx's tree.  { roll, named }: `roll` when its words and mark
+ * come only from lootPage's answer, built on the worker's caps; `named` when
+ * every lootPage call names by the one item page's namer. */
+function pageLootReads(src) {
+  const ast = parse(src);
+  let calls = 0, roll = true, named = true, imported = false, rollEl = 0;
+  const RULE = new Set(['lootRows', 'lootRollWords', 'lootGrades', 'codexDropsFor']);
+  const pageOf = (p, node) => {   /* `x.roll` / `x.mark` where x = lootOf(...) */
+    if (!node || node.type !== 'MemberExpression' || node.object.type !== 'Identifier') return null;
+    const b = p.scope.getBinding(node.object.name);
+    const init = b && b.path.node.type === 'VariableDeclarator' ? b.path.node.init : null;
+    return init && init.type === 'CallExpression' && init.callee.type === 'Identifier' && init.callee.name === 'lootOf' ? (node.property.name || '') : null;
+  };
+  B.traverse(ast, {
+    ImportDeclaration(p) {
+      if (p.node.source.value === './itemPageOpen.js' && p.node.specifiers.some((x) => x.imported && x.imported.name === 'codexItemName' && x.local.name === 'codexItemName')) imported = true;
+      if (/lootRows\.js$/.test(p.node.source.value) && p.node.specifiers.some((x) => x.imported && RULE.has(x.imported.name))) roll = false;
+    },
+    CallExpression(p) {
+      const c = p.node.callee;
+      if (c.type === 'Identifier' && RULE.has(c.name)) { roll = false; if (c.name === 'lootRows') named = false; }
+      if (!(c.type === 'Identifier' && c.name === 'lootPage')) return;
+      calls++;
+      const o = p.node.arguments[1];
+      const props = o && o.type === 'ObjectExpression' ? o.properties : [];
+      const spread = props.filter((x) => x.type === 'SpreadElement');
+      if (!(spread.length === 1 && spread[0].argument.type === 'CallExpression' && spread[0].argument.callee.name === 'dropOpts')) roll = false;
+      if (props.some((x) => x.type === 'ObjectProperty' && ['shared', 'crack'].includes(x.key.name || x.key.value))) roll = false;
+      const n = props.find((x) => x.type === 'ObjectProperty' && (x.key.name || x.key.value) === 'nameOf');
+      if (!(n && n.value.type === 'Identifier' && n.value.name === 'codexItemName')) named = false;
+    },
+    StringLiteral(p) { if (/^codexPages\.roll(Shared|Each)$/.test(p.node.value) || /at most one|rolls on its own/i.test(p.node.value)) roll = false; },
+    JSXText(p) { if (/at most one|rolls on its own/i.test(p.node.value)) roll = false; },
+    JSXAttribute(p) {
+      if (p.node.name.name !== 'data-cx-roll') return;
+      rollEl++;
+      const el = p.parentPath.parentPath.node;   /* the JSXElement */
+      const v = p.node.value && p.node.value.type === 'JSXExpressionContainer' ? p.node.value.expression : null;
+      const kids = el.children.filter((k) => !(k.type === 'JSXText' && !k.value.trim()));
+      const words = kids.length === 1 && kids[0].type === 'JSXExpressionContainer' ? kids[0].expression : null;
+      if (pageOf(p, v) !== 'mark' || pageOf(p, words) !== 'roll') roll = false;
+    },
+  });
+  if (calls < 1 || rollEl !== 1) { roll = false; named = false; }
+  if (!imported) named = false;
+  return { roll, named };
 }
 /* itemPageOpen.js: the Codex's sword, named as the bag names its own */
 function codexSwordRoad(src) {
@@ -150,6 +212,21 @@ function verdict(M, files) {
   /* L7: the page reads both caps */
   const d = dropOptsReads(files[SHOW]);
   if (!d.killroll || !d.crack) no('L7');
+  /* L8, L10: the page's one call (lootPage) makes the rows and the words from one input */
+  for (const o of OPTS) {
+    for (const kind of CODEX_KINDS) {
+      let P;
+      try { P = M.lootPage(kind, { ...o, nameOf: (x) => 'N:' + x.id }); } catch (e) { no('L8'); no('L10'); continue; }
+      const want = M.lootRows(codexDropsFor(kind, o) || []);
+      if (!(P && P.rows.length === want.length && P.rows.every((r, i) => r.id === want[i].id && r.chance === want[i].chance))) no('L8');
+      if (!P.rows.every((r) => r.name === 'N:' + r.id)) no('L10');
+      if (!(P.shared === o.shared && P.roll === M.lootRollWords(o.shared) && P.mark === (o.shared ? 'shared' : 'each'))) no('L8');
+      if ((P.grades.length > 0) !== P.rows.some((r) => r.graded)) no('L6');
+    }
+  }
+  const pg = pageLootReads(files[SHOW]);
+  if (!pg.roll) no('L8');
+  if (!pg.named) no('L10');
   /* L8 */
   if (!(/at most one/.test(M.lootRollWords(true)) && !/at most one|only one|one of/.test(M.lootRollWords(false)) && /own/.test(M.lootRollWords(false)))) no('L8');
   /* L9 */
@@ -186,6 +263,8 @@ const PLANTS = [
   ['R5', 'L6', '"common" shown as a grade', ": d.graded ? say(SAY, 'codexPages.rollsGrade') : '';", ": d.graded ? (d.tier || 'common') : '';"],
   ['R6', 'L8', '"at most one" said when the worker rolls each on its own', "  return shared ? say(SAY, 'codexPages.rollShared') : say(SAY, 'codexPages.rollEach');", "  return say(SAY, 'codexPages.rollShared');"],
   ['R7', 'L9', 'an unmet monster named in Found from', "name: met ? e.name : say(SAY_CX, 'monsterCodex.unknownName')", 'name: e.name'],
+  ['R11', 'L8', 'lootPage says "at most one" whatever the roll', 'rows, shared, roll: lootRollWords(shared),', 'rows, shared, roll: lootRollWords(true),'],
+  ['R12', 'L10', 'lootPage drops the one item page\'s namer', '{ shared, crack: !!o.crack }) || [], { nameOf: o.nameOf });', '{ shared, crack: !!o.crack }) || []);'],
 ];
 for (const [id, want, what, from, to] of PLANTS) {
   const t = plantText(ROOT, REL, from, to);
@@ -197,6 +276,11 @@ const FILE_PLANTS = [
   ['R8', 'L7', 'the page\'s drops read without shardcrack', SHOW, "crack: !!(S && S._serverCaps && S._serverCaps.shardcrack)", 'crack: false'],
   ['R9', 'L10', 'the Codex\'s sword named by the table, not the bag\'s reader', OPEN, '  if (g && g.wpn) return weaponDisplayName(g.wpn);\n', ''],
   ['R10', 'L11', 'a Codex piece that rolls its grade shown "Normal" (the road drops `rolls`)', OPEN, 'quality: null, rolls: !!d.graded, rows,', 'quality: null, rows,'],
+  ['R13', 'L8', 'the page\'s words hard-coded (lootRollWords(true), the gatekeeper\'s :161)', SHOW, '{page.roll}</p>', '{lootRollWords(true)}</p>'],
+  ['R14', 'L10', 'the page\'s nameOf dropped (the gatekeeper\'s :59)', SHOW, '{ ...dropOpts(S), nameOf: codexItemName })', '{ ...dropOpts(S) })'],
+  ['R15', 'L8', 'the page\'s roll mark typed "shared"', SHOW, 'data-cx-roll={page.mark}', 'data-cx-roll="shared"'],
+  ['R16', 'L8', '`shared: true` set beside the caps', SHOW, '{ ...dropOpts(S), nameOf', '{ ...dropOpts(S), shared: true, nameOf'],
+  ['R17', 'L10', 'the page names by the table', SHOW, 'nameOf: codexItemName })', 'nameOf: (d) => d.name })'],
 ];
 for (const [id, want, what, rel, from, to] of FILE_PLANTS) {
   const t = plantText(ROOT, rel, from, to);

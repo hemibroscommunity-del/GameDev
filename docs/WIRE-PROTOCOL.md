@@ -811,6 +811,21 @@ tools `{key, qty: null, tool: true, sell}`; a `shop_quoted` for one carries
 tool row (it lists staples and stock). Full rules: docs/specs/no-mans-land.md
 "Everything but what you wear".
 
+**Diego's Pine Shield (v2.3.6800, caps.shieldshop):** no new c→s case and no
+new field read: `shop_buy {key: 'pine_shield', qty}` (any price a message
+names is never read). `shop_state` items gain `{key: 'pine_shield', qty:
+null, shield: true, name, sell: 100}`; a `shop_quoted` for it carries
+`shield: true` and, refused, `qty: 0` and `why` ('have', 'quest', 'off'). A
+refused `shop_result` for it carries `why` ('have', 'quest', 'off', 'coins');
+an ok one carries `shield`, the piece put in the bag (its `gid` included),
+which the phone adds to its copy of the bag once (gameEvents.js). A "have"
+quote or refusal for it carries `held`, the recorded shields the worker holds
+for the player; with the cap the phone adds those, and every piece of
+`player_state.shieldStash`, to its bag by `gid` (add, never take:
+`src/game/shieldAdopt.js`), so a lost `shop_result` loses nothing (v2.3.6800,
+the mend of sitting 71's hold). An older game shows no shield row. Full
+rules: docs/specs/shop-shield.md.
+
 **No man's land: a group, and the window's Attack (v2.3.3530, caps.nmlgroup,
 caps.nmlchoice):**
 - **client -> server `nml_attack {target}`**: the window's Attack (and a tap

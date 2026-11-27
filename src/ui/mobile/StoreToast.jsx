@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { storeToastBus, STORE_TOAST_MS } from './storeToastBus.js';
 import { swallowTapClick } from '../swallowTapClick.js';   /* v2.3.3560 */
+import { tutorOver } from '../tutorSpot.js';   /* v2.3.6791: clear of the controller's housings (game/tutorClear.js) */
+import { playVw, winVw } from './playViewport.js';
 
 /* ═══ v2.3.2476: THE SALE NOTICE ═══
  *
@@ -36,11 +38,20 @@ export const StoreToast = () => {
 
   if (!items.length) return null;
 
+  /* ═══ v2.3.6791: OVER THE CONTROLLER, NOT IN IT (card UI3 PR 11) ═══
+     The owner, 2026-11-27: "Needs to fix tutorial messages over new
+     controller area."  This card carries the tutorial's "Next: ..." hints
+     (QuestStepNudge) and it hung 14 px over the band, inside the shell that
+     stands 114 to 131 px over it: the band's height cleared, not the
+     housings.  The rule (game/tutorClear.js) puts it AIR over the highest
+     housing it spans; with no controller (a computer) it keeps its 14. */
+  const width = Math.min(320, (playVw() || winVw() || 390) - 28);
+  const over = tutorOver(width, 14, 44 * items.length);
   return (
-    <div data-store-toast="" /* v2.3.4136: QA (mp-loadinggate) */ style={{
+    <div data-store-toast="" /* v2.3.4136: QA (mp-loadinggate) */ data-tutor="toast" style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
-      bottom: 'calc(var(--dash-h) + 14px)',
-      width: 'min(320px, calc(100vw - 28px))',
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + over + 'px)',   /* v2.3.6791: the shell's own band edge, and the rule's px */
+      width: width,
       display: 'flex', flexDirection: 'column', gap: 6,
       zIndex: 22, pointerEvents: 'auto',
     }}>

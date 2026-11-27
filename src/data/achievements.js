@@ -18,6 +18,7 @@
  *
  * No imports: node-tested (server/test/achievements.test.mjs, mirror-audit).
  * Spec: docs/specs/achievements.md. */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* The points each tier pays, and how it is named and coloured on the page --
    the grade colours the armour already wears (v2.3.3142: rare blue, elite
@@ -40,19 +41,26 @@ export const ACHV_TIERS = Object.freeze({
    keeps the old one. */
 export const ACHV_BADGE_V = '2.3.3527';
 export function achvBadgeSrc(id) {
-  return '/icons/achievements/' + id + '.webp?v=' + ACHV_BADGE_V;
+  /* v2.3.6743: built, so assetUrl gives it its file's version on the page
+     (card KEEP PR 3b); ACHV_BADGE_V stays only because
+     server/test/achievements-client.test.mjs 9a reads it (a server file,
+     not this card's to change), and it never reaches the page: assetUrl
+     replaces one `v=` with the table's. */
+  return assetUrl('/icons/achievements/' + id + '.webp?v=' + ACHV_BADGE_V);
 }
 export const ACHV_MEDAL_SRC = achvBadgeSrc('achievements');
 
-/* v2.3.4036: the five fish of the ladder and their bag pictures (the bag's
-   ITEMS_V, ui/mobile/dash/InventoryPanel.jsx), for the rare-fish rows */
-const FISH_PIC_V = '?v=2.3.4222';
+/* v2.3.4036: the five fish of the ladder and their bag pictures, for the
+   rare-fish rows.  v2.3.6743: the hand key FISH_PIC_V is gone; each is a
+   whole written-out address, whose `?v=` the build replaces with its file's
+   own version (keepVersions.mjs, card KEEP PR 2: the bag's address), and
+   which server/test/achievements-client.test.mjs 9f reads as written. */
 const FISH_ROWS = [
-  ['minnow', 'Minnow', '/icons/items/fish-minnow.webp' + FISH_PIC_V],
-  ['clownfish', 'Clownfish', '/icons/items/fish-clownfish.webp' + FISH_PIC_V],
-  ['trout', 'Trout', '/icons/items/fish-trout.webp' + FISH_PIC_V],
-  ['salmon', 'Salmon', '/icons/items/fish-salmon.webp' + FISH_PIC_V],
-  ['pike', 'Pike', '/icons/items/fish-pike.webp' + FISH_PIC_V],
+  ['minnow', 'Minnow', '/icons/items/fish-minnow.webp?v=2.3.4222'],
+  ['clownfish', 'Clownfish', '/icons/items/fish-clownfish.webp?v=2.3.4222'],
+  ['trout', 'Trout', '/icons/items/fish-trout.webp?v=2.3.4222'],
+  ['salmon', 'Salmon', '/icons/items/fish-salmon.webp?v=2.3.4222'],
+  ['pike', 'Pike', '/icons/items/fish-pike.webp?v=2.3.4222'],
 ];
 
 /* The order the page lists them in: by tier, then as written.

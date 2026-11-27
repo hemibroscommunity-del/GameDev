@@ -21,8 +21,8 @@
  * Also minted here: the shine, a soft vertical beam (canvas, nothing to load).
  */
 import { Texture } from 'pixi.js';
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
-const ICON_V = '?v=2.3.4222';   /* InventoryPanel ITEMS_V: the same files, the same cache */
 const SRC = {
   sword: '/icons/items/sword.webp',
   bow: '/icons/items/bow.webp',
@@ -58,7 +58,7 @@ function load(key, url) {
     /* a failed icon must never fail the loading gate: the pile keeps its
        ring and label, as it always had */
     img.onerror = () => resolve();
-    img.src = url + ICON_V;
+    img.src = assetUrl(url);   /* v2.3.6743: the file's own version, the bag's address (the hand key ICON_V is gone) */
   });
 }
 
