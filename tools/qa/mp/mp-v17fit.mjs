@@ -49,7 +49,7 @@
  * helper session); BT_QA_V17FIT_SHOTS=0 (no pictures).
  */
 import path from 'node:path';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as H from './harness.mjs';
 export const lane = 'full';
@@ -209,6 +209,10 @@ function measure(rootSel, mainSel) {
     const onTop = !!top && (m === top || m.contains(top) || top.contains(m));
     if (!s.whole || !onTop) hidden.push(`${label(m)}${!s.whole ? ' (not whole in view)' : ' (covered)'}`);
   }
+  /* entries a row: the main actions on the first one's line (V17: a computer's room is for MORE entries) */
+  const tops = mains.map((m) => m.getBoundingClientRect().top);
+  const perRow = tops.length ? tops.filter((t) => Math.abs(t - Math.min(...tops)) <= 2).length : 0;
+  const mainW = mains.length ? Math.round(mains[0].getBoundingClientRect().width) : 0;
   let scrolled = false;
   for (let a = root; a && a !== band; a = a.parentElement) if (a.scrollTop > 0 || a.scrollLeft > 0) scrolled = true;
   const canvas = document.querySelector('canvas');
@@ -217,7 +221,7 @@ function measure(rootSel, mainSel) {
   return {
     title: t ? t.getAttribute('data-dash-title') : null,
     band: rnd(B), head: NV ? Math.round(NV.h) : null, page: rnd(PG), inner: rnd(inner), drawn: rnd(drawn),
-    controls: controls.length, small, grown, over, cut, overlapWords, mains: mains.length, hidden, scrolled,
+    controls: controls.length, small, grown, over, cut, overlapWords, mains: mains.length, perRow, mainW, hidden, scrolled,
     minFont, maxFont, canvas: canvas ? rnd(R(canvas)) : null, view,
   };
 }
@@ -324,15 +328,24 @@ function vs(row) {
 }
 function writeTable() {
   mkdirSync(SHOTS, { recursive: true });
+  /* a share of the sizes (BT_QA_V17FIT_SIZES): the other sizes' rows kept from the table on file */
+  if (ONLY.length) {
+    let old = [];
+    try { old = JSON.parse(readFileSync(path.join(SHOTS, 'v17fit-table.json'), 'utf8')); } catch (e) { old = []; }
+    const ran = new Set(ROWS.map((r) => r.size));
+    const keep = old.filter((r) => !ran.has(r.size));
+    const order = PHONE_UP.concat(PHONE_SIDE, DESK, ['1440x900-480']);
+    ROWS.splice(0, ROWS.length, ...keep.concat(ROWS).sort((a, b) => order.indexOf(a.size) - order.indexOf(b.size)));
+  }
   const lines = [];
   lines.push('# V17 fit, measured in the game (mp-v17fit, card UI4 PR 3, v2.3.6842)', '');
   lines.push('Written by `node tools/qa/mp/run.mjs v17fit`. Sizes in CSS px. "band" is the band\'s box (on a computer its full width; the open block is "page"), "head" the nav row, "page" the page\'s box, "inner" the page less its pads and borders, "drawn" the box its content draws in. FAILS: a control under 44 x 44, a word cut or over another, the main action not whole in view. LISTED (never failed): a number unlike V17\'s table, two controls over each other.', '');
-  lines.push('| size | screen | band | head | page | inner | drawn | controls | under 44 | drawn under 44, touched 44 (a hit-extender) | cut / overlapping words | main action hidden | controls over each other | words px | unlike V17 |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| size | screen | band | head | page | inner | drawn | controls | under 44 | drawn under 44, touched 44 (a hit-extender) | cut / overlapping words | entries a row (width of one) | main action hidden | controls over each other | words px | unlike V17 |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const r of ROWS) {
     if (r.missing) { lines.push(`| ${r.size} | ${r.name} | NOT OPENED: ${r.missing} |`); continue; }
     const cell = (a) => (a.length ? a.slice(0, 6).join('; ') + (a.length > 6 ? ` (+${a.length - 6})` : '') : '0');
-    lines.push(`| ${r.size} | ${r.name} | ${fmt(r.band)} | ${r.head} | ${fmt(r.page)} | ${fmt(r.inner)} | ${fmt(r.drawn)} | ${r.controls} | ${cell(r.small)} | ${cell(r.grown || [])} | ${cell(r.cut.concat(r.overlapWords))} | ${cell(r.hidden)}${r.scrolled ? ' (scrolled)' : ''} | ${cell(r.over)} | ${r.minFont}-${r.maxFont} | ${vs(r).join('; ') || (V17[r.size] ? 'same' : '(no V17 row)')} |`);
+    lines.push(`| ${r.size} | ${r.name} | ${fmt(r.band)} | ${r.head} | ${fmt(r.page)} | ${fmt(r.inner)} | ${fmt(r.drawn)} | ${r.controls} | ${cell(r.small)} | ${cell(r.grown || [])} | ${cell(r.cut.concat(r.overlapWords))} | ${r.perRow} (${r.mainW}) | ${cell(r.hidden)}${r.scrolled ? ' (scrolled)' : ''} | ${cell(r.over)} | ${r.minFont}-${r.maxFont} | ${vs(r).join('; ') || (V17[r.size] ? 'same' : '(no V17 row)')} |`);
   }
   writeFileSync(path.join(SHOTS, 'v17fit-table.md'), lines.join('\n') + '\n');
   writeFileSync(path.join(SHOTS, 'v17fit-table.json'), JSON.stringify(ROWS.map((r) => { const o = { ...r }; delete o.view; return o; }), null, 1) + '\n');
@@ -365,6 +378,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const centred = Math.abs((w0.page[0] + w0.page[2] / 2) - (w0.band[0] + w0.band[2] / 2)) <= 1;
           rec.ok('wide: at 1440 x 900 the open block is 840 wide and centred in the band (V17\'s Desktop row)', w0.page[2] === 840 && centred, { page: w0.page, band: w0.band });
         }
+        await C.page.setViewportSize({ width: 1440, height: 900 });   /* the world read at 1440 x 900, as the 480 page's */
+        await C.page.waitForTimeout(1800);
         wide.canvas = await C.page.evaluate(() => { const c = document.querySelector('canvas'); const r = c && c.getBoundingClientRect(); return r ? [Math.round(r.width), Math.round(r.height)] : null; });
         wide.view = await C.page.evaluate(() => (window.__btWorldView ? window.__btWorldView('wheel') : null));
       }
@@ -393,6 +408,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const a = ROWS.find((r) => r.size === '1440x900' && r.screen === sc.id), b = ROWS.find((r) => r.size === '1440x900-480' && r.screen === sc.id);
           if (!a || !b || a.missing || b.missing) continue;
           rec.ok(`wide: ${sc.name}: no larger words at 840 than at 480 (largest ${a.maxFont} against ${b.maxFont}, smallest ${a.minFont} against ${b.minFont})`, a.maxFont <= b.maxFont && a.minFont <= b.minFont, null);
+        }
+        /* the room for MORE entries (V17:31): LISTED, the screens' own PRs (4, 5, 6) lay them out */
+        for (const sc of SCREENS) {
+          const a = ROWS.find((r) => r.size === '1440x900' && r.screen === sc.id), b = ROWS.find((r) => r.size === '1440x900-480' && r.screen === sc.id);
+          if (!a || !b || a.missing || b.missing) continue;
+          rec.ok(`LISTED wide: ${sc.name}: ${a.perRow} entries a row at 840 (each ${a.mainW} px) against ${b.perRow} at 480 (each ${b.mainW} px)${a.perRow > b.perRow ? '' : ': the room not yet used for more entries (' + sc.pr + ')'}`, true, null);
         }
         /* =1 forgets */
         await O.page.goto(O.page.url().replace('v17wide=0', 'v17wide=1')).catch(() => null);
