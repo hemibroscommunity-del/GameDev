@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "90eb25bfd180f968f2f8d429356a0284ff84c146",
+  "tree": "7f022d4e77206715567a3eb17b7967214ea234d4",
+  "committedAt": "2026-11-27T00:30:52-08:00",
+  "subject": "Merge pull request #2410 from hemibroscommunity-del/claude/plan-ui3-7-purse",
+  "files": 9113,
+  "bytes": 1050437074,
+  "listingSha256": "28ef0b9924b30f8f1e638cb8b4829b8db09fcf5d314017026c90980e3b1877c1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
