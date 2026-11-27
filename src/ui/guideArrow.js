@@ -454,7 +454,6 @@ function place(r, words, fromLeft, follow) {
   const glide = follow ? 'none' : 'left .2s ease-out, top .2s ease-out';
   if (!first && _el.style.transition !== glide) _el.style.transition = glide;
   _el.style.left = left + 'px'; _el.style.top = top + 'px';
-  if (first) { void _el.offsetWidth; _el.style.transition = glide; }
   _followAt.left = follow ? left : NaN; _followAt.top = follow ? top : NaN;
   if (_side !== side) {
     _side = side;
@@ -501,6 +500,10 @@ function place(r, words, fromLeft, follow) {
       } else qa.lifted = 0;
     }
   }
+  /* v2.3.6791: the glide is switched on only now, after the words' lift: on
+     its first placing the arrow appears where it stands, never gliding up
+     off the controller from where it would have been */
+  if (first) { void _el.offsetWidth; _el.style.transition = glide; }
   qa.side = side;
   qa.rect = { left, top, w: SIZE, h: SIZE };
   qa.target = { x: Math.round(side === 'left' ? r.left : cx), y: Math.round(side === 'left' ? r.top + r.height / 2 : side === 'above' ? r.top : r.bottom), left: Math.round(r.left), top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
