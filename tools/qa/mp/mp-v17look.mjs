@@ -15,7 +15,9 @@
  *      neutral slate #203644, the Sword's number ivory (gold leaves stat
  *      numbers), a chevron #BCC8CC, a point to spend V17's priority cue (the
  *      count #F5CF83, the tile's edge #BC9B60: never commit gold; the Sword
- *      dealt its points, `deal: true`); with `=0` the door is today's gradient;
+ *      dealt its points, `deal: true`); a stat's words centred (the owner,
+ *      22:20 UTC 2026-11-27: "I'd prefer centered"); with `=0` the door is
+ *      today's gradient and the words where they were;
  *   3. THE SMALLEST WORD: each screen measured with the word at 11 and at 12
  *      (the token set over the page): at 12 no scroll grows, no word is cut
  *      or runs out of its box, every control is still inside the band and
@@ -105,6 +107,7 @@ const colours = (P) => P.page.evaluate(() => {
     chev: cs('.bt-dashboard .u2-chev', 'color'),
     pts: cs('.bt-dashboard .u2-at-line-v.is-gold', 'color'),
     plus: cs('.bt-dashboard .u2-wp-attr[data-attr-plus="1"]', 'borderTopColor'),
+    statAlign: cs('.bt-dashboard .u2-stat .u2-stat-words', 'textAlign'),
   };
 });
 
@@ -141,6 +144,7 @@ async function onePhone(browser, wsPort, webPort, rec, side) {
           }
           if (s === 'sword') rec.ok(`2d. ${tag} sword: points to spend wear V17's priority cue, not commit gold: the count #F5CF83, a tile's edge #BC9B60`,
             C.pts === 'rgb(245, 207, 131)' && C.plus === 'rgb(188, 155, 96)', C);
+          if (s === 'sword') rec.ok(`2e. ${tag} sword: the stat's words centred in their box (the owner: "I'd prefer centered")`, C.statAlign === 'center', C);
           if (s === 'sword') rec.ok(`2b. ${tag} sword: the stat's number ivory, the chevron #BCC8CC (gold leaves them)`, C.num === 'rgb(241, 240, 233)' && (C.chev === null || C.chev === 'rgb(188, 200, 204)'), C);
           /* 3. the smallest word: 11 against 12 */
           await setSmall(P, 11);
@@ -154,6 +158,7 @@ async function onePhone(browser, wsPort, webPort, rec, side) {
             keeps ? !holds : holds, { M11, M12 });
         } else {
           if (s === 'bro') rec.ok(`1b. ${tag}: ${mode === 'base' ? 'the base build' : '?v17look=0'}: no kit root wears ui2-v17 (${C.roots} roots)`, C.roots > 0 && C.v17 === 0, C);
+          if (s === 'sword' && mode === 'off') rec.ok(`2f. ${tag}: with =0 the stat's words are where they were (left)`, C.statAlign !== 'center', C);
           if (s === 'bro' && mode === 'off') rec.ok(`2c. ${tag}: with =0 a door is today's gradient`, /gradient/.test(C.doorImg || ''), C);
         }
         const f = await bandShot(P, `ui4-look-${s}-${mode}${sfx}.png`);

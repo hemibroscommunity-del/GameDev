@@ -30,7 +30,11 @@
  *   L8  the root's class given without the switch, or over yesterday's look
  *       (`?ui2look=0` is older than V17);
  *   L9  a green or blue face under the look (V17 has neither: never a third
- *       colour).
+ *       colour);
+ *   L10 a label alone in its box left-aligned under the look (the owner,
+ *       about 22:20 UTC 2026-11-27: "sometimes the labels are left aligned
+ *       inside text boxes instead of centered I'd prefer centered"): a compact
+ *       tile with no line under it, a stat's words.
  * THE DODGES are planted in part P (each must be red).
  *
  * Run: node tools/guards/ui4-look.test.mjs
@@ -87,7 +91,7 @@ function rulesOf(css) {
 
 /** The whole audit; returns { L1: [...faults], ... } */
 function audit(css, shineSrc) {
-  const F = { L1: [], L2: [], L3: [], L4: [], L5: [], L6: [], L7: [], L8: [], L9: [] };
+  const F = { L1: [], L2: [], L3: [], L4: [], L5: [], L6: [], L7: [], L8: [], L9: [], L10: [] };
   const rules = rulesOf(css);
   const look = rules.filter((r) => r.sel.some((s) => /ui2-v17/.test(s)));
   const v17Block = (r) => r.file === KIT_CSS && r.sel.length === 1 && r.sel[0] === '.ui2.ui2-v17' && Object.keys(r.decl).every((p) => p.startsWith('--'));
@@ -148,6 +152,10 @@ function audit(css, shineSrc) {
   if (!/--ui2-v17-on-danger/.test(colourOf(ROLE.danger))) F.L7.push('danger words: ' + colourOf(ROLE.danger));
   /* L9 */
   for (const r of look) for (const [p, v] of Object.entries(r.decl)) if (/--ui2-(green|blue)-/.test(v)) F.L9.push(`${r.sel.join(', ')} { ${p}: ${v} }`);
+  /* L10: a label alone in its box, centred */
+  const lone = on(/\.u2-tile\.is-compact\.is-lone$/);
+  if (!lone.some((r) => r.decl['justify-content'] === 'center')) F.L10.push('a compact tile with no line under it is not centred');
+  if (!on(/\.u2-stat \.u2-stat-words$/).some((r) => r.decl['text-align'] === 'center' && r.decl['align-items'] === 'center')) F.L10.push('a stat\'s words are not centred');
   /* L8: the root's class, from the syntax tree of shine.js */
   let tree = null;
   try { tree = babel.parse(shineSrc, { sourceType: 'module', plugins: ['jsx'] }); } catch (e) { F.L8.push('shine.js does not parse: ' + e.message); }
@@ -188,6 +196,7 @@ const NAMES = {
   L7: 'commit\'s dark words, danger\'s light ones',
   L8: 'the root wears ui2-v17 only under v17LookOn() and never over ?ui2look=0; the switch remembered, ON by default',
   L9: 'no green or blue face under the look',
+  L10: 'a label alone in its box is centred under the look (a compact tile with no line under it, a stat\'s words)',
 };
 const look = rulesOf(CSS).filter((r) => r.sel.some((s) => /ui2-v17/.test(s)));
 for (const k of Object.keys(NAMES)) check(`${k}. ${NAMES[k]}` + (k === 'L1' ? ` (${look.length} rules)` : ''), F[k].length === 0, F[k]);
@@ -222,6 +231,8 @@ plant('a danger with dark words', 'L7', (c) => add(c, ".ui2.ui2-v17 .u2-act[data
 plant('the class given over yesterday\'s look', 'L8', (c, s) => s.replace("(!was && v17LookOn() ? ' ui2-v17' : '')", "(v17LookOn() ? ' ui2-v17' : '')"));
 plant('the class given always', 'L8', (c, s) => s.replace("(!was && v17LookOn() ? ' ui2-v17' : '')", "' ui2-v17'"));
 plant('the switch defaulting OFF', 'L8', (c, s) => s.replace("_v17 = localStorage.getItem(V17_KEY) !== '0';", "_v17 = localStorage.getItem(V17_KEY) === '1';"));
+plant('the lone tile left where it was', 'L10', (c) => rep(c, KIT_CSS, '.ui2.ui2-v17 .u2-tile.is-compact.is-lone { justify-content: center; }', '.ui2.ui2-v17 .u2-tile.is-compact.is-lone { justify-content: flex-start; }'));
+plant('a stat\'s words left-aligned', 'L10', (c) => rep(c, KIT_CSS, '.ui2.ui2-v17 .u2-stat .u2-stat-words { align-items: center; text-align: center; }', '.ui2.ui2-v17 .u2-stat .u2-stat-words { align-items: flex-start; text-align: left; }'));
 plant('an accept still green under the look', 'L9', (c) => add(c, ".ui2.ui2-v17 .u2-act[data-c='green'] { background: var(--ui2-green-face-1); }"));
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks pass');

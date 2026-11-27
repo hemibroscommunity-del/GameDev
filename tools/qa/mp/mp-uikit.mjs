@@ -60,7 +60,9 @@
  *      alone), disabled #BCC8CC words on #20303B; the five faces of "Actions"
  *      are three (green Accept now commit gold, blue Travel the slate);
  *      `?v17look=0` takes the class away, still after a reload with no switch
- *      (remembered), and `?v17look=1` brings it back.
+ *      (remembered), and `?v17look=1` brings it back; a label alone in its
+ *      box is centred (the owner, 22:20 UTC 2026-11-27: "I'd prefer
+ *      centered").
  * Pictures: docs/shots/ui4-look-kit-<roles|actions>-<on|off>.png.
  */
 import fs from 'node:fs';
@@ -451,6 +453,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         inspect: pick('[data-u2-plate="roles"] .u2-stat[data-u2-role="inspect"]', 'backgroundColor', 'borderTopColor'),
         selected: pick('[data-u2-plate="roles"] [data-u2-role="selected"]', 'borderTopColor', 'boxShadow'),
         underline: lab ? getComputedStyle(lab).textDecorationLine : null,
+        lone: pick('[data-u2-plate="roles"] .u2-tile.is-compact.is-lone', 'justifyContent'),
+        statWords: pick('[data-u2-plate="roles"] .u2-stat .u2-stat-words', 'textAlign'),
         disabled: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="disabled"]', 'backgroundColor', 'color'),
         green: pick('[data-u2-plate="actions"] [data-u2-demo="green"]', 'backgroundColor'),
         blue: pick('[data-u2-plate="actions"] [data-u2-demo="blue"]', 'backgroundColor', 'color'),
@@ -468,6 +472,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('12b. the chosen one: its gold border #EAC474, a bar under it (an inset shadow) and its word underlined: never colour alone',
       /^rgb\(234, 196, 116\)/.test(on.selected || '') && /inset/.test(on.selected || '') && /underline/.test(on.underline || ''), on);
     rec.ok('12c. no third colour: green Accept is commit gold, blue Travel the navigation slate with ivory words', on.green === 'rgb(228, 186, 104)' && on.blue === 'rgb(41, 73, 99) | rgb(241, 240, 233)', on);
+    rec.ok('12f. a label alone in its box is centred (the owner: "I\'d prefer centered"): the chosen tile\'s word, a stat\'s words', on.lone === 'center' && on.statWords === 'center', on);
     const goto = async (q) => { await R.page.goto(R.page.url().replace(/[?&]v17look=[01]/, '') + q, { waitUntil: 'domcontentloaded' }); await up(); return look(); };
     const off = await goto('&v17look=0');
     const s3 = await shoot('roles', 'ui4-look-kit-roles-off.png');

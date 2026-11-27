@@ -923,3 +923,11 @@
   background: var(--ui2-v17-off);
   box-shadow: none;
 }
+/* a label alone in its box is CENTRED (the owner, about 22:20 UTC 2026-11-27, after PR 1's preview: "Looks
+   good just sometimes the labels are left aligned inside text boxes instead of centered I'd prefer
+   centered"): a compact tile with no line under it (its picture and word together), a stat's number and
+   word.  Left as they were, and listed for the owner: a fact's row (its word left, its value right), a
+   group's title, a tile with a line under it (a list's row), an empty state's explaining words. */
+.ui2.ui2-v17 .u2-tile.is-compact.is-lone { justify-content: center; }
+.ui2.ui2-v17 .u2-tile.is-compact.is-lone .u2-tile-words { align-items: center; text-align: center; }
+.ui2.ui2-v17 .u2-stat .u2-stat-words { align-items: center; text-align: center; }
