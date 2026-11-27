@@ -12,7 +12,8 @@
  * bronze medals. Highlight the player's own row regardless of rank").
  *
  * Part 1, THE RULES (src/game/ranksPage.js, run): ranksGroups, ranksBoardHeads,
- * youPinned, passportFromRow, ranksOpens, rankSel, ranksEntry.
+ * youPinned, passportFromRow, ranksOpens, rankSel, ranksEntry, rankAnswer,
+ * rankListWaiting.
  * Part 2, THE DRAWING (dash/rankViews.jsx, run in node by lib/jsxText.mjs):
  * the standings, the tiles, another player's page.
  * Part 3, THE PAGES' WIRING (the syntax tree of CharacterPage.jsx,
@@ -24,7 +25,13 @@
  *       forgetting pts_dmg)          D2  an Equipment group with no board
  *   D3  the Lv chip on Woodcutting   D4  a value with no unit word
  *   D5  your row pinned while in view (`pinned = rank > 0`)   D6  pinned twice
- *   D7  "nobody" shown while loading
+ *   D7  "nobody" shown while loading; and the mend of sitting 72 (held: the
+ *       Coin flip board said "Nobody has won a flip against Ace yet." before
+ *       the answer came): D7b the page's `loading={false}`, D7c a source
+ *       claiming `waiting: false`, D7d the flip's empty starting board read as
+ *       an answer, D7e the rule reading no answer as an empty one, D7f a failed
+ *       fetch read as an answer (twice), D7g a board the list lacks saying
+ *       "nobody" before the worker's list (twice)
  *   D8  another player's page fed by readPassport(S) (your name, your levels)
  *   D9  "No title equipped" for a player whose title the game was not told
  *   D10 a weapon door on another player's page    D11 a gone row opening a page
@@ -143,6 +150,26 @@ function rulesChecks(R) {
   ok('R7b a board with no id opens nothing; a sel that starts with its colon', R.ranksOpens({ kind: 'board', board: '' }) === null
     && JSON.stringify(R.rankSel(':x')) === '{"board":"","choice":"x"}');
   ok('R7c the page\'s entry found at the stack\'s foot', R.ranksEntry({ ws: 'menu', menu: [{ id: 'ranksGroup', sel: 'feats' }] }, 'ranksGroup').sel === 'feats');
+  /* v2.3.6692, the mend of sitting 72: no answer is never an empty answer */
+  const A = R.rankAnswer;
+  const unasked = ['ranked', 'spin', 'flip', 'fish'].map((k) => [A(k, null, 'wins'), A(k, undefined, 'minnow'), A(k, 'x', 'wins')]).flat();
+  ok('R8a no answer yet (null, undefined, not an object): waiting, no rows, no state, for every kind',
+    !!A && unasked.every((a) => a.waiting === true && a.rows.length === 0 && a.state === null), unasked);
+  const fe = A('flip', { wins: [], losses: [] }, 'wins');
+  ok('R8b answered and empty (the flip\'s board with nobody on it): not waiting, no rows (only now the board\'s "nobody")',
+    fe.waiting === false && fe.rows.length === 0 && fe.state === null && A('ranked', [], null).waiting === false, fe);
+  const flip = { wins: [{ pid: 'a' }, null], losses: [{ pid: 'b' }] };
+  ok('R8c an answer\'s rows by the choice: the side, the fish\'s kind (a kind not in it: answered, empty), the worker\'s rows',
+    A('flip', flip, 'wins').rows.length === 1 && A('flip', flip, 'wins').rows[0].pid === 'a' && A('spin', flip, 'losses').rows[0].pid === 'b'
+    && A('fish', { boards: { minnow: [{ pid: 'c' }] } }, 'minnow').rows[0].pid === 'c' && A('fish', { boards: {} }, 'trout').waiting === false
+    && A('fish', { boards: {} }, 'trout').rows.length === 0 && A('fish', {}, 'trout').waiting === false && A('ranked', [{ id: 'd' }], null).rows[0].id === 'd'
+    && A('flip', { wins: 'junk' }, 'wins').rows.length === 0 && A('fish', { boards: null }, 'minnow').rows.length === 0);
+  ok('R8d the worker\'s "off" and "unreadable" are answers with their state, never rows',
+    A('spin', { off: true, wins: [{ pid: 'a' }] }, 'wins').state === 'off' && A('spin', { off: true, wins: [{ pid: 'a' }] }, 'wins').rows.length === 0
+    && A('spin', { off: true }, 'wins').waiting === false
+    && A('fish', { unavailable: true }, 'minnow').state === 'unavailable' && A('fish', { unavailable: true }, 'minnow').waiting === false);
+  ok('R8e the board list waits for the worker\'s caps (null, undefined), and is answered by any caps, even none',
+    !!R.rankListWaiting && R.rankListWaiting(null) === true && R.rankListWaiting(undefined) === true && R.rankListWaiting({}) === false && R.rankListWaiting('x') === true);
   return out;
 }
 
@@ -159,7 +186,10 @@ for (const c of rulesChecks(await asModule(rulesText))) check(c.name, c.pass, c.
      passportFromRow `r.series && typeof r.series === 'object'` -> `||`: a
        series that is not an object reads no weapon either way (null);
      ranksOpens `t.row && typeof t.row === 'object'` -> `||`: a row that is
-       not an object has no id either way, and opens nothing. */
+       not an object has no id either way, and opens nothing.
+   The mend of sitting 72 (rankAnswer, rankListWaiting): 18 more, all killed
+   but one, equivalent: rankAnswer's fish rows `: null` -> `: []` (both are
+   not a board's rows, and read as none). */
 
 /* ── part 2: the drawing, run in node ── */
 const B = loadBabel(ROOT);
@@ -265,6 +295,59 @@ function wiringChecks(over) {
   const byPlace = rules.filter((r) => /data-rank-medal|is-top|is-gold|is-silver|is-bronze|nth-child|nth-of-type|:first-child/.test(r.split('{')[0]));
   const grad = rules.filter((r) => /\.u2-rk-row/.test(r.split('{')[0]) && /gradient|background|box-shadow|filter/.test(r.split('{')[1] || ''));
   ok('W5 the sheet gives no place (1 to 3) a look of its own, and a row no gradient, tint or glow', byPlace.length === 0 && grad.length === 0, byPlace.concat(grad));
+  /* v2.3.6692, the mend of sitting 72 (held: "The Coin flip board says 'Nobody has won a flip against Ace
+     yet.' before the answer arrives (RankStandings.jsx useFlip returns `loading: false`; aceFlipBus.js
+     starts `{wins:[],losses:[]}`)"): every source's waiting is the rule's, and the page reads nothing else */
+  const answerArg = (fp) => { let a = null, n = 0; fp && fp.traverse({ CallExpression(q) { if (q.node.callee.name === 'rankAnswer') { n++; a = q.node.arguments[1]; } } }); return { a, n }; };
+  const SOURCES = ['useSpin', 'useFlip', 'useFish', 'useRanked'];
+  const srcBad = [];
+  for (const name of SOURCES) {
+    const fp = fnNode(st, name);
+    const { n } = answerArg(fp);
+    let spread = false, own = false;
+    fp && fp.traverse({ ReturnStatement(q) {
+      const o = q.node.argument;
+      if (!o || o.type !== 'ObjectExpression') return;
+      for (const pr of o.properties) {
+        if (pr.type === 'SpreadElement') spread = true;
+        else if (pr.key && /^(waiting|loading|rows)$/.test(pr.key.name || pr.key.value)) own = true;
+      }
+    } });
+    if (!fp || n !== 1 || !spread || own) srcBad.push(name);
+  }
+  ok('W6 each board\'s source (spin, flip, fish, the ranked boards) hands its answer to rankAnswer and claims no waiting, loading or rows of its own', srcBad.length === 0, srcBad);
+  const flipArg = answerArg(fnNode(st, 'useFlip')).a;
+  let blankTop = false;
+  for (const s2 of st.program.body) {
+    if (s2.type !== 'VariableDeclaration') continue;
+    for (const d of s2.declarations) if (d.id.name === 'FLIP_UNANSWERED' && d.init && d.init.type === 'MemberExpression' && d.init.object.name === 'aceFlipBus' && d.init.property.name === 'board') blankTop = true;
+  }
+  const flipOk = !!flipArg && flipArg.type === 'ConditionalExpression' && flipArg.test.type === 'BinaryExpression' && flipArg.test.operator === '==='
+    && [flipArg.test.left, flipArg.test.right].some((x) => x.type === 'Identifier' && x.name === 'FLIP_UNANSWERED') && flipArg.consequent.type === 'NullLiteral';
+  ok('W7 the flip\'s store starts as an empty board: that board (FLIP_UNANSWERED, read once at the top) is handed on as no answer (null)', blankTop && flipOk);
+  const rankedArg = answerArg(fnNode(st, 'useRanked')).a;
+  let rowsAnswer = null;
+  const ur = fnNode(st, 'useRankRows');
+  ur && ur.traverse({ ReturnStatement(q) { const o = q.node.argument; if (o && o.type === 'ObjectExpression') for (const pr of o.properties) if (pr.key && pr.key.name === 'answer') rowsAnswer = pr.value; } });
+  ok('W8 a ranked board\'s answer is the fetch\'s answer (null until one came; a failed fetch is none), never its rows or `loading`',
+    !!rankedArg && rankedArg.type === 'MemberExpression' && rankedArg.property.name === 'answer'
+    && !!rowsAnswer && rowsAnswer.type === 'ConditionalExpression' && rowsAnswer.consequent.type === 'NullLiteral' && rowsAnswer.test.type === 'BinaryExpression');
+  let loadAttr = null, unrankedWaits = false;
+  rs && rs.traverse({ JSXAttribute(q) {
+    const nm = q.node.name.name, v = q.node.value && q.node.value.expression;
+    if (nm === 'loading') loadAttr = v;
+    if (nm === 'notRanked' && v) q.traverse({ MemberExpression(m) { if (m.node.object.name === 'src' && m.node.property.name === 'waiting') unrankedWaits = true; } });
+  } });
+  ok('W9 the board draws its placeholder by the rule\'s waiting (loading={src.waiting}), and "Not ranked" only once answered',
+    !!loadAttr && loadAttr.type === 'MemberExpression' && loadAttr.object.name === 'src' && loadAttr.property.name === 'waiting' && unrankedWaits);
+  let empties = 0, emptyWaits = 0;
+  ru && ru.traverse({ JSXOpeningElement(q) {
+    if (q.node.name.name !== 'Ui2Empty') return;
+    empties++;
+    const c = q.findParent((x) => x.isConditionalExpression());
+    if (c && c.node.test.type === 'CallExpression' && c.node.test.callee.name === 'rankListWaiting' && q.findParent((x) => x === c.get('alternate'))) emptyWaits++;
+  } });
+  ok('W10 a board or group the list lacks says "nobody" only once the worker\'s list came (rankListWaiting), else the placeholder', empties > 0 && empties === emptyWaits, { empties, emptyWaits });
   return out;
 }
 for (const c of wiringChecks(null)) check(c.name, c.pass, c.detail);
@@ -283,6 +366,14 @@ const PLANTS = [
   ['D5b', '...the page not asking the rule', 'wiring', swap(STAND, 'const pinned = youPinned(you.rank, scroll, RANK_PITCH, zone.h) ?', 'const pinned = you.rank > 0 ?')],
   ['D6', 'pinned while partly in view (two copies)', 'rules', swap(RULES, '  return bottom > s + h || bottom <= s;', '  return bottom > s + h - p || bottom - p < s;')],
   ['D7', '"nobody" shown while loading', 'views', swap(VIEWS, '{loading ? (', '{false ? (')],
+  ['D7b', 'the page\'s loading={false} (the held head\'s board)', 'wiring', swap(STAND, 'loading={src.waiting}', 'loading={false}')],
+  ['D7c', 'the flip\'s source claiming its answer came (`loading: false` of the held head)', 'wiring', swap(STAND, 'return { ...a, value: (r) => amount(r.amount),', 'return { ...a, waiting: false, value: (r) => amount(r.amount),')],
+  ['D7d', 'the flip\'s empty starting board read as an answer', 'wiring', swap(STAND, "rankAnswer('flip', b === FLIP_UNANSWERED ? null : b, side)", "rankAnswer('flip', b, side)")],
+  ['D7e', 'the rule reading no answer as an empty one', 'rules', swap(RULES, "typeof answer !== 'object') return Object.freeze({ waiting: true,", "typeof answer !== 'object') return Object.freeze({ waiting: false,")],
+  ['D7f', 'a ranked board fed its rows, not its answer (a failed fetch says "nobody")', 'wiring', swap(STAND, "rankAnswer('ranked', parts.useRows(board).answer, null)", "rankAnswer('ranked', parts.useRows(board).rows, null)")],
+  ['D7f2', '...the fetch\'s answer its rows from the start', 'wiring', swap(STAND, 'answer: boards[cat] === undefined ? null : rows };', 'answer: rows };')],
+  ['D7g', 'a board the list lacks saying "nobody" before the worker\'s list', 'wiring', swap(LAND, "rankListWaiting((getS() && getS()._serverCaps) || null)\n    ?", "false\n    ?")],
+  ['D7g2', '...the rule never waiting', 'rules', swap(RULES, "  return caps === null || caps === undefined || typeof caps !== 'object';", '  return false;')],
   ['D8', 'another player\'s page fed by readPassport(S)', 'wiring', swap(CHAR, '  const P = who && typeof who === \'object\' && who.passport', '  const mine = readPassport(S);\n  const P = who && typeof who === \'object\' && who.passport')],
   ['D8b', '<CharacterPage S={S} who={row} /> falling to your own page', 'wiring', swap(CHAR, '  if (who != null) return <OtherCharacter who={who} />;\n', '')],
   ['D9', '"No title equipped" for a player whose title the game was not told', 'rules', swap(RULES, "fact('title', 'charPage.title', null)", "fact('title', 'charPage.title', 'charPage.noTitle')")],
