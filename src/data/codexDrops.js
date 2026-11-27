@@ -67,6 +67,7 @@ import { ZONE_SHARDS, SHARD_GEM_ELEMENT } from './shards.js';   /* v2.3.3516: + 
 import { WHEEL_LAND_LEVELS } from './wheelSignposts.js';
 import { CODEX_ENTRIES } from './monsterCodex.js';
 import { COIN_PILES } from './coinPiles.js';   /* v2.3.3734: the owner's coins */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -148,18 +149,17 @@ export function codexGoldAt(level) {
 /* the pictures, at the addresses the bag and the loot piles load them from
    (InventoryPanel ITEMS_V, lootIcons.js ICON_V), so an open page is a cache
    hit for anything you have seen drop */
-const IV = '?v=2.3.4222';
 const ICON = Object.freeze({
   gold: COIN_PILES[0].url,   /* v2.3.3734: the owner's one coin (the codex lists gold as a kind, not an amount) */
   nugget: '/icons/ui/cur-nugget.webp',
-  gem: '/icons/ui/cur-gem.webp' + IV,
-  ironTorso: '/icons/items/chest-plate-iron.webp' + IV,
-  ironGreaves: '/icons/items/greaves-iron.webp' + IV,
-  ironGreatsword: '/icons/items/great-sword-iron.webp' + IV,
-  'snowman': '/icons/items/remnants-snowman.webp' + IV,
-  'fire-goblin-remnants': '/icons/items/remnants-fire-goblin.webp' + IV,
-  'skeleton-remnants': '/icons/items/remnants-skeleton.webp' + IV,
-  'slime-remnants': '/icons/items/remnants-slime.webp' + IV,
+  gem: '/icons/ui/cur-gem.webp',
+  ironTorso: '/icons/items/chest-plate-iron.webp',
+  ironGreaves: '/icons/items/greaves-iron.webp',
+  ironGreatsword: '/icons/items/great-sword-iron.webp',
+  'snowman': '/icons/items/remnants-snowman.webp',
+  'fire-goblin-remnants': '/icons/items/remnants-fire-goblin.webp',
+  'skeleton-remnants': '/icons/items/remnants-skeleton.webp',
+  'slime-remnants': '/icons/items/remnants-slime.webp',
 });
 /* the quests' own names for them ("Bring 4 Snowman Remains from Frost
    Ridge") -- the bag's key for the snowman's is just 'snowman'.
@@ -266,7 +266,7 @@ export function codexDropsFor(kind, opts) {
   }
   const shard = has(ZONE_SHARDS, land) ? ZONE_SHARDS[land] : null;
   if (shard) {
-    rows.push({ id: 'shard', key: shard.key, name: shard.label, icon: '/icons/items/' + shard.key + '.webp' + IV, type: 'Material',
+    rows.push({ id: 'shard', key: shard.key, name: shard.label, icon: assetUrl('/icons/items/' + shard.key + '.webp'), type: 'Material',
       chance: CODEX_DROP_RATES.shard, who: 'pile', color: shard.color,
       desc: crack && has(SHARD_GEM_ELEMENT, land)
         ? 'A splinter of its land\'s own element. Crack it at the Gem Works: some hold a raw ' + ZONE_SHARDS[land].label.replace(/ Shard$/, '') + ' gem. Diego pays well for one too.'

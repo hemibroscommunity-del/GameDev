@@ -33,22 +33,31 @@
  * Another player's page (`who`, step 9): no count of theirs, and the
  * preview reads only (InfoPopup's readOnly: no stepper, no Spend).
  *
- * THE ROOM (the master notes' part 3): 172 px of content at 390 x 844 (168
- * at 375 x 667): 28 for the level, 44 for DPS, 90 for the six (two rows of
- * 44), 6 px of gaps: level, DPS and the six all in view, no scroll.  Sideways
- * (63; 58): one row: the level, DPS, the four supporting stats where 900 px
- * of page hold them (narrower: one door, "All stats", never smaller text),
- * and the six as 44 px doors. */
+ * v2.3.6783 (card UI3-combat): the page draws the ONE template
+ * (sheet/attrTemplate.jsx), the same for Sword, Bow and Staff and for Shared:
+ * row 1 the level; row 2 the summary strip, DPS the kit's sunk stat and the
+ * four as facts in one container; row 3 the full-width line "Attributes" with
+ * the count (gold while there are points) over the six, three by two, each a
+ * gold "+" while points wait.  The left Attributes column is gone.
+ *
+ * THE ROOM (the master notes' part 3): 172 px of content at 390 x 844: 18 for
+ * the level, 44 for the strip, 14 for the line, 90 for the six (two rows of
+ * 44), 6 px of gaps (combatHub.js WEAPON_PAGE_BANDS).  At 375 x 667 (168) the
+ * line folds onto the level row (weaponPageFold).  Sideways (63; 58): one
+ * row: the level, DPS, the four where 900 px of page hold them (narrower: one
+ * door, "All stats", never smaller text), and the line over the six as 44 px
+ * doors. */
 import React, { useEffect, useRef } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { broWeaponStats } from './broStats.js';
 import { statWindow } from './statWindow.jsx';
-import { combatPools, pointsWords, spendPool, weaponAttributes, TREE_PAGES, treeSel } from '@/game/combatHub.js';
+import { combatPools, pointsWords, spendPool, weaponAttributes, TREE_PAGES, treeSel, pointsTone, attrPlus, weaponPageFold } from '@/game/combatHub.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { weaponProgress, weaponRoadmap } from '@/game/progression.js';
 import { prog3AtkMeta } from '../../../data/prog3.js';
-import { Ui2Stat, ui2RootClass } from '@/ui/kit/index.js';
+import { ui2RootClass } from '@/ui/kit/index.js';
+import { SummaryStrip, AttrGrid, AttrLine } from './attrTemplate.jsx';
 import { SAY } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
 import './combatPage.css';
@@ -129,65 +138,49 @@ export function WeaponPage({ S, cat, who, live }) {
 
   const short = room.short;
   const wideSide = short && room.w >= 900;   /* the four beside the six; narrower, one door */
+  /* v2.3.6783 (card UI3-combat): under the four bands' room (375 x 667) the Attributes line folds onto
+     the level row's right end: the same words, the same gold, never smaller text, never a scroll */
+  const fold = !short && weaponPageFold(room.h);
   const xpWords = prog.max ? say(SAY, 'combatHub.max') : say(SAY, 'combatHub.xp', { now: prog.xpNow, need: prog.xpNeed });
   const roadWords = say(SAY, 'combatHub.levelGives', { w: ww, n: road.n });
+  const pw = avail == null ? null : pointsWords(avail);   /* the one rule's count, said with the weapon's name */
+  const line = {
+    k: say(SAY, 'combatHub.attributes'),
+    words: pw ? say(SAY, pw.key === 'combatHub.point' ? 'combatHub.lanePoint' : 'combatHub.lanePoints', { n: pw.n, w: ww }) : null,
+    tone: pointsTone(avail), data: { 'data-weapon-pool': avail == null ? '' : avail },
+  };
 
+  /* row 1: the level, its XP (the road line where the row holds it: not sideways, not folded) */
   const level = (
     <div className="u2-group u2-wp-level" data-weapon-level={prog.level} data-weapon-xp={prog.max ? 'max' : prog.xpNow + '/' + prog.xpNeed}>
       <span className="u2-wp-lv">{say(SAY, 'combatHub.lv', { n: prog.level })}</span>
-      <span className="u2-bar u2-wp-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((prog.max ? 1 : prog.frac) * 100)} aria-label={xpWords}>
-        <span className="u2-bar-top"><span data-weapon-road="">{short ? '' : roadWords}</span><b>{xpWords}</b></span>
+      <span className="u2-bar u2-wp-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((prog.max ? 1 : prog.frac) * 100)} aria-label={xpWords + '. ' + roadWords}>
+        <span className="u2-bar-top"><span data-weapon-road="">{short || fold ? '' : roadWords}</span><b>{xpWords}</b></span>
         <span className="u2-track"><span className="u2-fill" style={{ width: ((prog.max ? 1 : prog.frac) * 100).toFixed(1) + '%' }} /></span>
       </span>
+      {fold ? <AttrLine {...line} /> : null}
     </div>
   );
-  const dps = (
-    <Ui2Stat v={val('dps')} k={say(SAY, 'combatHub.dps')} className="u2-raised u2-stat u2-wp-dps" data-weapon-dps={val('dps')}
-      aria-label={say(SAY, 'combatHub.dpsTreeAria', { v: val('dps') })}
-      onClick={() => dashboardPanelBus.go({ type: 'push', id: TREE_PAGES[0], sel: treeSel(cat, []), who: self ? undefined : who })} />
+  /* row 2: the strip -- DPS the stat (it opens the tree), Damage, Attack speed, Crit chance, Range facts */
+  const strip = (
+    <SummaryStrip wide={!short && room.w >= 560}
+      stat={{ v: val('dps'), k: say(SAY, 'combatHub.dps'), aria: say(SAY, 'combatHub.dpsTreeAria', { v: val('dps') }), data: { 'data-weapon-dps': val('dps') },
+        onClick: () => dashboardPanelBus.go({ type: 'push', id: TREE_PAGES[0], sel: treeSel(cat, []), who: self ? undefined : who }) }}
+      facts={short && !wideSide ? null : WEAPON_SUPPORT.map((k) => ({ id: k, k: SUPPORT_WORD[k](), v: val(k), data: { 'data-weapon-stat': k } }))}
+      more={{ words: say(SAY, 'combatHub.allStats'), onClick: () => infoPopupBus.open({ title: ww, body: WEAPON_SUPPORT.map((k) => SUPPORT_WORD[k]() + ': ' + val(k)).join('\n') }) }}
+      data={{ 'data-weapon-support': '' }} />
   );
-  const support = (
-    <div className="u2-wp-support" data-weapon-support="">
-      {WEAPON_SUPPORT.map((k) => (
-        <span key={k} className="u2-wp-sup" data-weapon-stat={k}><span className="u2-wp-sup-k">{SUPPORT_WORD[k]()}</span><b>{val(k)}</b></span>
-      ))}
-    </div>
-  );
-  const allStats = () => {
-    infoPopupBus.open({ title: ww, body: WEAPON_SUPPORT.map((k) => SUPPORT_WORD[k]() + ': ' + val(k)).join('\n') });
-  };
-  const pw = avail == null ? null : pointsWords(avail);   /* the one rule's count, said with the weapon's name */
-  const head = (
-    <span className="u2-wp-attrhead" data-weapon-pool={avail == null ? '' : avail}>
-      <span className="u2-wp-attrk">{say(SAY, 'combatHub.attributes')}</span>
-      {pw ? <b className={avail > 0 ? 'is-on' : ''}>{say(SAY, pw.key === 'combatHub.point' ? 'combatHub.lanePoint' : 'combatHub.lanePoints', { n: pw.n, w: ww })}</b> : null}
-    </span>
-  );
-  const tiles = attrs.map((a) => (
-    <button key={a.key} type="button" className="u2-raised u2-wp-attr" data-weapon-attr={a.key} data-weapon-attr-pts={a.pts}
-      aria-label={a.cap == null ? say(SAY, 'combatHub.attrAriaFree', { stat: a.label, pts: a.pts }) : say(SAY, 'combatHub.attrAria', { stat: a.label, pts: a.pts, cap: a.cap })} onClick={() => openAttr(a.key)}>
-      <img className="u2-wp-attr-art" src={a.art} alt="" draggable={false} />
-      <span className="u2-wp-attr-words"><span className="u2-wp-attr-k">{a.label}</span><span className="u2-wp-attr-v">{a.cap == null ? say(SAY, 'combatHub.attrPts', { n: a.pts }) : a.pts + ' / ' + a.cap}</span></span>
-    </button>
-  ));
+  /* row 3: the full-width line, then the six, three by two (sideways one row of six) */
+  const attrsOf = attrs.map((a) => ({
+    key: a.key, label: a.label, art: a.art, pts: a.pts,
+    value: a.cap == null ? say(SAY, 'combatHub.attrPts', { n: a.pts }) : a.pts + ' / ' + a.cap,
+    aria: a.cap == null ? say(SAY, 'combatHub.attrAriaFree', { stat: a.label, pts: a.pts }) : say(SAY, 'combatHub.attrAria', { stat: a.label, pts: a.pts, cap: a.cap }),
+  }));
+  const grid = <AttrGrid line={fold ? null : line} attrs={attrsOf} mark="weapon" plus={attrPlus(avail, self)} onOpen={openAttr} grid={short ? 'is-one' : ''} />;
 
   return (
-    <div ref={ref} className={ui2RootClass() + ' u2-wp' + (short ? ' is-short' : '')} data-weapon-page={cat} data-weapon-whose={self ? 'self' : 'other'}>
-      {short ? (
-        <div className="u2-wp-row is-one">
-          {level}{dps}
-          {wideSide ? support : (
-            <button type="button" className="u2-raised u2-wp-allstats" data-weapon-allstats="" onClick={allStats}>{say(SAY, 'combatHub.allStats')}</button>
-          )}
-          <span className="u2-wp-side">{head}<span className="u2-wp-tiles is-one">{tiles}</span></span>
-        </div>
-      ) : (
-        <>
-          {level}
-          <div className="u2-wp-row is-sum">{dps}{support}</div>
-          <div className="u2-wp-row is-attrs">{head}<span className="u2-wp-tiles">{tiles}</span></div>
-        </>
-      )}
+    <div ref={ref} className={ui2RootClass() + ' u2-wp' + (short ? ' is-short' : '') + (fold ? ' is-fold' : '')} data-weapon-page={cat} data-weapon-whose={self ? 'self' : 'other'} data-weapon-fold={fold ? '1' : '0'}>
+      {short ? <div className="u2-wp-row is-one">{level}{strip}{grid}</div> : <>{level}{strip}{grid}</>}
     </div>
   );
 }

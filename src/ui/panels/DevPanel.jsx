@@ -26,11 +26,14 @@ const BRO_STEP_WORDS = {
   'bro-gear': 'The gear sheets were sent to the graphics chip',
   'bro-done': 'The bro was ready',
 };
+/* v2.3.6763: the spare sets now bake after the screen lifts (the owner's yes,
+   2026-11-27; game/spareLater.js): their line says so, listed last */
+const BRO_ALT_LATER = 'The spare armour sets were baked, after the loading screen';
 export function loadTimesLines(L) {
   const lf = L && L.lift;
   const out = ['Why it lifted: ' + (!lf ? '--' : lf.limit ? 'its ' + (lf.capS || 20) + ' s limit' : 'ready')];
   out.push("The bro's own steps (s since the page began):");
-  for (const st of ((L && L.bro) || [])) out.push((st.at == null ? '   --' : String(st.at.toFixed(1)).padStart(5) + ' s') + '  ' + (BRO_STEP_WORDS[st.key] || st.key));
+  for (const st of ((L && L.bro) || [])) out.push((st.at == null ? '   --' : String(st.at.toFixed(1)).padStart(5) + ' s') + '  ' + ((st.key === 'bro-alt' && L.spareLater ? BRO_ALT_LATER : BRO_STEP_WORDS[st.key]) || st.key));
   out.push('Armour frames ready when it lifted: ' + (!lf || !lf.armour ? '--'
     : lf.armour.want === 0 ? 'none worn' : lf.armour.have + ' of ' + lf.armour.want));
   return out;
@@ -361,6 +364,7 @@ const CAP_GATES = [
   'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- ON since v2.3.5906, off with `harvestgrade: false` */,
   'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
   'wireForm' /* v2.3.6443: the wire door holds a named field to its form (server/src/wire/door.js WIRE_FORM) -- lower case, a kill switch (`wireform`) */,
+  'shieldshop' /* v2.3.6800 (card SHOP): Diego sells a lost Pine Shield (server/src/shop.js SHIELD_KEY): the shelf's row shows only with it -- lower case, a kill switch */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job

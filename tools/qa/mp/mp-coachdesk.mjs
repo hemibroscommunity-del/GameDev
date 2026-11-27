@@ -35,6 +35,11 @@ const VIEWS = [
 const BEFORE_KEY = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle', 'blockRanged', 'attack', 'special', 'points', 'chatTap',
   'mayor', 'minimap', 'questPill'];   /* v2.3.4106: + the first steps (the Login Key waits for them and the first hand-in) */
 
+/* v2.3.6790 (card UI3 PR 10): the top left's box the coach keeps clear of: the
+   character HUD, alone there now (the owner, 2026-11-27: "Leave only character
+   hud in top left corner"), else (?hud=0) the quest card: the first of the two
+   in the page */
+const CORNER = '[data-quest-hud], [data-charhud-box]';
 const rectOf = (P, sel) => P.page.evaluate((s) => {
   const el = document.querySelector(s);
   if (!el) return null;
@@ -112,13 +117,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.acceptQuestFromGiver(P).catch(() => null);
       await H.leaveNpc(P, 'mayor_bro').catch(() => {});
       await P.page.waitForTimeout(1500);
-      const hud = await rectOf(P, '[data-quest-hud]');
-      rec.ok(`${V.id} 2. the pinned quest card shows (${fmt(hud)})`, !!hud, hud);
+      const hud = await rectOf(P, CORNER);
+      rec.ok(`${V.id} 2. the top left's box shows: the character HUD, or the pinned quest card (${fmt(hud)})`, !!hud, hud);
 
       /* 3. GEAR UP */
       await H.devOp(wsPort, 'kit', me, { what: 'weapons' }).catch(() => {});
       const gear = await cardFor(P, /gear up/i, 30000);
-      const hud3 = await rectOf(P, '[data-quest-hud]');
+      const hud3 = await rectOf(P, CORNER);
       await shot('3-gearup');
       rec.ok(`${V.id} 3. GEAR UP (${fmt(gear)}) clear of the quest card (${fmt(hud3)})`, !!gear && !crosses(gear, hud3), { gear, hud3 });
 
@@ -135,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1500);
       await P.page.evaluate(() => { const S = window._gameState.current; if (S && S.rpg && !S.rpg.shield) S.rpg.shield = { name: 'Pine Shield', type: 'shield', gearBase: 'pine' }; });
       const key = await cardFor(P, /login key/i, 40000);
-      const hud4 = await rectOf(P, '[data-quest-hud]');
+      const hud4 = await rectOf(P, CORNER);
       await shot('4-loginkey');
       rec.ok(`${V.id} 4. SAVE YOUR LOGIN KEY (${fmt(key)}) clear of the quest card (${fmt(hud4)}) and on the screen`,
         !!key && !crosses(key, hud4) && key.l >= 0 && key.r <= key.vw && key.t >= 0 && key.b <= key.vh, { key, hud4 });

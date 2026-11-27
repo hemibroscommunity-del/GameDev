@@ -89,7 +89,7 @@ export const FRAME_PAGES = Object.freeze({
 export const MORE_ROADS = Object.freeze({
   quests: 'menu:quests',
   skills: 'bro',
-  journey: 'bro:character',   /* v2.3.6684: the passport's Journey door (it left the Settings hub) */
+  journey: 'bro',   /* v2.3.6684: it left the Settings hub; v2.3.6782 (card UI3-bro): a tile of the one Bro page */
   achievements: 'bro',
   encyclopedia: 'menu:encyclopedia',
   pets: 'bro',

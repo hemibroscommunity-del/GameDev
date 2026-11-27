@@ -47,6 +47,7 @@
  */
 import { POINTS_ART_DIR, POINTS_ART_V } from './pointsHeadArt.js'; /* v2.3.3693: the gold numerals */
 import { sw } from '../game/switches.js';   /* v2.3.5310: the page's one reader (card T) */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 export const LEVELUP_STRIP_SRC = '/sprites/fx/levelup-burst-v1.webp?v=2.3.2591';
 export const LEVELUP_STRIP_W = 2172;
@@ -146,7 +147,7 @@ export const LEVELUP_ICON_FILL = 0.78;
    the strip on the loading screen (rendering/levelUpBurstPreload.js). */
 export const LEVELUP_NUM_H = 1.25;
 export const LEVELUP_NUM_W = 1.75;
-export const LEVELUP_NUM_URLS = Object.freeze(Array.from({ length: 10 }, (_, d) => `${POINTS_ART_DIR}gold-${d}.png?v=${POINTS_ART_V}`));
+export const LEVELUP_NUM_URLS = Object.freeze(Array.from({ length: 10 }, (_, d) => assetUrl(`${POINTS_ART_DIR}gold-${d}.png?v=${POINTS_ART_V}`)));
 
 /* Frame index at a given elapsed time; clamps to the last frame, which holds. */
 export function levelUpFrameAt(ms) {

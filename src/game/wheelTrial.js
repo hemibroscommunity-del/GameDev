@@ -36,6 +36,7 @@ import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel
 import { fillOrder } from './zoneGate.js';   /* v2.3.4400: the gate's pieces, nearest the arrival first */
 import { sw, swHas, pageAddress } from './switches.js';   /* v2.3.5310: the page's one reader (card T); v2.3.5311 its address */
 import { hereCells, hereFor } from './hereCells.js';   /* v2.3.6720: the last few cells' answers (card PRT) */
+import { assetUrl } from './assetUrl.js';   /* v2.3.6744: the objects' manifest at its file's version (card KEEP) */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -362,6 +363,12 @@ export function wheelStart() {
       wheelSayStats.waited = Date.now() - t0;
       const size = wheelLong();
       noteWheelBuilt(size);
+      /* v2.3.6744: the objects' manifest at its file's version (card KEEP PR
+         3c), so /world/objects/ can be kept a year: a changed manifest is a
+         new address.  Its own message, first (the worker's queue keeps the
+         order); a worker that does not know it ignores it and asks at a
+         fresh address, as before, as it does with no version (npm run dev) */
+      w.postMessage({ type: 'objects', manifest: assetUrl('/world/objects/manifest.json') });
       w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette, size });
     });
   }

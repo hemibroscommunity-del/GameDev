@@ -6,14 +6,14 @@ Nothing is removed by this census: no cap, no old way, no read.
 
 ## Totals
 
-- caps in `CAP_GATES`: **174**
+- caps in `CAP_GATES`: **176**
 - whose old page way settles value (they go first, as 4.2's): **12**
-- unclear whether they settle value (`?`, never guessed): **0**
+- unclear whether they settle value (`?`, never guessed): **2**
 - with no row in the switch table (no `on` day, no end): **62**
 - that count (a number or a list: they stay): **10**
-- **whose old page way is still there (old way `yes`): 162** -- the count that only falls (`tools/guards/caps-census.test.mjs`)
-- not read on the page at all: **2**
-- reads on the page, all caps: **317**
+- **whose old page way is still there (old way `yes`): 163** -- the count that only falls (`tools/guards/caps-census.test.mjs`)
+- not read on the page at all: **3**
+- reads on the page, all caps: **326**
 - births git could not find: **0**
 
 ## The caps
@@ -34,6 +34,8 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `rest` | value | false: the bed restores HP, stamina, mana and Well Rested on the page | `rest` | 3539 (09f1c23f3) | 2 | data/townBoard.js, game/rest.js | yes |
 | `shieldgem` | value | false: the page takes the gem, sets the shield gem, adds XP | `shieldgem` | 3187 (096a82379) | 2 | game/shieldGem.js, networking/wsClient.js | yes |
 | `weapongem` | value | false: the Enchanter slots the gem locally, taking it and granting XP | `weapongem` | 3513 (80fa915e1) | 1 | game/weaponGem.js | yes |
+| `shieldshop` | ? | not judged yet | `shieldshop` | 6800 (29cce7cb1) | 2 | networking/gameEvents.js, ui/panels/ShopkeeperPanel.jsx | yes |
+| `wireForm` | ? | not judged yet | `wireform` | 6443 (86785bf2d) | 0 | -- | no |
 | `abil` | no | false: no ability buttons appear and nothing is sent | -- | 1733 (2a0f140e8) | 2 | networking/wsClient.js, state/data.js | yes |
 | `aceFlip` | no | false: Ace refuses the flip with a note, nothing sent | -- | 2618 (420e00047) | 1 | ui/panels/AceFlipPanel.jsx | yes |
 | `aceItems` | no | false: hides the item wager and its records board | -- | 2619 (142c3d109) | 2 | ui/mobile/dash/LeaderboardPanel.jsx, ui/panels/AceFlipPanel.jsx | yes |
@@ -69,7 +71,7 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `partyChat` | no | false: says party chat needs an update, sends nothing | -- | 1212 (ec4b8ef4f) | 2 | game/chat.js, game/chatChannel.js | yes |
 | `perfectStrike` | no | false: arrow claims name no shot (feel and claim shape only) | -- | 4550 (f252db8d8) | 1 | game/manualCombat.js | yes |
 | `potionBag` | no | false: hides the Drink button and sends nothing | -- | 2127 (91c806a6c) | 1 | ui/mobile/dash/ItemDetailPopup.jsx | yes |
-| `prog3Chan` | no | false: shows one shared points total; the worker judges spends | -- | 2174 (eb7670d4f) | 1 | ui/mobile/sheet/HeroExpanded.jsx | yes |
+| `prog3Chan` | no | false: shows one shared points total; the worker judges spends | -- | 2174 (eb7670d4f) | 5 | ui/mobile/sheet/CharacterPage.jsx, ui/mobile/sheet/CombatHub.jsx, ui/mobile/sheet/HeroExpanded.jsx, ui/mobile/sheet/SharedPage.jsx, ui/mobile/sheet/WeaponPage.jsx | yes |
 | `prog3elem` | no | false: hides new stat rows and shows the global elemental stat | -- | 2483 (24ff8443a) | 2 | networking/wsClient.js, state/data.js | yes |
 | `prog3rel` | no | false: stat readouts predict the old linear math | -- | 2659 (8145529ea) | 2 | networking/wsClient.js, state/data.js | yes |
 | `prog3shared` | no | false: draws the old points grid and pools (display only) | -- | 2592 (2d67a948d) | 2 | networking/wsClient.js, state/data.js | yes |
@@ -90,7 +92,7 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `wheelsize` | no | counts: which Wheel the worker plays (its length) | -- | 3299 (bfe3f7f58) | 1 | networking/wsClient.js | count |
 | `whisper` | no | false: refuses to send a whisper with a hint | -- | 2130 (67d1f6abc) | 2 | game/chat.js, game/chatChannel.js | yes |
 | `accuracy` | no | false: counts no shots and hides the accuracy page | `accuracy` | 4480 (17f522a88) | 1 | game/accuracy.js | yes |
-| `achievements` | no | false: hides the Achievements page, AP tile and banners | `achievements` | 3527 (060a11b54) | 5 | game/achievements.js, ui/mobile/dash/LeaderboardPanel.jsx, ui/panels/DevPanel.jsx, ui/panels/SkillsPanel.jsx, ui/panels/buildings/PartyPanel.jsx | yes |
+| `achievements` | no | false: hides the Achievements page, AP tile and banners | `achievements` | 3527 (060a11b54) | 6 | game/achievements.js, game/broHub.js, ui/mobile/dash/LeaderboardPanel.jsx, ui/panels/DevPanel.jsx, ui/panels/SkillsPanel.jsx, ui/panels/buildings/PartyPanel.jsx | yes |
 | `alliance` | no | false: hides the alliance windows and tags | `alliance` | 3313 (1f56893e3) | 1 | game/alliance.js | yes |
 | `arenaap` | no | false: the arena window does not promise achievement points | `arenaap` | 3481 (b7fbaa7b3) | 1 | ui/panels/buildings/PartyPanel.jsx | yes |
 | `armorforge` | no | false: hides the Armor tab and its forge hint | `armorforge` | 3092 (cb3e13f52) | 2 | ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/SmithyPanel.jsx | yes |
@@ -152,7 +154,7 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `partydungeon` | no | false: shows the dungeon's own levels instead of the party line | `partydungeon` | 3573 (e97326bf8) | 3 | game/wheelDungeons.js, networking/wsClient.js, state/data.js | yes |
 | `partykeep` | no | false: shows the small in-memory party layout | `partykeep` | 3276 (165ea60b3) | 3 | game/alliance.js ×2, ui/panels/buildings/WheelHallPanel.jsx | yes |
 | `pathall` | no | false: the message diet only for ?diet=1 phones | `pathall` | 3726 (100e46dc9) | 3 | networking/wsClient.js ×2, ui/panels/DevPanel.jsx | yes |
-| `petbook` | no | false: opens the old Pet House, which only picks the active pet | `petbook` | 3120 (d74ef9fa0) | 5 | game/desktopControls.js, game/petBook.js, ui/BroTown.jsx ×3 | yes |
+| `petbook` | no | false: opens the old Pet House, which only picks the active pet | `petbook` | 3120 (d74ef9fa0) | 6 | game/broHub.js, game/desktopControls.js, game/petBook.js, ui/BroTown.jsx ×3 | yes |
 | `petfetch` | no | false: the pet does not run to far loot piles | `petfetch` | 3806 (861161a53) | 2 | ui/BroTown.jsx ×2 | yes |
 | `pethouse` | no | false: hides the More room button, nothing sent | `pethouse` | 3120 (d74ef9fa0) | 1 | game/petBook.js | yes |
 | `petlevels` | no | false: hides pet XP bars; nothing predicted | `petlevels` | 3120 (d74ef9fa0) | 1 | game/trapping.js | yes |
@@ -170,7 +172,7 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `quiet` | no | false: phone sends moves and keepalives as before | `quiet` | 3254 (97473a180) | 1 | game/quietPhone.js | yes |
 | `race` | no | false: hides Lil Bro's Race button and course | `race` | 3525 (fd5d8ee19) | 2 | data/townBoard.js, game/race.js | yes |
 | `rejoinResend` | no | counts: how many slots the worker says again after state_sync | `rejoinresend` | 4382 (3ecdccf15) | 2 | game/rejoinSlots.js, networking/wsClient.js | count |
-| `report` | no | counts: the field report's version | `report` | 5123 (7bef9c771) | 3 | debug/report.js ×3 | count |
+| `report` | no | counts: the field report's version | `report` | 5123 (7bef9c771) | 4 | debug/report.js ×4 | count |
 | `revealbag` | no | false: no Reveal button or reveal ask | `revealbag` | 3951 (10555566c) | 1 | game/revealBag.js | yes |
 | `ride` | no | false: hides the skateboard button | `ride` | 3776 (a1f1be266) | 2 | data/townBoard.js, game/ride.js | yes |
 | `risechest` | no | false: the chest just says Empty for now | `risechest` | 4438 (fe7a68f00) | 1 | game/climbActions.js | yes |

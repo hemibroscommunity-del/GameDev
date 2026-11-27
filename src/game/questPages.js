@@ -364,3 +364,22 @@ export function questOpens(tap) {
   if (tap.kind === 'rewards' && typeof tap.id === 'string' && tap.id) return { type: 'push', id: 'questRewards', sel: tap.id };
   return null;
 }
+
+/**
+ * v2.3.6691 (the mend of sitting 71): which quest a quest's page shows, and the page's own key.
+ * The bug: with quest A's page open, a tap on quest B's pinned card still showed A -- the page
+ * read its quest once (QuestPage.jsx `useState(selOf)`) and React kept that page for the new
+ * entry.  The page is drawn once per ENTRY (`questPageKey`: QuestDetailPanel.jsx keys QuestPage
+ * on it), and an entry's own selection wins over the bus (Back to a page finds ITS quest again);
+ * an entry with none (the pinned card's road carries none) takes the bus's, and keeps it.
+ *   entry   the dashboard's top entry ({ key, sel }) or null
+ *   busQid  questDetailBus.selected()
+ *   -> { qid, key, kept }   kept: the entry holds it already (nothing to keep)
+ */
+export function questPageSel(entry, busQid) {
+  const key = entry && entry.key != null ? entry.key : null;
+  if (entry && typeof entry.sel === 'string' && entry.sel) return { qid: entry.sel, key, kept: true };
+  return { qid: typeof busQid === 'string' && busQid ? busQid : null, key, kept: false };
+}
+/** the key a quest's page is drawn under: one page per entry, so a new entry draws its own quest */
+export function questPageKey(entry) { return entry && entry.key != null ? 'qp-' + entry.key : 'qp-none'; }

@@ -15,7 +15,8 @@
  *   4. the Character sample shows this player (the name the door was given),
  *      the state handed in by the harness (`__btUiKitHand`: the page never
  *      takes the game's global, open-hand.test);
- *   5. the serif came, and its figures are of equal width (tabular);
+ *   5. the face came (v2.3.6785: Source Sans 3, the owner's "logout" font, was
+ *      the serif), and its figures are of equal width (tabular);
  * and on a second page (no world needed):
  *   6. `?ui2shine=0` puts the gloss out, and raised still reads apart from
  *      recessed (a drop shadow under one, an inner shadow in the other);
@@ -233,9 +234,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const w1 = s1.getBoundingClientRect().width;
           const w2 = s2.getBoundingClientRect().width;
           s1.remove(); s2.remove();
-          return { loaded: document.fonts.check('700 16px Merriweather') && document.fonts.check('400 16px Merriweather'), w1, w2, family: getComputedStyle(host).fontFamily };
+          return { loaded: document.fonts.check('700 16px "Source Sans 3"') && document.fonts.check('400 16px "Source Sans 3"'), w1, w2, family: getComputedStyle(host).fontFamily };
         });
-        rec.ok('5. the serif (Merriweather 400 and 700) came, and its figures are of equal width', F.loaded && Math.abs(F.w1 - F.w2) < 0.5, F);
+        rec.ok('5. the face (Source Sans 3 400 and 700; v2.3.6785, was the serif) came, and its figures are of equal width', F.loaded && Math.abs(F.w1 - F.w2) < 0.5, F);
         await P.page.setViewportSize({ width: 390, height: 844 });
         await P.page.waitForTimeout(600);
         const shots = [
