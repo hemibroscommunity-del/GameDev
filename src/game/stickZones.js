@@ -73,6 +73,21 @@ export const STICK_ZONES = Object.freeze({
      near the line from starting and stopping the sprint every move */
   SPRINT_AT: 1.25,
   SPRINT_OFF: 1.05,
+  /* v2.3.6647 (card PAD part 12, the owner's bug; `?fullpush=0` gives the
+     two lines above back): a FULL PUSH sprints.  On at FULL_AT of the
+     stick's REACH (stickReach, below: the drawn radius, or less where the
+     screen runs out), off only below FULL_OFF of it: a part push walks and
+     spends nothing; a thumb eased back a little keeps the run */
+  FULL_AT: 1.0,
+  FULL_OFF: 0.8,
+  /* the reach never ends nearer the play area's edge than this (CSS px; the
+     band's top is an edge going south): past it a thumb leaves the glass, or
+     meets Safari's edge gestures */
+  EDGE_PX: 16,
+  /* ...and is never shorter than this, wherever the thumb lands: a resting
+     thumb trembles a few px, and the walk's own dead zone is 12 (a reach
+     under it would sprint before it walked) */
+  REACH_FLOOR: 18,
 });
 
 export const STICK_PHASES = Object.freeze(['rest', 'turn', 'walk']);
@@ -118,16 +133,19 @@ export function facing8(ang) {
  *  { phase, share, ang, face, sx, sy }: `face` the snapped facing for a
  *  turn or a walk (null at rest), `sx, sy` the walk's vector (its length the
  *  speed's share, 0 unless walking). */
-export function stickRead(dx, dy, travel, turn) {
+export function stickRead(dx, dy, travel, turn, full) {
   const T = typeof turn === 'number' && turn > 0 ? turn : STICK_ZONES.TURN;
   const R = travel > 0 ? travel : STICK_ZONES.RADIUS_UP;
+  /* v2.3.6647: `full` the share where the walk is full (1, the rim, unless
+     a short reach ends the stick sooner: stickDrive's full push) */
+  const F = typeof full === 'number' && full > T + 0.01 && full < 1 ? full : 1;
   const d = Math.hypot(dx || 0, dy || 0);
   const share = d / R;
   if (!(share > STICK_ZONES.DEAD)) return { phase: 'rest', share, ang: null, face: null, sx: 0, sy: 0 };
   const ang = Math.atan2(dy, dx);
   const face = facing8(ang);
   if (share <= T) return { phase: 'turn', share, ang, face, sx: 0, sy: 0 };
-  const k = Math.min(1, STICK_ZONES.WALK_FLOOR + (1 - STICK_ZONES.WALK_FLOOR) * ((share - T) / (1 - T)));
+  const k = Math.min(1, STICK_ZONES.WALK_FLOOR + (1 - STICK_ZONES.WALK_FLOOR) * ((share - T) / (F - T)));
   return { phase: 'walk', share, ang, face, sx: (dx / d) * k, sy: (dy / d) * k };
 }
 
@@ -155,14 +173,94 @@ export function stickRead(dx, dy, travel, turn) {
  * as now (server/src/sprint.js).  `?rimsprint=0` turns it off and gives the
  * sprint button back.
  *
- * S._rimSprint { out, ready }: made only on the first push past SPRINT_AT
- * (a computer's page never has one), written only here.  v2.3.6644: the
- * usual controls' stick feeds it too (stickAnalog), on a touch screen. */
+ * S._rimSprint { out, ready, hush }: made only on the first push past the
+ * line (a computer's page never has one), written only here.  v2.3.6644: the
+ * usual controls' stick feeds it too (stickAnalog), on a touch screen.
+ *
+ * ═══ v2.3.6647: A FULL PUSH SPRINTS, AND IS REACHABLE FROM ANYWHERE (card PAD part 12) ═══
+ * The owner, 2026-11-27, upright on an iPhone: "the sprint action isn't
+ * working correctly because you can't move a big enough distance off screen
+ * (in the southwest corner where the joystick is) when moving west or area
+ * too close to the edge of the screen.  Maybe just make sprint the default
+ * behavior when moving until you run out of energy unless you have better
+ * idea".  The line at 1.25 of the drawn radius (about 52 px on a 430 px
+ * phone) lay past the glass for a thumb landing on the disc, 55 px from the
+ * left edge, going west or south.  So "walk at the rim spends nothing" (the
+ * paragraph above) is gone by default: the thumb AT the reach sprints
+ * (FULL_AT 1.0; off below FULL_OFF 0.8), a part push walks and spends
+ * nothing, so walking with the stick held over IS sprinting until the
+ * energy runs out (the owner's idea), and easing off saves it (the
+ * player keeps the choice).  THE REACH, in the thumb's direction, is the
+ * smaller of the drawn radius and the room from where the thumb landed to
+ * the play area's edge less EDGE_PX (the band's top an edge going south),
+ * never under REACH_FLOOR (stickReach): a full push is on the glass from
+ * any landing point, any way.  The landing point never moves (a still
+ * thumb moves nothing), and the walk is full at a full push (the knob drawn
+ * at its stop).  OUT OF ENERGY the run ends and the bro walks on; `ready`
+ * keeps it from starting again until the thumb eases back and pushes again
+ * (no flicker while the bar trickles); the refusal's words come once each
+ * time the bar empties (`hush`, cleared by a sprint that starts), never at
+ * every push now that a full push is how people walk far.  `?fullpush=0`
+ * gives yesterday's rule back whole (SPRINT_AT and SPRINT_OFF of the drawn
+ * radius, no reach, the words at every push). */
 
-/** Is the thumb past the rim?  `was` its answer last time (the band: on at
- *  SPRINT_AT, off below SPRINT_OFF). */
-export function rimPast(share, was) {
-  return was ? share >= STICK_ZONES.SPRINT_OFF : share >= STICK_ZONES.SPRINT_AT;
+/** The full push for this page: on unless `?fullpush=0`.  `search` is for
+ *  tests. */
+export function fullPushOn(search) {
+  return !(typeof search === 'string' ? readerFor(search).sw('fullpush') : sw('fullpush'));
+}
+
+/** Is the thumb past the line?  `was` its answer last time (the band: on at
+ *  FULL_AT, off below FULL_OFF; `full` false, yesterday's SPRINT_AT and
+ *  SPRINT_OFF; left out, the page's `?fullpush`).  A hair under the line
+ *  counts (a thumb exactly at the reach, the reach and its distance each
+ *  rounded once). */
+export function rimPast(share, was, full) {
+  const fp = typeof full === 'boolean' ? full : fullPushOn();
+  const at = fp ? STICK_ZONES.FULL_AT : STICK_ZONES.SPRINT_AT;
+  const off = fp ? STICK_ZONES.FULL_OFF : STICK_ZONES.SPRINT_OFF;
+  return was ? share >= off - 1e-9 : share >= at - 1e-9;
+}
+
+/** The band's height on this page, CSS px: the `--sheet-h` stamp (the zones
+ *  end there: TouchControls), else `--dash-h`; 0 off a page.  The root's own
+ *  inline style, a string the page wrote: no layout is read. */
+export function bandPx() {
+  try {
+    const st = typeof document !== 'undefined' && document.documentElement && document.documentElement.style;
+    if (!st) return 0;
+    return parseFloat(st.getPropertyValue('--sheet-h')) || parseFloat(st.getPropertyValue('--dash-h')) || 0;
+  } catch (e) { return 0; }
+}
+
+/** Where the thumb landed, and the play area it moves in: { x, y, l, t, r,
+ *  b }, CSS px, the box from the column's top left to `vw` wide and down to
+ *  the band's top (`vh` less `band`, else bandPx()).  Made once a touch
+ *  (BroTown's touchstart), read by stickReach. */
+export function stickFrom(x, y, vw, vh, band) {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !(vw > 0) || !(vh > 0)) return null;
+  const b = typeof band === 'number' && band >= 0 ? band : bandPx();
+  return { x, y, l: 0, t: 0, r: vw, b: vh - b };
+}
+
+/** The room from the landing point to the box's edge less EDGE_PX, along
+ *  the angle `ang` (0 where the thumb landed outside it). */
+export function stickRoom(from, ang) {
+  if (!from) return Infinity;
+  const m = STICK_ZONES.EDGE_PX, c = Math.cos(ang), s = Math.sin(ang);
+  const tx = c > 1e-9 ? (from.r - m - from.x) / c : c < -1e-9 ? (from.x - from.l - m) / -c : Infinity;
+  const ty = s > 1e-9 ? (from.b - m - from.y) / s : s < -1e-9 ? (from.y - from.t - m) / -s : Infinity;
+  return Math.max(0, Math.min(tx, ty));
+}
+
+/** THE REACH, CSS px: the full push's distance from the landing point
+ *  `from` (stickFrom; null: the drawn radius) along `ang`, the drawn radius
+ *  `R` or the room, the smaller, never under the floor (REACH_FLOOR, or
+ *  further when the walk starts further out: `start` px, the trial's turn
+ *  border, so a full push is always a walk). */
+export function stickReach(from, ang, R, start) {
+  const floor = Math.max(STICK_ZONES.REACH_FLOOR, ((start > 0 ? start : 0) + 2) / STICK_ZONES.FULL_OFF);
+  return Math.max(floor, Math.min(R > 0 ? R : 0, stickRoom(from, ang)));
 }
 
 /** The rim's sprint for this page: on unless `?rimsprint=0`.  `search` is
@@ -199,21 +297,25 @@ function rimHeld(S) {
  *  clock).  'start' | 'stop' | 'tired' | null. */
 export function rimSprint(S, share, now, say) {
   if (!S || !rimSprintOn()) return null;
+  const fp = fullPushOn();   /* v2.3.6647: the full push's lines and words, or yesterday's */
   let rim = S._rimSprint;
   if (!rim) {
-    if (!(share >= STICK_ZONES.SPRINT_AT) || !sprintSupported(S)) return null;
-    rim = S._rimSprint = { out: false, ready: true };
+    if (!rimPast(share, false, fp) || !sprintSupported(S)) return null;
+    rim = S._rimSprint = { out: false, ready: true, hush: false };
   }
-  rim.out = rimPast(share, rim.out);
+  rim.out = rimPast(share, rim.out, fp);
   if (!rim.out) {
     rim.ready = true;
     return rimSprinting(S) && stopSprint(S, 'rim', now) ? 'stop' : null;
   }
   if (!rim.ready || (S._sprint && S._sprint.on) || rimHeld(S)) return null;
   rim.ready = false;
-  if (startSprint(S, now, 'rim')) return 'start';
+  if (startSprint(S, now, 'rim')) { rim.hush = false; return 'start'; }
   if (S._sprint && S._sprint.why === 'tired') {
-    if (typeof say === 'function') say(S, now);
+    /* v2.3.6647: once each time the bar empties (a sprint that starts
+       clears it), not at every full push; `?fullpush=0` at every push */
+    if (typeof say === 'function' && !(fp && rim.hush)) say(S, now);
+    if (fp) rim.hush = true;
     return 'tired';
   }
   return null;
@@ -268,12 +370,19 @@ export function stickTo(S, phase) {
  * change; the facing that changes rides `move` as any turn does today, and
  * nothing goes while it is unchanged), and the stick's phase. */
 let _turn = null;   /* the page's `?turnzone`, read once */
-export function stickDrive(S, dx, dy, radius, knob, rod, op, say) {
+export function stickDrive(S, dx, dy, radius, knob, rod, op, say, from) {
   if (_turn === null) _turn = turnShare();
   const R = radius > 0 ? radius : STICK_ZONES.RADIUS_UP;
-  const r = stickRead(dx, dy, R, _turn);
-  const d = Math.min(Math.hypot(dx || 0, dy || 0), R);
   const a = Math.atan2(dy || 0, dx || 0);
+  const hyp = Math.hypot(dx || 0, dy || 0);
+  /* v2.3.6647 (card PAD part 12): the usual stick's rule: a full push, at
+     the reach from where the thumb landed (`from`, stickFrom), sprints; the
+     walk is full and the knob at the rim there */
+  const fp = fullPushOn();
+  const reach = fp ? stickReach(from, a, R, _turn * R) : R;
+  const fullShare = Math.min(R, reach) / R;
+  const r = stickRead(dx, dy, R, _turn, fullShare);
+  const d = fullShare >= 1 ? Math.min(hyp, R) : Math.min(1, hyp / (fullShare * R)) * R;
   if (knob) knob.style.transform = 'translate(calc(-50% + ' + Math.cos(a) * d + 'px), calc(-50% + ' + Math.sin(a) * d + 'px))';
   if (rod) {
     rod.style.width = d + 'px';
@@ -284,7 +393,7 @@ export function stickDrive(S, dx, dy, radius, knob, rod, op, say) {
   S.stickY = r.sy;
   if (r.phase === 'turn') S._targetFacingAngle = r.face;
   stickTo(S, r.phase);
-  r.rim = rimSprint(S, r.share, Date.now(), say);   /* v2.3.6545: the thumb's own share, unclamped; `say` the refusal's words */
+  r.rim = rimSprint(S, fp ? hyp / reach : r.share, Date.now(), say);   /* v2.3.6545: the thumb's own share, unclamped; `say` the refusal's words; v2.3.6647: of the reach */
   return r;
 }
 
@@ -305,18 +414,28 @@ export const STICK_DEAD_PX = 12;
  * The share is the thumb's own distance, never clamped: the usual stick
  * draws its knob only to `maxR` (20 px inside the rim) and its walk is full
  * there, but the thumb itself goes on past the rim.  Called with no radius
- * it reads the walk alone, as before. */
-export function stickAnalog(S, dist, angle, maxR, radius, say) {
+ * it reads the walk alone, as before.
+ * v2.3.6647 (card PAD part 12): `from` where the thumb landed and its play
+ * area (stickFrom): a FULL PUSH, the thumb at the reach (stickReach), sprints
+ * (rimSprint's lines, of the reach, not the drawn radius); where the reach
+ * is shorter than the travel, the walk is full at the reach.  Returns the
+ * knob's drawn length (BroTown draws it): at its stop at a full push. */
+export function stickAnalog(S, dist, angle, maxR, radius, say, from) {
+  const live = radius > 0 && rimSprintLive();
+  const fp = live && fullPushOn();
+  const reach = fp ? stickReach(from, angle, radius, STICK_DEAD_PX) : 0;
+  const top = fp && reach < maxR ? reach : maxR;   /* the walk full here */
   if (dist < STICK_DEAD_PX) {
     S.stickX = 0;
     S.stickY = 0;
   } else {
     /* Analog: normalize to -1..1 range based on distance from center */
-    const strength = Math.min((dist - STICK_DEAD_PX) / (maxR - STICK_DEAD_PX), 1);
+    const strength = Math.min((dist - STICK_DEAD_PX) / (top - STICK_DEAD_PX), 1);
     S.stickX = Math.cos(angle) * strength;
     S.stickY = Math.sin(angle) * strength;
   }
-  if (radius > 0 && rimSprintLive()) rimSprint(S, dist / radius, Date.now(), say);
+  if (live) rimSprint(S, fp ? dist / reach : dist / radius, Date.now(), say);
+  return top === maxR ? Math.min(dist, maxR) : Math.min(1, dist / top) * maxR;
 }
 /** The thumb lifted, in every mode: no walk, the stick at rest (stickTo
  *  writes only when mode 5 moved it). */

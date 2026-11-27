@@ -53,6 +53,13 @@
  *      call runs on every lift and does nothing without a push (rimSprint
  *      makes no state below SPRINT_AT): the same behaviour, the guard only
  *      saves a call.
+ *  12. v2.3.6647 (card PAD part 12, the owner's bug) A FULL PUSH SPRINTS,
+ *      REACHABLE FROM ANYWHERE: the reach on the glass from every landing
+ *      point of three phones every way, the card's landing points, a still
+ *      thumb, a part push, a tremble at the edge, the walk and the knob at
+ *      a short reach, out of energy with no flicker, the words once an
+ *      emptying, the landing box, the two buttons, `?fullpush=0`.  10 and 11
+ *      are now played under `?fullpush=0` (yesterday's rule, kept whole).
  *
  * Break proof, tried by hand: `S._stickPhase = 'walk';` added to
  * stickZones.js stickRead -> FAIL 5 (and the guard's §2); TURN: 0.30 -> 0.10
@@ -91,6 +98,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';
 import { rimPast, rimSprintOn, rimSprintLive, rimSprinting, rimSprint } from '../../src/game/stickZones.js';   /* v2.3.6545: the rim's sprint (card CT item 6) */
+import { fullPushOn, stickFrom, stickRoom, stickReach, bandPx } from '../../src/game/stickZones.js';   /* v2.3.6647: the full push, reachable from anywhere (card PAD part 12) */
 import { updateSprint, isSprinting, sprintStepFlag, stopSprint, startSprint } from '../../src/game/sprint.js';   /* v2.3.6542: + the stick's one writer in every mode */
 import { findIn, readSystem, systemNames } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6541 (sitting 57's mend): the call read off the syntax tree */
@@ -644,7 +652,12 @@ function writesOutside(prop, doorFile, doorFn) {
 }
 
 const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list handed to deviceProfile (it keeps the first): 10i and 11f */
-/* ── 10. v2.3.6545: sprint from the rim (card CT item 6) ── */
+/* ── 10. v2.3.6545: sprint from the rim (card CT item 6) ──
+ * v2.3.6647 (card PAD part 12): 10 and 11 are YESTERDAY'S RULE, played
+ * under `?fullpush=0` (the switch gives it back whole: 1.25 and 1.05 of the
+ * drawn radius, no reach, the words at every push); the full push is 12's. */
+const _fpLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
+Object.defineProperty(globalThis, 'location', { value: { search: '?fullpush=0' }, configurable: true, writable: true });
 {
   const R = 37.5;
   const mk = (st) => ({ _serverCaps: { sprint: true }, rpg: { stamina: st == null ? 100 : st, maxStamina: 100, hp: 50 }, player: { x: 0, y: 0 } });
@@ -654,7 +667,8 @@ const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list han
   /* a frame of sprint.js's own, the walk pushed (the game loop's call) */
   const frame = (S, f) => updateSprint(S, Date.now(), Object.assign({ moving: true, dtMs: 100 }, f || {}));
   check('10. the lines: on at 1.25, off below 1.05 (trial numbers)', STICK_ZONES.SPRINT_AT === 1.25 && STICK_ZONES.SPRINT_OFF === 1.05);
-  check('10. rimPast: the band, both edges exact', rimPast(1.25, false) === true && rimPast(1.2499, false) === false && rimPast(1.05, true) === true && rimPast(1.0499, true) === false && rimPast(1.1, false) === false && rimPast(1.1, true) === true);
+  check('10. rimPast: the band, both edges exact (yesterday\'s lines, named and read off ?fullpush=0)', rimPast(1.25, false, false) === true && rimPast(1.2499, false, false) === false && rimPast(1.05, true, false) === true && rimPast(1.0499, true, false) === false && rimPast(1.1, false, false) === false && rimPast(1.1, true, false) === true
+    && fullPushOn() === false && rimPast(1.2499, false) === false && rimPast(1.0499, true) === false);
   /* 10a. at the rim: full walking speed, no sprint, stamina still */
   let S = mk();
   let r = push(S, 1.0);
@@ -743,7 +757,7 @@ const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list han
   const hadLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
   const hadWin = globalThis.window;
   try {
-    Object.defineProperty(globalThis, 'location', { value: { search: '?rimsprint=0' }, configurable: true, writable: true });
+    Object.defineProperty(globalThis, 'location', { value: { search: '?fullpush=0&rimsprint=0' }, configurable: true, writable: true });
     const Z = mk(); const z = push(Z, 2);
     check('10i. ?rimsprint=0: past the rim full walking speed and no sprint, no state', z.rim === null && near(Z.stickX, 1) && !(Z._sprint && Z._sprint.on) && !('_rimSprint' in Z) && rimSprintOn() === false);
     setManualCombat(5);
@@ -778,7 +792,7 @@ const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list han
   check('10k. ...nor a radius of 0', !('_rimSprint' in M0) && !(M0._sprint && M0._sprint.on));
   /* 10l. BroTown hands the button's words to the one call (off the source:
      the handler's only stickDrive call, the 8th argument sprintTiredSay) */
-  check('10l. BroTown\'s one stickDrive call hands it sprintTiredSay', findIn('ui', /stickDrive\(stateRef\.current, rawDx, rawDy, rect\.width \/ 2, knobRef\.current, lStickRef\.current, base\.style\.opacity, sprintTiredSay\); return; \}/).length === 1);
+  check('10l. BroTown\'s one stickDrive call hands it sprintTiredSay', findIn('ui', /stickDrive\(stateRef\.current, rawDx, rawDy, rect\.width \/ 2, knobRef\.current, lStickRef\.current, base\.style\.opacity, sprintTiredSay, _lts && _lts\.from\); return; \}/).length === 1);
 }
 
 /* ── 11. v2.3.6644: the USUAL controls sprint by the rim (card PAD part 9) ──
@@ -828,10 +842,10 @@ const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list han
   const hadLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
   const hadWin = globalThis.window;
   try {
-    Object.defineProperty(globalThis, 'location', { value: { search: '?rimsprint=0' }, configurable: true, writable: true });
+    Object.defineProperty(globalThis, 'location', { value: { search: '?fullpush=0&rimsprint=0' }, configurable: true, writable: true });
     const Z = mk(); thumb(Z, 2);
     check('11f. ?rimsprint=0: past the rim full walking speed, no sprint, no state', near(Z.stickX, 1) && !on(Z) && !('_rimSprint' in Z) && rimSprintLive() === false);
-    globalThis.location.search = '';
+    globalThis.location.search = '?fullpush=0';
     if (typeof globalThis.window === 'undefined') globalThis.window = {};
     const mq = MQ; mq.matches = true;
     globalThis.window.matchMedia = () => mq;
@@ -847,7 +861,195 @@ const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list han
     setManualCombat(4);
   }
   /* 11g. BroTown's one analog call hands the drawn radius and the words */
-  check('11g. BroTown\'s one stickAnalog call hands it the drawn radius and sprintTiredSay', findIn('ui', /stickAnalog\(S, dist, angle, maxR, rect\.width \/ 2, sprintTiredSay\);/).length === 1);
+  check('11g. BroTown\'s one stickAnalog call hands it the drawn radius, sprintTiredSay and where the thumb landed (v2.3.6647), and draws the knob its read\'s length', findIn('ui', /var clampDist = stickAnalog\(S, dist, angle, maxR, rect\.width \/ 2, sprintTiredSay, _lts && _lts\.from\);/).length === 1);
+}
+
+/* ── 12. v2.3.6647: A FULL PUSH SPRINTS, REACHABLE FROM ANYWHERE (card PAD part 12) ──
+ * The owner, 2026-11-27, upright on an iPhone: "the sprint action isn't
+ * working correctly because you can't move a big enough distance off screen
+ * (in the southwest corner where the joystick is) when moving west or area
+ * too close to the edge of the screen".  By default (no address): the thumb
+ * AT the reach sprints (1.0, off below 0.8), a part push walks; the reach in
+ * the thumb's direction is the drawn radius or the room to the play area's
+ * edge less 16 px (the band's top going south), the smaller, never under 18;
+ * a still thumb moves nothing; out of energy the bro walks on, no flicker;
+ * the refusal's words once each time the bar empties; the two buttons the
+ * same.  Plants, each red (tried by hand, 2026-11-27): FULL_AT 1.25 (or the
+ * reach ignored: dist over the drawn radius) -> FAIL 12a, 12b; the margin
+ * left out of stickRoom -> FAIL 12a, 12b (west from 40 px); the floor 4 ->
+ * FAIL 12c; the floor taken away (Math.max dropped) -> FAIL 12c; the band's
+ * height left out of stickFrom -> FAIL 12b (south), 12g; the walk's top
+ * left at maxR -> FAIL 12d (a short reach sprinting on a part walk); the
+ * knob drawn min(dist, maxR) -> FAIL 12d; `hush` dropped -> FAIL 12f;
+ * `rim.hush = false` on a start dropped -> FAIL 12f; `rim.ready = false`
+ * dropped -> FAIL 12e (a restart at every move while held, out of energy);
+ * stickDrive left on yesterday's share -> FAIL 12h; BroTown's touchstart
+ * without the landing box -> FAIL 12g. */
+if (_fpLoc) Object.defineProperty(globalThis, 'location', _fpLoc); else delete globalThis.location;
+{
+  setManualCombat(4);
+  const Z = STICK_ZONES, E = Z.EDGE_PX, FL = Z.REACH_FLOOR;
+  const mk = (st) => ({ _serverCaps: { sprint: true }, rpg: { stamina: st == null ? 100 : st, maxStamina: 100, hp: 50 }, player: { x: 0, y: 0 } });
+  const on = (S) => !!(S._sprint && S._sprint.on && S._sprint.how === 'rim');
+  const says = [];
+  const say = (S, now) => says.push(now);
+  const frame = (S, f) => updateSprint(S, Date.now(), Object.assign({ moving: true, dtMs: 100 }, f || {}));
+  check('12. the lines: on at 1.0 of the reach, off below 0.8; the margin 16 px, the floor 18; on by default, `?fullpush=0` off',
+    Z.FULL_AT === 1 && Z.FULL_OFF === 0.8 && E === 16 && FL === 18 && fullPushOn() === true && fullPushOn('?fullpush=0') === false && fullPushOn('?fullpush=1') === true && fullPushOn('') === true);
+  check('12. rimPast by default: the full push\'s band, both edges', rimPast(1, false) && !rimPast(0.999, false) && rimPast(0.8, true) && !rimPast(0.799, true) && !rimPast(0.9, false) && rimPast(0.9, true) && rimPast(3, true));
+
+  /* 12a. THE REACH IS ON THE GLASS from every landing point, every way: three
+     phones (upright 375 x 667 and 390 x 844, sideways 844 x 390, the band's
+     height each), the controller's drawn radius each, the whole left zone
+     every 3 px, sixteen ways and the four straight ones */
+  const PHONES = [
+    { name: '375 x 667 upright', vw: 375, vh: 667, band: 150, R: 36.3 },
+    { name: '390 x 844 upright', vw: 390, vh: 844, band: 170, R: 37.7 },
+    { name: '844 x 390 sideways', vw: 844, vh: 390, band: 96, R: 41.6 },
+  ];
+  const ANGS = [];
+  for (let k = 0; k < 16; k++) ANGS.push((k * Math.PI) / 8 - Math.PI + 1e-3 * (k % 3));
+  ANGS.push(0, Math.PI / 2, Math.PI, -Math.PI / 2);
+  for (const ph of PHONES) {
+    const bad = [], floorCases = [], acted = [];
+    let n = 0;
+    for (let x = 0.5; x <= ph.vw / 2; x += 3) {
+      for (let y = 0.5; y <= ph.vh - ph.band; y += 3) {
+        const from = stickFrom(x, y, ph.vw, ph.vh, ph.band);
+        for (const a of ANGS) {
+          const reach = stickReach(from, a, ph.R, STICK_DEAD_PX);
+          const px = x + Math.cos(a) * reach, py = y + Math.sin(a) * reach;
+          /* never nearer an edge than the margin, or than where it landed (a thumb landing inside the margin, moving along it) */
+          const keep = (end, start) => end >= Math.min(start, E) - 1e-6;
+          const inside = keep(px, x) && keep(ph.vw - px, ph.vw - x) && keep(py, y) && keep(ph.vh - ph.band - py, ph.vh - ph.band - y);
+          n++;
+          if (!(reach <= ph.R + 1e-9 && reach >= FL - 1e-9)) bad.push({ x, y, a, reach, why: 'not between the floor and the drawn radius' });
+          else if (!inside && !(reach === FL && stickRoom(from, a) < FL)) bad.push({ x, y, a, reach, px, py, why: 'past the margin, not the floor' });
+          else if (!inside) floorCases.push({ x, y, a });
+          /* the stick itself, one in about 89: a thumb walked straight out sprints AT the reach, not a hair before, the walk full */
+          if (n % 89 === 0) {
+            const S = mk(), maxR = ph.R - 20;
+            stickAnalog(S, reach - 0.25, a, maxR, ph.R, null, from);
+            const early = on(S);
+            const knob = stickAnalog(S, reach, a, maxR, ph.R, null, from);
+            if (early || !on(S) || !near(Math.hypot(S.stickX, S.stickY), 1) || !near(knob, maxR)) acted.push({ x, y, a, reach, early, on: on(S), walk: Math.hypot(S.stickX, S.stickY), knob });
+          }
+        }
+      }
+    }
+    check(`12a. ${ph.name}: from every landing point (${n} thumbs), the full push between the floor and the drawn radius, never nearer an edge than 16 px or than where it landed (or the floor's own case, within ${E + FL} px of an edge: ${floorCases.length})`, bad.length === 0, bad.slice(0, 3));
+    check(`12a. ${ph.name}: walked straight out, the stick sprints AT the reach and not a quarter px before, the walk full and the knob at its stop`, acted.length === 0, acted.slice(0, 3));
+  }
+
+  /* 12b. the card's own landing points (the controller on a 430 px phone: R 41.6, maxR 21.6; the band 170 px of 932) */
+  const R = 41.6, maxR = R - 20, VW = 430, VH = 932, BAND = 170, B = VH - BAND;
+  const push = (x0, y0, ang, dist) => { const S = mk(); stickAnalog(S, dist, ang, maxR, R, say, stickFrom(x0, y0, VW, VH, BAND)); return S; };
+  const firstSprint = (x0, y0, ang) => { for (let d = 0; d <= 3 * R; d += 0.25) { if (on(push(x0, y0, ang, d))) return d; } return null; };
+  const W = Math.PI, S_ = Math.PI / 2, SW = (3 * Math.PI) / 4, EA = 0;
+  const cases = [
+    ['on the drawn disc (55, 57 over the band) going west', 55, B - 57, W, 55 - E],
+    ['on the drawn disc going south', 55, B - 57, S_, 57 - E],
+    ['on the drawn disc going south-west', 55, B - 57, SW, R],
+    ['on the drawn disc going east', 55, B - 57, EA, R],
+    ['60 px from the left edge going west', 60, B - 120, W, R],
+    ['40 px from the left edge going west', 40, B - 120, W, 40 - E],
+    ['40 px from the left edge going east', 40, B - 120, EA, R],
+    ['20 px from the left edge going west (the floor\'s case: 2 px of glass left)', 20, B - 120, W, FL],
+    ['30 px over the band going south (the floor)', 200, B - 30, S_, FL],
+    ['50 px over the band going south', 200, B - 50, S_, 50 - E],
+    ['30 px from the left edge and the band going south-west', 30, B - 30, SW, (30 - E) * Math.SQRT2],
+    ['30 px from the top going north', 120, 30, -Math.PI / 2, FL],
+  ];
+  for (const [what, x0, y0, a, want] of cases) {
+    const d = firstSprint(x0, y0, a);
+    const at = d == null ? null : { x: x0 + Math.cos(a) * d, y: y0 + Math.sin(a) * d };
+    check(`12b. ${what}: the full push at ${want.toFixed(2)} px (first sprint at ${d}; the thumb at ${at && at.x.toFixed(1)}, ${at && at.y.toFixed(1)})`,
+      d != null && d >= want - 1e-9 && d <= want + 0.25 + 1e-9 && at.x >= 0 && at.y <= B && at.y >= 0, { d, want, at });
+  }
+  check('12b. the share is the thumb\'s own over the reach, unclamped: three reaches out it sprints', on(push(40, B - 120, W, 3 * 24)));
+
+  /* 12c. a still thumb moves nothing; a part push walks; a tremble at the edge is no sprint */
+  says.length = 0;
+  const T0 = push(1, B - 1, SW, 0);
+  check('12c. a thumb landing in the corner (1 px from the edge and the band), still: no walk, no sprint, no state', T0.stickX === 0 && T0.stickY === 0 && !on(T0) && !('_rimSprint' in T0));
+  const T1 = push(17, B - 120, W, 6);
+  check('12c. 17 px from the left edge, trembling 6 px west: no walk, no sprint (the floor)', T1.stickX === 0 && !on(T1) && !('_rimSprint' in T1));
+  const T2 = push(17, B - 120, W, FL - 0.25);
+  check('12c. ...17.75 px: a walk, still no sprint', T2.stickX < 0 && !on(T2));
+  const T3 = push(55, B - 57, EA, 0.99 * R);
+  check('12c. a part push (0.99 of the reach) on the disc going east: full walking speed, no sprint, no state', near(T3.stickX, 1) && !on(T3) && !('_rimSprint' in T3));
+
+  /* 12d. at a short reach (the floor's 18 px, under the travel's 21.6) the walk is full and the knob at its stop at the full push */
+  const D = mk(); const from20 = stickFrom(20, B - 120, VW, VH, BAND);
+  const kPart = stickAnalog(D, 15, W, maxR, R, say, from20);
+  const wPart = Math.hypot(D.stickX, D.stickY);
+  const kFull = stickAnalog(D, FL, W, maxR, R, say, from20);
+  check(`12d. a short reach: a part push walks part speed with the knob part way (${wPart.toFixed(2)}, ${kPart.toFixed(1)} px), the full push full speed with the knob at its stop (${kFull} of ${maxR})`,
+    wPart > 0 && wPart < 1 && kPart < maxR && near(Math.hypot(D.stickX, D.stickY), 1) && near(kFull, maxR) && on(D));
+  const D2 = mk(); const kOld = stickAnalog(D2, 15, W, maxR, R, say, stickFrom(200, B - 120, VW, VH, BAND));
+  check('12d. with room, the walk and the knob are yesterday\'s (full at the travel)', near(kOld, 15) && near(Math.hypot(D2.stickX, D2.stickY), Math.min((15 - 12) / (maxR - 12), 1)));
+
+  /* 12e. out of energy: the run ends, the bro walks on, no flicker; ease back and push again once the minimum is back */
+  const from = stickFrom(55, B - 57, VW, VH, BAND);
+  const hold = (S, share) => stickAnalog(S, share * (55 - E), W, maxR, R, say, from);
+  const O = mk(); hold(O, 1);
+  check('12e. a full push west from the disc: it sprints', on(O));
+  O.rpg.stamina = 0.5;
+  const ev = frame(O);
+  let flick = 0;
+  for (const sh of [1, 1.2, 0.9, 1.05, 1, 0.85, 1.3]) { hold(O, sh); frame(O); if (O._sprint.on) flick++; }
+  O.rpg.stamina = 60;
+  for (const sh of [1, 1.1, 0.95]) { hold(O, sh); if (O._sprint.on) flick++; }
+  check('12e. the bar empties: the run ends ("empty"), the stick held over walks on at full speed and never sprints again (no flicker), even refilled', ev === 'stop' && O._sprint.why === 'empty' && flick === 0 && near(O.stickX, -1), { ev, flick, sp: O._sprint });
+  hold(O, 0.79); hold(O, 1);
+  check('12e. ...eased back under 0.8 and pushed again, the minimum back: it sprints', on(O));
+
+  /* 12f. the refusal's words: once each time the bar empties, never at every push */
+  says.length = 0;
+  const Q = mk(2);
+  const pushes = (S, k) => { for (let i = 0; i < k; i++) { hold(S, 1); hold(S, 0.5); } };
+  pushes(Q, 4);
+  check(`12f. tired: four full pushes, the words once (${says.length}), no sprint`, says.length === 1 && !on(Q) && Q._sprint.why === 'tired');
+  Q.rpg.stamina = 100; hold(Q, 1);
+  const ran = on(Q);
+  Q.rpg.stamina = 0.5; frame(Q); hold(Q, 0.5);
+  Q.rpg.stamina = 2; pushes(Q, 3);
+  check(`12f. rested, a sprint, the bar empty again: three more pushes say them once more (${says.length})`, ran && says.length === 2 && !on(Q));
+
+  /* 12g. the landing box: the band read off the page's own stamp, BroTown's touchstart makes it */
+  const hadDoc = globalThis.document;
+  try {
+    globalThis.document = { documentElement: { style: { getPropertyValue: (k) => (k === '--sheet-h' ? '212px' : k === '--dash-h' ? '180px' : '') } } };
+    const f = stickFrom(10, 20, 390, 844);
+    check('12g. the band\'s height off --sheet-h (212): the box down to the band\'s top', bandPx() === 212 && f && f.b === 632 && f.r === 390 && f.l === 0 && f.t === 0 && f.x === 10 && f.y === 20, f);
+    globalThis.document = { documentElement: { style: { getPropertyValue: (k) => (k === '--dash-h' ? '180px' : '') } } };
+    check('12g. ...no --sheet-h: --dash-h (180)', bandPx() === 180);
+  } finally {
+    if (hadDoc === undefined) delete globalThis.document; else globalThis.document = hadDoc;
+  }
+  check('12g. off a page: no band; no box without a landing point or a width', bandPx() === 0 && stickFrom(NaN, 1, 390, 844, 0) === null && stickFrom(1, 1, 0, 844, 0) === null);
+  check('12g. BroTown\'s touchstart keeps where the thumb landed in the play area (stickFrom, the play column\'s size)', findIn('ui', /lts\.from = stickFrom\(t\.clientX, t\.clientY, playVw\(\), playVh\(\)\);/).length === 1);
+
+  /* 12h. the two buttons (`?manual=5`, stickDrive): the same rule */
+  const R5 = 41.6, from5 = stickFrom(40, B - 120, VW, VH, BAND);
+  const knob = { style: {} };
+  const H5 = mk(); const h1 = stickDrive(H5, -(40 - E) + 0.25, 0, R5, null, null, null, say, from5);
+  const H6 = mk(); const h2 = stickDrive(H6, -(40 - E), 0, R5, knob, null, null, say, from5);
+  check('12h. the two buttons: 40 px from the left edge, west: no sprint a quarter px short, a sprint at the margin, the walk full and the knob at the rim',
+    h1.rim === null && !on(H5) && h2.rim === 'start' && on(H6) && near(H6.stickX, -1) && /translate\(calc\(-50% \+ -41\.6px\)/.test(knob.style.transform || ''), { h1, h2, k: knob.style.transform });
+  const H7 = mk(); const h3 = stickDrive(H7, 0.99 * R5, 0, R5, null, null, null, say, from5);
+  check('12h. ...a part push east: walks, no sprint', h3.phase === 'walk' && h3.rim === null && !on(H7));
+  const H8 = mk(); const h4 = stickDrive(H8, 3, 0, R5, null, null, null, say, stickFrom(1, B - 1, VW, VH, BAND));
+  check('12h. ...a still thumb in the corner: rest, nothing', h4.phase === 'rest' && H8.stickX === 0 && !on(H8));
+  Object.defineProperty(globalThis, 'location', { value: { search: '?fullpush=0' }, configurable: true, writable: true });
+  try {
+    const O5 = mk(); const o5 = stickDrive(O5, -(40 - E), 0, R5, null, null, null, say, from5);
+    const OA = mk(); stickAnalog(OA, 40 - E, W, maxR, R, say, stickFrom(40, B - 120, VW, VH, BAND));
+    const OB = mk(); stickAnalog(OB, 1.25 * R, W, maxR, R, say, stickFrom(40, B - 120, VW, VH, BAND));
+    check('12i. `?fullpush=0`: the landing box read by neither stick, yesterday\'s 1.25 of the drawn radius (a sprint at the margin in neither; at 1.25, the usual one)', o5.rim === null && !on(O5) && !on(OA) && on(OB));
+  } finally {
+    if (_fpLoc) Object.defineProperty(globalThis, 'location', _fpLoc); else delete globalThis.location;
+  }
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

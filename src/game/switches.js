@@ -260,6 +260,7 @@ const FORMS = {
   'ridecoast': '0|off|false',
   'ridedoor': '0',
   'rimsprint': '0',
+  'fullpush': '0',
   'room': '*',
   'rostercookie': '0|off|false',
   'seacover': '0',

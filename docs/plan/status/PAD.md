@@ -14,6 +14,13 @@ state: ready
 - 6645 part 10 ("I don't like the gold"): every public/ui/pad picture cut
   off the owner's steel sheet (owner-2026-11-26-pad4/, cut-pad.mjs), same
   names and sizes; re-measured padSkin CUT_R 420, TIER_BAND 75: DEPLOYS.
+- 6647 part 12 (the owner's bug, card PAD-fullpush; branch
+  claude/plan-pad-12-fullpush): a FULL push sprints (1.0 of the reach on,
+  0.8 off), the reach the drawn radius or the room to the edge less 16 px
+  (the band's top going south), never under 18 (stickZones.js stickReach);
+  out of energy the bro walks on, no flicker; the words once an emptying;
+  `?fullpush=0` yesterday's 1.25.  Only server/test changes under server/:
+  deploys nothing.
 
 ## Found
 - CHARGE: drawn in the top-left (mobility) well whenever the game shows it

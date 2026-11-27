@@ -6,6 +6,47 @@
 
 ## What the player sees
 
+> **v2.3.6647 (card PAD part 12, tag 6647): a FULL PUSH sprints, and is
+> reachable from anywhere.** The owner, 2026-11-27, upright on an iPhone:
+> *"the sprint action isn't working correctly because you can't move a big
+> enough distance off screen (in the southwest corner where the joystick is)
+> when moving west or area too close to the edge of the screen. Maybe just
+> make sprint the default behavior when moving until you run out of energy
+> unless you have better idea"*. The 1.25 line below lay about 52 px from
+> where the thumb landed on a 430 px phone, and the disc is drawn about
+> 55 px from the left edge and 57 px over the band: going west or south the
+> thumb ran out of glass first. The orchestrator's reading, approved by the
+> owner for the night (*"I Approve your recommendations"*):
+> - **A full push sprints**: the thumb at the stick's **reach** (share
+>   **1.0**) starts it; eased back under **0.8** of the reach, or lifted, it
+>   stops. A part push walks and spends nothing. So walking with the stick
+>   held over is sprinting until the energy runs out (the owner's idea), and
+>   easing off a little saves it (the player keeps the choice).
+> - **The reach**, in the thumb's direction, is the smaller of the disc's
+>   drawn radius and the room from where the thumb landed to the play area's
+>   edge less **16 px** (the band's top is an edge going south), never under
+>   **18 px**: from any landing point, any way, the full push is on the glass
+>   (within 34 px of an edge the 18 px floor wins over the 16 px margin: a
+>   thumb landing 20 px from the left edge sprints west 2 px from it). The
+>   landing point never moves, so a still thumb moves nothing; where the
+>   reach is shorter than the stick's travel the walk is full at the reach
+>   and the knob drawn at its stop.
+> - **Out of energy** the run ends and the bro walks on, the stick still
+>   held over; it sprints again only once the thumb eases back and pushes
+>   again with the worker's minimum back (no flicker while the bar trickles).
+>   "Not enough energy!" comes **once each time the bar empties** (a sprint
+>   that starts clears it), never at every push.
+> - The two-button trial (`?manual=5`) takes the same rule; a computer is
+>   untouched (Shift). **`?fullpush=0`** gives one phone yesterday's rule
+>   back whole (the paragraph below: 1.25 and 1.05 of the drawn radius from
+>   the landing point, the words at every push); `?rimsprint=0` still gives
+>   the Sprint button back.
+> - The rule is `src/game/stickZones.js` (`stickFrom`, `stickRoom`,
+>   `stickReach`, `rimPast`, `rimSprint`); `src/ui/BroTown.jsx` keeps the
+>   landing box at touchstart (`playVw`, `playVh` and the band's own
+>   `--sheet-h` stamp: no layout read). Tests: `stick-zones.test` 12 (10 and
+>   11 now run under `?fullpush=0`), `mp-rimsprint`.
+>
 > **v2.3.6644 (card PAD part 9): on a touch screen the Sprint button is
 > gone; the left stick pushed past its edge sprints.** The owner, 2026-11-26,
 > shown the controller (the button floated over its right side: their
