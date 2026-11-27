@@ -773,7 +773,10 @@ const LESSONS = [
     firstStep: true,
     info: true,
     anchors: [{ sel: '[data-quest-hud]', reach: '[data-quest-hud]',
-                body: 'Your quest, and how far along you are.' }],
+                body: 'Your quest, and how far along you are.' },
+              /* v2.3.6790 (card UI3 PR 10): with the character HUD alone in the top left (no quest card drawn: game/hudCorner.js)
+                 the Menu button, where the Quests door and its ready dot are; never unreachable, so the Login Key still comes */
+              { sel: '[data-nav="hero"]', reach: '[data-nav="hero"]', body: 'Your quests are in the Menu.' }],
     label: 'Your quest',
     live: function (rpg) { return inTutorial(rpg) && firstGearOn(rpg); },
     done: null,     /* shown, then timed -- see the info tracker below */
