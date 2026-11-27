@@ -9,7 +9,7 @@
  *   1. Bro (by the Menu's tile) is six equal tiles in the order Combat,
  *      Equipment, Life Skills / Feats, Pets, Journey, three by two upright
  *      and on a computer, one row sideways; and ONE flat strip under them
- *      (beside them sideways): AP, Quests done, Clan, Guilds, your title.  No
+ *      (beside them sideways): AP, Quests done, Clan, Guilds (v2.3.6695: the title is Feats').  No
  *      portrait, no name, no combat level, no weapon door; every tap 44 x 44
  *      or more, inside the band, nothing clipped, nothing to scroll, no text
  *      under 11 px;
@@ -17,17 +17,17 @@
  *      returns to Bro (Journey's included); Combat its hub; Equipment its
  *      showcase (v2.3.6689, Gear's PR 3: broEquip, no longer Gear);
  *   3. Combat's Points (the hub's Shared door) and the glow while points wait;
- *   4. each of today's eight Progress doors still has its road (titles and
- *      clan through the strip);
+ *   4. each of today's eight Progress doors still has its road (titles through
+ *      Feats, clan through the strip);
  *   5. `?ui2=0` gives today's Bro (its pages, no landing);
  *   6. the acceptance task: the Bow level on Combat's hub in two taps from
  *      Bro (the combat level is the HUD's, card UI3-hud: NOT on this base, so
  *      not read here); Bro, Combat, Bow, Back to the hub, Back to Bro;
  *   7. the strip's values on a character seeded on the worker: AP and Quests
- *      as numbers, "No clan", "Skill guilds", "No title equipped"; nothing
+ *      as numbers, "No clan", "Skill guilds"; nothing
  *      still loading;
- *   8. Titles from the strip's title entry: pick Blooded, Equip pending then
- *      settled by the worker's answer; Back: the strip reads "Blooded";
+ *   8. Titles from Feats' Titles door (v2.3.6695): pick Blooded, Equip pending then
+ *      settled by the worker's answer; Back: Feats' door reads "Wearing: Blooded";
  *   9. another player's Character page (a push of broCharacter with a
  *      `who`): their name and face, no Equip, no Journey;
  *  10. a push of broCharacter with no `who` lands on the one Bro page.
@@ -41,7 +41,7 @@ export const lane = 'full';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS = path.join(ROOT, 'docs', 'shots');
 const SIX = ['combat', 'equipment', 'skills', 'feats', 'pets', 'journey'];
-const STRIP = ['ap', 'quests', 'clan', 'guilds', 'title'];   /* v2.3.6782: src/game/broHub.js BRO_STRIP */
+const STRIP = ['ap', 'quests', 'clan', 'guilds'];   /* v2.3.6782: src/game/broHub.js BRO_STRIP; v2.3.6695 (card UI2-feats): the title left for Feats */
 
 /* the landing's reading, in the page: the six tiles and the strip */
 function landing() {
@@ -175,10 +175,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1b. the words: Combat, Equipment, Life Skills, Feats, Pets, Journey', L.tiles.map((t) => t.word).join('|') === 'Combat|Equipment|Life Skills|Feats|Pets|Journey', L.tiles.map((t) => t.word));
     rec.ok('1c. the band at 390 x 844 is 390 x 243, as today', L.band && L.band[0] === 390 && L.band[1] === 243, L.band);
     /* 7. the strip's values */
-    rec.ok('7a. the strip: AP and Quests done as numbers, "No clan", "Skill guilds", "No title equipped"; nothing still loading',
+    rec.ok('7a. the strip: AP and Quests done as numbers, "No clan", "Skill guilds"; nothing still loading (v2.3.6695: the title is Feats\')',
       /^\d[\d,]*$/.test(valOf(L, 'ap') || '') && /^\d[\d,]*$/.test(valOf(L, 'quests') || '') && valOf(L, 'clan') === 'No clan' && valOf(L, 'guilds') === 'Skill guilds'
-        && valOf(L, 'title') === 'No title equipped' && L.strip.every((x) => !x.loading), L.strip.map((x) => `${x.id}=${x.v}${x.loading ? ' loading' : ''}`));
-    rec.ok('7b. 390 x 844: each strip entry a flat door (its chevron, no raised face), 44 px tall or more', L.strip.length === 5 && L.strip.every((x) => x.door && x.chev && !x.raised && x.h >= 44), brief(L).strip);
+        && L.strip.every((x) => !x.loading), L.strip.map((x) => `${x.id}=${x.v}${x.loading ? ' loading' : ''}`));
+    rec.ok('7b. 390 x 844: each strip entry a flat door (its chevron, no raised face), 44 px tall or more', L.strip.length === 4 && L.strip.every((x) => x.door && x.chev && !x.raised && x.h >= 44), brief(L).strip);
     await bandShot(P, 'ui2-bro-landing.png');
     /* 3. the glow: Combat's tile carries the points waiting, as the Menu button does */
     const cmb = L.tiles.find((t) => t.k === 'combat') || {};
@@ -218,11 +218,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const roads = {
       skills: true, pet: true, achievements: true, equipment: true,   /* Bro's own tiles (1a) */
       points: !!cb.combatPoints,                                       /* Combat's Points (3b) */
-      titles: sd.indexOf('title') >= 0,                                /* v2.3.6782: the strip's title entry */
+      titles: L.tiles.some((t) => t.k === 'feats'),                     /* v2.3.6695 (card UI2-feats): Feats' Titles door (8a opens it) */
       clan: sd.indexOf('clan') >= 0,                                   /* v2.3.6782: the strip's Clan entry, a door */
       homestead: menuHas,                                              /* the Menu's Homestead tile */
     };
-    rec.ok('4. each of today\'s eight Progress doors still has its road (titles and clan through the strip)', Object.values(roads).every(Boolean), { roads, strip: sd });
+    rec.ok('4. each of today\'s eight Progress doors still has its road (titles through Feats, clan through the strip)', Object.values(roads).every(Boolean), { roads, strip: sd });
     /* 6. the acceptance task: the Bow level in two taps from Bro (Bro, Combat) */
     await H.dashOpen(P, 'hero');
     await P.page.waitForTimeout(700);
@@ -239,19 +239,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 800);
     const cb2 = await read(P);
     rec.ok('6b. Bro, Combat, Bow: the Bow\'s page; Back to Combat\'s hub, Back to Bro', cw.title === 'broBow' && cw.weapon === 'bow' && ch2.title === 'broCombat' && ch2.hub && cb2.title === 'hero' && cb2.tiles.length === 6, { cw, hub: ch2, back: cb2.title });
-    /* 8. the title, changed from the strip: its title entry, Blooded, Equip, the pending mark, the worker's word */
-    await tap(P, '[data-bro-strip] [data-bro-fact="title"]', 900);
+    /* 8. the title, changed from Feats (v2.3.6695, card UI2-feats: "Titles could live within Feats"): Feats' Titles
+       door, Blooded, Equip, the pending mark, the worker's word */
+    await tap(P, '[data-dash-grid="bro"] [data-dest="feats"]', 900);
+    await P.page.waitForSelector('[data-feats-page] [data-feats-door="titles"]', { timeout: 15000 }).catch(() => {});
+    await tap(P, '[data-feats-page] [data-feats-door="titles"]', 900);
     const T0 = await P.page.evaluate(() => ({ title: (document.querySelector('[data-dash-title]') || { getAttribute: () => null }).getAttribute('data-dash-title'), back: ((document.querySelector('[data-dash-frame] [data-dash-ctl="back"]') || {}).textContent || '').trim(), rows: Array.from(document.querySelectorAll('[data-title-row]')).map((e) => e.getAttribute('data-title-row')) }));
     await tap(P, '[data-title-row="combat_10"]', 500);
     await bandShot(P, 'ui2-bro-titles.png');
     await tap(P, '[data-u2-action="equip"] button', 1500);
     const T1 = await P.page.evaluate(() => ({ t: window.__btTitles, worn: (document.querySelector('[data-titles-worn]') || { getAttribute: () => null }).getAttribute('data-titles-worn') }));
-    rec.ok('8a. the strip\'s title entry opens Titles (Back saying Bro); it lists the earned title; Equip marks itself pending, and the worker\'s answer settles it (never "done" before)',
-      T0.title === 'broTitles' && /Bro/.test(T0.back) && T0.rows.indexOf('combat_10') >= 0 && T1.t && T1.t.seen.indexOf('out') >= 0 && T1.t.mark === 'free' && T1.worn === 'combat_10',
+    rec.ok('8a. Feats\' Titles door opens Titles (Back saying Feats); it lists the earned title; Equip marks itself pending, and the worker\'s answer settles it (never "done" before)',
+      T0.title === 'broTitles' && /Feats/.test(T0.back) && T0.rows.indexOf('combat_10') >= 0 && T1.t && T1.t.seen.indexOf('out') >= 0 && T1.t.mark === 'free' && T1.worn === 'combat_10',
       { T0, seen: T1.t && T1.t.seen, mark: T1.t && T1.t.mark, worn: T1.worn });
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 1200);
-    const L8 = await read(P);
-    rec.ok('8b. Back: the strip reads the new title, "Blooded"', L8.title === 'hero' && valOf(L8, 'title') === 'Blooded', { title: L8.title, t: valOf(L8, 'title') });
+    const L8 = await P.page.evaluate(() => ({ title: (document.querySelector('[data-dash-title]') || { getAttribute: () => null }).getAttribute('data-dash-title'),
+      worn: ((document.querySelector('[data-feats-door="titles"] .u2-tile-sub') || {}).textContent || '').trim() }));
+    rec.ok('8b. Back: Feats\' Titles door reads the new title, "Wearing: Blooded"', L8.title === 'achievements' && L8.worn === 'Wearing: Blooded', L8);
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 1200);
     /* 9. another player's Character page (Ranks' tap, step 9: nothing opens it yet, so the bus's own push) */
     await P.page.evaluate(() => window.__broDashPanelBus.go({ type: 'push', id: 'broCharacter', who: { name: 'Sunburn', portrait: '/icons/ui/panel-self.webp' } }));
     await P.page.waitForTimeout(1000);
@@ -264,7 +269,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => window.__broDashPanelBus.go({ type: 'push', id: 'broCharacter' }));
     await P.page.waitForTimeout(1000);
     const S10 = await read(P);
-    rec.ok('10. a push of broCharacter with no who lands on the one Bro page (the six and the strip), not the passport', S10.title === 'broCharacter' && S10.who === 'self' && !S10.char && S10.tiles.length === 6 && S10.strip.length === 5, { title: S10.title, who: S10.who, char: S10.char, tiles: S10.tiles.length });
+    rec.ok('10. a push of broCharacter with no who lands on the one Bro page (the six and the strip), not the passport', S10.title === 'broCharacter' && S10.who === 'self' && !S10.char && S10.tiles.length === 6 && S10.strip.length === 4, { title: S10.title, who: S10.who, char: S10.char, tiles: S10.tiles.length });
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 900);
     /* 1d. the other shapes (667 x 375 the narrowest sideways page: the entries their pictures' doors) */
     for (const sh of [{ w: 375, h: 667, rows: 2, tag: '375x667' }, { w: 844, h: 390, rows: 1, tag: '844x390' }, { w: 667, h: 375, rows: 1, tag: '667x375' }]) {

@@ -43,7 +43,7 @@
  * oversized informational boxes."  So Bro (the page id `hero`) is six raised
  * doors, Combat, Equipment, Life Skills, Feats, Pets, Journey, and under them
  * ONE flat strip of what you have (broStrip: AP, Quests, Clan or Party,
- * Guilds, your title), each entry a door where the game has a page.  Nothing
+ * Guilds; v2.3.6695: the title moved to Feats), each entry a door where the game has a page.  Nothing
  * on it repeats the HUD: no face, no name, no combat level, no weapon levels
  * (Combat has the weapons).  Character stays ANOTHER player's page (Ranks'
  * tap, step 9): broSelfPage below sends yours, and any id the table does not
@@ -81,6 +81,9 @@ export const BRO_HUB_PAGES = Object.freeze({
   /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase, the figure and the nine worn cells (sheet/GearShowcase.jsx) */
   broEquip: 'equip',
   broTree0: 'tree', broTree1: 'tree', broTree2: 'tree', broTree3: 'tree', broTree4: 'tree', broTree5: 'tree', broTree6: 'tree',
+  /* v2.3.6695 (card UI2-feats): Feats' landing; the page id stays `achievements`, so every road in lands on it
+     (sheet/FeatsPage.jsx; its deeper pages are PANELS rows, src/game/feats.js FEATS_PAGES) */
+  achievements: 'feats',
   /* v2.3.6694 (card UI2-life): a life skill's page (sheet/LifeSkillPage.jsx), its All unlocks and How it works */
   lifeWoodcutting: 'life', lifeFishing: 'life', lifeMining: 'life', lifeFarming: 'life', lifeTrapping: 'life',
   lifeCooking: 'life', lifeBlacksmithing: 'life', lifeWoodworking: 'life', lifeGemCutting: 'life', lifeEnchanting: 'life',
@@ -173,7 +176,7 @@ export function broHubWhose(who) {
      menu:<door>       a tile of the Menu (dashDests.js MENU_DESTS). */
 export const BRO_PROGRESS_ROADS = Object.freeze({
   skills: 'bro:skills',
-  titles: 'bro:strip/title',
+  titles: 'bro:feats/titles',   /* v2.3.6695 (card UI2-feats): Feats' Titles door, Titles' only home (was the strip's title entry) */
   homestead: 'menu:homestead',
   pet: 'bro:pets',
   clan: 'bro:strip/clan',
@@ -320,8 +323,10 @@ export function broPassport(r, who) {
  * Built FROM broPassport, the same readers, so your strip and another
  * player's Character never disagree.  The fifth entry, your title, opens
  * Titles until card UI2-feats takes Titles into Feats ("Titles could live
- * within Feats") and removes it: delete its row here and its road above. */
-export const BRO_STRIP = Object.freeze(['ap', 'quests', 'clan', 'guilds', 'title']);
+ * within Feats") and removes it.  v2.3.6695 (card UI2-feats): removed; Titles' one home for yourself is
+ * Feats' Titles door (src/game/feats.js FEATS_DOORS, its road above `bro:feats/titles`), and the worn
+ * title is still shown there (the door's line, the Titles page's head, a medal's "Title" line). */
+export const BRO_STRIP = Object.freeze(['ap', 'quests', 'clan', 'guilds']);
 
 /**
  * The strip for `who` (null: yours), in BRO_STRIP's order.  Each entry:
@@ -337,10 +342,7 @@ export function broStrip(r, who) {
   const P = broPassport(r, who);
   const by = Object.create(null);
   for (const s of P.summary) by[s.id] = s;
-  const title = P.title
-    ? Object.freeze({ id: 'title', k: 'charPage.title', v: P.title.text, none: false, loading: false, opens: P.self ? PASSPORT_DOORS.titles : null })
-    : Object.freeze({ id: 'title', k: 'charPage.title', key: 'charPage.noTitle', none: true, loading: false, opens: P.self ? PASSPORT_DOORS.titles : null });
-  return Object.freeze(BRO_STRIP.map((id) => (id === 'title' ? title : by[id])).filter(Boolean));
+  return Object.freeze(BRO_STRIP.map((id) => by[id]).filter(Boolean));
 }
 
 /* the controls a title change holds while it is out (src/game/pending.js) */

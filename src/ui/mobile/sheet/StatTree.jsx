@@ -42,6 +42,11 @@ import { ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/statTree.js';
 import { SAY as HSAY } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
+/* v2.3.6695 (card UI2-feats): AP's tree, the same layers (ApTree, below) */
+import { apTree, featsWord, FEATS_AP_PAGES, FEATS_TIERS, FEATS_TIER_PAGES } from '@/game/feats.js';
+import { achvById } from '@/data/achievements.js';
+import { featsGo, featsTop } from './featsGo.js';
+import { SAY as FSAY } from '@/data/say/feats.js';
 import './combatPage.css';
 
 /* a node's word, by its id (metricTree.js names none: the words are the page's) */
@@ -220,6 +225,123 @@ export function StatTree({ S, page, live }) {
     <div ref={ref} className={ui2RootClass() + ' u2-st' + (room.short ? ' is-short' : '')} data-stat-tree={cat} data-stat-tree-depth={depth}>
       {headline}
       <div className={'u2-st-rows is-' + here.kids.length}>{rows}</div>
+    </div>
+  );
+}
+
+
+/* ═══ v2.3.6695: AP'S SOURCES, THE SAME TREE (card UI2-feats) ═══
+ * The master specification 4.5: "AP (Achievement Points) is the dominant
+ * headline of Feats, with a drill-down into its actual sources."  The same
+ * nodes (src/game/metricTree.js, built by src/game/feats.js apTree, joined by
+ * `sum`), the same layers one at a time (feats.js FEATS_AP_PAGES), the same
+ * classes as the DPS tree above: the root is the worker's total; "From
+ * achievements" opens its tiers and a tier its medals, each medal a door to
+ * its page; "From quests, guild rungs and the arena" is ONE leaf (the worker
+ * keeps one total).  When the parts do not add up there is no tree (Feats'
+ * landing says so and opens nothing): a layer opened anyway reads its line.
+ * A tier with more medals than the room holds shows five and a door to the
+ * tier's gallery ("a line that does not fit becomes a door"). */
+const AP_ROOM = 6;
+function apWord(n) {
+  switch (n.id) {
+    case 'ap': return say(FSAY, 'feats.tAp');
+    case 'fromAchv': return say(FSAY, 'feats.tFromAchv');
+    case 'rest': return say(FSAY, 'feats.tRest');
+    default: {
+      const t = FEATS_TIERS.indexOf(n.id) >= 0 ? featsWord(n.id) : null;
+      if (t) return say(FSAY, 'feats.tTier', { tier: t });
+      const d = achvById(n.id);
+      return d ? d.name : n.id;
+    }
+  }
+}
+function apHow(n) {
+  if (n.id === 'ap') return say(FSAY, 'feats.tHowAp');
+  if (n.id === 'fromAchv') return say(FSAY, 'feats.tHowAchv');
+  return say(FSAY, 'feats.tHowTier');
+}
+
+/** One layer of AP's tree: `page` its frame page (FEATS_AP_PAGES), its path the entry's `sel`. */
+export function ApTree({ S, page }) {
+  useClock(() => (S && S._achv ? S._achv.rev + ':' + S._achv.ap : '-'), 500);
+  const [ref, room] = useRoom();
+  const depth = Math.max(0, FEATS_AP_PAGES.indexOf(String(page)));
+  const top = featsTop();
+  const sel = top && top.id === String(page) && top.sel && Array.isArray(top.sel.path) ? top.sel.path : [];
+  const T = apTree(S);
+  let here = T;
+  const path = [];
+  for (const id of sel) {
+    const next = nodeAt(here, [id]);
+    if (!next || !next.kids) break;
+    here = next; path.push(id);
+  }
+  useEffect(() => {
+    try {
+      window.__btApTree = {
+        page: String(page), depth, path: path.slice(), id: here ? here.id : null, value: here ? here.value : null,
+        kids: here && here.kids ? here.kids.map((k) => ({ id: k.id, value: k.value, opens: !!k.kids, source: k.source ? k.source.kind : null })) : [],
+        root: T ? T.value : null, mismatches: T ? treeMismatches(T).length : 0,
+      };
+    } catch (e) { /* no window */ }
+  });
+  useEffect(() => () => { try { window.__btApTree = null; } catch (e) { /* no window */ } }, []);
+  if (!here) {
+    return (
+      <div ref={ref} className={ui2RootClass() + ' u2-st' + (room.short ? ' is-short' : '')} data-ap-tree="" data-ap-tree-depth={depth}>
+        <div className="u2-group u2-st-none" data-ap-tree-none="">{say(FSAY, 'feats.apUnknown')}</div>
+      </div>
+    );
+  }
+  const deeper = (k) => {
+    const id = FEATS_AP_PAGES[depth + 1];
+    if (id) featsGo('page:' + id, null, { path: path.concat(k.id) });
+  };
+  const kids = here.kids || [];
+  const over = kids.length > AP_ROOM ? kids.length - (AP_ROOM - 1) : 0;
+  const shown = over ? kids.slice(0, AP_ROOM - 1) : kids;
+  const rows = shown.map((k) => {
+    const v = nodeText(k), w = apWord(k);
+    if (k.kids) {
+      return (
+        <button key={k.id} type="button" className="u2-raised u2-st-row is-opens" data-ap-tree-row={k.id} data-ap-tree-opens=""
+          aria-label={say(FSAY, 'feats.tOpenAria', { word: w, v })} onClick={() => deeper(k)}>
+          <span className="u2-st-rv">{v}</span><span className="u2-st-rk">{w}</span><span className="u2-chev" aria-hidden="true">{'›'}</span>
+        </button>
+      );
+    }
+    if (k.source && k.source.kind === 'medal' && k.source.id) {
+      return (
+        <button key={k.id} type="button" className="u2-raised u2-st-row is-item" data-ap-tree-row={k.id} data-ap-tree-source="medal"
+          aria-label={say(FSAY, 'feats.tMedalAria', { name: w, v })} onClick={() => featsGo('page:featsMedal', null, k.source.id)}>
+          <span className="u2-st-rv">{v}</span><span className="u2-st-rk">{w}</span><span className="u2-chev" aria-hidden="true">{'›'}</span>
+        </button>
+      );
+    }
+    const from = k.source && k.source.kind === 'rest' ? say(FSAY, 'feats.tRestWhy') : say(FSAY, 'feats.tNoneYet');
+    return (
+      <div key={k.id} className="u2-group u2-st-row is-leaf" data-ap-tree-row={k.id} data-ap-tree-source={k.source ? k.source.kind : ''}>
+        <span className="u2-st-rv">{v}</span><span className="u2-st-rk">{w}</span><span className="u2-st-rs">{from}</span>
+      </div>
+    );
+  });
+  if (over) {
+    const tier = here.id;
+    rows.push(
+      <button key="more" type="button" className="u2-raised u2-st-row is-opens" data-ap-tree-row="more" data-ap-tree-more={over}
+        aria-label={say(FSAY, 'feats.tMoreAria', { n: over })} onClick={() => featsGo('page:' + FEATS_TIER_PAGES[tier], null)}>
+        <span className="u2-st-rv">{'+' + over}</span><span className="u2-st-rk">{say(FSAY, 'feats.tMore', { n: over })}</span><span className="u2-chev" aria-hidden="true">{'›'}</span>
+      </button>,
+    );
+  }
+  return (
+    <div ref={ref} className={ui2RootClass() + ' u2-st' + (room.short ? ' is-short' : '')} data-ap-tree="" data-ap-tree-depth={depth}>
+      <div className="u2-group u2-st-head" data-ap-tree-node={here.id} data-ap-tree-value={nodeText(here)}>
+        <span className="u2-st-hv"><b>{nodeText(here)}</b><span className="u2-st-hk">{apWord(here)}</span></span>
+        <span className="u2-st-how" data-ap-tree-how="">{apHow(here)}</span>
+      </div>
+      <div className={'u2-st-rows is-' + rows.length}>{rows}</div>
     </div>
   );
 }
