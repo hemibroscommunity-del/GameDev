@@ -10,7 +10,7 @@ state: ready
 
 ## Next
 - Nothing: the PR waits for the gatekeeper's sitting 73.  THE MEND OF SITTING 72 (held: "the card's dodge 'another player's XP shown' is green"; the drawing's `who` was tested only in the rule): `life-profile.test` C1-C4 read each page's syntax tree (every lifeSkillProgress, lifeTiles and lifeTotal of a page with a `who` handed that who; the How it works door only under `self`; the How it works page only under `who == null`, and it takes no who; "Not shared" first), plants Q1-Q7 each red (Q1-Q3 the held head's three places). And a `who` with no `lifeSkills` (the Ranks row's) now has NO level (`lifeShared`, null; A8d said 1 each, a number the worker never sent): the landing, a skill's page and All unlocks say "Not shared" (a new say key). 10 hand mutants of the changed lines, 0 survivors. Then the Ranks branch's mended head merged in (it carries main 5ab943fe).
-- Before the mend: ui2life 28/28, hitladder 50/50, xpfade 31/31, membudget 12/12.
+- On the final code (the test box): ui2life 28/28 (its pictures redrawn); precheck 0 FAIL. Before the mend: ui2life 28/28, hitladder 50/50, xpfade 31/31, membudget 12/12.
 
 ## Found
 - The names do not fit five across at the navigation size (Woodworking 91 px, a tile 72-83 upright, 57 sideways at 667 x 375): they break at their joint; told to the orchestrator.
