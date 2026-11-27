@@ -112,7 +112,7 @@ self.onmessage = async (ev) => {
         const st = (out.w + 3) & ~3;   /* paletteTex.js paletteStride */
         onRow = { ri: plan.ri, n0: plan.n0, added: plan.added, st, out: remapToRow(out.idx, out.w, out.h, plan.to, st) };
       }
-      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h, onRow, palTint },
+      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h, onRow, palTint, feet: out.feet },   /* v2.3.6209: + feet */
         [out.idx.buffer, out.pal.buffer].concat(onRow ? [onRow.out.buffer, onRow.added.buffer] : [], palTint ? [palTint.buffer] : []));
       return;
     }

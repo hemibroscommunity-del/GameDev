@@ -156,8 +156,8 @@ export function loadTrackedStripRetinted(bundle, url, fw, fh, rgb) {
     if ((_gen.get(bundle) || 0) !== gen) return [];
     if (!m) return null;
     const m2 = m.palTint
-      ? { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: m.palTint, onRow: plan || undefined }
-      : { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: retintPalette(m.pal, m.idx, rgb) };
+      ? { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: m.palTint, onRow: plan || undefined, feet: m.feet }
+      : { w: m.w, h: m.h, idx: m.idx, cells: m.cells, n: m.n, fileW: m.fileW, fileH: m.fileH, pal: retintPalette(m.pal, m.idx, rgb), feet: m.feet };   /* v2.3.6209: + feet */
     if (stripFrameMs() > 0) return _inLine(async () => { await stripTurn(); return _stripOfNumbers(bundle, url, fw, fh, gen, m2, true); });
     return _stripOfNumbers(bundle, url, fw, fh, gen, m2, true);
   }).catch(() => null);
@@ -188,6 +188,10 @@ function _stripOfNumbers(bundle, url, fw, fh, gen, m, noImage) {
       t = new Texture({ source: numSrc, frame: new Rectangle(i * fw, 0, fw, fh) });
     }
     t.__btIx = i; t.__btN = n;
+    /* v2.3.6209: the row under the frame's art, from the worker's own scan (stripPack.js `feet`): where its
+       picture meets the ground (src/game/frameFoot.js; a dying monster's shadow hangs from it) */
+    const _foot = m.feet ? m.feet[i] : (m.cells ? m.cells[i].by : 0);
+    if (_foot > 0) t.__btFoot = _foot;
     frames.push(t);
   }
   wantFramePack(numSrc, frames.map((t) => t.frame));   /* v2.3.5257: framePack.js */
@@ -427,6 +431,7 @@ function _stripFrames(bundle, url, fw, fh, img, n, packed, read, wholeCv) {
         t = new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) });
       }
       t.__btIx = i; t.__btN = n;
+      if (packed && packed.cells[i].by > 0) t.__btFoot = packed.cells[i].by;   /* v2.3.6209: as _stripOfNumbers' */
       frames.push(t);
     }
     if (numSrc) wantFramePack(numSrc, frames.map((t) => t.frame));   /* v2.3.5257: framePack.js */

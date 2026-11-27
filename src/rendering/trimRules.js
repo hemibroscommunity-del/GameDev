@@ -67,7 +67,10 @@ export function trimCellOf(b, fw, fh) {
     w = Math.min(fw, Math.ceil((b.x1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - tx;
     h = Math.min(fh, Math.ceil((b.y1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - ty;
   }
-  return { ax: 0, ay: 0, tx, ty, w, h, blank: b.x1 < 0 };
+  /* v2.3.6209: + `by`, the row under the art's lowest pixel (0: empty) -- where
+     the frame's picture meets the ground, from the scan this crop already
+     made (src/game/frameFoot.js: a dying monster's shadow hangs from it) */
+  return { ax: 0, ay: 0, tx, ty, w, h, blank: b.x1 < 0, by: b.x1 < 0 ? 0 : b.y1 + 1 };
 }
 /** Lays the cells out (their ax, ay) and gives the packed size { W, H } --
  *  or null when packing is not worth it (the art fills its frames). */
