@@ -338,6 +338,7 @@ const FORMS = {
   'ui2shine': '0',
   'uikit': '1',
   'uploadicons': '0',
+  'v17wide': '0',
   'veildoor': '0',
   'warmonce': '0',
   'waves': '*',
