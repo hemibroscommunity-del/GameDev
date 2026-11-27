@@ -1,14 +1,32 @@
 card: UI3-ownplate
 branch: claude/plan-ui3-9-ownplate
-prs: draft on claude/plan-ui3-2-hud (opened with this push; its number in the PR list)
+prs: #2411 (draft)
 state: ready
 
 ## Done
 - Tag 6788: your own plate goes while the HUD shows your name. The rule:
   src/game/ownPlate.js (nameDrawn, selfNameDrawn, `?ownplate=1`); the renderer
   builds or destroys it on a change (src/rendering/ownPlateFx.js; entityRenderer.js
-  factory 7069, your update 14899); suite tools/guards/own-plate.test.mjs
+  factory 7071, your update 14903); suite tools/guards/own-plate.test.mjs
   (every dodge planted red); phone test mp-ownplate.
+
+## The mend (held by sitting 72: four-lines 1 and 1b red)
+- Merged origin/main 5ab943fe once (conflicts: systems.mjs, main's list and
+  ownPlate at its end, SYSTEMS.md rewritten by systems.test --write; ui.js's
+  ledger, both sides, then state-census --ledger ui --write; QuestCoach.jsx:
+  this PR's only change there was UI3-hud's charHudSpan, which main rewrote
+  as hudCorner's cornerSpan: main's whole file taken).
+- The big file gains calls only (finish.md part 5, rule 5): the factory's
+  decision (ownPlateBuild), the plate's zoom arithmetic and its clamp
+  (plateZoomFor, read by _fitPlateToZoom too), your band's half
+  (ownPlateBandHalf) and the two QA probes (ownPlateProbeArm, now also
+  __btSelfPlate) moved into src/rendering/ownPlateFx.js; _buildOwnPlate,
+  _selfBandHalf and _plateZoomFor are gone; one import line (ownPlateFx.js
+  passes selfNameDrawn on). Behaviour unchanged.
+- four-lines on the merged tree: entityRenderer.js 7992 statements (main
+  7992, its line 8008), 7959 code lines (main 7961, its line 7984): the
+  PR's net there is 0 statements, -2 code lines. No line raised.
+- own-plate suite: all 11 card dodges planted and red.
 
 ## What your own plate carried (reading 1), and where it went
 - name + `[TAG]` (alliance.js:29 plateNameWithTag), gold level circle,
@@ -16,7 +34,7 @@ state: ready
   (Texts 5888, 5895; badges 5929-5944). GONE on your screen.
 - party marker (5936): drawn on others' plates only; yours never had one.
 - Safe / PvP / Outlaw chip: not on the bro, on the minimap (plateSafety.js:1-17).
-- threat skull (7136): STAYS, over the band (14997 band, _selfBandHalf 6404).
+- threat skull (7136): STAYS, over the band (14946 band, ownPlateFx.js ownPlateBandHalf).
 - HP bar (16791) takes the band in a fight: STAYS; the spend bars under the
   feet (7639): STAY. Chat bubble point (15014) and damage numbers
   (combatHelpers.js:702 heroPopupY) read the band: unchanged, the band keeps

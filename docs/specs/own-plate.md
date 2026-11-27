@@ -36,12 +36,14 @@ plate on your bro (now that it's already on hud it's redundant)".
   own `charHud.js charHudOn()`, read, never restated. `selfNameDrawn()` is
   the page's answer: a string compare an ask, the rule asked only when the
   address changes (a switch flipped by `replaceState` counts).
-- **The renderer** (`entityRenderer.js`): the figure's factory
-  (`createPlayerDisplay`) decides once whether to build the plate;
-  `_ownPlateSync` in your update builds it again or DESTROYS it (its Texts,
-  backing and badges: TRAPS §192) only when the answer differs from the one
-  the figure holds, and touches nothing else. `_selfBandHalf` sizes your band
-  plate or no plate.
+- **The renderer** (`entityRenderer.js`) gains calls only (tag 6788's mend:
+  the plan's rule 5); what they do is `src/rendering/ownPlateFx.js`'s. The
+  figure's factory (`createPlayerDisplay`) decides once whether to build the
+  plate (`ownPlateBuild`); `ownPlateSync` in your update builds it again or
+  DESTROYS it (its Texts, backing and badges: TRAPS §192) only when the
+  answer differs from the one the figure holds, and touches nothing else.
+  `ownPlateBandHalf` sizes your band plate or no plate, by the plate's own
+  zoom (`plateZoomFor`, which the renderer's `_fitPlateToZoom` reads too).
 - **Other players' pictures** (`onePic.js`, `peerImpostor.js`) bake only
   `otherPlayerDisplays`: your own figure is never baked, so there is nothing
   to keep out of it.

@@ -254,7 +254,7 @@ await plantMod('the switch not remembered', "if (v === '1') ls.setItem(OWN_PLATE
 await plantMod('the rule asked every ask of the page (no memo)', '  if (_for !== s) {', '  if (true) {');
 await plantMod('the HUD\'s rule restated (the switch read for the HUD)', 'hudOn: charHudOn()', 'hudOn: true');
 plantFx('the Text hidden, not destroyed', '  pill.destroy({ children: true });', '  pill.visible = false;');
-plantEr('the rule asked every frame in the renderer', 'ownPlateSync(display, selfNameDrawn(), _buildOwnPlate);', 'ownPlateSync(display, nameDrawn({ self: true, hudOn: true, ownPlate: false }), _buildOwnPlate);');
+plantEr('the rule asked every frame in the renderer', 'ownPlateSync(display, selfNameDrawn(), _attachNamePill);', 'ownPlateSync(display, nameDrawn({ self: true, hudOn: true, ownPlate: false }), _attachNamePill);');
 plantFx('the structural change made every frame', '  if (!display || display._ownPlateOn === on) return;', '  if (!display) return;');
 plantFx('the HP bar gone with the name', '  pill.destroy({ children: true });', '  pill.destroy({ children: true });\n  if (display._hudHpBarFrame) display._hudHpBarFrame.visible = false;');
 plantFx('the skull gone with the name', '  pill.destroy({ children: true });', '  pill.destroy({ children: true });\n  display._skullText.destroy();');
