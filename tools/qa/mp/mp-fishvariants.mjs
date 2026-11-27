@@ -224,10 +224,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5 ── */
     await tap(A, '[data-fish-records]').catch(() => {});
-    const board = await A.page.waitForSelector('[data-fish-board="minnow"] [data-fish-board-row]', { timeout: 10000 }).then(() => A.page.evaluate(() => {
-      const rows = [...document.querySelectorAll('[data-fish-board="minnow"] [data-fish-board-row]')];
-      return rows.map((r) => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), tag: (r.querySelector('[data-fish-board-tag]') || { dataset: {} }).dataset.fishBoardTag || null }));
-    })).catch(() => null);
+    /* v2.3.6692 (card UI2-ranks): under the new dashboard Records lands on Ranks, Feats, Biggest fish at the
+       kind weighed (dash/RankStandings.jsx: the kind pressed on the board's top line, its rows' own marks) */
+    const board = await A.page.waitForSelector('[data-rank-board="fish"] [data-rank-fish="minnow"][aria-pressed="true"]', { timeout: 10000 })
+      .then(() => A.page.waitForSelector('[data-rank-board="fish"] [data-rank-row]', { timeout: 10000 })).then(() => A.page.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-rank-board="fish"] [data-rank-row]')];
+        return rows.map((r) => ({ text: r.textContent.replace(/\s+/g, ' ').trim(), tag: (r.querySelector('[data-rank-tag]') || { dataset: {} }).dataset.rankTag || null }));
+      })).catch(() => null);
     rec.ok(`5 Records opens Ranks on Biggest fish, the minnow: ${board && board[0] && board[0].text}`,
       !!board && board.length >= 1 && /Angler/.test(board[0].text) && board[0].tag === 'albino' && / kg$/.test(board[0].text), board);
     await A.page.screenshot({ path: join(OUT, 'fishvariants-3-board.png') });

@@ -55,6 +55,13 @@ import { combatPools } from '@/game/combatHub.js';   /* v2.3.6686: the passport'
 import { pendingInit, pendingStep, pendingMark, pendingHolds } from '@/game/pending.js';
 import { Ui2Group, Ui2Zones, Ui2Actions, Ui2Empty, Ui2Badge, ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/charPage.js';
+import { SAY as SAY_DF } from '@/data/say/dashFrame.js';
+/* v2.3.6692 (card UI2-ranks): another player's page, read only from what the game holds of them */
+import { passportFromRow } from '@/game/ranksPage.js';
+import { broHubWhose } from '@/game/broHub.js';
+import { useBoardFaces, BoardFace } from '../dash/BoardRow.jsx';
+import { CharacterOtherView } from '../dash/rankViews.jsx';
+import { rankWord } from '../dash/rankWords.js';
 import { say } from '@/game/say.js';
 import './characterPage.css';
 
@@ -214,6 +221,34 @@ function PassDoor({ id, art, k, v, none, loading, onOpen, points, aria, iconOnly
  * onWeapon  (cat) => void: today's Combat page on that weapon (BroCard)
  */
 export function CharacterPage({ S, who, onWeapon }) {
+  /* v2.3.6692 (card UI2-ranks; UI3-bro's finding 2): ANOTHER player's page never reads your state (readPassport
+     reads only yours: handed their `who`, it showed YOUR name, title, levels and AP under their label).  It is
+     drawn from the readings its caller handed (`who.passport`, a board's row: ranksPage.js passportFromRow), or,
+     handed none, from `who` itself: their name and "Not shared" lines, never one of your values. */
+  if (who != null) return <OtherCharacter who={who} />;
+  return <OwnCharacter S={S} onWeapon={onWeapon} />;
+}
+
+/** Another player's Character: read-only, their name, face and what the row carried; nothing to press. */
+function OtherCharacter({ who }) {
+  const [ref, room] = useRoom();
+  const P = who && typeof who === 'object' && who.passport && Array.isArray(who.passport.facts)
+    ? who.passport : passportFromRow(who && typeof who === 'object' ? who : { id: String(who), name: '' });
+  const faces = useBoardFaces(P.look ? [{ look: P.look }] : []);
+  const w = broHubWhose(who);
+  const whose = w && w.key === 'dashFrame.whose' ? say(SAY_DF, 'dashFrame.whose', { name: w.name }) : say(SAY_DF, 'dashFrame.whoseUnknown');
+  const combatWord = say(SAY, 'charPage.combatLv') + ' ' + (P.combat == null ? rankWord(P.notShared) : P.combat);
+  return (
+    <div ref={ref} style={{ flex: '1 1 auto', height: '100%', minHeight: 0, minWidth: 0, display: 'flex' }}>
+      <CharacterOtherView P={{ ...P, name: P.name || whose }} face={faces[0] || null} Face={BoardFace} whose={whose} word={rankWord}
+        combatWord={combatWord} short={room.short} />
+    </div>
+  );
+}
+
+/* your own passport (today's Character page; UI3-bro made your own the one Bro page) */
+function OwnCharacter({ S, onWeapon }) {
+  const who = null;
   useClock(() => passportKey(S), 500);
   const [ref, room] = useRoom();
   const P = broPassport(readPassport(S), who == null ? null : who);

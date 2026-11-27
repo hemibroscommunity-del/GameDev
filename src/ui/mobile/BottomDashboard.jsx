@@ -86,6 +86,7 @@ import { MenuGrid, HomesteadPage, doorWord, openDoor, farmPlots, hubWordFor } fr
 import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests.js';
 import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
 import { BroDoorPage } from './sheet/BroCard.jsx';
+import { ranksTitle } from './dash/rankWords.js';   /* v2.3.6692 (card UI2-ranks): a Ranks group's or board's name in the header */
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
 import { DashGrowBox } from './dash/DashGrowBox.jsx';   /* v2.3.6682: the page grows out of the tile tapped (card UI2-frame PR 2) */
 import { ui2RootClass } from '@/ui/kit/index.js';
@@ -496,6 +497,11 @@ const PANELS = {
      breaks "Leader-boards" where six across has no room, as Achievements'
      did) -- one name for the tile and the page, v2.3.2038's rule */
   leaderboard:  { title: 'Leaderboards', Component: LeaderboardPanel },
+  /* v2.3.6692 (card UI2-ranks): under the frame, Ranks' own pages (dash/RanksLanding.jsx reads which from the
+     entry, its `sel` the group or the board; the header's word is dash/rankWords.js ranksTitle's) */
+  ranksGroup:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
+  ranksPoints:  { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
+  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
   /* v2.3.3526: headed as its More tile is labelled -- Party once clans are
      parties (caps.clanparty), Clan under the kill switch (MorePanel
      `labelFor`; v2.3.2038's rule: what you tap and what opens carry one name) */
@@ -707,7 +713,7 @@ const FRAME_ACTIVE = Object.freeze({ title: '', Component: null });
 let _capsNow = null;
 const CAP_PAGES = Object.freeze({ pets: 'petbook', achievements: 'achievements' });
 dashboardPanelBus.setOffers((id) => !!(PANELS[id] || FRAME_PAGES[id]) && (!CAP_PAGES[id] || !_capsNow || !!_capsNow[CAP_PAGES[id]]));
-const titleOf = (id) => (id === 'menu' ? doorWord('dashFrame.menu') : FRAME_PAGES[id] ? doorWord(FRAME_PAGES[id]) : (PANELS[id] && PANELS[id].title) || doorWord('dashFrame.page'));
+const titleOf = (id) => (id === 'menu' ? doorWord('dashFrame.menu') : FRAME_PAGES[id] ? doorWord(FRAME_PAGES[id]) : ranksTitle(id, dashboardPanelBus.nav()) || (PANELS[id] && PANELS[id].title) || doorWord('dashFrame.page'));
 
 export const BottomDashboard = () => {
   /* v2.3.3049: OPEN, then the sword and the shield (then the bow and the
