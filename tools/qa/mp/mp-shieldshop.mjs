@@ -10,6 +10,9 @@
  *      150 coins: Diego's shelf shows the Pine Shield at 100; the buy takes
  *      exactly 100 and the shield is in the bag (the phone's copy AND the
  *      worker's record, one piece, one id); the row is gone after;
+ *      v2.3.6800 (the mend of sitting 71's hold): then the phone loses its
+ *      copy of the bag and logs in again: the shield is back (A5b), and is
+ *      worn with one tap of Equip (A6-A7);
  *   B. a second character WITH a shield (the kit's Pine Shield) sees no row;
  *   C. no page errors.
  *
@@ -113,10 +116,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, 'A4-bought');
     rec.ok('A5 the row is gone after (a replacement, never a second)', !r2.found, r2);
     await closeShop(A);
+    const gid = s1.bag[0] && s1.bag[0].gid;
+    /* A5b. v2.3.6800 (the mend of sitting 71's hold): the phone LOSES its
+       copy of the bag (a shop_result it never got), then logs in again: the
+       join's state carries the worker's copy (player_state.shieldStash) and
+       the phone adds it by id (wsClient.js, src/game/shieldAdopt.js) -- the
+       shield it paid for is back, once, and it paid once */
+    await A.page.evaluate(() => {
+      const S = window._gameState.current;
+      S.rpg.shieldStash = [];
+      try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) { /* the memory copy is enough */ }
+    });
+    const lost = await shields(A);
+    await A.page.reload({ waitUntil: 'domcontentloaded' });
+    await H.enterWorld(A);
+    let s1b = await shields(A);
+    for (let t = 0; t < 60 && !s1b.bag.some((p) => p && p.gid === gid); t++) { await A.page.waitForTimeout(250); s1b = await shields(A); }
+    const svb = await H.adminPlayer(wsPort, aId);
+    rec.ok('A5b a phone that lost its copy of the bag logs in again: the shield it paid for is back in the bag (the same id, once), and it paid once',
+      lost.bag.length === 0 && !!gid && s1b.bag.filter((p) => p && p.gid === gid).length === 1 && !s1b.worn && (await purse(A)) === 50
+        && (((svb && svb.rpg) || {}).shieldStash || []).length === 1,
+      { lost, s1b, coins: await purse(A), sv: ((svb && svb.rpg) || {}).shieldStash });
 
     /* A6. Gear's bag side holds it, and one tap of Equip puts it on the arm
        (the orchestrator's ask, 11-26: the bought piece can be worn) */
-    const gid = s1.bag[0] && s1.bag[0].gid;
     await H.dashOpen(A, 'dashboard');
     await A.page.waitForTimeout(900);
     const TILE = '[data-gear-bag] [data-bag-key^="stashShield-"]';

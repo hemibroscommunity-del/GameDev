@@ -33,6 +33,21 @@ one back. Now Diego sells one back.
   reports the arm empty (`wsClient.js` and `shieldwear.js`). `shop_result`
   carries the piece (`shield`), and the phone adds it to its copy of the bag
   once (`gameEvents.js`, only with the cap).
+- **A lost answer loses nothing** (the gatekeeper's hold, sitting 71: the
+  phone learned of the piece ONLY from `shop_result.shield`, so a lost answer
+  left the player 100 coins down, the shield unseen, and every buy refused
+  "You already have one"). The worker is the authority, so the phone now
+  adds, by `gid`, every recorded shield the worker holds for it that it holds
+  nowhere (`src/game/shieldAdopt.js`; add, never take; a piece with no id is
+  never adopted, and an old copy with no id and the same signature counts
+  as held): from `player_state.shieldStash` (wsClient.js, after the worn
+  shield; the join's full state and a re-sent request's resend carry it),
+  from `shop_result.shield`, and from `held`, which a shield's "have" quote
+  and refusal now carry (`shop.js` `shieldHeld`: the arm's and the bag's
+  pieces with an id, at most 48). After a "have" adopts a piece the phone
+  says its arm again (`shieldWear.js`), as the worn-shield adoption does.
+  Only with the cap; `shieldshop: false` stops this too (the worker keeps
+  the piece, and the phone sees it when the switch is back).
 - **One write**: the give, the take, the provenance row and the save are one
   synchronous run with no await between, and the record is saved before
   `shop_result` and `shop_state` go. A second send of the same buy is refused

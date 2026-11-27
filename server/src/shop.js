@@ -200,6 +200,10 @@ export function toolEarned(quests, key) {
  * worker puts that one on `ps.shield` and the phone moves it to the bag and
  * says the arm is empty (wsClient.js, shieldwear.js).  `shop_result` carries
  * the piece (`shield`), and the panel adds it to the phone's copy of the bag.
+ * v2.3.6800 (sitting 71's hold, mended): a lost `shop_result` no longer
+ * loses the piece: the phone adds, by id, every shield the worker holds for
+ * it (`player_state.shieldStash`; a "have" quote's or refusal's `held`,
+ * shieldHeld below; src/game/shieldAdopt.js).
  *
  * Reasons, in lower case as the tools' are: 'off' (switched off), 'have'
  * (owns one), 'quest' (not yet given one), and at the buy 'coins' (short).
@@ -248,6 +252,20 @@ export function shieldWhyNot(ps, off) {
   if (Array.isArray(ps.shieldStash) && ps.shieldStash.length > 0) return 'have';
   if (!shieldEarned(ps._quests)) return 'quest';
   return null;
+}
+/* v2.3.6800 (the mend of sitting 71's hold): the recorded shields the worker
+   holds for `ps` -- on the arm and in the bag, each with its id -- that a
+   shield's "have" quote and refusal carry as `held`, so a phone that lost
+   its copy (a `shop_result` it never got) sees the one it paid for instead
+   of a row it may not buy (src/game/shieldAdopt.js adds them by id).  The
+   worker's own pieces only, never a copy of the message's; at most the
+   stash's cap (gearstash.js), and none without an id (the phone cannot tell
+   it from its twin). */
+export const SHIELD_HELD_MAX = 48;
+export function shieldHeld(ps) {
+  if (!ps) return [];
+  const all = [ps.shield, ...(Array.isArray(ps.shieldStash) ? ps.shieldStash : [])];
+  return all.filter((p) => p && typeof p === 'object' && typeof p.gid === 'string' && p.gid).slice(0, SHIELD_HELD_MAX);
 }
 
 export const SHOP_FISH_MULT = Object.freeze({ albino: 5, large: 10 });
@@ -671,7 +689,9 @@ export const shopMethods = {
     if (mode === 'buy' && isShieldKey(key)) {
       const why = shieldWhyNot(ps, this._shieldShopOff());
       return { ok: true, key, qty: why ? 0 : 1, mode, shield: true,
-        total: why ? 0 : SHIELD_PRICE, ...(why ? { why } : null), settled: true };
+        total: why ? 0 : SHIELD_PRICE, ...(why ? { why } : null),
+        ...(why === 'have' ? { held: shieldHeld(ps) } : null),   /* v2.3.6800: the mend -- what you own, so the phone sees it */
+        settled: true };
     }
     const stock = await this._shopStock();
     if (mode === 'buy') {
@@ -831,7 +851,7 @@ export const shopMethods = {
        door's request id acts once (reqonce.js). */
     if (isShieldKey(key)) {
       const why = shieldWhyNot(ps, this._shieldShopOff());
-      if (why === 'have') return { ok: false, error: SAY_HAVE, why };
+      if (why === 'have') return { ok: false, error: SAY_HAVE, why, held: shieldHeld(ps) };   /* v2.3.6800: the mend -- the one you paid for, so the phone sees it */
       if (why === 'quest') return { ok: false, error: SAY_QUEST, why };
       if (why) return { ok: false, error: SAY_NONE, why };
       const purse = Math.floor(Number(ps.coins) || 0);

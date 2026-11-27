@@ -848,6 +848,158 @@ check('a refused drink keeps the bottle and heals nothing',
   }
 }
 
+/* ═══ v2.3.6800 (the mend of sitting 71's hold): A LOST ANSWER LOSES NOTHING ═══
+   The gatekeeper: the phone learned of the bought shield ONLY from
+   `shop_result.shield`, so a lost answer (or a phone that lost its copy of
+   the bag) left the player 100 coins down, the shield unseen, and every buy
+   refused "You already have one".  THE PHONE here is the page's own rule
+   (src/game/shieldAdopt.js, called by gameEvents.js and wsClient.js with
+   caps.shieldshop): every frame it RECEIVES goes through shieldsInFrame and
+   adoptHeldShields, exactly as the page's handlers do; a frame it LOST never
+   reaches it.  Three ways to lose the answer, on a v1 and a v2 phone: (a) the
+   buy's answer is lost and the same reqId is sent again; (b) the phone
+   rejoins after a buy whose answer it never got; (c) a phone with no copy of
+   the piece opens the shelf (the quote) and asks to buy again (the refusal).
+   In each the player SEES the shield they paid for, and paid once.  Seen RED
+   on c36704eb (the phone adopting shop_result.shield alone, the worker's
+   "have" carrying no piece). */
+{
+  const { adoptHeldShields, shieldsInFrame } = await import('../../src/game/shieldAdopt.js');
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  const send = async (ws, type, payload) => { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await tick(); };
+  const joinV = async (ws, id, v) => {
+    room.sessions.set(ws, baseSession());
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, ws: [1, 5], ...(v === 2 ? { protocolVersion: 2 } : null), data: { x: 0, y: 0, z: 'town' } }));
+    await tick();
+  };
+  /* the phone: its caps from state_sync, then each frame it got, through the page's rule */
+  const newPhone = () => ({ caps: null, rpg: { shield: null, shieldStash: [] } });
+  const receive = (phone, frames) => {
+    for (const m of frames) {
+      if (m.type === 'state_sync') phone.caps = m.caps || (m.payload && m.payload.caps) || phone.caps;
+      if (!phone.caps || !phone.caps.shieldshop) continue;
+      if (m.type === 'player_state' || m.type === 'shop_result' || m.type === 'shop_quoted') adoptHeldShields(phone.rpg, shieldsInFrame(m.type, m.payload));
+    }
+  };
+  const sees = (phone, gid) => [phone.rpg.shield, ...phone.rpg.shieldStash].filter((x) => x && x.gid === gid).length;
+  const ready = (p) => { p._quests = Object.create(null); p._quests.tut_1 = 'active'; p.shield = null; p.shieldStash = []; p.coins = 150; };
+
+  for (const v of [1, 2]) {
+    const tag = 'lost answer (v' + v + '): ';
+    /* (a) the answer lost, the same reqId sent again on the same socket */
+    {
+      const ws = fakeWs('lostA' + v), id = 'lostabro' + v, phone = newPhone();
+      await joinV(ws, id, v);
+      receive(phone, ws.sent);
+      const p = room.playerState[id];
+      ready(p);
+      ws.sent.length = 0;
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1, reqId: 'rq-lost-a' + v });
+      const bought = p.shieldStash[0];
+      const paid = p.coins;
+      ws.sent.length = 0;   /* every frame of the first answer: LOST */
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1, reqId: 'rq-lost-a' + v });
+      receive(phone, ws.sent);
+      check(tag + '(a) the same reqId again: paid once (150 to 50), ONE shield on the worker, and the phone SEES it (by its id, once)',
+        !!bought && paid === 50 && p.coins === 50 && p.shieldStash.length === 1 && sees(phone, bought.gid) === 1,
+        { coins: p.coins, n: p.shieldStash.length, phone: phone.rpg.shieldStash, sent: ws.sent.map((m) => m.type) });
+    }
+    /* (b) a rejoin after a buy whose answer never came */
+    {
+      const ws = fakeWs('lostB' + v), id = 'lostbbro' + v, phone = newPhone();
+      await joinV(ws, id, v);
+      receive(phone, ws.sent);
+      const p = room.playerState[id];
+      ready(p);
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1, reqId: 'rq-lost-b' + v });   /* its answer: LOST */
+      const bought = p.shieldStash[0];
+      const ws2 = fakeWs('lostB2' + v);
+      phone.caps = null;   /* a new socket learns its caps again */
+      await joinV(ws2, id, v);
+      receive(phone, ws2.sent);
+      const p2 = room.playerState[id];
+      check(tag + '(b) the rejoin: paid once (50 left), and the phone SEES the shield it paid for (by its id, once)',
+        !!bought && p2.coins === 50 && Array.isArray(p2.shieldStash) && p2.shieldStash.length === 1 && sees(phone, bought.gid) === 1,
+        { coins: p2.coins, phone: phone.rpg.shieldStash, sent: ws2.sent.map((m) => m.type) });
+      /* ...and a second rejoin adds nothing twice */
+      const ws3 = fakeWs('lostB3' + v);
+      await joinV(ws3, id, v);
+      receive(phone, ws3.sent);
+      check(tag + '(b) ...and every later state adds it never twice', sees(phone, bought.gid) === 1 && phone.rpg.shieldStash.length === 1, phone.rpg.shieldStash);
+    }
+    /* (c) a phone with no copy: it opens the shelf, then asks to buy again */
+    {
+      const ws = fakeWs('lostC' + v), id = 'lostcbro' + v;
+      await joinV(ws, id, v);
+      const p = room.playerState[id];
+      ready(p);
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+      const bought = p.shieldStash[0];
+      /* the quote: the row it may not buy carries what it owns */
+      const q = newPhone();
+      receive(q, ws.sent.filter((m) => m.type === 'state_sync'));
+      ws.sent.length = 0;
+      await send(ws, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+      receive(q, ws.sent.filter((m) => m.type === 'shop_quoted'));
+      const quoted = ws.sent.filter((m) => m.type === 'shop_quoted').pop();
+      check(tag + '(c) a phone with no copy opens the shelf: quoted "have", and it SEES the shield it owns',
+        !!bought && !!quoted && quoted.payload.why === 'have' && sees(q, bought.gid) === 1, { q: quoted && quoted.payload, phone: q.rpg.shieldStash });
+      /* the buy: refused "You already have one", and that refusal shows it */
+      const b = newPhone();
+      b.caps = q.caps;   /* the same socket's caps */
+      ws.sent.length = 0;
+      await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+      receive(b, ws.sent.filter((m) => m.type === 'shop_result'));
+      const res = ws.sent.filter((m) => m.type === 'shop_result').pop();
+      check(tag + '(c) ...asks to buy again: refused "You already have one", NO coin taken, and it SEES the shield it owns',
+        !!res && res.payload.ok === false && res.payload.why === 'have' && /already/.test(res.payload.error) && p.coins === 50 && p.shieldStash.length === 1 && sees(b, bought.gid) === 1,
+        { r: res && res.payload, coins: p.coins, phone: b.rpg.shieldStash });
+    }
+  }
+
+  /* (c) when the worker holds it on the ARM (the quest's grant puts a shield
+     there): the "have" carries that piece too */
+  {
+    const ws = fakeWs('lostArm'), id = 'lostarmbro';
+    await joinV(ws, id, 2);
+    const caps = (ws.sent.find((m) => m.type === 'state_sync') || {}).caps;
+    const p = room.playerState[id];
+    ready(p);
+    p.shield = { ...questShieldMint(SHIELD_ITEM), gid: 'arm-gid-1' };
+    ws.sent.length = 0;
+    await send(ws, 'shop_quote', { key: SHIELD_KEY, qty: 1, mode: 'buy' });
+    await send(ws, 'shop_buy', { key: SHIELD_KEY, qty: 1 });
+    const q = newPhone(); q.caps = caps;
+    receive(q, ws.sent.filter((m) => m.type === 'shop_quoted'));
+    const b = newPhone(); b.caps = caps;
+    receive(b, ws.sent.filter((m) => m.type === 'shop_result'));
+    check('lost answer: (c) the worker holds it on the arm: its "have" quote and refusal both carry it, the phone SEES it, no coin taken',
+      sees(q, 'arm-gid-1') === 1 && sees(b, 'arm-gid-1') === 1 && p.coins === 150, { q: q.rpg, b: b.rpg });
+  }
+
+  /* the page's rule, pure: add, never take; never twice; an old copy with no
+     id and the same signature counts as held; a piece with no id is never
+     adopted; a quote's `shield: true` is no piece */
+  {
+    const P = (gid, name) => ({ tier: 'common', tierMult: 1, gearBase: 'wood', name: name || 'Pine Shield', ...(gid ? { gid } : null) });
+    const r1 = { shield: P('g1'), shieldStash: [P('g2')] };
+    const n1 = adoptHeldShields(r1, [P('g1'), P('g2'), P('g3'), P(null)]);
+    const r2 = { shield: null, shieldStash: [P(null)] };
+    const n2 = adoptHeldShields(r2, [P('g9')]);
+    const n2b = adoptHeldShields(r2, [P('g8', 'Oak Shield')]);
+    const r3 = { shield: null, shieldStash: [P('keep')] };
+    adoptHeldShields(r3, []);
+    check('shieldAdopt: adds only the piece held nowhere (by id), once; an old id-less copy of the same piece counts as held; never takes',
+      n1 === 1 && r1.shieldStash.length === 2 && r1.shieldStash[1].gid === 'g3' && n2 === 0 && n2b === 1 && r2.shieldStash.length === 2 && r2.shieldStash[1].gid === 'g8' && r3.shieldStash.length === 1
+        && adoptHeldShields(r1, [P('g3')]) === 0,
+      { r1, r2, n1, n2, n2b });
+    check('shieldAdopt: what a frame carries -- a state\'s shieldStash, a buy\'s shield, a "have"\'s held; a quote\'s `shield: true` and any other frame, none',
+      shieldsInFrame('player_state', { shieldStash: [P('a')] }).length === 1 && shieldsInFrame('shop_result', { shield: P('b') }).length === 1
+        && shieldsInFrame('shop_quoted', { shield: true, held: [P('c'), P('d')] }).length === 2 && shieldsInFrame('shop_quoted', { shield: true }).length === 0
+        && shieldsInFrame('store_result', { shield: P('e') }).length === 0 && shieldsInFrame('player_state', null).length === 0);
+  }
+}
+
 /* ═══ v2.3.3981: ONE ORE A BAR, ONE LOG A HARDENED WOOD -- NO GOLD TAP ═══
    The owner's one-to-one (smelting.js, hardenedwood.js) took a bar from five
    ore to one, and Diego's bar from 240 to 48 (hardened wood 144 to 29).  At

@@ -795,13 +795,19 @@ export const WIRE_OUT = [
     /* v2.3.6800 (card SHOP): a buy of Diego's Pine Shield carries `shield`,
        the piece put in the bag (its gid included: the phone adds it to its
        copy of the bag once, only with caps.shieldshop), and a refusal of it
-       `why` ('have', 'quest', 'off', 'coins'); docs/specs/shop-shield.md */
-    absent: 'default: no body shows a refusal; default: a missing count or price is drawn as undefined; default: no `shield` adds nothing to the bag',
+       `why` ('have', 'quest', 'off', 'coins'); docs/specs/shop-shield.md.
+       v2.3.6800 (sitting 71's hold, mended): a "have" refusal carries `held`,
+       the recorded shields the worker holds for the player (shop.js
+       shieldHeld), which the phone adds to its bag by id */
+    absent: 'default: no body shows a refusal; default: a missing count or price is drawn as undefined; default: no `shield` adds nothing to the bag; default: no `held` adds nothing to the bag',
     bad: ['clamped'], answer: 'none' },
   /* why: the comment on shop_state's row (one comment of the old list, v2.3.5181) */
   { name: 'shop_quoted', dir: 'out', at: 'index.js _onMessage; phone: gameEvents processGameEvent',
     wayIn: 'socket', envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'],
-    reqId: 'none', trust: {}, absent: 'default: no body clears the quote', bad: ['dropped:gone'],
+    /* v2.3.6800 (card SHOP, sitting 71's hold mended): a shield's "have"
+       quote carries `held` (shop.js shieldHeld), added to the phone's bag by
+       id before the panel redraws */
+    reqId: 'none', trust: {}, absent: 'default: no body clears the quote; default: no `held` adds nothing to the bag', bad: ['dropped:gone'],
     answer: 'none' },
   /* v2.3.2621: the auction house's message threads (storechat.js).  All
      three are SERVER-EMITTED.  Unlisted, a client could forge a line

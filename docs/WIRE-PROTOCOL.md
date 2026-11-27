@@ -818,8 +818,13 @@ null, shield: true, name, sell: 100}`; a `shop_quoted` for it carries
 `shield: true` and, refused, `qty: 0` and `why` ('have', 'quest', 'off'). A
 refused `shop_result` for it carries `why` ('have', 'quest', 'off', 'coins');
 an ok one carries `shield`, the piece put in the bag (its `gid` included),
-which the phone adds to its copy of the bag once (gameEvents.js). An older
-game shows no shield row. Full rules: docs/specs/shop-shield.md.
+which the phone adds to its copy of the bag once (gameEvents.js). A "have"
+quote or refusal for it carries `held`, the recorded shields the worker holds
+for the player; with the cap the phone adds those, and every piece of
+`player_state.shieldStash`, to its bag by `gid` (add, never take:
+`src/game/shieldAdopt.js`), so a lost `shop_result` loses nothing (v2.3.6800,
+the mend of sitting 71's hold). An older game shows no shield row. Full
+rules: docs/specs/shop-shield.md.
 
 **No man's land: a group, and the window's Attack (v2.3.3530, caps.nmlgroup,
 caps.nmlchoice):**
