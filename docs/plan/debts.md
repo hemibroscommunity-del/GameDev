@@ -754,18 +754,8 @@ stays with that PR until it lands, and is marked (held).
 
 ## Found (no card's debt)
 
-- FOR THE OWNER (72), a bug on `main` today: the phone's gear bag
-  (`armorStash`, `legsStash`, `gearStash`) never reads the worker's echo.
-  The worker sends them in every `player_state` (`server/src/persistence.js`:831-834);
-  the phone's handler (`src/networking/wsClient.js`:2716) never reads them and
-  adds a piece only from the reply that brought it (chest :2172, forge :2430,
-  quest :3843, loot :4430, mail `gameEvents.js`:2089). `forge_armor_result` has
-  no reqId (`armorforge.js`:115); a re-sent chest open is answered only while
-  `_reqRecall` holds it (`dailychest.js`:116-119); a rejoin sends the phone's
-  own list and `state_sync` carries no stashes (`gearstash.js` "gearheld";
-  `docs/specs/gear-stash.md`:328 lists it open). Cost: a dropped line before
-  the reply leaves the piece paid for (5 bars, or the chest) and held by the
-  worker but never shown, even after a reload. No card owns it.
+- ~~FOR THE OWNER (72): the phone's gear bag never reads the worker's echo~~:
+  card SHOP's part 2 now (`claude/plan-shop-2-gearbag`, tag 6801; struck at 73).
 - A bug on `main` (not reachable by the game's own phone): a join claiming
   one minted shield gid N times keeps one minted shield plus N-1 usable
   "legacy" copies (`gearstash.js` `mergeStashLists` merges claims by

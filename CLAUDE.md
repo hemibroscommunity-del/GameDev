@@ -152,7 +152,12 @@ spec. Add a line here only for a new RULE every session must follow.
     before merging" (TRAPS §238);
   - a PR merges from the gatekeeper's list (`docs/plan/status/Z.md`, rehearsed
     by `tools/dev/gatekeeper.mjs`), never on its own green (v2.3.5024); Server
-    CI's `test` passes first.
+    CI's `test` passes first. THE ONE EXCEPTION, the fast lane (owner, 04:49
+    UTC 2026-11-27, *"Yes they should"*; v2.3.5667): a change to what is on
+    screen only (nothing under `server/` save a `server/test/` file that
+    imports no worker code, nor `.github/`, `src/networking/`, gold, bag,
+    login or wire code) lands alone on its own green, and the next sitting
+    reads it: `docs/plan/finish.md` part 8.
 - **GitHub Actions costs money** since the repo went private (2026-10-28): every
   check runs on the account's paid minutes. Jobs that fail in about 2 seconds
   with "The job was not started because ... spending limit" are billing: tell
