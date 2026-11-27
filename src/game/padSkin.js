@@ -42,10 +42,13 @@ import { PAD_ART } from '../data/padArt.js';
 
 /* the owner's layout.json (assets/icons-source/owner-2026-11-25-pad3):
    [centre x, centre y, size] in the 920 x 280 reference.  The top row is
-   moved down 4 (62 -> 66): at 62 its wells reach 1.5 over the outline's
-   inside (padArt.js housing.inside: 23.5); the weapon wells down 4 (207 ->
-   211) and the first one 88 -> 86, the three alike: at 207 they sat 4 on
-   the rail's gold (its inside from 167.8).  The card's "clear of the outline" */
+   moved down 4 (62 -> 66): at 62 its wells reached 1.5 over the outline's
+   inside (padArt.js housing.inside: 23.5 then); the weapon wells down 4 (207
+   -> 211) and the first one 88 -> 86, the three alike: at 207 they sat 4 on
+   the rail's gold (its inside from 167.8 then).  The card's "clear of the
+   outline".  v2.3.6645 (card PAD part 10, the owner's steel sheet): the same
+   places; the steel rim's inside measures 20.3 at the right lobe's top and
+   166.7 at the rail, so every well sits a little clearer of it */
 export const REF = Object.freeze({ W: 920, H: 280 });
 export const REF_SLOTS = Object.freeze({
   stick: [118, 159, 178],
@@ -65,9 +68,12 @@ export const PAD = Object.freeze({
      scale stops growing here, a wider column stretches the rail */
   REF_VW: 430,
   /* the three cuts, reference px: the left lobe ends and the right lobe
-     starts where the rail is flat (housing.inside.top: 167.8 from 260 to 520) */
+     starts where the rail is flat (housing.inside.top: 167.8 from 260 to 520
+     in part 3's gold; v2.3.6645, the steel: 166.7 from 260 to 500, its
+     shoulder rising from 505, so the right lobe starts at 500 (CUT_R 400 ->
+     420): a stretched rail never smears the shoulder's foot) */
   CUT_L: 260,
-  CUT_R: 400,
+  CUT_R: 420,
   /* a touch box's least size, CSS px (Apple's 44) */
   BOX: 44,
   /* the least distance between two neighbours' box centres in a row (px):
@@ -134,7 +140,9 @@ export function padLayout(land, vw) {
      px no move does (three 44 px boxes need 90 px of centres, the lobe's
      top holds about 200 s), so the row's ART shrinks a step at a time, to
      0.8 of its size at the least (its boxes stay 44): what gives on a
-     narrow phone, said in the PR */
+     narrow phone, said in the PR.  v2.3.6645: the steel lobe is roomier
+     (its shoulder 10 of the reference further left): the art is whole down
+     to 345 px, gives from 340, and no fit is left only under 320 */
   let placed = false;
   for (let k = 1; k >= 0.8 - 1e-9 && !placed; k -= 0.05) {
     for (let left = 0; left <= Math.max(0, spread) + 1e-9; left += 0.5) {
@@ -151,7 +159,8 @@ export function padLayout(land, vw) {
     if (low < bigTop + 1) w.box.y = Math.min(w.y + (bigTop + 1 - low), w.y - w.d / 2 + w.box.size / 2);
   }
   /* the rail: the weapon wells centred on the rail as the owner drew them
-     (w2 6 of the reference right of the rail's middle), spread apart where
+     (w2 6 of the reference right of the rail's middle: 16 from v2.3.6645,
+     the steel's rail ending at 500, the same place), spread apart where
      boxes would touch */
   const railMid = (shell.cutL + (width - shell.cutR)) / 2 + (R.w2[0] - (PAD.CUT_L + (REF.W - PAD.CUT_R)) / 2) * s;
   const wy = up(R.w2[1]);
@@ -327,10 +336,12 @@ export function insideShell(layout, x, y, r, clear, art) {
 export const SPECIAL_KINDS = Object.freeze(['bash', 'whirl']);
 export const SPECIAL_COLS = Object.freeze({ bash: 'mobility', whirl: 'special' });
 /* the reference rows of the right lobe stretched to make the tier: under
-   the outline's top corners (the right wall is straight from row 60) and
-   over the rail's shoulder (housing.png's own measure: the left wall runs
-   from x 568 to 556 over these rows, steep, so it stays a wall) */
-export const TIER_BAND = Object.freeze({ top: 70, bottom: 110 });
+   the outline's top corners and over the rail's shoulder (housing.png's own
+   measure).  v2.3.6645 (card PAD part 10), the owner's steel: the right
+   wall is straight from row 74 (part 3's gold: 60), and the left wall runs
+   from x 560 to 551 over these rows (the gold's 568 to 556), steep, so it
+   stays a wall: 70 -> 75 */
+export const TIER_BAND = Object.freeze({ top: 75, bottom: 110 });
 
 /** The tier's two wells: `shown` { bash, whirl } (each `true` when the old
  *  rule shows it).  Null when neither shows (nothing drawn, nothing moved).

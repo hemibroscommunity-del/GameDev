@@ -199,9 +199,10 @@ const ALL = (L) => {
     && insideShell(R, L.wells.stick.x, (280 - 52) * L.s + 3, 1, 0) === false
     && insideShell(R, 200, (280 - 168) * L.s + 3, 2, 0) === false && TIER_BAND.top < TIER_BAND.bottom);
   /* inside the band the shoulder is stretched, not lifted: at its column
-     (ref x 575, its top about row 97) the inside reaches the stretched
-     height, under the lifted one */
-  const xs = 430 - (920 - 575) * L.s;
+     (ref x 575, its top about row 97, in part 3's gold; v2.3.6645, the
+     steel's shoulder 20 further left: x 555, its top about row 93) the
+     inside reaches the stretched height, under the lifted one */
+  const xs = 430 - (920 - 555) * L.s;
   check('3o2. in the stretched band the shoulder is stretched (under the lifted height), over it the rows lifted whole',
     insideShell(R, xs, 90, 0.5, 0) === true && insideShell(L, xs, 90, 0.5, 0) === false && insideShell(R, xs, 110, 0.5, 0) === false);
   /* the band is where the right lobe's left wall is steep, so stretched it
@@ -362,7 +363,7 @@ check('6b. every picture is named for the loading screen', padPictures().length 
     const L = padLayout(land, vw), w = L.wells, s = L.s;
     if (!near(w.mid.x - w.mobility.x, Math.max(101 * s, PAD.GAP_PX), 1e-6) || !near(w.special.x - w.mid.x, Math.max(100 * s, PAD.GAP_PX), 1e-6)) gaps.push([vw, 'top']);
     if (!near(w.w2.x - w.w1.x, Math.max(101 * s, PAD.GAP_PX), 1e-6) || !near(w.w3.x - w.w2.x, Math.max(95 * s, PAD.GAP_PX), 1e-6)) gaps.push([vw, 'rail']);
-    if (!near(w.w2.x, (L.shell.cutL + vw - L.shell.cutR) / 2 + 6 * s, 1e-6) || !near(w.w2.y, (280 - 211) * s, 1e-6)) rail.push(vw);
+    if (!near(w.w2.x, (L.shell.cutL + vw - L.shell.cutR) / 2 + 16 * s, 1e-6) || !near(w.w2.y, (280 - 211) * s, 1e-6)) rail.push(vw);
     const bigTop = Math.max(w.big.y + w.big.box.size / 2, w.attack.y + w.attack.box.size / 2);
     for (const n of ['mobility', 'mid', 'special']) {
       const b = w[n].box, low = b.y - b.size / 2;
@@ -371,13 +372,16 @@ check('6b. every picture is named for the loading screen', padPictures().length 
     }
   }
   check('8b. neighbours\' centres are the owner\'s apart, or 45 px where that is closer; a top-row box rises just off the big ones', gaps.length === 0, gaps);
-  check('8c. the weapon wells on the rail where the owner drew them (w2 6 right of its middle, 211 down)', rail.length === 0, rail);
+  check('8c. the weapon wells on the rail where the owner drew them (w2 16 right of its middle with CUT_R 420: v2.3.6645; 211 down)', rail.length === 0, rail);
   const full = SCREENS.filter(([l, vw]) => vw >= 390).filter(([l, vw]) => { const L = padLayout(l, vw); return !near(L.wells.mid.d, 80 * L.s, 1e-9); });
   check('8d. from 390 px up the top row\'s art is full size', full.length === 0, full);
-  const N = padLayout(false, 375), M = padLayout(false, 360);
-  check('8e. at 375 and 360 the top row\'s art gives (smaller, the boxes still 44), more at 360',
+  /* v2.3.6645 (card PAD part 10): the owner's steel lobe is roomier (its
+     shoulder 10 of the reference further left), so the art gives from 340
+     (part 3's gold: from 375) */
+  const N = padLayout(false, 340), M = padLayout(false, 330);
+  check('8e. at 340 and 330 the top row\'s art gives (smaller, the boxes still 44), more at 330',
     N.wells.mid.d < 80 * N.s - 1e-6 && M.wells.mid.d / M.s < N.wells.mid.d / N.s && N.wells.mid.box.size === 44 && M.wells.mid.box.size === 44);
-  check('8f. at 375 the row moved left no further than keeps Special inside (0.5 px less and Mobility is over the outline)',
+  check('8f. at 340 the row moved left no further than keeps Special inside (0.5 px less and Mobility is over the outline)',
     !insideShell(N, N.wells.mobility.x - 0.5, N.wells.mobility.y, N.wells.mobility.d / 2 * 1.06, 0) || !insideShell(N, N.wells.special.x + 0.5, N.wells.special.y, N.wells.special.d / 2, 0) || N.wells.mobility.x === 375 - (920 - REF_SLOTS.mobility[0]) * N.s);
   /* insideShell's edges: a well just inside the inside's left edge passes,
      a pixel past fails; the clearance is honoured; the rail's ceiling */
@@ -391,18 +395,20 @@ check('6b. every picture is named for the loading screen', padPictures().length 
   check('8j. insideShell: the clearance is kept on every side', insideShell(U, 200, 30, r, 2) && !insideShell(U, 200, ceil - r - 1, r, 2)
     && !insideShell(U, ins.left * s + r + 1, y, r, 2) && !insideShell(U, 200, ins.bottom * s + r + 1, r, 2) && !insideShell(U, 430 - ins.right * s - r - 1, y, r, 2));
   const lobe = U.wells.stick;
-  check('8k. insideShell: the lobes\' curves are read (the stick at its place passes, 25 px up fails; Special 8 px right fails)',
+  /* v2.3.6645: the steel's corner is roomier: Special fails from 9 px right (the gold's from 8) */
+  check('8k. insideShell: the lobes\' curves are read (the stick at its place passes, 25 px up fails; Special 10 px right fails)',
     insideShell(U, lobe.x, lobe.y, lobe.d / 2, 0) && !insideShell(U, lobe.x, lobe.y + 25, lobe.d / 2, 0)
-    && !insideShell(U, U.wells.special.x + 8, U.wells.special.y, U.wells.special.d / 2, 0) && insideShell(U, U.wells.special.x, U.wells.special.y, U.wells.special.d / 2, 0));
+    && !insideShell(U, U.wells.special.x + 10, U.wells.special.y, U.wells.special.d / 2, 0) && insideShell(U, U.wells.special.x, U.wells.special.y, U.wells.special.d / 2, 0));
   const W2 = padLayout(true, 932);
   check('8l. insideShell reads the cuts on a stretched shell (sideways 932: the right lobe from its edge)',
     insideShell(W2, W2.wells.special.x, W2.wells.special.y, W2.wells.special.d / 2, 0) && !insideShell(W2, W2.wells.special.x, W2.wells.special.y + 12, W2.wells.special.d / 2, 0)
     && insideShell(W2, 466, 30, 10, 0) && !insideShell(W2, 466, 60, 10, 0));
   check('8m. insideShell: a well at the inside\'s left edge reads the lobe\'s first measured column (the corner)',
     !insideShell(U, ins.left * s + 1.01, 100, 1, 0) && insideShell(U, ins.left * s + 1.01, 30, 1, 0));
-  const T = padLayout(false, 320), ts = T.s, sp = Math.max(101 * ts, 45) + Math.max(100 * ts, 45) - 201 * ts;
-  check('8n. a column too narrow for any fit (320) draws the top row at 0.8, moved left half its spread',
-    near(T.wells.mid.d, 0.8 * 80 * ts, 1e-9) && near(T.wells.mobility.x, 320 - (920 - 634) * ts - sp / 2, 1e-6));
+  /* v2.3.6645: the steel lobe still fits the row at 0.8 at 320; none fits at 310 */
+  const T = padLayout(false, 310), ts = T.s, sp = Math.max(101 * ts, 45) + Math.max(100 * ts, 45) - 201 * ts;
+  check('8n. a column too narrow for any fit (310) draws the top row at 0.8, moved left half its spread',
+    near(T.wells.mid.d, 0.8 * 80 * ts, 1e-9) && near(T.wells.mobility.x, 310 - (920 - 634) * ts - sp / 2, 1e-6));
 }
 
 /* ── 10 (v2.3.6641, card PAD part 4): a box risen off its art draws its art in the WELL ── */

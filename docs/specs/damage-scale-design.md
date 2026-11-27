@@ -80,7 +80,7 @@ always reads as the minimum.
 
 Grouped by what they are, because the groups take different decisions. Full
 line-level citations are in
-`docs/triage-2026-09-14/combat-numbers.md` §Q1.
+`docs/archive/triage-2026-09-14/combat-numbers.md` §Q1.
 
 | Group | Where | Count | Moves? |
 |---|---|---|---|

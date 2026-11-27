@@ -14,6 +14,7 @@ export const SAY = Object.freeze({
   'itemInspect.kindCape': 'Cape',
   'itemInspect.kindAmulet': 'Amulet',
   'itemInspect.kindItem': 'Item',
+  'itemInspect.kindWeapon': 'Weapon',   /* v2.3.6689: another player's weapon on their card (its kind not known) */
   'itemInspect.attackSpeed': 'Attack speed',
   'itemInspect.youHold': 'You hold',
   'itemInspect.hardness': 'Hardness',

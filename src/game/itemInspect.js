@@ -59,6 +59,7 @@ export function kindWord(kind) {
     case 'legs': return say(SAY, 'itemInspect.kindLegs');
     case 'cape': return say(SAY, 'itemInspect.kindCape');
     case 'amulet': return say(SAY, 'itemInspect.kindAmulet');
+    case 'weapon': return say(SAY, 'itemInspect.kindWeapon');   /* v2.3.6689: another player's, its kind unknown to their card */
     default: return say(SAY, 'itemInspect.kindItem');
   }
 }

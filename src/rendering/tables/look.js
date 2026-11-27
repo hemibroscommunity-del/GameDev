@@ -391,7 +391,7 @@ const FULLSET_HEAD_SEAT = {
 /* v2.3.503: layered gear (paper-doll).  Each gear sheet frame is pixel-aligned
    to the body frame, so placement is just copying the body sprite's transform
    (which already carries mirror + bodyScale + bob).  No anchors/angles.  equip
-   = { legs, chest, shoulders } item ids.  See gear-layer-spec.md. */
+   = { legs, chest, shoulders } item ids.  See docs/archive/root/gear-layer-spec.md. */
 /* v2.3.748: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
    it is NOT in the masked-body worn list (skin-tight, no body erase). */
 const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];

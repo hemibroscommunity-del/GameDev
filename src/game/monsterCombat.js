@@ -24,21 +24,21 @@ import {
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
   GS_INNER_RADIUS, GS_OUTER_RADIUS, ATK_PRESS_GRACE_MS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,   /* v2.3.3527: RARE_DROP_* gone (the kill's note below) */
-  RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
+  RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
   calcCritMult, calcCombatDmgRange /* v2.3.2520: the RAW range -- the crit anchor is gameplay, not a readout */, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
   CRIT_ANCHOR_MULT,
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
-  getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
+  getShieldStats, getWeaponCritStat, meleeSwingSfx, resolveCollision,
   getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
-  monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
+  monsterBodyOffsetY, monsterMeleeHitRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
 import { BOW_RANGE_PX, toDisplayDamage, staffOrbLife, meleeRangeMult, bossSizeK /* v2.3.3556: a dungeon boss's drawn size */ } from '@/data/gameSystems.js'; /* v2.3.2387: one staff range for all four spawn sites; v2.3.2473: the sight gate's reach; v2.3.2520: the display damage scale; v2.3.2592: the RANGE stat scales the orb's life and the melee envelope */
-import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { monsterNewLife } from '@/game/monsterCarry.js'; /* v2.3.4910: the one new-life reset (TRAPS §245) */
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -51,7 +51,6 @@ import { isStaggered } from '@/game/elemHits.js'; /* v2.3.4387: nor a held attac
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
-import { getBtPlayerId } from '@/networking/index.js';   /* v2.3.4672: btRpc and syncRpgToServer went with Supabase */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -120,8 +119,9 @@ export function updateMonsterCombat(S, deps) {
              the final dmg against this so any negative modifier (curse,
              level-diff scaling, future debuffs) shows up without needing
              a per-source code path.  Matches the value shown in the
-             WeaponSwapBar DMG readout. */
-          var _pDmgBase = pDmg;
+             WeaponSwapBar DMG readout.
+             v2.3.6702: nothing read the snapshot any more; its unused name
+             is deleted (card TD PR 3). */
           /* §4 Amulet bonus — elemental damage boost */
           if (((_R6$_amuletBonus = _R6._amuletBonus) === null || _R6$_amuletBonus === void 0 ? void 0 : _R6$_amuletBonus.stat) === 'elemDmg' && _activeWpn.element1) pDmg *= 1 + _R6._amuletBonus.value / 100;
           /* §18.1 Food buff — damage multiplier */
@@ -235,7 +235,7 @@ export function updateMonsterCombat(S, deps) {
                v2.3.1114: for server-driven monsters the WORKER ticks
                authoritative DoT (its monster_hit events carry the damage
                + popups); local tick keeps only duration/FX bookkeeping. */
-            var expired = tickStatuses(m, 16.7 / 1000, Date.now(), _R6, { applyHp: !S._serverMonsters });
+            tickStatuses(m, 16.7 / 1000, Date.now(), _R6, { applyHp: !S._serverMonsters });
 
             /* ═══ ELEMENT STATUS OVERLAY — ambient particles on statused monsters ═══ */
             /* v2.3.1347: budget-capped. This runs per statused monster per
@@ -247,7 +247,6 @@ export function updateMonsterCombat(S, deps) {
             if (m.statuses && m.alive && S.hitParticles.length < 250) {
               Object.entries(m.statuses).forEach(function (_ref13) {
                 var _ref14 = _slicedToArray(_ref13, 2),
-                  sid = _ref14[0],
                   st = _ref14[1];
                 if (!st || !st.element) return;
                 var fx = spawnElementStatusFX(m.x, m.y, st.element, Math.random());
@@ -631,7 +630,6 @@ export function updateMonsterCombat(S, deps) {
                   m._attackPhase = 'attack';
                   m._phaseTimer = Date.now() + 500; /* attack lasts 500ms */
                   m.color = '#ff2020';
-                  var _abilities = m._bossAbilities;
                   var ability = m._currentAttack;
                   var bossAngle = Math.atan2(P.y - m.y, P.x - m.x);
                   if (ability === 'slam') {
@@ -1708,8 +1706,9 @@ export function updateMonsterCombat(S, deps) {
                    skeleton 48 > 40) -- locked bow shots systematically
                    missed while wider staff bolts mostly connected.
                    v2.3.1979: ...and at the RENDERED position the hit-test
-                   uses, so the shot does not lead a walking monster's hitbox. */
-                var _lockPt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+                   uses, so the shot does not lead a walking monster's hitbox.
+                   v2.3.6702: the point this note sat over was read by nothing;
+                   its unused name is deleted (card TD PR 3). */
                 /* ═══ v2.3.2260: THE SHOT GOES WHERE THE BODY IS POINTING ═══
                    Owner: "Right now the flight path behavior of the bow and
                    magic are both broken.  The line of site is stuck in a

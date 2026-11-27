@@ -135,11 +135,21 @@ export const BandGrip = ({ min, expanded }) => (
    The house chip (.bt-chisel: the frame art owns the corners), as tall as the
    five buttons beside it, its width the word's: sheetGeometry's
    BAND_CLOSE_W is what the row keeps for it. */
-export const BandClose = ({ min, expanded, h }) => (
+/* ═══ v2.3.6697: ...AND NOW THE BUTTON STAYS AND THE GRIP GOES ═══
+   The owner, 2026-11-26: "remove the pull handle on the dashboard.  It has an
+   open button making pull handle redundant.  Also pull handle implies
+   stretching when dashboard is really just minimized or expanded".  So
+   BandGrip above is drawn only with `?bandgrip=1` (bandGripSwitch.js), and
+   this chip wears the fold's hook `data-dash-fold` beside its own (`hook`,
+   from foldHook: undefined while the handle is back and wears it), so the
+   harness, the coach and the guide arrow find the fold here under `?ui2=0`;
+   under the new frame the header's Gear and Close wear it (DashHeader.jsx). */
+export const BandClose = ({ min, expanded, h, hook }) => (
   <button
     type="button"
     className="bt-chisel bt-chisel--chip bt-band-close"
     data-dash-close={min ? 'min' : 'open'}
+    data-dash-fold={hook}
     aria-label={say(SAY, min ? 'bandGrip.expand' : (expanded ? 'bandGrip.close' : 'bandGrip.minimize'))}
     aria-expanded={!min}
     onPointerDown={(e) => e.stopPropagation()}
