@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4baa9acc4be470a9874bd2a3fdff2a0f95ec0b1b",
+  "tree": "8f4bfcd30598913ce6791b46358a6738648b5756",
+  "committedAt": "2026-11-26T18:41:05-08:00",
+  "subject": "Merge pull request #2396 from hemibroscommunity-del/claude/plan-keep-5-objects",
+  "files": 8908,
+  "bytes": 999882169,
+  "listingSha256": "e809910f554aaa2a4bf6e0fea150cb663a882469b413af0eaec7b34266377166",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

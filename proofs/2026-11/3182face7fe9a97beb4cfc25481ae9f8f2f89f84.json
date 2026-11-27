@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3182face7fe9a97beb4cfc25481ae9f8f2f89f84",
+  "tree": "4c3ea019ab562879133d21106cc53889b7d0e204",
+  "committedAt": "2026-11-26T18:41:11-08:00",
+  "subject": "Merge pull request #2402 from hemibroscommunity-del/claude/plan-pad-10-steel",
+  "files": 8917,
+  "bytes": 1009169109,
+  "listingSha256": "0a6ee0107c487c1afb3907937348e24b49e6a21ff97b25b27881f13cda9366c2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
