@@ -11,8 +11,9 @@
  *   1. the two buttons (mode 5), and a bow in hand: the disc wears
  *      data-disc="stick" (S._discKind);
  *   2. THE BOW, the thumb dragged AWAY from the monster and held: the aim is
- *      the thumb's (S._aimAngle, S._aiming), every arrow that leaves goes the
- *      thumb's way, nothing is locked or sighted, the monster gets no claim;
+ *      the thumb's (S._aimAngle, S._aiming), arrows keep leaving at empty
+ *      ground (the owner, 16:35: "no matter if there's a monster in front or
+ *      not"), every one the thumb's way, nothing is locked or sighted, the monster gets no claim;
  *      lifted: the aim and the held attack let go;
  *   3. THE BOW, the thumb dragged TOWARD it and held: arrows the thumb's way,
  *      and the monster is hit (a monster_damage claim naming it);
@@ -176,11 +177,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (!s0.mon || !s0.mon.alive) { rec.skip(`2-3. ${label} ${W}`, 'the monster is gone', s0); continue; }
         /* ── 2 ── away */
         const away = s0.mon.a + Math.PI;
-        const A = await hold(away, 30, 0, SHOTS && slot === 'ranged' ? `rangedstick-${label}-bow-dragged.png` : null);
+        const A = await hold(away, 120, 3, SHOTS && slot === 'ranged' && full ? `rangedstick-${label}-bow-dragged.png` : null);
         const aimOk = A.during.length > 0 && A.during.every((s) => s.aiming && s.aim != null && off(s.aim, away) < 1 * DEG && s.latch === 'idle' && s.lid == null && s.lock == null && s.sight === 'none' && s.auto);
         const awayShots = A.got.shots.filter((x) => !x.tap);
-        rec.ok(`2${slot === 'staff' ? 's' : ''}. ${label}, ${W}: dragged AWAY from the monster and held: aimed the thumb's way, nothing locked or sighted, auto-attack on; ${awayShots.length} shot(s), each the thumb's way; no claim on it`,
-          aimOk && awayShots.every((x) => off(x.ang, away) < 2 * DEG) && (slot === 'ranged' || awayShots.length > 0) && !A.got.out.some((o) => o.mid === mon.id),
+        rec.ok(`2${slot === 'staff' ? 's' : ''}. ${label}, ${W}: dragged AWAY from the monster and held: aimed the thumb's way, nothing locked or sighted, auto-attack on; ${awayShots.length} shot(s) at empty ground, kept leaving (the owner: "no matter if there's a monster in front or not"), each the thumb's way; no claim on it`,
+          aimOk && awayShots.every((x) => off(x.ang, away) < 2 * DEG) && awayShots.length >= 2 && !A.got.out.some((o) => o.mid === mon.id),
           { away, during: A.during.slice(0, 3), shots: awayShots.slice(0, 4), out: A.got.out.slice(0, 4) });
         rec.ok(`2${slot === 'staff' ? 's' : ''}. ${label}, ${W}: lifted: the aim and the held attack let go`, !A.after.aiming && !A.after.auto && A.after.latch === 'idle', A.after);
         /* ── 3 ── toward */
@@ -222,8 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (s6.mon && s6.mon.alive) {
           await turn(s6.mon.a);
           const sighted = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 15000, label: 'sighted' }).catch(() => null);
-          if (SHOTS) await P.page.screenshot({ path: join(H.REPO, 'docs/shots', `rangedstick-${label}-sword-latch.png`) });
-          await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]); await P.page.waitForTimeout(80); await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
+                    await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]); await P.page.waitForTimeout(80); await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
           await frames(P, 4);
           const s6b = await NOW(P, mon.id);
           rec.ok(`6. ${label}: a sword: the disc is a latch (data-disc ${s6b.disc}), the press locks the monster in sight, as today`,

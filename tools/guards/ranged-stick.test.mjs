@@ -33,6 +33,9 @@
  *      (the syntax tree), and the module's functions write no field but
  *      the kind's, the aim's, the held attack's and the latch's, sight's
  *      and tap's own (a recording state over every road)             (dodge i)
+ *  12. THE BOW'S HELD STICK looses with nothing on its line (the owner,
+ *      16:35): the gate (freeArrowGo) says yes while it is held and aimed,
+ *      no once lifted, no for a staff, no in mode 4               (dodge j)
  *  11. THE WIRING in BroTown.jsx, off the syntax tree: the frame's one call
  *      behind the two buttons' gate, the press before today's pinned press,
  *      the drag's aim is rJoyAim, the lift after handleRBtnRelease, the
@@ -51,20 +54,23 @@
  *   f. discKindFor's `live !== true` line taken out             -> FAIL 1, 7;
  *   g. discLift's two clears taken out                          -> FAIL 8;
  *   h. discKindTo's hold's end taken out                        -> FAIL 9;
- *   i. `S._stickOn = true;` beside the kind in discKindTo       -> FAIL 10.
+ *   i. `S._stickOn = true;` beside the kind in discKindTo       -> FAIL 10;
+ *   j. stickLoose returning false (the held bow waits for its line
+ *      again)                                                    -> FAIL 12.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { createRequire } from 'node:module';
-import { DISC_KINDS, RANGED_STICK, rangedStickOn, discKindFor, discKind, discKindTo, discSync, discFrame, discPress, discMove, discLift, discLook, discPressNow } from '../../src/game/rangedStick.js';
+import { DISC_KINDS, RANGED_STICK, rangedStickOn, stickLoose, discKindFor, discKind, discKindTo, discSync, discFrame, discPress, discMove, discLift, discLook, discPressNow } from '../../src/game/rangedStick.js';
 import { latchPhase, latchLocked, twoButtonsLive, autoHoldMs } from '../../src/game/latch.js';
 import { sightPhase } from '../../src/game/sight.js';
-import { twoButtonPress, twoButtonRelease } from '../../src/game/freeAttack.js';
+import { twoButtonPress, twoButtonRelease, freeArrowGo } from '../../src/game/freeAttack.js';
 import { requestTapAttack, tapFacingAngle } from '../../src/game/tapJump.js';
 import { aimMarks } from '../../src/game/aimMarks.js';
 import { bowSpecialMon } from '../../src/game/bowSpecialNow.js';
 import { setManualCombat } from '../../src/game/manualCombat.js';
 import { loadSrc } from './lib/loadSrc.mjs';
+import { readSystem } from './lib/filesOf.mjs';
 import { ROOT } from './lib/fourLines.mjs';
 
 let failures = 0, passes = 0;
@@ -275,6 +281,33 @@ for (const slot of ['ranged', 'staff']) {
   discLift(S, t + 60, null, true);
 }
 
+/* ── 12. the owner, 16:35: "Make it so bow keeps shooting as long as held
+   down, no matter if there's a monster in front or not": the bow's sight
+   gate (monsterCombat.js, through freeArrowGo) lets a held stick's arrow go
+   with nothing on its line ── */
+{
+  const S = page('ranged');
+  S.monsters = [];   /* nothing anywhere: the line is on nothing */
+  let t = frames(S, 1000, 200);
+  press(S, t);
+  discMove(S, 0, 50, aimer(S, 0, 50));
+  t = frames(S, t, 300);
+  const n0 = S._freeShots || 0;
+  check('12. a bow\'s stick held and aimed at empty ground: the gate lets its arrow go (a free arrow, counted), frame after frame', stickLoose(S) && freeArrowGo(S, false) === true && freeArrowGo(S, false) === true && S._freeShots === n0 + 2, { aiming: S._aiming, auto: S.autoAttack, k: S._discKind });
+  discLift(S, t, null, false);
+  check('12. ...lifted: the gate holds again (no tap waiting)', !stickLoose(S) && freeArrowGo(S, false) === false);
+  press(S, t + 10); discMove(S, 3, 0, aimer(S, 3, 0));
+  check('12. ...a thumb inside the dead zone looses nothing by itself', freeArrowGo(S, false) === false);
+  discLift(S, t + 20, null, true);
+  const St = page('staff'); press(St, 2000); discMove(St, 0, 50, aimer(St, 0, 50)); frames(St, 2000, 100);
+  check('12. ...a staff\'s stick is not the bow\'s gate (its bolts have none)', stickLoose(St) === false);
+  discLift(St, 2200, null, true);
+  setManualCombat(4);
+  const M = page('ranged'); M._aiming = true; M.autoAttack = true; M._aimAngle = 1;
+  check('12. ...mode 4\'s held bow keeps its gate (no stick there)', freeArrowGo(M, false) === false && stickLoose(M) === false);
+  setManualCombat(5);
+}
+
 /* ── 10. the one field ── */
 {
   /* the module's writes, recorded over every road above (a state that keeps
@@ -322,7 +355,9 @@ for (const slot of ['ranged', 'staff']) {
     check('10. every write of S._discKind in src/ is discKindTo\'s, once', writers.length === 1 && writers[0] === 'src/game/rangedStick.js discKindTo', writers);
 
     /* ── 11. BroTown's calls ── */
-    const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
+    /* the screens' file that presses the disc, found by system (filesOf.mjs), never by its path */
+    const btHit = [...readSystem('ui')].find(([f, src]) => /\.jsx$/.test(f) && src.includes('discPress('));
+    const bt = btHit ? btHit[1] : '';
     const ast = B.parse(bt, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
     const gen = (n) => (B.gen.default || B.gen)(n, { comments: false }).code.replace(/\s+/g, ' ');
     const calls = Object.create(null);

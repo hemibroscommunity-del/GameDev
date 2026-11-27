@@ -18,6 +18,10 @@ In the two-button controls, a SWORD keeps today's Attack button whole (the sight
 - The disc is drawn in `src/ui/panels/TouchControls.jsx` (`rJoyRef` about 406, `rKnobRef` 536, the latch's sword picture 569) inside the steel controller (`src/game/padSkin.js` `WELLS`, `attack` about 173; `PadHousings.jsx`, `padSpot.js`).
 - Suites and scenarios near this: `server/test/` manual-combat, latch, sight, bow-path, bow-shot, free-swing, staff-feel (read, do not change: a pinned string that must change is a STOP and ask); `tools/guards/` free-attack, two-buttons-choose, pad-steel, context-button; phone: mp-twobuttons (its attack parts are RED ON MAIN already: the test first, not yours to mend; say what you saw), mp-manualcombat, mp-bowfeel, mp-stafffeel, mp-padskin.
 
+## The change of 16:35 (the orchestrator's message, from the owner)
+
+The owner, typed to the orchestrator at about 16:35 UTC 2026-11-27 after reading the plan: *"Make it so bow keeps shooting as long as held down, no matter if there's a monster in front or not"*. So in the two buttons' STICK a held bow looses along the thumb at its cadence WHETHER OR NOT anything is on its sight line: mode 4's sight gate for a held bow does NOT apply to this stick. The arrows are free arrows along the thumb's angle, as mode 5's `freeArrowGo` already sends them (the worker counts an arrow at the bow's cadence and needs no change). Mode 4 itself, and every other scheme, keep their gate exactly as today. In mp-rangedstick: thumb held toward empty ground, arrows keep leaving at the cadence. And (16:40, the owner: *"get all these changes done in like 20 minutes or less"*): push and open the PR first, the dodges and the helpers' runs while the checks run; ONE upright picture of the disc as a stick.
+
 ## What to build (the readings are chosen; do not widen them)
 
 1. ONE RULE, a new pure module under `src/game/` (no imports where possible; node-testable): from the scheme, the weapon in hand's kind and the switch, the Attack disc is ONE of two kinds, `'latch'` or `'stick'`, held in ONE field with ONE transition function (CLAUDE.md section 5: a phase lives in one field). Two buttons and a sword: `'latch'`, today's code untouched. Two buttons and a bow or staff: `'stick'`. Every other scheme, and a computer: exactly as today.
@@ -43,7 +47,8 @@ The laws that apply: touch (`touch-action: manipulation`; upright AND sideways, 
 - (f) mode 4, modes 0 to 3 or a computer changed in any way;
 - (g) the aim or auto-attack left on after release;
 - (h) a swap in mid-hold leaving the old weapon's state;
-- (i) a second boolean beside the kind's one field.
+- (i) a second boolean beside the kind's one field;
+- (j) a held bow that stops, or never starts, when no monster is on its line.
 
 ## Done when
 

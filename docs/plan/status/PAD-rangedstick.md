@@ -4,7 +4,7 @@ prs: (opening: one draft PR, base main, tag 6648)
 state: working
 
 Done
-- tag 6648: in the two buttons a bow or a staff makes the Attack disc a stick (mode 4's held aim on the disc, a tap one shot the way the bro faces, nothing picked or locked); a sword keeps the latch whole; `?rangedstick=0` gives the latch back. src/game/rangedStick.js (one field S._discKind, one writer discKindTo), BroTown.jsx calls only, aimMarks.js (no frame for a stick), bowSpecialNow.js (no pick for a stick), the switch row, the phase row, the ledgers; tools/guards/ranged-stick.test.mjs (the nine dodges planted and seen red); tools/qa/mp/mp-rangedstick.mjs; docs/shots/rangedstick-*.png; UI-DESIGN-NOTES (the controller).
+- tag 6648: in the two buttons a bow or a staff makes the Attack disc a stick (mode 4's held aim on the disc, a tap one shot the way the bro faces, nothing picked or locked; the owner's 16:35 change: a held bow keeps loosing along the thumb whether or not anything is on its line, freeAttack.js freeArrowGo asking rangedStick.js stickLoose); a sword keeps the latch whole; `?rangedstick=0` gives the latch back. src/game/frameSteps.js (the step input's call: discFrame), src/game/rangedStick.js (one field S._discKind, one writer discKindTo), BroTown.jsx calls only, aimMarks.js (no frame for a stick), bowSpecialNow.js (no pick for a stick), the switch row, the phase row, the ledgers; tools/guards/ranged-stick.test.mjs (the ten dodges a to j planted and seen red); tools/qa/mp/mp-rangedstick.mjs; docs/shots/rangedstick-*.png; UI-DESIGN-NOTES (the controller).
 
 Next
 - the phone runs on the final code, then the PR.

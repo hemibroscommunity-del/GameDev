@@ -25,7 +25,9 @@
  *            goes along the thumb, again and again while held -- mode 4's
  *            held stick reused, not rebuilt (BroTown's rJoyAim: S._aimAngle,
  *            S._aiming, S.autoAttack; its cadence, the held bow's sight gate,
- *            the staff's steered bolt: the owner's choice of 2026-11-13).  A
+ *            the staff's steered bolt: the owner's choice of 2026-11-13; and,
+ *            the owner's of 16:35 the same day, a held bow looses with or
+ *            without a monster on its line: stickLoose).  A
  *            lift ends it and clears the aim.  A TAP (no drag past the dead
  *            zone) is ONE shot the way the bro faces (tapJump.js
  *            requestTapAttack, on the lift).  NOTHING locks, picks or turns a
@@ -176,6 +178,18 @@ export function discLift(S, now, tap, cancel) {
   if (cancel === true) return null;
   if (typeof tap === 'function') tap(S, now);
   return 'tap';
+}
+
+/** v2.3.6648 (the owner, 2026-11-27, 16:35: "Make it so bow keeps shooting
+ *  as long as held down, no matter if there's a monster in front or not"):
+ *  may this frame's arrow loose with nothing on its line?  Yes while a bow's
+ *  STICK is held and aimed (the thumb past the dead zone: S._aiming and the
+ *  held attack, rJoyAim's): a free arrow along the thumb, at the bow's own
+ *  cadence (the gate before it).  The bow's sight gate (monsterCombat.js) asks
+ *  it through freeAttack.js freeArrowGo; mode 4 and every other scheme keep
+ *  their gate (no stick there). */
+export function stickLoose(S) {
+  return !!S && discKind(S) === 'stick' && !!S.rpg && S.rpg.activeSlot === 'ranged' && S._aiming === true && S.autoAttack === true;
 }
 
 /** The disc wears its kind: `data-disc` 'stick' or 'latch' (QA and game.css
