@@ -28,10 +28,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `?bakekeep` | page | switch | v2.3.6761 | 2026-11-26 | =0 | logic |  | no | The armour's masked frames are baked again at every login, not kept on the phone's disk. |
 | `?bodyworker` | page | switch | v2.3.4930 | 2026-11-12 | =0 | logic |  | no | Bodies are baked on the page, not on the bake worker. |
 | `?figround` | page | switch | v2.3.2922 | 2026-09-24 | =1 | chip |  | no | The old per-sprite pixel snap comes back. |
 | `?garmentspecks` | page | switch | v2.3.3658 | 2026-10-27 | =0 | logic |  | no | A garment's specks are drawn the old way (and the body bake goes back to the page). |
 | `?sharp` | page | switch | v2.3.2741 | 2026-09-24 | =0 | chip |  | no | Pictures are not routed to sharp pixels. |
+| `?sparelater` | page | switch | v2.3.6763 | 2026-11-27 | =0 | logic |  | no | The loading screen waits for the spare armour sets again (the sets one equip away bake behind it, as before). |
 | `?stripgentle` | page | switch | v2.3.4400 | 2026-11-10 | =0, off, false | logic |  | no | Strips are packed in one go, not a slice at a time. |
 | `?stripslice` | page | lever | v2.3.4400 |  | a number of ms | none |  | no | QA: a fixed slice for strip packing (a phone's, on a slow box), in place of the lane's `queue` ms (v2.3.5230). |
 | `?stripworker` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | Every strip is unpacked on the page, not the worker. |

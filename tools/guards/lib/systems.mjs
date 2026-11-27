@@ -286,7 +286,7 @@ export const SYSTEMS = Object.freeze({
   },
   preload: {
     what: 'what loads behind the loading screen, and what loads later on purpose',
-    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels'), f('src/game', 'assetUrl|assetTable') /* v2.3.6742: a file's address with its file's version (card KEEP PR 3) */, f('src/rendering', 'sheetPage') /* v2.3.6744: a sheet's page at its own version (card KEEP PR 3c) */],
+    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels'), f('src/game', 'assetUrl|assetTable') /* v2.3.6742: a file's address with its file's version (card KEEP PR 3) */, f('src/rendering', 'sheetPage') /* v2.3.6744: a sheet's page at its own version (card KEEP PR 3c) */, f('src/game', 'spareLater|spareTime') /* v2.3.6763: the spare armour sets after the loading screen (card LOAD part 3b) */],
     words: ['preload', 'loading', 'lazy', 'warm'],
     traps: ['preload'],
     doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' },
@@ -294,7 +294,9 @@ export const SYSTEMS = Object.freeze({
   },
   art: {
     what: 'loading art in play: strips of 256 colours, the readers off the page\'s thread, bakes on workers',
-    files: [f('src/rendering', 'zoneTextures|stripRead|stripPack|png8Decode|png8Worker|p256|webpImage|artBottoms|artHolds|workerCanvas|trimPack|trimRules|fxStrips|bodyBake|bodyBakeWorker|maskedBake|maskedBakeWorker|retintPalette|sharpPixels|tiledMaps')],
+    files: [f('src/rendering', 'zoneTextures|stripRead|stripPack|png8Decode|png8Worker|p256|webpImage|artBottoms|artHolds|workerCanvas|trimPack|trimRules|fxStrips|bodyBake|bodyBakeWorker|maskedBake|maskedBakeWorker|retintPalette|sharpPixels|tiledMaps'),
+      f('src/game', 'bakeKeep'),   /* v2.3.6761: the masked bakes kept on the disk, the key and the store's rules (card LOAD) */
+    ],
     words: ['art', 'strip', 'png', 'p256', 'bake', 'sprite', 'pic'],
     traps: ['art'],
     doors: [{ name: 'loadTrackedStrip', file: 'src/rendering/zoneTextures.js', what: 'art that loads while the world is in play' }],

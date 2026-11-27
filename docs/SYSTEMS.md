@@ -332,6 +332,7 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
 - **Files**: `src/game/`: assetUrl, assetTable
 - **Files**: `src/rendering/`: sheetPage
+- **Files**: `src/game/`: spareLater, spareTime
 - **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
@@ -342,6 +343,7 @@ What loads behind the loading screen, and what loads later on purpose.
 Loading art in play: strips of 256 colours, the readers off the page's thread, bakes on workers.
 
 - **Files**: `src/rendering/`: zoneTextures, stripRead, stripPack, png8Decode, png8Worker, p256, webpImage, artBottoms, artHolds, workerCanvas, trimPack, trimRules, fxStrips, bodyBake, bodyBakeWorker, maskedBake, maskedBakeWorker, retintPalette, sharpPixels, tiledMaps
+- **Files**: `src/game/`: bakeKeep
 - **Doors**: `loadTrackedStrip` in `src/rendering/zoneTextures.js` (art that loads while the world is in play)
 - **Switches**: [its rows in the switch table](SWITCHES.md#art)
 - **Words**: `art`, `strip`, `png`, `p256`, `bake`, `sprite`, `pic`
