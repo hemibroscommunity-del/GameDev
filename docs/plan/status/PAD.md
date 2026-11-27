@@ -1,6 +1,6 @@
 card: PAD
-branch: claude/plan-pad-10-steel (on part 9's claude/plan-pad-9-rimsprint)
-prs: #2354, #2363, part 6, #2387 part 8 (merged); #2393 part 9 (6644, draft); part 10 (6645, draft)
+branch: claude/plan-pad-11-steelglow (on part 10's claude/plan-pad-10-steel)
+prs: #2354, #2363, part 6, #2387 part 8, #2393 part 9 (merged); #2402 part 10 (6645); part 11 (6646, draft)
 state: ready
 
 ## Done
@@ -9,32 +9,24 @@ state: ready
   the big well in a fight, the shield a tap; the board's poll; Block's stamp.
 - 6642 part 6: Whirlwind and Shield Bash in a TIER over the right lobe.
 - 6643 part 8: no game file changed; mp-padskin 8c waits for Attack.
-- 6644 part 9 ("remove sprint button"): the stick past its rim sprints
-  (stickZones.js rimSprintLive); `?rimsprint=0` the button back.
+- 6644 part 9 ("remove sprint button"): the stick past its rim sprints.
 - 6645 part 10 ("I don't like the gold"): every public/ui/pad picture cut
-  off the owner's steel sheet (owner-2026-11-26-pad4/, cut-pad.mjs), same
-  names and sizes; re-measured padSkin CUT_R 420, TIER_BAND 75: DEPLOYS.
+  off the owner's steel sheet; padSkin CUT_R 420, TIER_BAND 75: DEPLOYS.
+- 6646 part 11 ("Turn steel"): padSkin.js PAD_STEEL (the sheet's Attack
+  face); the ready glow DEEBF6 (on the rim 4.58, gold 3.12/4.02); the
+  tier's rings a CSS steel ring; the energy strip a steel twin
+  (tools/art/steel-strip.mjs: full/empty 9.37, gold 7.58); `?padgold=1`.
+  Guard pad-steel.test (26; 13 plants red); mp-padskin 8g, 9.
 
 ## Found
-- CHARGE: drawn in the top-left (mobility) well whenever the game shows it
-  (padSkin.js wellOf).  It shows with a melee weapon, a monster SIGHTED or
-  locked and NONE IN REACH; the well is empty in a fight with a monster in
-  reach, a duel/arena/player lock, the bow or staff, or `?chargebtn=0`.
-- The bow and staff have no extra special; Special hides while the guard is
-  up; sideways the tier meets the minimap (the owner's call).
-- Part 9: sideways the open dashboard hides the controls (no stick to
-  sprint with until folded); the energy shows as the five blocks under the
-  bro while spent, never the dashboard's EN bar at rest or folded.
-- The old layout still keeps Sprint's slot clear (ShieldButton.jsx
-  rightCluster): not this card's.  Main's own reds: mp-sprint's two place
-  checks, mp-oneband's three sideways, shot-thumbbtn's 38 Jump-orbit (it
-  named no lane and ran nowhere: given one), twobuttons' 2b/6a/2c/3h.
+- The energy blocks show only briefly after a spend: no in-game picture
+  caught them (docs/shots/pad11-energy-strips.png has both strips).
+- Their file is read off the page's thread: in no resource list
+  (fxStrips.js __btBlockBars, a QA probe, names it).
 
 ## Next
-- Nothing: message the orchestrator, stop.
+- Nothing: the ready message to the orchestrator, stop.
 
 ## Needs
-- The gatekeeper's sitting for parts 9 and 10 (both DEPLOY the worker:
-  server/test/stick-zones.test.mjs, server/test/pad-skin.test.mjs).
-- The owner: which gold beside the controller goes next (part 10's PR lists
-  it, with pictures).
+- The gatekeeper's sitting for parts 10 and 11 (10 DEPLOYS; 11 no server
+  file).
