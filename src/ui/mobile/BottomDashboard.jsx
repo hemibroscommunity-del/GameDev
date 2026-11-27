@@ -64,7 +64,7 @@ import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
 import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as AchievementsHead, DashEncyclopediaPanel as EncyclopediaPanel,
   DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
-import { SkillsPanel }       from './dash/SkillsPanel.jsx';
+import { LifeSkillsDoor }    from './sheet/LifeSkillsPage.jsx';   /* v2.3.6694 (card UI2-life) */
 import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
@@ -485,7 +485,7 @@ const PANELS = {
      these from Hero's combat attributes; the toolbar label stays
      Skills.  v2.3.1312: the skillDetail drill is retired — the
      per-skill detail renders IN-PANEL inside SkillsPanel now. */
-  skills:       { title: say(SAY, 'bottomDashboard.titleSkills'), Component: SkillsPanel },
+  skills:       { title: say(SAY, 'bottomDashboard.titleSkills'), Component: LifeSkillsDoor },   /* v2.3.6694 (card UI2-life): the new landing under the frame, today's under ?ui2=0 */
   encyclopedia: { title: say(SAY, 'bottomDashboard.titleCodex'),       Component: EncyclopediaPanel },
   guild:        { title: say(SAY, 'bottomDashboard.titleGuild'),       Component: GuildPanel },
   /* v2.3.3481: the 2026-10-19 UI review -- headed 'Ranks', the More tile's

@@ -69,6 +69,19 @@ export function doorWord(key) {
     case 'dashFrame.questsDaily': return say(SAY, 'dashFrame.questsDaily');
     case 'dashFrame.questsDone': return say(SAY, 'dashFrame.questsDone');
     case 'dashFrame.questsOffers': return say(SAY, 'dashFrame.questsOffers');
+    /* v2.3.6694 (card UI2-life): a life skill's page, its All unlocks and How it works */
+    case 'dashFrame.lifeWoodcutting': return say(SAY, 'dashFrame.lifeWoodcutting');
+    case 'dashFrame.lifeFishing': return say(SAY, 'dashFrame.lifeFishing');
+    case 'dashFrame.lifeMining': return say(SAY, 'dashFrame.lifeMining');
+    case 'dashFrame.lifeFarming': return say(SAY, 'dashFrame.lifeFarming');
+    case 'dashFrame.lifeTrapping': return say(SAY, 'dashFrame.lifeTrapping');
+    case 'dashFrame.lifeCooking': return say(SAY, 'dashFrame.lifeCooking');
+    case 'dashFrame.lifeBlacksmithing': return say(SAY, 'dashFrame.lifeBlacksmithing');
+    case 'dashFrame.lifeWoodworking': return say(SAY, 'dashFrame.lifeWoodworking');
+    case 'dashFrame.lifeGemCutting': return say(SAY, 'dashFrame.lifeGemCutting');
+    case 'dashFrame.lifeEnchanting': return say(SAY, 'dashFrame.lifeEnchanting');
+    case 'dashFrame.lifeUnlocks': return say(SAY, 'dashFrame.lifeUnlocks');
+    case 'dashFrame.lifeHow': return say(SAY, 'dashFrame.lifeHow');
     default: return say(SAY, 'dashFrame.page');
   }
 }

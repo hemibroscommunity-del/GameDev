@@ -48,4 +48,17 @@ export const SAY = Object.freeze({
   'dashFrame.questsOffers': 'On offer',
   'dashFrame.bow': 'Bow',
   'dashFrame.staff': 'Staff',
+  /* v2.3.6694 (card UI2-life): a life skill's page, its header the skill's name (sheet/skillsModel.js META's); its two doors */
+  'dashFrame.lifeWoodcutting': 'Woodcutting',
+  'dashFrame.lifeFishing': 'Fishing',
+  'dashFrame.lifeMining': 'Mining',
+  'dashFrame.lifeFarming': 'Farming',
+  'dashFrame.lifeTrapping': 'Trapping',
+  'dashFrame.lifeCooking': 'Cooking',
+  'dashFrame.lifeBlacksmithing': 'Smithing',
+  'dashFrame.lifeWoodworking': 'Woodworking',
+  'dashFrame.lifeGemCutting': 'Gem Cutting',
+  'dashFrame.lifeEnchanting': 'Enchanting',
+  'dashFrame.lifeUnlocks': 'All unlocks',
+  'dashFrame.lifeHow': 'How it works',
 });

@@ -81,6 +81,10 @@ export const BRO_HUB_PAGES = Object.freeze({
   /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase, the figure and the nine worn cells (sheet/GearShowcase.jsx) */
   broEquip: 'equip',
   broTree0: 'tree', broTree1: 'tree', broTree2: 'tree', broTree3: 'tree', broTree4: 'tree', broTree5: 'tree', broTree6: 'tree',
+  /* v2.3.6694 (card UI2-life): a life skill's page (sheet/LifeSkillPage.jsx), its All unlocks and How it works */
+  lifeWoodcutting: 'life', lifeFishing: 'life', lifeMining: 'life', lifeFarming: 'life', lifeTrapping: 'life',
+  lifeCooking: 'life', lifeBlacksmithing: 'life', lifeWoodworking: 'life', lifeGemCutting: 'life', lifeEnchanting: 'life',
+  lifeUnlocks: 'lifeUnlocks', lifeHow: 'lifeHow',
 });
 
 /**

@@ -823,7 +823,7 @@ export const STATES = [
   Object.assign(dash('skills', 'Bro: Life Skills', 'The Life Skills page, under Bro (the card\'s Life Skills row opens it; back returns to the card): your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
     id: 'dash-bro-skill-detail', group: 'Dashboard', title: 'Bro: a life skill in detail',
-    about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
+    about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.  Under the new frame (v2.3.6694) these lines are the skill\'s How it works page (Mining): each hit and the next level\'s, full and less XP, the benefit, where it is found, how it is earned, as facts in one container.',
     /* v2.3.3481: the 2026-10-19 UI review -- the laptop's picture was the
        ten-skill list, not the detail: the press went in while the band was
        still unfolding (the last view of a run on a box drawing a few frames a
@@ -833,6 +833,13 @@ export const STATES = [
     run: async ({ P }) => {
       await bus(P, 'open', 'skills');
       await wait(P, 600);
+      /* v2.3.6694 (card UI2-life): under the new frame the detail's lines are a skill's "How it works"
+         (sheet/SkillHow.jsx); the in-panel detail below is today's page, under ?ui2=0 */
+      if (await has(P, '[data-life-page]')) {
+        for (const sel of ['[data-life-door="mining"]', '[data-life-how-door]']) { const e = await tapSel(P, sel); if (e) return e; await wait(P, 600); }
+        if (!(await has(P, '[data-life-how="mining"]'))) return 'How it works did not open';
+        return;
+      }
       const backSel = DASH.split(',').map((s) => s.trim() + ' button').join(', ');
       for (let k = 0; k < 2; k++) {
         const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
@@ -2054,6 +2061,43 @@ export const STATES = [
       await wait(P, 300);
     },
     after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
+  },
+  /* v2.3.6694 (card UI2-life): Life Skills under the new frame -- the landing (PANELS skills, every road
+     in), a skill's page, its All unlocks (dash-bro-skill-detail is its How it works); today's page only
+     under ?ui2=0 (mp-ui2life plays it) */
+  {
+    id: 'ui2-life-landing', group: 'Dashboard', title: 'Life Skills: the total and the ten',
+    about: 'Bro\'s Life Skills door (v2.3.6694, card UI2-life; the owner 2026-11-26: "Enlarge the icons and cards to occupy the unused vertical space. Put level indicators inside the cards instead of having badges protrude from them. Match the rest of the game\'s typography"): under the one header (\u2039 Bro, Life Skills, Menu, Close) "Total level", the sum of the ten levels, sunk with its number large; under it the ten as raised doors filling the rest of the page, five by two (one row of eleven sideways, the total the first cell), the gather row over the craft row: each its picture, its name (on two lines at its joint where a fifth of the phone is too narrow), "Lv N" and a thin XP bar inside the face, and the brass dot inside its edge on a level-up not yet looked at. No label of what kind of player you are, no radar. Under ?ui2=0 today\'s page.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      if (!(await has(P, '[data-life-page]'))) return 'the landing did not open';
+    },
+  },
+  {
+    id: 'ui2-life-skill', group: 'Dashboard', title: 'Life Skills: a skill\'s page (Fishing)',
+    about: 'The landing\'s Fishing door (header "Fishing", \u2039 Life Skills): its level and XP bar (now / the worker\'s need, and what is left to the next level), then one flat container of facts -- the next unlock ("Lv 5: Clownfish"), the latest one, and its guild\'s line (Angler\'s Circle: your rank), a door with its chevron to Guilds -- beside two raised doors, All unlocks (n) and How it works. Sideways one row; the latest unlock is All unlocks\' there.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      const t = await tapSel(P, '[data-life-door="fishing"]');
+      if (t) return t;
+      await wait(P, 600);
+      if (!(await has(P, '[data-life-skill="fishing"]'))) return 'Fishing\'s page did not open';
+    },
+  },
+  {
+    id: 'ui2-life-unlocks', group: 'Dashboard', title: 'Life Skills: All unlocks (Fishing)',
+    about: 'Fishing\'s All unlocks door (header "All unlocks", \u2039 Fishing): every rung of its real ladder, one row each -- its level, its name, and Got, Next or Later by a word and a mark (never colour alone) -- the one Life Skills page that scrolls, opened with the next rung in view. Trapping and Enchanting unlock nothing by level: the kit\'s empty state with how the skill is earned.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      for (const sel of ['[data-life-door="fishing"]', '[data-life-all]']) { const t = await tapSel(P, sel); if (t) return t; await wait(P, 600); }
+      if (!(await has(P, '[data-life-unlocks="fishing"]'))) return 'All unlocks did not open';
+    },
   },
   /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
