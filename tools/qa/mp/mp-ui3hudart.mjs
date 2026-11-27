@@ -10,7 +10,8 @@
  * (1280 x 720), in one party:
  *   1. the group's drawn box at the top left, 184 x 52 upright and on the
  *      computer, 169 x 48 sideways (92 %): never over the top bar's name, the
- *      minimap, the quest line, the status row or the party chip;
+ *      minimap, the status row or the party chip, and no quest line (out of
+ *      the world since tag 6790, card UI3 PR 10: mp-charhud's step 5 the same);
  *   2. the badge's number is the combat level of the worker's blob (UI3-hud's
  *      rule, dash/gearStats.js charLevel), the pill's the weapon in hand's
  *      level, on a blob where the two differ;
@@ -306,13 +307,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await chill(Z.P);
     await Z.P.page.waitForTimeout(1800);
     let z = null;
-    for (let i = 0; i < 20; i++) { z = await look(Z.P); if (z.group && z.line && z.party) break; await chill(Z.P); await Z.P.page.waitForTimeout(300); }
+    for (let i = 0; i < 20; i++) { z = await look(Z.P); if (z.group && z.party) break; await chill(Z.P); await Z.P.page.waitForTimeout(300); }
     const boxes = { hud: z.group, title: z.title, line: z.line, status: z.col, party: z.party, minimap: z.mini };
     const names = Object.keys(boxes).filter((k) => boxes[k]);
     const hits = names.filter((n) => n !== 'hud' && cross(z.group, boxes[n]));
     const wantW = Z.side ? 169 : 184, wantH = Z.side ? 48 : 52;
-    rec.ok(`1. [${Z.id}] the group ${z.group && Math.round(z.group.w)} x ${z.group && Math.round(z.group.h)} (${wantW} x ${wantH}) crosses nothing (${names.join(', ')}); its top ${z.group && Math.round(z.group.t)} under the bar's ${z.header && Math.round(z.header.b)}`,
-      !!z.group && !!z.line && !!z.party && hits.length === 0 && Math.round(z.group.w) === wantW && Math.round(z.group.h) === wantH
+    rec.ok(`1. [${Z.id}] the group ${z.group && Math.round(z.group.w)} x ${z.group && Math.round(z.group.h)} (${wantW} x ${wantH}) crosses nothing, no quest line (${names.join(', ')}); its top ${z.group && Math.round(z.group.t)} under the bar's ${z.header && Math.round(z.header.b)}`,
+      !!z.group && !z.line && !!z.party && hits.length === 0 && Math.round(z.group.w) === wantW && Math.round(z.group.h) === wantH
         && !!z.header && z.group.t >= z.header.b - 0.5 && z.group.t - z.header.b <= 16, { hits, boxes });
     if (z.mini && z.group) console.log(`    [${Z.id}] HUD to minimap: ${Math.round(z.mini.l - z.group.r)} px`);
     if (Z.shot) await Z.P.page.screenshot({ path: join(SHOTS, Z.shot) }).catch(() => {});
