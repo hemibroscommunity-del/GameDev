@@ -264,7 +264,7 @@ function One({ getS, id }) {
       <Ui2Confirm action={{ id: 'release', cost: 'irreversible', label: say(SAY, 'pets.releaseYes'), c: 'red' }}
         words={say(SAY, 'pets.releaseAsk', { name: v.name })}
         onYes={() => { press(PET_HOLDS.release(id), () => sendPetRelease(S, id)); setMode(null); }}
-        onNo={() => setMode(null)} />
+        onNo={() => setMode(null)} no={say(SAY, 'pets.releaseKeep')} />
     );
   } else if (mode === 'sell') {
     const pr = Math.floor(Number(price) || 0);

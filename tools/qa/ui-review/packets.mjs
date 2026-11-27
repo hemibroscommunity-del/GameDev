@@ -69,7 +69,7 @@ export const PACKETS = [
   { slug: 'harvesting-and-fighting', title: 'Your party, harvesting and fighting',
     screens: ['party-hud', 'party-hud-open', 'harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight', 'death-card', 'two-buttons', 'two-buttons-sighted'] },   /* v2.3.6543: + the two buttons (card CT PR 4) */
   /* v2.3.6696 (card UI2-pets): Pets under the new dashboard (today's under ?ui2=0 only) */
-  { slug: 'ui2-pets', title: 'Pets under the new dashboard: the companion, Owned, a pet, All (the journal)', screens: ['dash-pets-companion', 'dash-pets-owned', 'dash-pets-one', 'dash-pets-all'] },
+  { slug: 'ui2-pets', title: 'Pets under the new dashboard: the companion, Owned, a pet, Release asks first, All (the journal)', screens: ['dash-pets-companion', 'dash-pets-owned', 'dash-pets-one', 'dash-pets-release', 'dash-pets-all'] },
 ];
 
 /* the views as the briefs name them, in the order a picture shows them */

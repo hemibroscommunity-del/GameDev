@@ -37,11 +37,17 @@
  * THE DODGES, each a one-line change to petPages.js planted in memory
  * (lib/plantImport.mjs) and seen red (a plant that stays green fails).
  *
- * Run: node tools/guards/pet-pages.test.mjs
+ * The drawing (W1, W2; E1-E8 planted) is read off Babel's tree: see its block
+ * at the end (the mend of sitting 72).
+ *
+ * Run: node tools/guards/pet-pages.test.mjs  (W1, W2 need @babel/parser and
+ * @babel/traverse: npm install in the root or server/)
  */
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { plantText, importAs } from './lib/plantImport.mjs';
+import { loadBabel } from './lib/jsxMount.mjs';
 import { needsConfirm } from '../../src/game/screenZones.js';
 import { petKindName } from '../../src/data/trapping.js';
 
@@ -223,6 +229,157 @@ for (const [id, want, what, from, to] of PLANTS) {
   const text = plantText(ROOT, REL, from, to);
   if (text === null) { check(`${id} (${what}): its line is found once in petPages.js`, false, 'the plant\'s line moved: update the plant'); continue; }
   const red = verdict(await importAs(ROOT, REL, text));
+  check(`${id} plant (${what}) turns ${want} red`, red.includes(want), 'red: ' + (red.join(', ') || 'nothing'));
+}
+
+/* ═══ v2.3.6696, the mend of sitting 72 (the gatekeeper held #2413: "'Release
+ * with no confirmation' (PetsPage.jsx ~263 sends sendPetRelease with no ask)
+ * and 'a second press of Take out sent while the first is out' (no
+ * `press()`)": D7 and D16 were red in petPages.js but green planted at the
+ * page).  So the DRAWING is read too, off Babel's tree of
+ * src/ui/mobile/dash/PetsPage.jsx:
+ *   W1  Release asks first: every sendPetRelease sits in the `onYes` of the
+ *       kit's Ui2Confirm (imported from the kit), whose action costs
+ *       'irreversible' and is labelled with the card's words (pets.releaseYes,
+ *       the question pets.releaseAsk); the kit's dialog answers Enter on its
+ *       yes and Esc on its no (Confirm.jsx: data-enter, data-esc); and no
+ *       other send sits in a Ui2Confirm but the Pet House's (a confirmation on
+ *       Take out);
+ *   W2  one request out at a time: every send (sendPetActive, sendPetName,
+ *       sendPetRelease, sendPetHouseBuy) is the arrow handed to `press(hold,
+ *       () => ...)`, `press` the page's usePress, whose body goes out through
+ *       petsPressNow (petsPageOpen.js, which runs petPages.js petsPress: R12);
+ *       Take out's hold is PET_HOLDS.active, Release's PET_HOLDS.release.
+ * THE DODGES at the drawing, each planted in memory and seen red:
+ *   E1 Release sends at its first tap (no ask)     E2 the ask's yes sends without press()
+ *   E3 the ask made routine (no question drawn)     E4 Take out sent without press()
+ *   E5 the landing's Put away sent without press()  E6 press() that sends at once (no pending state)
+ *   E7 a confirmation on Take out                   E8 the ask's question not the card's words
+ *   E9 the ask's way back not "Keep" (the kit's Confirm takes `no`, the orchestrator's leave) */
+const BB = loadBabel(ROOT);
+check('W0. @babel/parser and @babel/traverse load', !!BB);
+const PAGE = 'src/ui/mobile/dash/PetsPage.jsx';
+const KIT = 'src/ui/kit/Confirm.jsx';
+const OPENER = 'src/ui/mobile/dash/petsPageOpen.js';
+const readRel = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+const SENDS = new Set(['sendPetActive', 'sendPetName', 'sendPetRelease', 'sendPetHouseBuy']);
+const parseJsx = (src) => BB.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+const nameOfEl = (p) => (p && p.node && p.node.name && p.node.name.name) || '';
+/* the hold a press names: 'active', 'release', 'name', 'house' or '' */
+function holdOf(arg) {
+  if (!arg) return '';
+  const m = arg.type === 'CallExpression' ? arg.callee : arg;
+  return m && m.type === 'MemberExpression' && m.object.type === 'Identifier' && m.object.name === 'PET_HOLDS' ? (m.property.name || '') : '';
+}
+const sayKey = (node) => (node && node.type === 'CallExpression' && node.callee.name === 'say' && node.arguments[1] && node.arguments[1].type === 'StringLiteral' ? node.arguments[1].value : '');
+const propOf = (obj, k) => (obj && obj.type === 'ObjectExpression' ? obj.properties.find((x) => x.type === 'ObjectProperty' && (x.key.name || x.key.value) === k) : null);
+
+function drawingVerdict(files) {
+  const bad = new Set();
+  if (!BB) return ['W1', 'W2'];
+  const page = files[PAGE];
+  let kitImported = false, opened = false, usePressOk = false, releases = 0, actives = 0;
+  BB.traverse(parseJsx(page), {
+    ImportDeclaration(p) {
+      if (p.node.source.value === '@/ui/kit/index.js' && p.node.specifiers.some((x) => x.imported && x.imported.name === 'Ui2Confirm' && x.local.name === 'Ui2Confirm')) kitImported = true;
+      if (p.node.source.value === './petsPageOpen.js' && p.node.specifiers.some((x) => x.imported && x.imported.name === 'petsPressNow')) opened = true;
+    },
+    FunctionDeclaration(p) {
+      if (p.node.id.name !== 'usePress') return;
+      /* its returned press: (control, send) => { const went = petsPressNow(control, <rev>, send); ...; return went; } */
+      let ok = false;
+      p.traverse({
+        ArrowFunctionExpression(q) {
+          const [c, s] = q.node.params.map((x) => x.name);
+          if (!c || !s) return;
+          let calls = 0, sendCalled = false;
+          q.traverse({
+            CallExpression(r) {
+              const cal = r.node.callee;
+              if (cal.type === 'Identifier' && cal.name === 'petsPressNow' && r.node.arguments[0] && r.node.arguments[0].name === c && r.node.arguments[2] && r.node.arguments[2].name === s) calls++;
+              if (cal.type === 'Identifier' && cal.name === s) sendCalled = true;
+            },
+          });
+          if (calls === 1 && !sendCalled) ok = true;
+        },
+      });
+      usePressOk = ok;
+    },
+    CallExpression(p) {
+      const c = p.node.callee;
+      if (!(c.type === 'Identifier' && SENDS.has(c.name))) return;
+      if (c.name === 'sendPetRelease') releases++;
+      if (c.name === 'sendPetActive') actives++;
+      /* W2: the send is the body of the arrow handed to press(hold, () => send(...)), press = usePress(...) */
+      const arrow = p.parentPath;
+      const call = arrow && arrow.parentPath;
+      const inPress = arrow && arrow.node.type === 'ArrowFunctionExpression' && arrow.node.body === p.node
+        && call && call.node.type === 'CallExpression' && call.node.callee.type === 'Identifier' && call.node.callee.name === 'press' && call.node.arguments[1] === arrow.node;
+      let pressIsHook = false;
+      if (inPress) {
+        const b = call.scope.getBinding('press');
+        const init = b && b.path.node.type === 'VariableDeclarator' ? b.path.node.init : null;
+        pressIsHook = !!(init && init.type === 'CallExpression' && init.callee.name === 'usePress');
+      }
+      const hold = inPress ? holdOf(call.node.arguments[0]) : '';
+      const wantHold = { sendPetActive: 'active', sendPetRelease: 'release', sendPetName: 'name', sendPetHouseBuy: 'house' }[c.name];
+      if (!(inPress && pressIsHook && hold === wantHold)) bad.add('W2');
+      /* W1: where a send sits in the kit's dialog */
+      const attr = p.findParent((x) => x.isJSXAttribute());
+      const el = attr && attr.parentPath;
+      const inConfirm = !!(el && el.isJSXOpeningElement() && nameOfEl(el) === 'Ui2Confirm');
+      if (c.name === 'sendPetRelease') {
+        if (!(inConfirm && attr.node.name.name === 'onYes')) { bad.add('W1'); return; }
+        const at = (k) => el.node.attributes.find((x) => x.type === 'JSXAttribute' && x.name.name === k);
+        const act = at('action') && at('action').value && at('action').value.expression;
+        const cost = propOf(act, 'cost');
+        const label = propOf(act, 'label');
+        const words = at('words') && at('words').value && at('words').value.expression;
+        if (!(cost && cost.value.type === 'StringLiteral' && cost.value.value === 'irreversible' && sayKey(label && label.value) === 'pets.releaseYes' && sayKey(words) === 'pets.releaseAsk')) bad.add('W1');
+        if (!at('onNo') || sayKey(at('no') && at('no').value && at('no').value.expression) !== 'pets.releaseKeep') bad.add('W1');   /* "Keep", as today's page */
+      } else if (inConfirm && c.name !== 'sendPetHouseBuy') bad.add('W1');   /* a confirmation on Take out (or Rename) */
+    },
+  });
+  if (!kitImported || releases < 1) bad.add('W1');
+  if (!opened || !usePressOk || actives < 2) bad.add('W2');
+  /* the kit's dialog: Enter on its yes, Esc on its no (CLAUDE.md section 7) */
+  let yes = false, no = false;
+  BB.traverse(parseJsx(files[KIT]), {
+    JSXOpeningElement(p) {
+      if (nameOfEl(p) !== 'Ui2Action') return;
+      const has = (k) => p.node.attributes.some((x) => x.type === 'JSXAttribute' && x.name.name === k);
+      const onClick = p.node.attributes.find((x) => x.type === 'JSXAttribute' && x.name.name === 'onClick');
+      const fn = onClick && onClick.value && onClick.value.expression && onClick.value.expression.name;
+      if (fn === 'onYes' && has('data-enter')) yes = true;
+      if (fn === 'onNo' && has('data-esc')) no = true;
+    },
+  });
+  if (!(yes && no)) bad.add('W1');
+  /* the opener runs petPages.js's one pending state (R12 tests it) */
+  if (!/export function petsPressNow\(control, rev, send\) \{\n  const r = petsPress\(_pend, control, rev, Date\.now\(\), send\);/.test(files[OPENER])) bad.add('W2');
+  return [...bad];
+}
+
+const DFILES = Object.freeze({ [PAGE]: readRel(PAGE), [KIT]: readRel(KIT), [OPENER]: readRel(OPENER) });
+const dBad = drawingVerdict(DFILES);
+for (const id of ['W1', 'W2']) check(id + ' on the real PetsPage.jsx', !dBad.includes(id), dBad.join(', '));
+const DRAW_PLANTS = [
+  ['E1', 'W1', 'Release sends at its first tap (no ask)', PAGE, "release: { label: say(SAY, 'pets.release'), c: 'red', onPress: () => setMode('release') },",
+    "release: { label: say(SAY, 'pets.release'), c: 'red', onPress: () => press(PET_HOLDS.release(id), () => sendPetRelease(S, id)) },"],
+  ['E2', 'W2', 'the ask\'s yes sends without press()', PAGE, 'onYes={() => { press(PET_HOLDS.release(id), () => sendPetRelease(S, id)); setMode(null); }}', 'onYes={() => { sendPetRelease(S, id); setMode(null); }}'],
+  ['E3', 'W1', 'the ask made routine', PAGE, "action={{ id: 'release', cost: 'irreversible',", "action={{ id: 'release', cost: 'routine',"],
+  ['E4', 'W2', 'Take out sent without press() (a second press goes out)', PAGE, 'onPress: () => press(PET_HOLDS.active, () => sendPetActive(S, v.out ? null : id)) },', 'onPress: () => sendPetActive(S, v.out ? null : id) },'],
+  ['E5', 'W2', 'the landing\'s Put away sent without press()', PAGE, 'onPress: () => press(PET_HOLDS.active, () => sendPetActive(S, null)) }', 'onPress: () => sendPetActive(S, null) }'],
+  ['E6', 'W2', 'press() that sends at once', PAGE, '    const went = petsPressNow(control, revOf(getS()), send);', '    const went = send();'],
+  ['E7', 'W1', 'a confirmation on Take out', PAGE, "onPress: () => press(PET_HOLDS.active, () => sendPetActive(S, v.out ? null : id)) },",
+    "onPress: () => press(PET_HOLDS.active, () => sendPetActive(S, v.out ? null : id)), ask: <Ui2Confirm action={{ id: 'active', cost: 'costly' }} onYes={() => press(PET_HOLDS.active, () => sendPetActive(S, id))} /> },"],
+  ['E8', 'W1', 'the ask\'s question not the card\'s words', PAGE, "words={say(SAY, 'pets.releaseAsk', { name: v.name })}", 'words={null}'],
+  ['E9', 'W1', 'the ask\'s way back not "Keep"', PAGE, " no={say(SAY, 'pets.releaseKeep')} />", ' />'],
+];
+for (const [id, want, what, rel, from, to] of DRAW_PLANTS) {
+  const t = plantText(ROOT, rel, from, to);
+  if (t === null) { check(`${id} (${what}): its line is found once in ${path.basename(rel)}`, false, 'the plant\'s line moved: update the plant'); continue; }
+  const red = drawingVerdict({ ...DFILES, [rel]: t });
   check(`${id} plant (${what}) turns ${want} red`, red.includes(want), 'red: ' + (red.join(', ') || 'nothing'));
 }
 

@@ -16,14 +16,15 @@ import { say } from '@/game/say.js';
  * action  the screenZones.js action ({ id, cost, label, c })
  * words   the question (default "Are you sure?")
  * onYes, onNo
+ * no      the no button's label (default "Cancel"; v2.3.6696: Pets' Release says "Keep", as today's page)
  */
-export function Ui2Confirm({ action, words, onYes, onNo }) {
+export function Ui2Confirm({ action, words, onYes, onNo, no }) {
   if (!needsConfirm(action)) return null;
   return (
     <div className="u2-confirm" role="alertdialog" aria-label={words || say(SAY, 'ui2Kit.sure')} data-u2-confirm={action.id}>
       <span className="u2-confirm-q">{words || say(SAY, 'ui2Kit.sure')}</span>
       <Ui2Action c={action.c || (action.cost === 'irreversible' ? 'red' : 'gold')} label={action.label} data-enter="" onClick={onYes} />
-      <Ui2Action c="silver" label={say(SAY, 'ui2Kit.cancel')} data-esc="" onClick={onNo} />
+      <Ui2Action c="silver" label={no || say(SAY, 'ui2Kit.cancel')} data-esc="" onClick={onNo} />
     </div>
   );
 }

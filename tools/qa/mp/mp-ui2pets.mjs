@@ -212,7 +212,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const kept = await book(P);
     const v4h = await L(P);
     rec.ok(`4g. Release asks once ("${v4g.confirm}"), Keep keeps it (${kept && kept.list.length} pets)`,
-      /Release Ember for good\?/.test(v4g.confirm) && kept && kept.list.length === 2 && !v4h.confirm && v4h.actions.length >= 3, { confirm: v4g.confirm, kept });
+      /Release Ember for good\?/.test(v4g.confirm) && /Keep/.test(v4g.confirm) && kept && kept.list.length === 2 && !v4h.confirm && v4h.actions.length >= 3, { confirm: v4g.confirm, kept });
 
     /* ── 5. All ── */
     await back(P);

@@ -2077,6 +2077,15 @@ export const STATES = [
       if (!id) return 'no pet to open';
       await evalIn(P, (pid) => { const b = window.__broDashPanelBus; b.open('pets'); b.go({ type: 'push', id: 'petsOwned' }); b.go({ type: 'push', id: 'petsOne', sel: pid }); }, id);
     } },
+  /* v2.3.6696, the mend of sitting 72: the Release question is a state of its own (the kit's dialog in the actions' zone) */
+  { id: 'dash-pets-release', group: 'Dashboard', title: 'Pets: Release asks first', about: 'A pet\'s page after Release: the row of actions gives way to the kit\'s question, "Release <name> for good?", with Release in red (Enter) and Keep (Esc); nothing is sent until Release is pressed again, and Keep gives the row back. The pet stays.',
+    run: async ({ P }) => {
+      const id = await evalIn(P, () => { const b = window._gameState.current._petBook; return b && b.list.length ? b.list[b.list.length - 1].id : null; });
+      if (!id) return 'no pet to open';
+      await evalIn(P, (pid) => { const b = window.__broDashPanelBus; b.open('pets'); b.go({ type: 'push', id: 'petsOwned' }); b.go({ type: 'push', id: 'petsOne', sel: pid }); }, id);
+      await wait(P, 400);
+      await evalIn(P, () => { const b = document.querySelector('[data-pets-one] [data-u2-action="release"] button'); if (b) b.click(); });
+    } },
   { id: 'dash-pets-all', group: 'Dashboard', title: 'Pets: All (the journal)', about: 'All: the pet journal, the Codex\'s Pets door\'s page too: the two stages as its kinds (Levels 1-20, Levels 21-40), nine cards each: a caught one its picture, name, land, catches and biggest, golden on its picture; an uncaught one its shape, "Not tried" or "Not caught"; "2 of 18 caught". A card opens its monster\'s page in the Codex.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('pets'); b.go({ type: 'push', id: 'petsAll' }); }); } },
   /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
