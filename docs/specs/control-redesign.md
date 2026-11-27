@@ -1573,3 +1573,19 @@ and the weapon's eleven pictures left `RDISC_ICONS`, so they are no longer in
 the disc or warmed for it. The weapon in hand is the weapon triangle's top
 button (docs/specs/weapon-triangle.md). The owner: "It should look like an
 aiming joystick, not a disabled button" (the design review).
+
+## v2.3.6791: no tutorial message over the controller (card UI3 PR 11)
+
+The owner, 2026-11-27, after the one-shell controller landed: *"Needs to fix
+tutorial messages over new controller area."* The rule is
+`src/game/tutorClear.js`: the housings are boxes from the layout the controls
+place themselves with (`padSkin.js padLayout`: the stick's lobe to the left
+cut, the rail between the cuts, the right lobe from the right cut, each as
+tall as the outline measured off `housing.png`, the right lobe raised by the
+tier while Whirlwind or Shield Bash shows), and a teaching message's words
+cover none of them: up, 8 px over the highest it spans, or sideways into the
+open middle where the caller lets it slide; never over the top bar (a card
+too tall is cut to the room). The coach's cards, the big arrow's words, the
+"Next: ..." toasts, the Add to Home Screen card and the controls tour's card
+ask it (`src/ui/tutorSpot.js`). Held by `tools/guards/tutor-clear.test.mjs`
+and the phone test `mp-tutorclear` (upright, sideways, a computer).
