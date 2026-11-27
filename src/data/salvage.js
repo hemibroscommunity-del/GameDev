@@ -11,6 +11,7 @@
  * helper below against it).  The worker decides every salvage and every
  * essence; this module only lets the Blacksmith's Salvage tab draw the rows it
  * will accept, name an essence in the bag, and send a weapon's signature. */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 export const SALVAGE = Object.freeze({
   METALS: Object.freeze({
@@ -77,7 +78,7 @@ export function essenceName(key) {
     names). */
 export function essenceIcon(key) {
   const e = parseEssenceKey(key);
-  return e ? '/icons/items/essence-' + e.grade + '-' + e.metal + '.webp' : null;
+  return e ? assetUrl('/icons/items/essence-' + e.grade + '-' + e.metal + '.webp') : null;   /* v2.3.6743: its file's version */
 }
 
 /** What an essence does, in one line, for the bag's popup. */

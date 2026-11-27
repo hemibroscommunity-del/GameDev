@@ -342,7 +342,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
              tier's housing, the shell's bottom on the band as before;
          8b. every touch box on the page 44 px at least and none over
              another (the socketed ones, the two, Sprint, Quick eat, Burst,
-             the trap, the board, Charge);
+             the trap, the board, Charge; v2.3.6644, card PAD part 9: Sprint
+             is not drawn on a touch screen now, the stick's rim sprints, so
+             8b reads it only where it is drawn, under `?rimsprint=0`);
          8c. with the tier drawn every socketed control shown is in its
              well (nothing moved for it); the read waits for Attack's
              socket first (v2.3.6643);

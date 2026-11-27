@@ -2,6 +2,7 @@ import React from 'react';
 import { ARCHETYPES, BLACKSMITH_TIERS, COLLISION_TABLE, COOKING_RECIPES, EFFECTIVENESS, ELEMENTS, FISHING_TIERS, MINING_TIERS, WOODCUTTING_TIERS, WOODWORKING_TIERS, ZONES, discoveredCollisions, discoveredMaterials, discoveredMonsters, visitedZones, dishFor } from '@/data/index.js';
 import { gatherLadderLvl } from '@/data/lifeSkills.js';   /* v2.3.3038: the level a resource asks, not its tier */
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* ═══ EncyclopediaPanel — discovery compendium (monsters/materials/etc.) ═══ */
 /* v2.3.864: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -313,7 +314,7 @@ export function EncyclopediaPanel(props) {
       style: lsChip(true, el.color)
     }, /* v2.3.1232: elem-*.webp icon replaces the bare color dot; the '●'
          fallback inherits the chip's element color */
-    lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.3907' /* v2.3.3907: redrawn as the element alone */, '●', 14), key, /*#__PURE__*/React.createElement("span", {
+    lsIcon(assetUrl('/icons/ui/elem-' + key + '.webp') /* v2.3.3907: redrawn as the element alone; v2.3.6743: its file's version */, '●', 14), key, /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: '#8D9B98'

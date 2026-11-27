@@ -34,6 +34,7 @@ import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/she
 import { computerFrame } from '@/game/deviceProfile.js';   /* a computer's window: the band is one block, 480 px at most */
 import { winVw, winVh } from '../mobile/playViewport.js';
 import { readKitPlayer, KIT_ART } from './sampleData.js';
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* the band's room on this screen: the game's own functions, and its rule for a
    phone on its side and a computer (never over 243, never over a third) */
@@ -142,7 +143,7 @@ function InfoPlate({ room }) {
 function WorkspacePlate({ room }) {
   const art = '/icons/items/';
   const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
-  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: art + pics[i], label: g }));
+  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: assetUrl(art + pics[i]) /* v2.3.6743: its file's version (the mend) */, label: g }));
   /* v2.3.6688 (the mends; mp-uikit 1b, 1c): the fixture holds what its panel shows without a scroll, so the kit's
      audit reads every cell (a storage grid scrolls by intent in the game, which the audit would count as cut):
      upright two rows of three; sideways (a 46 px panel) ONE row of 44 px cells, and the summary's one stat
@@ -163,9 +164,9 @@ function SlotsPlate({ room }) {
   const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
   const slots = (
     <div style={row({ alignItems: 'center', flex: '0 0 auto' })}>
-      {UI2_GRADES.map((g, i) => <Ui2Slot key={g} grade={g} size={s} art={art + pics[i]} name={g} />)}
-      <Ui2Slot grade="rare" size={s} art={art + pics[1]} state="selected" />
-      <Ui2Slot grade="elite" size={44} art={art + pics[2]} state="focused" onClick={() => {}} />
+      {UI2_GRADES.map((g, i) => <Ui2Slot key={g} grade={g} size={s} art={assetUrl(art + pics[i])} name={g} />)}
+      <Ui2Slot grade="rare" size={s} art={assetUrl(art + pics[1])} state="selected" />
+      <Ui2Slot grade="elite" size={44} art={assetUrl(art + pics[2])} state="focused" onClick={() => {}} />
       <Ui2Slot size={s} empty />
     </div>
   );

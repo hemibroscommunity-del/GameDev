@@ -5,6 +5,7 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { warpToFarm } from '@/game/farmTrip.js';
 import { FeedSeedPanel } from './FeedSeedPanel.jsx'; /* v2.3.3127: the farm the worker settles */
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 /* === FarmPanel — buildingPanel === 'farm' sub-panel === */
 /* v2.3.877: extracted verbatim from the buildingPanel === 'farm'
    clause in BroTown.jsx (the farm plot manager: plant/harvest crops,
@@ -47,7 +48,7 @@ function lsHeader(icon, emoji, title, subtitle) {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
   }, /* v2.3.1224 pattern: UI Bible icon with emoji fallback */
   React.createElement("img", {
-    src: '/icons/ui/bldg-' + icon + '.webp', alt: '', draggable: false,
+    src: assetUrl('/icons/ui/bldg-' + icon + '.webp'), alt: '', draggable: false,
     style: { width: 26, height: 26, objectFit: 'contain', flexShrink: 0 },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
   }), React.createElement("div", { style: { minWidth: 0 } },

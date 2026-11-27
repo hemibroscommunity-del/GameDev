@@ -316,7 +316,7 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('fx-coinflip', 'supplied', 'public/sprites/fx/coinflip-*.webp',
     { draw: 'dom', loader: 'src/ui/panels/AceFlipPanel.jsx', px: 'cells 128x192', note: 'tools/import_coin_flip.py from the owner\'s sheets, not kept' }),
   fam('fx-zonebanners', 'made', 'public/sprites/fx/zonebanner-*-v1.webp',
-    { tool: 'tools/process_zone_banner_sheets.py', sources: 'docs/triage-2026-09-17/assets/zonebanner-*-ornament.png', draw: 'dom', loader: 'src/ui/zoneBannerOverlay.js' }),
+    { tool: 'tools/process_zone_banner_sheets.py', sources: 'docs/archive/triage-2026-09-17/assets/zonebanner-*-ornament.png', draw: 'dom', loader: 'src/ui/zoneBannerOverlay.js' }),
   fam('fx-levelup-strip', 'made', 'public/sprites/fx/levelup-burst-v1.webp',
     { tool: 'unknown', draw: 'none', note: 'a WebP of the owner\'s strip; warmed only where its numbers cannot be drawn or fail (?burstnumbers=0)' }),
   fam('fx-levelup-numbers', 'made', 'public/sprites/fx/levelup-burst-v1-f*.p256.png',
@@ -406,11 +406,11 @@ export const ASSET_FAMILIES = Object.freeze([
   /* ── sound: public/audio/, public/sfx/ (the door re-encodes no sound: a
      sound is folded to one channel as it is decoded, soundFold.js) ── */
   fam('music', 'made', 'public/audio/music/{desert,farm,fire,forest,frost,login-theme,minigame,murky,rock,skirmish,village,water}.mp3',
-    { tool: 'tools/audio/encode_music.mjs', sources: 'assets/music-source/2026-10-26/*.mp3, assets/music-source/2026-10-27/Homestead Morning.mp3, docs/triage-2026-09-17/music/Select_Your_Hero.mp3', draw: 'music', loader: GD, note: 'streamed by the music deck, never decoded whole' }),
+    { tool: 'tools/audio/encode_music.mjs', sources: 'assets/music-source/2026-10-26/*.mp3, assets/music-source/2026-10-27/Homestead Morning.mp3, docs/archive/triage-2026-09-17/music/Select_Your_Hero.mp3', draw: 'music', loader: GD, note: 'streamed by the music deck, never decoded whole' }),
   fam('music-dance', 'made', 'public/audio/music/dance-beat.mp3',
     { tool: 'tools/audio/cut_owner_sounds.py', sources: 'assets/sfx-source/emote/prdbyd-club-beat-120-bmin-294045.mp3', draw: 'music', loader: GD }),
   fam('music-retired', 'made', 'public/audio/music/world.mp3',
-    { tool: 'tools/audio/encode_music.mjs', sources: 'docs/triage-2026-09-17/music/Worldview.mp3', draw: 'none', note: 'named only by the closed World View\'s ZONE_MUSIC row' }),
+    { tool: 'tools/audio/encode_music.mjs', sources: 'docs/archive/triage-2026-09-17/music/Worldview.mp3', draw: 'none', note: 'named only by the closed World View\'s ZONE_MUSIC row' }),
   fam('ambient-loops', 'made', 'public/audio/ambient/{fire-crackle,forest,lava,sea-surf,skate-roll,town-crowd}.mp3',
     { tool: 'tools/audio/cut_owner_sounds.py', sources: 'assets/sfx-source/world/*.mp3, assets/sfx-source/2026-10-29/freesound_community-drive-over-border-82185.mp3', draw: 'sfx', loader: GD, note: 'decoded whole at 24 kHz (BT_AUDIO.loadSample), not streamed: ambientBeds.js, startZoneAmbient, rideSound.js' }),
   fam('ambient-wind', 'supplied', 'public/audio/ambient/wind-dunes.mp3', { draw: 'sfx', loader: GD, note: 'the owner\'s upload kept whole' }),
