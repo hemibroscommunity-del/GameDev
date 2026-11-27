@@ -49,6 +49,8 @@
 import { SHOP_ITEMS, DIEGO_SHELF, DISHES, QUEST_REWARDS } from './data.js';   /* v2.3.2063: his staple shelf; v2.3.3130: his shelf is DIEGO_SHELF, and no dish; v2.3.3316: the quests that give the tools */
 import { FARM_SHOP_BASE } from './farm.js';   /* v2.3.3127: seeds, crops and compost */
 import { bagGive, bagSet, bagTake, bagCount } from './bag.js'; /* v2.3.4810: the bag door; v2.3.4900: + bagTake, bagCount (the sale) */
+import { stashGive } from './stash.js';   /* v2.3.6800: the stashes' door (the shield he sells) */
+import { questShieldMint } from './quests.js';   /* v2.3.6800: the one mint of a quest's shield */
 
 /* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
  *
@@ -172,7 +174,107 @@ export function toolEarned(quests, key) {
   return false;
 }
 
-/* v2.3.4036: what a rare fish is worth against its plain twin (fishlog.js) */
+/* ═══ v2.3.6800 (card SHOP): A LOST SHIELD, BOUGHT BACK ═══
+ *
+ * The owner, 2026-11-26: "make the store keeper sell shield I lost mine".
+ * A player's only first shield is the Pine Shield tut_1 mints on accept
+ * (data.js; quests.js questShieldMint) and nothing crafts one, so a shield
+ * lost to No man's land, listed at the auction house or cut by the join's
+ * cap left no way back.  Diego sells it as the tools are sold (above): ONE,
+ * at a flat price, a REPLACEMENT to a player a quest gave one who owns none.
+ *
+ * WHO MAY BUY ONE (shieldWhyNot, pure, so a suite calls it): a quest gave
+ * the player a shield -- read off the shipped quest table as toolEarned
+ * reads a tool (a shield in `grantOnAccept` once accepted, a turn-in `item`
+ * once turned in) -- and they own NONE: nothing on the arm (`ps.shield`) and
+ * nothing in the bag (`ps.shieldStash`).  A shield of theirs LISTED at the
+ * auction house is in escrow, owned by neither list, so by the tools' own
+ * rule (what you hold, not what you might get back) it does not count: a
+ * second Pine Shield for 100 burnt coins.  No hole: no road pays coins for
+ * a shield (the shop buys none), and it is always the tier-1 piece.
+ *
+ * WHAT: the very piece tut_1 mints (SHIELD_ITEM is read off its row, the
+ * shape made by questShieldMint), its provenance row stamped 'shop' as the
+ * quest's is stamped 'quest'.  WHERE: into the BAG, through the stashes'
+ * door (road `shop_shield`) -- where the quest's piece ends up too: the
+ * worker puts that one on `ps.shield` and the phone moves it to the bag and
+ * says the arm is empty (wsClient.js, shieldwear.js).  `shop_result` carries
+ * the piece (`shield`), and the panel adds it to the phone's copy of the bag.
+ * v2.3.6800 (sitting 71's hold, mended): a lost `shop_result` no longer
+ * loses the piece: the phone adds, by id, every shield the worker holds for
+ * it (`player_state.shieldStash`; a "have" quote's or refusal's `held`,
+ * shieldHeld below; src/game/shieldAdopt.js).
+ *
+ * Reasons, in lower case as the tools' are: 'off' (switched off), 'have'
+ * (owns one), 'quest' (not yet given one), and at the buy 'coins' (short).
+ * Cap `shieldshop`; kill switch: the live flag `shieldshop: false` takes it
+ * off the shelf and refuses every buy (present and false is off).
+ */
+/* the refusals a tool and the shield share, in Diego's words (written once:
+   the player-words census, docs/specs/player-words.md) */
+const SAY_HAVE = 'You already have one';
+const SAY_QUEST = "Mayor Bro's quest gives you your first one";
+const SAY_NONE = "He hasn't got any";
+const SAY_POOR = 'Not enough coins';
+export const SHIELD_KEY = 'pine_shield';
+export const SHIELD_PRICE = 100;   /* the tools' price (TOOL_SHELF), burnt */
+export function isShieldKey(key) { return key === SHIELD_KEY; }
+/* The quest table's shield row that the shop sells: tut_1's Pine Shield (the
+   first shield row a quest gives, in the table's order). */
+export const SHIELD_ITEM = (() => {
+  for (const qid of Object.keys(QUEST_REWARDS)) {
+    const r = QUEST_REWARDS[qid];
+    const rows = [...(r && Array.isArray(r.grantOnAccept) ? r.grantOnAccept : []), ...(r && r.item ? [r.item] : [])];
+    const it = rows.find((x) => x && x.kind === 'shield');
+    if (it) return Object.freeze({ ...it });
+  }
+  return null;
+})();
+/* Did a quest give the player with quest states `quests` a shield? */
+export function shieldEarned(quests) {
+  if (!quests || typeof quests !== 'object') return false;
+  for (const qid of Object.keys(QUEST_REWARDS)) {
+    const r = QUEST_REWARDS[qid];
+    if (!r) continue;
+    const st = Object.prototype.hasOwnProperty.call(quests, qid) ? quests[qid] : null;
+    const onAccept = Array.isArray(r.grantOnAccept) && r.grantOnAccept.some((it) => it && it.kind === 'shield');
+    if (onAccept && (st === 'active' || st === 'turnedIn')) return true;
+    if (r.item && r.item.kind === 'shield' && st === 'turnedIn') return true;
+  }
+  return false;
+}
+/* Why he will not sell the player `ps` a shield, or null if he will.  `off`:
+   the switch is thrown.  Both places a shield is owned are read: the arm AND
+   the bag. */
+export function shieldWhyNot(ps, off) {
+  if (off || !ps || !SHIELD_ITEM) return 'off';
+  if (ps.shield) return 'have';
+  if (Array.isArray(ps.shieldStash) && ps.shieldStash.length > 0) return 'have';
+  if (!shieldEarned(ps._quests)) return 'quest';
+  return null;
+}
+/* v2.3.6800 (the mend of sitting 71's hold): the recorded shields the worker
+   holds for `ps` -- on the arm and in the bag, each with its id -- that a
+   shield's "have" quote and refusal carry as `held`, so a phone that lost
+   its copy (a `shop_result` it never got) sees the one it paid for instead
+   of a row it may not buy (src/game/shieldAdopt.js adds them by id).  The
+   worker's own pieces only, never a copy of the message's; at most the
+   stash's cap (gearstash.js), and none without an id (the phone cannot tell
+   it from its twin). */
+export const SHIELD_HELD_MAX = 48;
+export function shieldHeld(ps) {
+  const out = [];
+  if (!ps) return out;
+  const recorded = (p) => !!(p && typeof p === 'object' && typeof p.gid === 'string' && p.gid);
+  /* copies, read only: the answer never holds the worker's own pieces */
+  if (recorded(ps.shield)) out.push({ ...ps.shield });
+  for (const p of Array.isArray(ps.shieldStash) ? ps.shieldStash : []) {
+    if (out.length >= SHIELD_HELD_MAX) break;
+    if (recorded(p)) out.push({ ...p });
+  }
+  return out;
+}
+
 export const SHOP_FISH_MULT = Object.freeze({ albino: 5, large: 10 });
 
 export const SHOP = {
@@ -375,6 +477,11 @@ export const shopMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'toolshop') && !f.toolshop);
   },
+  /* v2.3.6800: the shield's kill switch (live flag `shieldshop: false`; present and false is off) */
+  _shieldShopOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'shieldshop') && !f.shieldshop);
+  },
 
   /* v2.3.3316: why he will not sell this player that tool, or null if he
      will: 'off' (not on his shelf), 'have' (one is in the bag), 'quest' (no
@@ -499,6 +606,12 @@ export const shopMethods = {
         items.push({ key: k, qty: null, tool: true, buy: 0, base: 0, sell: TOOL_SHELF[k], full: false });
       }
     }
+    /* v2.3.6800: the Pine Shield he sells back -- the same row for everyone,
+       as a tool's; whether you may buy it is your quote's to say.  `shield:
+       true` and no count, so only a game that knows the row shows it. */
+    if (!this._shieldShopOff() && SHIELD_ITEM) {
+      items.push({ key: SHIELD_KEY, qty: null, shield: true, name: SHIELD_ITEM.name, buy: 0, base: 0, sell: SHIELD_PRICE, full: false });
+    }
     if (Array.isArray(keys)) {
       /* Bounded and type-checked: this list arrives from a client. 60 is well
          past a full bag and far short of anything worth flooding us with. */
@@ -545,7 +658,7 @@ export const shopMethods = {
        anyway: they are the shelf that is always there. */
     /* v2.3.3316: ...then his tools, then the pile -- by rank, so a row with
        no count is never compared by count */
-    const rank = (i) => (i.staple ? 0 : i.tool ? 1 : 2);
+    const rank = (i) => (i.staple ? 0 : (i.tool || i.shield) ? 1 : 2);   /* v2.3.6800: the shield beside the tools */
     items.sort((a, b) => {
       if (rank(a) !== rank(b)) return rank(a) - rank(b);
       if (rank(a) < 2) return a.key.localeCompare(b.key);
@@ -578,6 +691,14 @@ export const shopMethods = {
       const why = this._toolWhyNot(ps, key);
       return { ok: true, key, qty: why ? 0 : 1, mode, tool: true,
         total: why ? 0 : TOOL_SHELF[key], ...(why ? { why } : null), settled: true };
+    }
+    /* v2.3.6800: the shield too, one at a time (shieldWhyNot) */
+    if (mode === 'buy' && isShieldKey(key)) {
+      const why = shieldWhyNot(ps, this._shieldShopOff());
+      return { ok: true, key, qty: why ? 0 : 1, mode, shield: true,
+        total: why ? 0 : SHIELD_PRICE, ...(why ? { why } : null),
+        ...(why === 'have' ? { held: shieldHeld(ps) } : null),   /* v2.3.6800: the mend -- what you own, so the phone sees it */
+        settled: true };
     }
     const stock = await this._shopStock();
     if (mode === 'buy') {
@@ -711,12 +832,12 @@ export const shopMethods = {
        quest gave one, who holds none */
     if (isToolKey(key)) {
       const why = this._toolWhyNot(ps, key);
-      if (why === 'have') return { ok: false, error: 'You already have one' };
-      if (why === 'quest') return { ok: false, error: "Mayor Bro's quest gives you your first one" };
-      if (why) return { ok: false, error: "He hasn't got any" };
+      if (why === 'have') return { ok: false, error: SAY_HAVE };
+      if (why === 'quest') return { ok: false, error: SAY_QUEST };
+      if (why) return { ok: false, error: SAY_NONE };
       const cost = TOOL_SHELF[key];
       const purse = Math.floor(Number(ps.coins) || 0);
-      if (purse < cost) return { ok: false, error: 'Not enough coins' };
+      if (purse < cost) return { ok: false, error: SAY_POOR };
       this._goldTake(ps, cost, 'shop_tool'); /* v2.3.4670: the gold door */
       if (!ps.inventory) ps.inventory = {};
       /* `key` passed isToolKey, an own-property test on our own table, so it
@@ -725,6 +846,31 @@ export const shopMethods = {
       /* saved, or the purchase came undone on the next reconnect (v2.3.3137) */
       if (pid) this._saveRpg(pid, ps);
       return { ok: true, bought: 1, cost, coins: ps.coins, tool: true, settled: true };
+    }
+
+    /* v2.3.6800: a lost shield, bought back (SHIELD_KEY): one, to a player a
+       quest gave one, who owns none.  The price is the worker's own, never
+       the message's.  ONE WRITE (handoff rules 5, 7, 10): the give, the take,
+       the provenance row and the save are one synchronous run, no await, and
+       the record is saved before shop_result or shop_state goes (index.js
+       sends both after this returns).  A second send of the same buy is
+       refused 'have' (the first one's shield is in the bag), and the action
+       door's request id acts once (reqonce.js). */
+    if (isShieldKey(key)) {
+      const why = shieldWhyNot(ps, this._shieldShopOff());
+      if (why === 'have') return { ok: false, error: SAY_HAVE, why, held: shieldHeld(ps) };   /* v2.3.6800: the mend -- the one you paid for, so the phone sees it */
+      if (why === 'quest') return { ok: false, error: SAY_QUEST, why };
+      if (why) return { ok: false, error: SAY_NONE, why };
+      const purse = Math.floor(Number(ps.coins) || 0);
+      if (purse < SHIELD_PRICE) return { ok: false, error: SAY_POOR, why: 'coins' };
+      const piece = questShieldMint(SHIELD_ITEM);
+      /* the bag is empty (shieldWhyNot), so the door's cap cannot refuse it;
+         if it ever did, nothing has been taken */
+      if (!stashGive(ps, 'shieldStash', piece, 'shop_shield', this)) return { ok: false, error: SAY_NONE, why: 'full' };
+      this._goldTake(ps, SHIELD_PRICE, 'shop_shield');
+      if (pid && this._gearProvRecord) this._gearProvRecord(pid, 'shield', piece, 'shop');   /* its gid, as the quest's piece gets (src 'quest') */
+      if (pid) this._saveRpg(pid, ps);
+      return { ok: true, bought: 1, cost: SHIELD_PRICE, coins: ps.coins, shield: piece, settled: true };
     }
 
     /* ═══ v2.3.2127: A STAPLE IS CARRIED NOW, AND DRUNK LATER ═══

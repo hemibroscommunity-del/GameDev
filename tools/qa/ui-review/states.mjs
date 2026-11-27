@@ -508,16 +508,21 @@ export const STATES = [
   },
   /* v2.3.6781 (card UI3, PR 2): the character HUD, top left -- the face, the
      name, "Lv N" and the gold bar of the weapon whose next level raises it;
-     the tracked quest as one line under it.  Its own row a layout: upright,
+     (v2.3.6790: no quest line under it, the HUD alone in the corner).  Its own row a layout: upright,
      sideways (compact, 176 x 48) and a computer. */
   { id: 'charhud', group: 'The world (HUD)', title: 'The character HUD, top left (upright)', views: ['portrait'],
-    about: 'Top left under the top bar, opposite the minimap: your face (the dashboard\'s own portrait), your name and "Lv N" (the combat level) beside it, and under them a gold XP bar labelled with the weapon whose next level raises your combat level (its picture and its word, "45 / 120" in the bar). Under it the tracked quest as ONE line, "title \u00b7 count \u00b7 objective", a tap opening that quest. A tap anywhere on the HUD opens Bro. 184 x 52. No health or energy (the owner took those off the game screen, v2.3.4163). ?hud=0 gives back the old top left.',
+    about: 'Top left under the top bar, opposite the minimap: your face (the dashboard\'s own portrait), your name and "Lv N" (the combat level) beside it, and under them a gold XP bar labelled with the weapon whose next level raises your combat level (its picture and its word, "45 / 120" in the bar). Nothing else always there (v2.3.6790, the owner: "Leave only character hud in top left corner"): no quest tracker over the world (the quests are on the Quests page; ?questline=1 brings the one line back), and the status chips and the party chip, when they show, right under the HUD. A tap anywhere on the HUD opens Bro. 184 x 52. No health or energy (the owner took those off the game screen, v2.3.4163). ?hud=0 gives back the old top left.',
     run: async ({ P }) => { await wait(P, 600); } },
   { id: 'charhud-side', group: 'The world (HUD)', title: 'The character HUD, top left (sideways)', views: ['landscape'],
-    about: 'The same HUD on a phone held sideways: compact, 176 x 48, the face drawn 40 in its 44 px tap box; the one-line quest, the status chips and the party chip under it, clear of the minimap.',
+    about: 'The same HUD on a phone held sideways: compact, 176 x 48, the face drawn 40 in its 44 px tap box; the status chips under it and the party chip beside it (no quest line: v2.3.6790), clear of the minimap.',
     run: async ({ P }) => { await wait(P, 600); } },
   { id: 'charhud-desk', group: 'The world (HUD)', title: 'The character HUD, top left (a computer)', views: ['desktop'],
     about: 'The same HUD on a computer playing wide (184 x 52): a click on it opens Bro and never swings; its tooltip says "Click to open Bro".',
+    run: async ({ P }) => { await wait(P, 600); } },
+  /* v2.3.6786 (card UI3, PR 7): the gold on the top bar, between BroTown and
+     the daily spin (ZoneHeader.jsx, game/topGold.js).  Every layout. */
+  { id: 'topbar-gold', group: 'The world (HUD)', title: 'The top bar: your gold, between BroTown and the daily spin',
+    about: 'The top bar in the world: LOGOUT at the left, the BroTown logo centred on the screen, and to its right your gold (a coin and the number, as Gear says it: "9,999", "12.4K", "2.55M") just left of the free daily spin\'s button. The gold keeps its place when the spin\'s button is not shown; it takes no tap. `?topgold=0` takes it off the bar.',
     run: async ({ P }) => { await wait(P, 600); } },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
@@ -771,51 +776,60 @@ export const STATES = [
      default: it is off unless `?hemiface=1` (docs/specs/hemi-portrait.md) */
   /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
      quest you are on (a run has taken Into the Blue at quest-accepted) */
-  /* v2.3.6620 (card QP): the Quests tab in pages (dash/QuestPages.jsx; `?questpages=0` the old page) */
-  dash('quests', 'Quests', 'The Quests tab, page 1 (v2.3.6620: the tab in pages, each whole with no scrolling): the row Active (n) | Daily | Completed with the three page marks; the quest\'s head (the giver\'s face, its name, "In progress" and the giver, Track); what to do now with its picture, count and bar (a tap opens the journey); where, with Map; the rewards in one row of tiles (a tap opens page 3).'),
+  /* v2.3.6620 (card QP): the Quests tab in pages (dash/QuestPages.jsx; `?questpages=0` the old page).
+     v2.3.6691 (card UI2-quests): under the new dashboard Quests is the landing and a quest's own page
+     (dash/QuestsLanding.jsx, QuestPage.jsx); today's pages only under ?ui2=0 (mp-questpages plays them),
+     so the four states that showed them are the new pages' (a run has taken Into the Blue at quest-accepted) */
   {
-    id: 'dash-quest-journey', group: 'Dashboard', title: 'Quests: the quest journey',
-    about: 'Page 2 of a quest (v2.3.6620): the head, then its steps as a line: done steps green with their tick (and what the giver handed over), the step in hand gold with its place and count, the steps to come grey.',
+    id: 'ui2-quest-landing', group: 'Dashboard', title: 'Quests: your quests as rows',
+    about: 'The Menu\'s Quests tile (v2.3.6691, card UI2-quests): under the one header (‹ Menu, Quests, Close) your quests in hand as rows -- the giver\'s face, the quest\'s name, its count ("0/4") where it counts, a green "Ready" once it can be handed in, the gold star on the one you track (first) -- scrolling inside their zone; under them the doors Daily (when the game shows it today), Completed (n) and On offer (n). No tabs, no page marks, no picker. Nothing in hand: the game\'s own line and the same doors. Sideways the doors sit at the rows\' end. Under ?ui2=0 today\'s pages.',
     run: async ({ P }) => {
-      await bus(P, 'open', 'quests');
+      const e = await bus(P, 'open', 'quests');
+      if (e) return e;
       await wait(P, 600);
-      if (!(await has(P, '[data-quest-mark="journey"]'))) return 'no quest open in pages';
-      await evalIn(P, () => { const b = document.querySelector('[data-quest-mark="journey"]'); if (b) b.click(); });
-      await wait(P, 400);
-      if (!(await has(P, '[data-quest-view="journey"]'))) return 'the journey did not open';
+      if (!(await has(P, '[data-quests-ui2="landing"]'))) return 'the landing did not open';
     },
   },
   {
-    id: 'dash-quest-rewards', group: 'Dashboard', title: 'Quests: rewards and what is next',
-    about: 'Page 3 of a quest (v2.3.6620): the head with the count, the completion rewards as tiles, and the next quest (its giver\'s face, its name, who and where, a lock: "Available after" this one).',
+    id: 'ui2-quest-page', group: 'Dashboard', title: 'Quests: a quest\'s journey up to now',
+    about: 'A row of the landing opens the quest\'s own page (header "Quest"): the giver\'s face, the name and its state; the steps behind you, each with its green tick (and what the giver handed over), scrolling inside their zone; then NOW, framed in gold and never behind a scroll: the thing\'s picture, what to do, its count and bar, and the place; then one quiet line, "The adventure continues". No step still to come, no hand-in until it is ready, no "Then:", no count of steps, no percent. At the bottom Track (☆/★, at once), Show on map (only where the game can show the road) and the Rewards door. Sideways the name and the steps stand on the left, NOW and its actions beside them.',
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      if (!(await has(P, '[data-quest-mark="rewards"]'))) return 'no quest open in pages';
-      await evalIn(P, () => { const b = document.querySelector('[data-quest-mark="rewards"]'); if (b) b.click(); });
-      await wait(P, 400);
-      if (!(await has(P, '[data-quest-view="rewards"]'))) return 'page 3 did not open';
+      if (!(await has(P, '[data-quest-row]'))) return 'no quest in hand';
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-row]'); if (b) b.click(); });
+      await wait(P, 600);
+      if (!(await has(P, '[data-quest-ui2-page]'))) return 'the quest\'s page did not open';
     },
   },
   {
-    id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
-    about: 'A quest opened by name, as the pinned quest card in the world opens it ("Open quest"): since v2.3.6620 it lands on that quest\'s page 1 in the Quests tab (with `?questpages=0`, its own page: NOW, WHERE, WHO, GIVEN TO YOU, REWARD, NEXT and Track).',
+    id: 'ui2-quest-rewards', group: 'Dashboard', title: 'Quests: a quest\'s Rewards',
+    about: 'The quest page\'s Rewards door (header "Rewards", ‹ Quest): the quest\'s name and its completion rewards as the game\'s tiles (the gold, the XP, the achievement points, the items with their pictures). Back returns to the quest. No Story door: the game has no story text for a quest.',
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      /* the quest the tab is on (the pages), else a row of the old page's list */
-      const qid = await evalIn(P, () => {
-        const pg = document.querySelector('[data-quests-page]');
-        const el = document.querySelector('[data-quest-row]') || document.querySelector('[data-quest-offer-row]');
-        return (pg && pg.getAttribute('data-quest-open')) || (el ? (el.getAttribute('data-quest-row') || el.getAttribute('data-quest-offer-row')) : null);
-      });
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-row]'); if (b) b.click(); });
+      await wait(P, 600);
+      if (!(await has(P, '[data-quest-door="rewards"]'))) return 'no Rewards door';
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-door="rewards"]'); if (b) b.click(); });
+      await wait(P, 500);
+      if (!(await has(P, '[data-quest-ui2-rewards]'))) return 'Rewards did not open';
+    },
+  },
+  {
+    id: 'ui2-quest-road', group: 'Dashboard', title: 'Quests: a quest opened from the world',
+    about: 'A quest opened by name, as the pinned quest card in the world opens it ("Open quest"): that quest\'s own page (as from the landing), its header\'s Back saying "World" (it closes the dashboard again). Completed and On offer open the same page: a done quest shows its whole history, the hand-in done and the journal\'s "Next: ..." line (no Track, no map); an offer shows the talk to its giver as NOW.',
+    run: async ({ P }) => {
+      await bus(P, 'open', 'quests');
+      await wait(P, 600);
+      const qid = await evalIn(P, () => { const el = document.querySelector('[data-quest-row]'); return el ? el.getAttribute('data-quest-row') : null; });
       if (!qid) return 'no quest to open';
       await bus(P, 'open', 'bag');
       await wait(P, 300);
       const ok = await evalIn(P, (q) => { if (!window.__btQuestDetail) return false; window.__btQuestDetail.open(q); return true; }, qid);
       if (!ok) return 'no quest-detail probe';
-      await wait(P, 500);
-      if (!(await has(P, `[data-quest-open="${qid}"][data-quest-view="quest"]`)) && !(await has(P, '[data-journal-page]'))) return 'the quest\'s page did not open';
+      await wait(P, 600);
+      if (!(await has(P, `[data-quest-ui2-page="${qid}"]`))) return 'the quest\'s page did not open';
     },
   },
   /* v2.3.4172: Life Skills are a page under Bro (the card's Life Skills row;
@@ -857,7 +871,7 @@ export const STATES = [
       if (!ok) return 'no monster card to open';
     },
   },
-  dash('more', 'Menu (More under ?ui2=0)', 'v2.3.6681 (card UI2-frame): the Menu\'s root, the directory -- eight equal tiles four by two (Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings), each its picture and one word, under the one header (\u2039 Gear, Menu, Close). Under ?ui2=0 the old More page: its fifteen tiles.'),
+  dash('more', 'Menu (More under ?ui2=0)', 'v2.3.6681 (card UI2-frame): the Menu\'s root, the directory -- eight equal tiles four by two (Bro, Quests, Social, Ranks, Codex, Homestead, Map, Settings), each its picture and one word, under the one header (\u2039 Gear, Menu, Close); v2.3.6784 (card UI3-menus): each picture the largest the tile holds, 58 px upright and 35 sideways (src/game/menuTile.js), on a tile of 2 px padding, every word in the header\'s type. Under ?ui2=0 the old More page: its fifteen tiles.'),
   /* v2.3.6681 (card UI2-frame): the new frame's own screens */
   { id: 'dash-frame-closed', group: 'Dashboard', title: 'The dashboard closed: Gear and Menu', about: 'The band closed: the slim row keeps two buttons, Gear and Menu (a count on Menu while points wait); the handle on its edge.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'close' }); }); } },
@@ -870,24 +884,26 @@ export const STATES = [
   { id: 'dash-frame-homestead', group: 'Dashboard', title: 'Homestead', about: 'The Menu\'s Homestead tile: the farm\'s picture and what the Bro row says today (plots ready to harvest, and that the farm is reached from the Feed & Seed); nothing to manage from here.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
   /* v2.3.6683 (card UI2-bro): Bro's landing and its two frame pages */
-  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: six doors', about: 'The Menu\'s Bro tile: six equal tiles, three by two (one row of six sideways) -- Character, Combat, Equipment / Life Skills, Feats, Pets -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close). No portrait, no banner, no page marks; the points glow on Combat while points wait. Under ?ui2=0 today\'s three pages.',
+  /* v2.3.6782 (card UI3-bro): Bro and Character are ONE page for yourself */
+  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: one page, six doors and the strip', about: 'The Menu\'s Bro tile (v2.3.6782, the owner 2026-11-26: "turn the Bro menu into a unified character management dashboard"): six equal tiles, three by two (one row sideways) -- Combat, Equipment, Life Skills / Feats, Pets, Journey -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close); under them (beside them sideways) ONE flat strip: AP, Quests done, Clan (or Party), Guilds and your title, each its label and value and a door with its chevron (no raised face). No portrait, no name, no combat level, no weapon doors (the HUD has who you are; Combat has the weapons). A value on its way is a placeholder, never 0. On the narrowest sideways page Quests, Clan, Guilds and the title are their pictures\' doors. Under ?ui2=0 today\'s three pages.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },
-  { id: 'ui2-bro-combat', group: 'Dashboard', title: 'Bro: Combat, the hub', about: 'Bro\'s Combat door (v2.3.6685, card UI2-combat): four doors under the header (\u2039 Bro, Combat, Menu, Close) -- Sword, Bow, Staff in a row, each its picture, level, XP bar and "n points" (the worker\'s count, glowing while points wait), and Shared Attributes under them with the shared count (it opens today\'s Points window on its Shared column until the Shared page). Sideways one row of four.',
+  { id: 'ui2-bro-combat', group: 'Dashboard', title: 'Bro: Combat, the hub', about: 'Bro\'s Combat door (v2.3.6685, card UI2-combat; v2.3.6783, card UI3-combat): four doors under the header (\u2039 Bro, Combat, Menu, Close) -- Sword, Bow, Staff in a row, each its picture as large as the room leaves (48 px upright), its level large (24 px), a thin XP bar, and "n points" in gold ONLY while there are points to spend (at 0 nothing drawn; the door glows while points wait); Shared Attributes under them, its count by the same rule. Sideways one row of four, each its picture beside its name, count and level.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); }); } },
-  /* v2.3.6684 (card UI2-bro PR 2): Character, the passport, and its Titles */
-  { id: 'ui2-bro-character', group: 'Dashboard', title: 'Bro: Character, the passport', about: 'Bro\'s Character door under the header (\u2039 Bro, Character, Menu, Close): the still face large with the combat level beside it, the name and the equipped title (or "No title equipped"); Sword, Bow and Staff, each its level and a door to the Combat page on that weapon; Clan, Guilds, AP and Quests done, each a door; Titles and Journey. A value on its way is a placeholder, never 0. Sideways one row; under 760 px of page Clan, Guilds, Titles and Journey are their pictures\' doors.',
-    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCharacter' }); }); } },
-  { id: 'ui2-bro-titles', group: 'Dashboard', title: 'Bro: Titles (from the passport)', about: 'The passport\'s Titles door: your title at the top with how many you have earned; the titles you have earned (a title is the name of an achievement you have earned), the one you wear marked "Equipped"; Equip and Remove title in the row of actions, each in its place, off with its reason beside it; the pressed one spins until the server answers, and says "Not confirmed yet" if no answer came.',
-    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCharacter' }); b.go({ type: 'push', id: 'broTitles' }); }); } },
+  /* v2.3.6684 (card UI2-bro PR 2): Character, the passport, and its Titles.  v2.3.6782 (card UI3-bro): Character is
+     ANOTHER player's page (Ranks' tap, step 9); Titles is the strip's title entry's */
+  { id: 'ui2-bro-character', group: 'Dashboard', title: 'Bro: another player\'s Character', about: 'Another player\'s Character (v2.3.6782: yours is the one Bro page; nothing opens theirs until Ranks\' tap, step 9): their face large, their name in a compact label, the title, Sword, Bow and Staff levels, Clan, Guilds, AP and Quests ("Not shared": their phone\'s count); no Equip, no Journey (your phone\'s own records), none of the owner\'s marks. Sideways one row.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCharacter', who: { name: 'Sunburn', portrait: '/icons/ui/panel-self.webp' } }); }); } },
+  { id: 'ui2-bro-titles', group: 'Dashboard', title: 'Bro: Titles (from the strip)', about: 'The Bro strip\'s title entry (v2.3.6782; the passport\'s door until then): your title at the top with how many you have earned; the titles you have earned (a title is the name of an achievement you have earned), the one you wear marked "Equipped"; Equip and Remove title in the row of actions, each in its place, off with its reason beside it; the pressed one spins until the server answers, and says "Not confirmed yet" if no answer came.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broTitles' }); }); } },
   /* v2.3.6685 (card UI2-combat): a weapon's page */
-  { id: 'ui2-combat-weapon', group: 'Dashboard', title: 'Combat: a weapon\'s page (Sword)', about: 'The hub\'s Sword door (\u2039 Combat, Sword, Menu, Close): the level and its XP bar (now / needed) with the one line a level gives ("Each Sword level gives 3 Sword points"); DPS the headline (a tap: what DPS is; its breakdown is the next step), Damage, Attack speed, Crit chance and Range beside it; "Attributes" with the Sword points to spend, and the six (Range, Power, Speed, Luck, Special, Element), each its points of its cap: a tap opens today\'s preview (stepper at 0, before and after, the fight, Spend). Sideways one row, the four stats one door, All stats, on a narrow phone.',
+  { id: 'ui2-combat-weapon', group: 'Dashboard', title: 'Combat: a weapon\'s page (Sword)', about: 'The hub\'s Sword door (\u2039 Combat, Sword, Menu, Close), the ONE template Bow and Staff share (v2.3.6783, card UI3-combat): row 1 the level and its XP (now / needed) over a thin bar, with the one line a level gives ("Each Sword level gives 3 Sword points") where it fits; row 2 the summary strip, DPS the sunk stat ("120.5 DPS \u203a": a tap opens its tree) then Damage, Attack speed, Crit chance and Range as facts in one container; row 3 the full-width line, "Attributes" and "n Sword points to spend" (gold while there are points, muted at 0), then the six (Range, Power, Speed, Luck, Special, Element) three by two, each a gold "+" while points wait: a tap opens today\'s preview. At 375 x 667 the line folds onto the level row. Sideways one row, the four facts one door, All stats, on a narrow phone.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broSword' }); }); } },
   /* v2.3.6686 (card UI2-combat PR 2): the stat tree (a layer a page) and the Shared page */
   { id: 'ui2-combat-tree', group: 'Dashboard', title: 'Combat: Sword DPS, the stat tree\'s first layer', about: 'The Sword page\'s DPS tapped (\u2039 Sword, DPS, Menu, Close): the headline "Sword DPS" with its number, one line saying how its rows join (damage a swing \u00f7 seconds a swing \u00f7 the display scale), and its three rows: Damage a swing and Seconds a swing raised (each opens its own layer), Display scale sunk (a game rule).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broSword' }); b.go({ type: 'push', id: 'broTree0', sel: 'sword|' }); }); } },
   { id: 'ui2-combat-tree-deep', group: 'Dashboard', title: 'Combat: the stat tree, a hit\'s base', about: 'Three layers down from Sword DPS (Damage a swing, Average hit, Least hit, then Hit base): the line "(Weapon base + level damage) \u00d7 Power \u00d7 tier \u00d7 grade" and its five reasons, each naming its source: the worn sword (a door to its card), the Sword level, the Power points placed, the tier and grade of the weapon.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broSword' }); b.go({ type: 'push', id: 'broTree0', sel: 'sword|' }); b.go({ type: 'push', id: 'broTree1', sel: 'sword|perSwing' }); b.go({ type: 'push', id: 'broTree2', sel: 'sword|perSwing/avg' }); b.go({ type: 'push', id: 'broTree3', sel: 'sword|perSwing/avg/least' }); b.go({ type: 'push', id: 'broTree4', sel: 'sword|perSwing/avg/least/hitBase' }); }); } },
-  { id: 'ui2-combat-shared', group: 'Dashboard', title: 'Combat: Shared Attributes', about: 'The hub\'s Shared door (\u2039 Combat, Shared Attributes, Menu, Close): Max HP the headline (raised: a tap explains it), Defense beside it, then "Attributes" with the shared points to spend and the seven (Max HP, Defense, Max Mana, Stamina, Dodge, Move speed, Resist), four and three; a tap opens the preview on its Shared tab. No effective-health number.',
+  { id: 'ui2-combat-shared', group: 'Dashboard', title: 'Combat: Shared Attributes', about: 'The hub\'s Shared door (\u2039 Combat, Shared Attributes, Menu, Close), the weapon page\'s template (v2.3.6783): the strip, Max HP the sunk stat (a tap explains it) and Defense a fact in its container; the full-width line, "Attributes" and "n shared points to spend" (gold while there are points); the seven (Max HP, Defense, Max Mana, Stamina, Dodge, Move speed, Resist), four and three, each a gold "+" while points wait; a tap opens the preview on its Shared tab. No effective-health number.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broCombat' }); b.go({ type: 'push', id: 'broShared' }); }); } },
   /* v2.3.6687: the one item page (card UI2-gear PR 1): Gear's worn sword, its Details */
   { id: 'dash-item-page', group: 'Dashboard', title: 'The one item page', about: 'Gear\'s worn sword, its summary\'s Details pressed (v2.3.6688): the one item page on Gear\'s stack under the header [\u2039 Gear] Sword [Menu] [\u2715]; the picture in its grade\'s outline with its stars, the name, the grade\'s word and "Worn"; the facts three across (Damage, DPS, Attack speed, Range, Hardness...); Unequip full width at the foot with Pin beside it.',
@@ -900,7 +916,7 @@ export const STATES = [
       return tapSel(P, '[data-gear-summary] [data-gear-details]');
     } },
   /* v2.3.6688: Gear's two panels (card UI2-gear PR 2): management, a look from the bag, a look from the worn cells */
-  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars.',
+  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars. v2.3.6784 (card UI3-menus): the label rows 24 px (their words 11 px caps), the gold a recessed pill, the bag\'s squares the kit\'s socket (the worn cells\'), the bag in WHOLE rows (three wherever 44 px squares allow; the scroll snaps to a row: src/game/gearGeometry.js). Tag 6698 (card UI2-equipgreen): the Equipped panel on a pale green ground (gearPanels.css --u2-gp-equip-ground), its label in the kit\'s dark ink, a worn picture 94% of its slot as a bag square\'s; ?equiplook=0 the dark well and 72%.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); }); } },
   { id: 'dash-gear-look-bag', group: 'Dashboard', title: 'Gear: a look from the bag', about: 'A bag square tapped: the Inventory stays left, the square pushed in; the Equipped panel\'s place is its summary (a piece you could wear: your DPS or Damage cut now and if equipped, the change, Details and Equip).',
     run: async ({ P }) => {
@@ -914,6 +930,9 @@ export const STATES = [
       await wait(P, 400);
       return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
     } },
+  /* v2.3.6689: Bro's Equipment door, a showcase (card UI2-gear PR 3) */
+  { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line. Tag 6698: a worn picture 94% of its slot (as Gear\'s); its own ground, not Gear\'s green.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broEquip' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the
@@ -2043,7 +2062,8 @@ export const STATES = [
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
   {
     id: 'ui2-kit', group: 'The new dashboard (in build)', title: 'The new dashboard kit (?uikit=1)',
-    about: 'Not a screen a player meets yet: the new dashboard\'s kit on a page of its own, each piece in every state and two samples (the Bro landing, the Character page with your real data), each inside a box the size of the band on this screen.',
+    /* v2.3.6780 (card UI3-kit): its about brought up to date (the three weights, the owner's palette, ?ui2look=0) */
+    about: 'Not a screen a player meets yet: the new dashboard\'s kit on a page of its own, each piece in every state and two samples (the Bro landing, the Character page with your real data), each inside a box the size of the band on this screen. Since 2026-11-26 it wears the owner\'s palette (base #14232F, navigation #223D53, recessed #0E1D29, line #4B6275, text #F1F0E9, gold #EAC474) and shows the three weights side by side: raised only for a door or an action, a stat sunk with a large number (a chevron only when it opens), facts flat in one container. Its header links ?ui2look=0, the look before, to compare.',
     run: async ({ P }) => {
       const u = new URL(P.page.url());
       u.searchParams.set('uikit', '1');

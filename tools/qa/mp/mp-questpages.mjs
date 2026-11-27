@@ -28,6 +28,8 @@
  *      back the old page (the list beside the quest);
  *  10. no page errors.
  * Pictures: tools/qa/mp/out/questpages-*.png (docs/shots/questpages-*.webp).
+ * v2.3.6691 (card UI2-quests): these pages are today's screen under `?ui2=0` (the new dashboard draws
+ * the landing and a quest's own page: mp-ui2quests), so every player here passes `ui2=0`.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -40,7 +42,7 @@ const PHONE = { width: 390, height: 844 };
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Pages', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });
+  const P = await H.newPlayer(browser, { name: 'Pages', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'ui2=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 300)));
   const stopAlive = H.keepAlive(P);
@@ -237,7 +239,7 @@ async function body({ P, wsPort, webPort, browser, rec, OUT }) {
   await P.page.waitForTimeout(800);
 
   /* ── 9a. a computer (the judges play on computers): the band is the same pages, the words say "click" ── */
-  const D = await H.newPlayer(browser, { name: 'DeskPages', wsPort, webPort, viewport: { width: 1280, height: 800 }, dpr: 2, world: 'wheel', wide: true });
+  const D = await H.newPlayer(browser, { name: 'DeskPages', wsPort, webPort, viewport: { width: 1280, height: 800 }, dpr: 2, world: 'wheel', wide: true, query: 'ui2=0' });
   try {
     await H.enterWorld(D);
     await H.waitFor(D, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: 'computer: in the world' }).catch(() => null);
@@ -255,7 +257,7 @@ async function body({ P, wsPort, webPort, browser, rec, OUT }) {
   } finally { await D.ctx.close().catch(() => {}); }
 
   /* ── 9. the switch ── */
-  const O = await H.newPlayer(browser, { name: 'OldPage', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', query: 'questpages=0' });
+  const O = await H.newPlayer(browser, { name: 'OldPage', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', query: 'ui2=0&questpages=0' });
   try {
     await H.enterWorld(O);
     await H.waitFor(O, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: 'old page: in the world' }).catch(() => null);

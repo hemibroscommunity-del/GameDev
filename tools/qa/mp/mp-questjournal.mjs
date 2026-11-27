@@ -44,7 +44,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.6620 (card QP): the Quests tab is in pages now (mp-questpages plays them); this plays the old
      page, the list beside the quest, behind its switch `?questpages=0`: what it checked before, it checks
      there still (the switch's off-ramp kept whole) */
-  const P = await H.newPlayer(browser, { name: 'Journal', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'questpages=0' });
+  const P = await H.newPlayer(browser, { name: 'Journal', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'ui2=0&questpages=0' });   /* v2.3.6691: the older list lives under ?ui2=0 only (card UI2-quests) */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 300)));
   const stopAlive = H.keepAlive(P);

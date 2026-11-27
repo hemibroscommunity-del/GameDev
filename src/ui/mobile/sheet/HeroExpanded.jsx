@@ -49,6 +49,7 @@ import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS } from '..
 import { BroCard } from './BroCard.jsx';                                      /* v2.3.4172: the Bro page, as the owner drew it */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 import { sw } from '@/game/switches.js';   /* v2.3.5741: the page's one reader (card T2) */
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -1995,7 +1996,7 @@ export const HeroExpanded = () => {
                (the heads' counts were drawn in it too until v2.3.3559, which
                gave them the Points sheet's own gold and grey numerals). */
             const BADGE = '/icons/ui/badge/';
-            const BADGE_V = '?v=2.3.2670';
+            /* v2.3.6743: BADGE_V ('?v=2.3.2670') is gone: each numeral asks assetUrl (card KEEP PR 3b) */
             const statCell = (st, cat) => {
               const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -2088,7 +2089,7 @@ export const HeroExpanded = () => {
                     opacity: pts > 0 ? 1 : 0.55, pointerEvents: 'none',
                   }}>
                     {String(Math.max(0, pts | 0)).split('').map((ch, i) => (
-                      <img key={i} alt="" draggable={false} src={`${BADGE}w${ch}.png${BADGE_V}`}
+                      <img key={i} alt="" draggable={false} src={assetUrl(`${BADGE}w${ch}.png`)}
                         style={{ height: Math.round(NUM_FS * 1.15), width: 'auto', marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none' }} />
                     ))}
                   </span>
@@ -2203,7 +2204,7 @@ export const HeroExpanded = () => {
               const full = ws.reduce((a, w) => a + w, 0) - lap * (s.length - 1);
               const k = full > maxW ? maxW / full : 1;
               return s.split('').map((ch, i) => (
-                <img key={i} alt="" draggable={false} src={`${POINTS_ART_DIR}${tone}-${ch}.png?v=${POINTS_ART_V}`}
+                <img key={i} alt="" draggable={false} src={assetUrl(`${POINTS_ART_DIR}${tone}-${ch}.png?v=${POINTS_ART_V}`)}
                   style={{
                     display: 'block', flex: 'none', height: +(h * k).toFixed(2), width: +(ws[i] * k).toFixed(2),
                     marginLeft: i ? -(lap * k) : 0, pointerEvents: 'none',
@@ -2408,7 +2409,7 @@ export const HeroExpanded = () => {
                     opacity: pts > 0 ? 1 : 0.55, pointerEvents: 'none',
                   }}>
                     {String(Math.max(0, pts | 0)).split('').map((ch, i) => (
-                      <img key={i} alt="" draggable={false} src={`${BADGE}w${ch}.png${BADGE_V}`}
+                      <img key={i} alt="" draggable={false} src={assetUrl(`${BADGE}w${ch}.png`)}
                         style={{ height: DESK_NUM_H, width: 'auto', marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none' }} />
                     ))}
                   </span>

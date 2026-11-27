@@ -1,0 +1,107 @@
+/* ═══ v2.3.6691: QUESTS UNDER THE NEW DASHBOARD (card UI2-quests; QuestsLanding.jsx, QuestPage.jsx) ═══
+ * Built from the kit (src/ui/kit/ui2.css: its tokens, its raised and
+ * recessed faces); only the pages' own arrangement is here.  Raised: what
+ * opens something (a quest's row, a door, Rewards); recessed: a fact (the
+ * steps behind you, NOW).  Every press is 44 px or more; no word under 11 px.
+ * THE ROOM (the master notes' part 3): about 172 px of page upright at
+ * 390 x 844, 63 sideways (`is-short`, from the page's own ResizeObserver). */
+
+/* ── the landing: the rows scroll in their zone, the doors under them ── */
+.ui2.u2-ql { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--ui2-space-m); }
+.ui2 .u2-ql-list {
+  flex: 1 1 auto; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  display: flex; flex-direction: column; gap: var(--ui2-space-s);
+}
+.ui2 .u2-ql-row {
+  flex: 0 0 auto; min-height: var(--ui2-size-touch); width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: var(--ui2-space-l);
+  padding: var(--ui2-space-xs) var(--ui2-space-l); border-radius: var(--ui2-radius-button); font-family: inherit; text-align: left; cursor: pointer;
+  touch-action: manipulation;
+}
+.ui2 .u2-ql-face { width: 32px; height: 32px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; border-radius: var(--ui2-radius-slot); }
+.ui2 .u2-ql-face.is-none { display: block; }
+.ui2 .u2-ql-words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.ui2 .u2-ql-title { font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55); }
+.ui2 .u2-ql-sub { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-ql-count { flex: 0 0 auto; font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); font-variant-numeric: tabular-nums; }
+.ui2 .u2-ql-count.is-full, .ui2 .u2-ql-ready { color: var(--ui2-text-gold); }
+.ui2 .u2-ql-ready { flex: 0 0 auto; font-size: var(--ui2-fs-label); font-weight: 700; white-space: nowrap; }
+.ui2 .u2-ql-star { flex: 0 0 auto; font-size: var(--ui2-fs-value); color: var(--ui2-text-gold); }
+.ui2 .u2-ql-doors { flex: 0 0 auto; display: flex; gap: var(--ui2-space-m); min-width: 0; }
+.ui2 .u2-ql-door {
+  flex: 1 1 0; min-width: 0; min-height: var(--ui2-size-touch); display: flex; align-items: center; justify-content: center; gap: var(--ui2-space-s);
+  padding: 0 var(--ui2-space-l); border-radius: var(--ui2-radius-button); font-family: inherit; cursor: pointer; touch-action: manipulation;
+}
+.ui2 .u2-ql-door-word { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* sideways: the doors at the rows' end */
+.ui2.u2-ql.is-short { flex-direction: row; }
+.ui2.u2-ql.is-short .u2-ql-doors { flex: 0 1 auto; align-self: flex-start; }
+.ui2.u2-ql.is-short .u2-ql-door { flex: 0 0 auto; }
+/* Completed, On offer, Daily: a list under the header */
+.ui2.u2-ql-page { flex: 1 1 auto; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: var(--ui2-space-s); }
+
+/* ── a quest's page ── */
+.ui2.u2-qp { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 3px; }
+/* the name and its state on one line (v2.3.6691: the state, a full count and the steps read the kit's text tokens: R9 of ui3-weights knows no done or full meaning) */
+.ui2 .u2-qp-id { flex: 0 0 auto; display: flex; align-items: center; gap: var(--ui2-space-m); min-width: 0; padding: 0 var(--ui2-space-s); height: 22px; }
+.ui2 .u2-qp-face { width: 22px; height: 22px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; border-radius: var(--ui2-radius-slot); }
+.ui2 .u2-qp-title { flex: 0 1 auto; min-width: 0; font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qp-state { flex: 0 1 auto; min-width: 0; font-size: var(--ui2-fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qp-status { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ui2-text-ivory); }
+.ui2 .u2-qp-status.is-ready { color: var(--ui2-text-gold); }
+.ui2 .u2-qp-status.is-done { color: var(--ui2-text-muted); }
+.ui2 .u2-qp-status.is-available { color: var(--ui2-text-muted); }
+.ui2 .u2-qp-giver { color: var(--ui2-text-muted); }
+/* the steps behind you: they scroll, the page opens on the last */
+.ui2 .u2-qp-steps { flex: 1 1 auto; min-height: 20px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column; gap: var(--ui2-space-xs); padding-top: 1px; padding-bottom: 1px; }
+.ui2 .u2-qp-step { flex: 0 0 auto; display: flex; align-items: center; gap: var(--ui2-space-m); min-height: 18px; }
+.ui2 .u2-qp-tick { flex: 0 0 auto; width: 15px; height: 15px; border-radius: 8px; background: #59BF91; color: var(--ui2-text-on-action); font-size: var(--ui2-fs-small); font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.ui2 .u2-qp-step-text { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-body); color: var(--ui2-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qp-step-item { width: 18px; height: 18px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; }
+/* NOW: dominant, never behind a scroll */
+.ui2 .u2-qp-now {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--ui2-space-l); min-width: 0; padding-top: 3px; padding-bottom: 3px;
+  border-color: var(--ui2-text-gold); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(234, 198, 117, 0.35);
+}
+.ui2 .u2-qp-now-pic { width: 30px; height: 30px; flex: 0 0 auto; object-fit: contain; image-rendering: pixelated; }
+.ui2 .u2-qp-now-words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ui2 .u2-qp-now-top { display: flex; align-items: baseline; gap: var(--ui2-space-m); min-width: 0; }
+.ui2 .u2-qp-now-k { flex: 0 0 auto; font-size: var(--ui2-fs-small); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ui2-text-gold); }
+.ui2 .u2-qp-now-text { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-value); font-weight: 700; line-height: 1.2; color: var(--ui2-text-ivory); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ui2 .u2-qp-now-low { display: flex; align-items: center; gap: var(--ui2-space-l); min-width: 0; }
+.ui2 .u2-qp-where { flex: 1 1 auto; display: flex; align-items: center; gap: var(--ui2-space-s); min-width: 0; font-size: var(--ui2-fs-body); color: var(--ui2-text-muted); }
+.ui2 .u2-qp-where-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qp-bar { flex: 0 0 64px; }
+.ui2 .u2-qp-now-count { flex: 0 0 auto; font-size: var(--ui2-fs-value); font-weight: 800; line-height: 1.1; color: var(--ui2-text-ivory); font-variant-numeric: tabular-nums; }
+.ui2 .u2-qp-now-count.is-full { color: var(--ui2-text-gold); }
+.ui2 .u2-qp-more { flex: 0 0 auto; font-size: var(--ui2-fs-small); line-height: 13px; font-style: italic; color: var(--ui2-text-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qp-more.is-note { font-style: normal; color: var(--ui2-text-gold); }
+.ui2 .u2-qp-more.is-next { font-style: normal; text-align: left; padding: 0 var(--ui2-space-s); white-space: normal; line-height: 1.25; }
+.ui2 .u2-qp-acts { flex: 0 0 auto; margin-top: auto; min-width: 0; }
+.ui2 .u2-qp-acts .u2-actrow > .u2-act { flex: 1 1 0; min-width: 0; }
+.ui2 .u2-qp-door {
+  flex: 1 1 0; min-width: 0; min-height: var(--ui2-size-touch); display: flex; align-items: center; justify-content: center; gap: var(--ui2-space-s);
+  padding: 0 var(--ui2-space-l); border-radius: var(--ui2-radius-button); font-family: inherit; font-size: var(--ui2-fs-label); font-weight: 700;
+  color: var(--ui2-text-ivory); cursor: pointer; touch-action: manipulation;
+}
+/* a shorter upright band (375 x 667): what to do on one line (its whole words on a long press: the title) */
+.ui2.u2-qp.is-tight .u2-qp-now-text { -webkit-line-clamp: 1; }
+/* a done quest: its history takes the room NOW leaves */
+.ui2.u2-qp[data-quest-ui2-status='done'] .u2-qp-steps { flex: 1 1 auto; }
+/* sideways: the name and the steps on the left, NOW and its actions beside them */
+.ui2.u2-qp.is-short { flex-direction: row; gap: var(--ui2-space-m); }
+.ui2 .u2-qp-side { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--ui2-space-xs); overflow: hidden; }
+.ui2 .u2-qp-main { flex: 1.8 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: row; align-items: stretch; gap: var(--ui2-space-m); }
+.ui2.u2-qp.is-short .u2-qp-main .u2-qp-now { flex: 1 1 0; min-width: 0; padding-top: var(--ui2-space-xs); padding-bottom: var(--ui2-space-xs); }
+.ui2.u2-qp.is-short .u2-qp-now-text { -webkit-line-clamp: 1; }
+/* the buttons' row never narrower than its buttons: NOW gives the room (it was let shrink, and Rewards went past the band) */
+.ui2.u2-qp.is-short .u2-qp-acts { margin-top: 0; flex: 0 0 auto; align-self: center; }
+.ui2.u2-qp.is-short .u2-qp-id { height: auto; }
+.ui2.u2-qp.is-short .u2-qp-acts .u2-actrow { gap: var(--ui2-space-s); }
+.ui2.u2-qp.is-short .u2-qp-acts .u2-actrow > .u2-act, .ui2.u2-qp.is-short .u2-qp-door { flex: 0 0 auto; padding-left: var(--ui2-space-l); padding-right: var(--ui2-space-l); min-width: var(--ui2-size-touch); }
+/* v2.3.6691 (the mend of sitting 71): a floor, never under the touch size: with main's kit spacing (UI3) merged the
+   sideways "Map" measured 42 px wide (mp-ui2quests 6, 844 x 390 and 667 x 375) */
+.ui2.u2-qp.is-short .u2-qp-steps { min-height: 0; }
+
+/* ── Rewards ── */
+.ui2 .u2-qr-title { flex: 0 0 auto; font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-ivory); padding: 0 var(--ui2-space-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-qr-tiles { flex: 0 0 auto; display: flex; gap: var(--ui2-space-s); }

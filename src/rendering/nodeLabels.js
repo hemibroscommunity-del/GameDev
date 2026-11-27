@@ -61,8 +61,8 @@
  */
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { gatherNeed } from '../data/lifeSkills.js';
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
-const ICON_V = '?v=2.3.4222';   /* InventoryPanel ITEMS_V: the same files, the same cache */
 /* The bag's tool pictures, and each one's opaque box in its own pixels
    (measured off the webps' alpha): the rod is a thin line in a wide margin
    and read as a sliver until cropped to it. */
@@ -129,7 +129,7 @@ function load(key) {
       if (typeof img.decode === 'function') img.decode().then(done, done); else done();
     };
     img.onerror = () => resolve();
-    img.src = url + ICON_V;
+    img.src = assetUrl(url);   /* v2.3.6743: the file's own version, the bag's address (the hand key ICON_V is gone) */
   });
 }
 

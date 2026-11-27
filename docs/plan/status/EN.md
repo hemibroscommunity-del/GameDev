@@ -1,32 +1,36 @@
 card: EN
-branch: claude/plan-en-bars (6206), then claude/plan-en-fishsword (6208)
-prs: 6206 (the bars) #2358 ready; 6208 (a peer's sword while fishing) opening as a draft, stacked on it
+branch: claude/plan-en-deathshadow (6209)
+prs: 6209 (a dying monster's shadow under its feet) opening as a draft
 state: working
 
 ## Done
 
-- 6206 (#2358, card PR 1): the mana and energy bars whole again, no
-  shadow of theirs (`entity-ui.js _drawResourceBar`, `casters.js`);
-  `mp-resbars` red on main, green on the branch at res 1 to 3, on the test
-  box. Earlier PRs of card EN (6200 to 6205, 6207): merged.
-- 6208 (card PR 2, `claude/plan-en-fishsword`, stacked on #2358): another
-  player's weapon put away while they fish or mine. One rule,
-  `src/game/poseHides.js`, asked by my bro's draw and a peer's; hidden the
-  frame the pose starts, shown the frame it ends, written only on the
-  change (TRAPS §218). Suite `pose-hides` (25 of 25 mutants); `mp-fishpeer`
-  red on PR 1's code, green on this; ghost-audit sample (fish, mine) green.
+- Earlier PRs of card EN (6200 to 6208): merged or with the gatekeeper.
+- 6209 (card EN-deathshadow, the owner's bug of 11-27): the skeleton's
+  death shadow hung ~110 px under it. CAUSE: the shadow is cast from the
+  frame's cell bottom (less the look's at-rest `feetRow`); a death strip is
+  cut at its own scale and place, the skeleton's first frame ending on row
+  126 of 256. MEND: a dying body's frame says its own ground, its lowest
+  painted row, read by the strip packer's existing scan (`trimRules.js`
+  `by`, `stripPack.js` `feet`, `zoneTextures.js` `__btFoot`), shown through
+  `src/game/frameFoot.js` `showDeathFrame` and asked by
+  `lightfx/casters.js`. `mp-deathshadow` red on main (worst 103 px), green
+  on this; the sample of seven look families green; suite `frame-foot`.
+  Spec `docs/specs/death-shadow.md`.
 
 ## Next
 
-- (card EN's lines done once 6208 lands).
+- (card EN's lines done once 6209 lands).
 
 ## Found
 
+- The skeleton's death picture rises about 70 px before its bones fall (the
+  art, `public/sprites/monsters/skeleton/death.png`): not moved.
+- The storm eye's death frames rise as it breaks up (row 229 to 166): its
+  shadow follows them up now.
 - (from 6200-6207, still true) the belt's gear sheet first built on the page,
-  gearSheets.js `getGearFrame > buildSheet > _buildShirtOnWorker`
-  (`gear-sheet`, 34.7-40.6 ms at peer on budget-android).
-- `mp-membudget`'s heap line (38.5) is main's own edge (38.3-39.1).
+  gearSheets.js `getGearFrame > buildSheet > _buildShirtOnWorker`.
 
 ## Needs
 
-- (none). The orchestrator: part 19 (session_01LccHajeEAJmaq9tiJgpFT9).
+- (none). The orchestrator: part 35 (session_01LccHahcg6Af8HVwCqF2XRV).

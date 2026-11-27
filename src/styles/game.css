@@ -2561,16 +2561,24 @@ html{--bt-hud-base:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,
    party chip under the status column's two rows (its fallback, 92 px, and
    the column's, are today's, so ?hud=0 moves nothing).  The numbers are
    src/game/charHud.js CHAR_HUD's (stack 56, sideways 52; the line's hit 44). */
+/* v2.3.6790 (card UI3, PR 10): the owner, 2026-11-27, "Leave only character
+   hud in top left corner": the quest line is gone from the world unless
+   ?questline=1 (QuestCard.jsx writes html[data-questline="1"] while it draws
+   it), so the status column stands right under the HUD's gap, and the party
+   chip under the column's two rows.  The numbers are src/game/hudCorner.js
+   hudCorner()'s (tools/guards/hud-corner.test.mjs holds them equal). */
 html[data-charhud="1"]{--bt-charhud-h:56px;
-  --bt-status-top:calc(var(--bt-hud-top) + 44px);
+  --bt-status-top:var(--bt-hud-top);
   --bt-party-top:calc(var(--bt-status-top) + 48px)}
+html[data-charhud="1"][data-questline="1"]{--bt-status-top:calc(var(--bt-hud-top) + 44px)}
 /* sideways (a short screen) the room above the controller is about 140 px:
-   the status column sits 4 px under the line as drawn (30 px), and the party
-   chip moves up BESIDE the HUD (right of its 176 px, under the bar), clear of
-   the stick and the minimap (mp-charhud 5, 667 x 375) */
+   the status column sits under the HUD (with ?questline=1, 4 px under the
+   line as drawn, 30 px), and the party chip moves up BESIDE the HUD (right of
+   its 176 px, under the bar), clear of the stick and the minimap (mp-charhud
+   5, 667 x 375) */
 @media (max-height:480px){html[data-charhud="1"]{--bt-charhud-h:52px;
-  --bt-status-top:calc(var(--bt-hud-top) + 34px);
-  --bt-party-top:var(--bt-hud-base);--bt-party-left:192px}}
+  --bt-party-top:var(--bt-hud-base);--bt-party-left:192px}
+  html[data-charhud="1"][data-questline="1"]{--bt-status-top:calc(var(--bt-hud-top) + 34px)}}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
@@ -2591,6 +2599,58 @@ html[data-charhud="1"]{--bt-charhud-h:56px;
   font:700 calc(12px * var(--zk))/1.1 'Source Sans 3',sans-serif;text-shadow:none}
 .bt-zone-header__balance img{width:calc(18px * var(--zk));height:calc(18px * var(--zk));display:block;
   image-rendering:pixelated;object-fit:contain}
+/* ═══ v2.3.6786: THE GOLD, BETWEEN BROTOWN AND THE SPIN (card UI3, PR 7) ═══
+   (ZoneHeader.jsx, game/topGold.js) The owner, 2026-11-26: "Move gold amount
+   in between daily spin and brotown on top bar".  A coin and the number in
+   the old purse's face (gold #EAC675, Source Sans 3, tabular numbers), LEFT
+   of the spin.  Every width here is FIXED, never the text's: the number's box
+   holds Gear's longest form (five characters: "9,999", "12.4K", "2.55M"), and
+   the spin's slot is the button's width whether it is shown or not (no cap,
+   the window open: the corner stays empty, the gold does not slide into it).
+   So the right column is one known width, and the door's column takes the
+   same as its min-width (the :has rule): the name stays centred on the
+   SCREEN (v2.3.1333), with no layout read.  Transform and opacity only for
+   its pops (.bt-purse-flip / .bt-purse-bump): this rail is over the WebGL
+   canvas (TRAPS section 42).  `?topgold=0` draws none of it: the bar as before. */
+.bt-zone-header{--bt-bar-gold-coin:calc(18px * var(--zk));--bt-bar-gold-num:calc(42px * var(--zk));
+  --bt-bar-spin-w:calc(86px * var(--zk));
+  --bt-bar-side:calc(var(--bt-bar-gold-coin) + 3px * var(--zk) + var(--bt-bar-gold-num) + 4px + var(--bt-bar-spin-w))}
+.bt-zone-header:has(.bt-zone-header__balance--gold) .bt-zone-header__left,
+.bt-zone-header__balance--gold{min-width:var(--bt-bar-side);width:var(--bt-bar-side);box-sizing:border-box}
+.bt-zone-header__gold{flex:none;display:flex;align-items:center;gap:calc(3px * var(--zk));pointer-events:none;
+  color:#EAC675;font:800 calc(15px * var(--zk))/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.78)}
+.bt-zone-header__balance .bt-zone-header__gold img{flex:none;width:var(--bt-bar-gold-coin);height:var(--bt-bar-gold-coin)}
+.bt-zone-header__goldnum{display:inline-block;width:var(--bt-bar-gold-num);text-align:left;overflow:visible}
+.bt-zone-header__spinslot{flex:none;display:flex;align-items:center;justify-content:flex-end}
+.bt-zone-header__balance--gold .bt-zone-header__spinslot{width:var(--bt-bar-spin-w)}
+/* v2.3.6786: AN UPRIGHT PHONE (under 600 px across: every sideways phone is
+   wider) has no room for the coin BESIDE its number: at 375 x 667 the logo
+   and the spin leave 37 px between them, and the gold beside its number
+   needs about 72, twice over with the door's column matched.  The
+   orchestrator's pick (A) of 2026-11-26: the coin stacked OVER its number
+   (the number 11 x --zk, the same gold face), the gold 28 x --zk across; the
+   name still centred on the screen, the logo shrinking with the middle (it
+   already did on a narrow phone, v2.3.4263: about 85 px of its 102 at 375,
+   88 of 106 at 390), the spin's button untouched.  The owner's to change:
+   (B) the spin's round wheel picture instead of its plate, (C) the centring
+   given up. */
+@media (max-width:599px){
+  .bt-zone-header{--bt-bar-gold-col:calc(28px * var(--zk));
+    --bt-bar-side:calc(var(--bt-bar-gold-col) + 3px + var(--bt-bar-spin-w))}
+  .bt-zone-header__balance--gold{gap:3px}
+  .bt-zone-header__gold{flex-direction:column;justify-content:center;gap:1px;width:var(--bt-bar-gold-col);
+    font-size:calc(11px * var(--zk))}
+  .bt-zone-header__balance .bt-zone-header__gold img{width:calc(16px * var(--zk));height:calc(16px * var(--zk))}
+  .bt-zone-header__goldnum{width:auto;text-align:center}
+  /* while the XP bar holds the middle (under ?hud=0 only: the HUD's own bar
+     has the weapon's XP otherwise), the gold steps out for its seconds and
+     the door's column goes back to its own width, so the XP bar has the room
+     it had before -- as the AP chip did on a narrow bar (v2.3.3765) */
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__gold{display:none}
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__left,
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__balance--gold{min-width:calc(38px * var(--zk));width:auto}
+}
 /* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:
    replaces the bracketed-checkmark art, which read as UI chrome). */
 .bt-worn-dot{position:absolute;top:3px;right:3px;width:10px;height:10px;
@@ -7768,6 +7828,18 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* A cooldown that ends says so once (useReadyFlash) */
 @keyframes bt-skin-flash{0%{opacity:0}28%{opacity:1}100%{opacity:0}}
 .bt-skin[data-flash="1"] .bt-skin-glow{animation:bt-skin-flash 700ms ease-out 1}
+/* v2.3.6646 (card PAD part 11; the owner, 2026-11-26: "Turn steel"): an
+   older button in the controller's tier (Whirlwind, Shield Bash:
+   controlSkin.jsx tierMetal) wears the steel sheet's rim, never the gold:
+   the ring its measured gradient (padSkin.js PAD_STEEL), pressed a step
+   darker, the edges cool, the flash of a cooldown's end the steel's cold
+   light.  Cooldown, Disabled and Quiet keep their greys and their arcs: the
+   states read as before.  `?padgold=1` drops the attribute. */
+.bt-skin[data-metal="steel"][data-state="normal"] .bt-skin-ringc,.bt-skin[data-metal="steel"][data-state="ready"] .bt-skin-ringc,.bt-skin[data-metal="steel"][data-state="on"] .bt-skin-ringc{stroke:url(#btSkinSteel) #526B81}
+[data-pressed="1"] .bt-skin[data-metal="steel"][data-state] .bt-skin-ringc{stroke:url(#btSkinSteelPress) #354E66}
+.bt-skin[data-metal="steel"] .bt-skin-edge{stroke:rgba(4,9,14,.92)}
+.bt-skin[data-metal="steel"][data-state="normal"] .bt-skin-bevel-hi{stroke:rgba(222,235,246,.62)}
+.bt-skin[data-metal="steel"] .bt-skin-glow{background:radial-gradient(closest-side,rgba(222,235,246,0) 0,rgba(222,235,246,0) var(--glow-in),rgba(222,235,246,.78) calc(var(--glow-in) + 3%),rgba(166,189,213,.40) calc(var(--glow-in) + 16%),rgba(82,107,129,0) 100%)}
 @media (prefers-reduced-motion: reduce){
   .bt-skin,.bt-skin-face::after{transition:none}
   .bt-skin[data-flash="1"] .bt-skin-glow{animation:none}

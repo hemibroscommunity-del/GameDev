@@ -63,6 +63,7 @@ import {
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/itemDetail.js';   /* v2.3.6321: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* v2.3.3516: the card's line for a gem, a shard with a gem in it, or the Rare
    Gem -- null for anything else */
@@ -157,24 +158,26 @@ const tierLabel = (wpn) => weaponTierLabel(wpn);
 /* Pick a thumb URL for a weapon based on type.
    v2.3.1325 (owner icon sheets): painted item set — greatsword and
    sword split after sharing one icon since v2.3.210. */
-/* v2.3.1710: bumped so a browser holding the cached bag drops the emoji-vest
-   render and fetches the real chest-plate torso art (owner: "it's an emoji
-   vest").  Lives in THREE files — keep them in lockstep or one surface serves
-   stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.4222'; /* v2.3.1774: pine shield icon */
+/* v2.3.6743: the hand key ITEMS_V ('?v=2.3.4222') is gone from every line
+   but the bow's (card KEEP PR 3b): a written-out icon is stamped with its
+   file's version by the build, one built from parts asks assetUrl
+   (InventoryPanel.jsx says more).  The bow's line stays as it was because
+   server/test/owner-icons.test.mjs 8g reads its text, and a server file is
+   not this card's (keep-sfx.test.mjs LEFT lists it). */
+const ITEMS_V = '?v=2.3.4222';
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
-  if (wpn.type === 'staff')      return `/icons/items/staff.webp${ITEMS_V}`;
+  if (wpn.type === 'staff')      return '/icons/items/staff.webp';
   const metal = weaponMaterial(wpn.type, wpn.gearBase); /* v2.3.1760 */
-  if (wpn.type === 'greatsword') return `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`;
-  return `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
+  if (wpn.type === 'greatsword') return assetUrl(metalIconPath('/icons/items/great-sword.webp', metal));
+  return assetUrl(metalIconPath('/icons/items/sword.webp', metal));
 }
 
 function shieldThumb(shield) {
   /* v2.3.1325: every shield tier shows the painted shield (was
      wood-only + glyph fallback). */
-  return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
+  return shield ? '/icons/items/shield.webp' : null;
 }
 
 /* v2.3.3481: the 2026-10-19 UI review -- a shield card said "Hold to block",
@@ -489,7 +492,7 @@ function resolveTarget(target) {
          img-fails fallback the popup already renders.
          v2.3.1758: through the material table, so a copper torso's card shows
          the copper torso. */
-      thumb: `${armorIconFor('chest', ar && ar.mat)}${ITEMS_V}`,
+      thumb: armorIconFor('chest', ar && ar.mat),
       glyph: '\u{1F9BA}',
       name: ar.name || say(SAY, 'itemDetail.armor'),
       info: say(SAY, 'itemDetail.drLine', { pct: Math.round(dr * 100) }),
@@ -518,7 +521,7 @@ function resolveTarget(target) {
          carried `thumb: greaves.webp` since v2.3.1701 — the pair are one
          armour set and must read as one.
          v2.3.1758: ...and both read the piece's own metal. */
-      thumb: `${armorIconFor('chest', ar && ar.mat)}${ITEMS_V}`,
+      thumb: armorIconFor('chest', ar && ar.mat),
       glyph: '\u{1F9BA}',
       name: ar.name || say(SAY, 'itemDetail.armor'),
       info: say(SAY, 'itemDetail.drLine', { pct: Math.round(dr * 100) }),
@@ -554,7 +557,7 @@ function resolveTarget(target) {
       : null;
     return {
       lockKey: 'stashLegs_' + (target.index || 0),
-      thumb: `${armorIconFor('legs', ar && ar.mat)}${ITEMS_V}`, /* v2.3.1758 */
+      thumb: armorIconFor('legs', ar && ar.mat), /* v2.3.1758 */
       glyph: '\u{1F456}',
       name: ar.name || say(SAY, 'itemDetail.greaves'),
       info: say(SAY, 'itemDetail.drLine', { pct: Math.round(dr * 100) }),
@@ -647,8 +650,8 @@ function gearName(slot, gearId) {
 /* v2.3.1325: painted item set for the worn-gear pieces. */
 function gearThumb(gearId) {
   /* v2.3.1758: armour resolves through the one table; the shirt is not a metal. */
-  return gearId === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
-    : gearIdIcon(gearId) ? `${gearIdIcon(gearId)}${ITEMS_V}`
+  return gearId === 'tshirt' ? '/icons/items/cloth-shirt.webp'
+    : gearIdIcon(gearId) ? gearIdIcon(gearId)
     : null;
 }
 
@@ -1144,7 +1147,7 @@ export const ItemDetailPopup = () => {
         const shirtOn = getEquip('shirt') !== 'none';
         rows.push({
           key: 'shirt', name: say(SAY, 'itemDetail.shirt'), sub: say(SAY, 'itemDetail.shirtSub'),
-          iconSrc: `/icons/items/cloth-shirt.webp${ITEMS_V}`, on: shirtOn, /* v2.3.1325 */
+          iconSrc: '/icons/items/cloth-shirt.webp', on: shirtOn, /* v2.3.1325 */
           /* v2.3.1070: drive the MASTER shirt store (setShirt) so the swing
              renderer -- which reads getShirt() -- sees the change; setEquip
              keeps the gear mirror in lockstep even when setShirt dedupes. */
@@ -1356,10 +1359,10 @@ export const ItemDetailPopup = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {/* v2.3.1758: the metal of whichever piece this row is about —
                 the worn one, or the one waiting in the bag. */}
-            {layerRow('armor', `${armorIconFor('chest', (armorOn ? R2.armor : stashedChest) && (armorOn ? R2.armor : stashedChest).mat)}${ITEMS_V}`,
+            {layerRow('armor', armorIconFor('chest', (armorOn ? R2.armor : stashedChest) && (armorOn ? R2.armor : stashedChest).mat),
               armorOn ? ((R2.armor && R2.armor.name) || say(SAY, 'itemDetail.armor')) : (stashedChest ? (stashedChest.name || say(SAY, 'itemDetail.armor')) : say(SAY, 'itemDetail.noChest')),
               say(SAY, 'itemDetail.armorTop'), armorOn, !!stashedChest, toggleArmor)}
-            {layerRow('shirt', `/icons/items/cloth-shirt.webp${ITEMS_V}`,
+            {layerRow('shirt', '/icons/items/cloth-shirt.webp',
               say(SAY, 'itemDetail.shirt'), say(SAY, 'itemDetail.shirtUnder'), shirtOn, true, toggleShirt)}
           </div>
         </div>
@@ -1427,7 +1430,7 @@ export const ItemDetailPopup = () => {
             background: on ? '#243137' : '#19252A',
             border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
           }}>
-            <img src={`${armorIconFor('legs', (on ? (R2 && R2.legsArmor) : stashedLegs) && (on ? (R2 && R2.legsArmor) : stashedLegs).mat)}${ITEMS_V}`} alt={say(SAY, 'itemDetail.greaves')} draggable={false} /* v2.3.1758 */
+            <img src={armorIconFor('legs', (on ? (R2 && R2.legsArmor) : stashedLegs) && (on ? (R2 && R2.legsArmor) : stashedLegs).mat)} alt={say(SAY, 'itemDetail.greaves')} draggable={false} /* v2.3.1758 */
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>

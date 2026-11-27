@@ -7,6 +7,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: "Not enough gold!" heard */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 /* ═══ DungeonCreatorPanel — custom dungeon builder (workshop) ═══ */
 /* v2.3.863: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen) — the largest panel (~1073 lines).
@@ -434,7 +435,7 @@ export function DungeonCreatorPanel(props) {
           display: 'inline-flex',
           opacity: bossBeaten ? 1 : .35
         }
-      }, lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.3907' /* v2.3.3907: redrawn as the element alone */, '●', 14)), key, !bossBeaten && /*#__PURE__*/React.createElement("span", {
+      }, lsIcon(assetUrl('/icons/ui/elem-' + key + '.webp') /* v2.3.3907: redrawn as the element alone; v2.3.6743: its file's version */, '●', 14)), key, !bossBeaten && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11
         }

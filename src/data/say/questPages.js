@@ -29,4 +29,22 @@ export const SAY = Object.freeze({
   'questPages.pickActive': 'Active',
   'questPages.pickAvailable': 'Available',
   'questPages.back': 'Back',
+  /* v2.3.6691 (card UI2-quests): the frame's Quests pages (dash/QuestsLanding.jsx, dash/QuestPage.jsx) */
+  'questPages.landAria': 'Your quests in hand',
+  'questPages.rowAria': '{title}. Open this quest',
+  'questPages.ready': 'Ready',
+  'questPages.doorDaily': 'Daily',
+  'questPages.doorDone': 'Completed ({n})',
+  'questPages.doorOffers': 'On offer ({n})',
+  'questPages.now': 'Now',
+  'questPages.continues': 'The adventure continues',
+  'questPages.done': 'Done',
+  'questPages.track': 'Track',
+  'questPages.tracked': 'Tracked',
+  'questPages.showOnMap': 'Show on map',
+  'questPages.showOnMapShort': 'Map',   /* sideways, beside NOW */
+  'questPages.rewardsDoor': 'Rewards',
+  'questPages.noRewards': 'This quest names no reward.',
+  'questPages.gone': 'This quest is not in your journal any more.',
+  'questPages.offersNone': 'Nobody has a quest for you right now.',
 });

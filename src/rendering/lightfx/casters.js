@@ -31,6 +31,7 @@ import { wheelObjectCasters } from '../wheelObjects.js';   /* v2.3.3000: the Whe
 import { farmCasters } from '../farmWorld.js';   /* v2.3.3136 */
 import { wheelDoorCasters } from '../wheelDoors.js';   /* v2.3.3566: a dungeon mouth's mound */
 import { MONSTER_VARIANTS } from '../../data/monsterVariants.js';   /* v2.3.4493: a look's `feetRow` */
+import { deathGroundLift } from '../../game/frameFoot.js';   /* v2.3.6209: a dying body's frame's own ground */
 
 /* The local player's stand-in sprites on the effects renderer.  NOT every
    sprite it owns: `slashSprite` is the sword's arc effect, light rather than
@@ -183,7 +184,12 @@ export function collectCasters(S, er, fx, zone) {
          and stays there while a hop lifts the body.  The body is not moved: its place, its bar and
          its hit circle are where they were. */
       const v = d._variantKey ? MONSTER_VARIANTS[d._variantKey] : null;
-      const pad = v && v.feetRow > 0 && v.feetRow < MONSTER_CELL ? (MONSTER_CELL - v.feetRow) * Math.abs(b.scale.y) * d.scale.y : 0;
+      /* v2.3.6209: ...and a DYING body's frame says its own: a death strip is cut at its own scale and
+         place, and the skeleton's first frame ends on row 126 of 256 -- its shadow hung ~110 px under
+         it, "far too low" (the owner).  src/game/frameFoot.js. */
+      const own = deathGroundLift(b);
+      const pad = own >= 0 ? own * d.scale.y
+        : v && v.feetRow > 0 && v.feetRow < MONSTER_CELL ? (MONSTER_CELL - v.feetRow) * Math.abs(b.scale.y) * d.scale.y : 0;
       /* v2.3.4511: ...and a squat look's shadow is its footprint (`shadowFlat`), not cast like a standing
          figure's: the owner, of the frog's once it hung from the feet, "The water frog shadow is too
          far south of the sprite" (shadows.js) */

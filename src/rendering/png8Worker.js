@@ -7,7 +7,8 @@
  * the first time this was measured (the picture way, 8-10 s), and the town's
  * buildings would have been late for the way in's loading screen.
  *
- *   { id, url }  -> { id, ok: true, data (the sheet), image (its url), w, h,
+ *   { id, url }  (v2.3.6744: after { pageOf: id, image }, the page's own address)
+ *                -> { id, ok: true, data (the sheet), image (its url), w, h,
  *                     stride, n, idx, rgb, alpha, bytes (the PNG's own bytes,
  *                     for the one <img> its frames' bases are read off) }
  *                   or { id, ok: false, error } -- the page then loads as a
@@ -67,8 +68,15 @@ async function deflateRaw(u8) {
   return new Uint8Array(await new Response(s).arrayBuffer());
 }
 
+/* v2.3.6744: a sheet's page at its own address (card KEEP PR 3c): the page
+   posts { pageOf: id, image } just before the read { id, url, ... } that
+   uses it (wheelObjects.js readSheet; a worker's messages arrive in order) */
+const _pageAt = new Map();
 self.onmessage = async (ev) => {
   const m = ev.data || {};
+  if (m.pageOf != null && typeof m.image === 'string') { _pageAt.set(m.pageOf, m.image); return; }
+  const ownPage = m.url && _pageAt.has(m.id) ? _pageAt.get(m.id) : null;
+  if (ownPage) _pageAt.delete(m.id);
   try {
     /* v2.3.5257: a strip's pieces, deflated and each checked to come back
        (framePack.js): the page then has nothing to unpack to pack it */
@@ -104,7 +112,7 @@ self.onmessage = async (ev) => {
         const st = (out.w + 3) & ~3;   /* paletteTex.js paletteStride */
         onRow = { ri: plan.ri, n0: plan.n0, added: plan.added, st, out: remapToRow(out.idx, out.w, out.h, plan.to, st) };
       }
-      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h, onRow, palTint },
+      self.postMessage({ id: m.id, ok: true, w: out.w, h: out.h, idx: out.idx, pal: out.pal, cells: out.cells, n: out.n, fileW: dec.w, fileH: dec.h, onRow, palTint, feet: out.feet },   /* v2.3.6209: + feet */
         [out.idx.buffer, out.pal.buffer].concat(onRow ? [onRow.out.buffer, onRow.added.buffer] : [], palTint ? [palTint.buffer] : []));
       return;
     }
@@ -132,7 +140,10 @@ self.onmessage = async (ev) => {
     if (!jr.ok) throw new Error('sheet ' + jr.status);
     const data = await jr.json();
     if (!data || !data.meta || !data.meta.image) throw new Error('no image');
-    const image = imageUrlOf(m.url, data.meta.image);
+    /* v2.3.6744: the page at its OWN address when the page names it (its
+       file's version, wheelObjects.js: card KEEP), never the sheet's
+       version copied onto it; the sheet's folder and query else, as before */
+    const image = ownPage ? new URL(ownPage, jr.url).href : imageUrlOf(m.url, data.meta.image);
     const pr = await fetch(image);
     if (!pr.ok) throw new Error('page ' + pr.status);
     const bytes = new Uint8Array(await pr.arrayBuffer());

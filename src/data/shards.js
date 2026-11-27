@@ -11,6 +11,7 @@
  * InventoryPanel thumbnail will pick it up via the shard_* fallback
  * in thumbFor().  Colors should track the zone palette so the player
  * can read which shard belongs to which zone at a glance. */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* Colors match the artwork in /icons/shards/<key>.webp so the floating
    "+ <Shard>" pickup popup reads the same hue as the gem the player
@@ -76,7 +77,7 @@ export function rollHarvestShard(zoneId) {
 /* Public asset path for a shard key.  Matches the layout produced by
    tools/shards/build_shards.py. */
 export function shardIconPath(shardKey) {
-  return shardKey ? `/icons/shards/${shardKey}.webp?v=2.3.4222`  /* v2.3.4222: new shard art */ : null;
+  return shardKey ? assetUrl(`/icons/shards/${shardKey}.webp`)  /* v2.3.4222: new shard art; v2.3.6743: its file's version, not the hand key */ : null;
 }
 
 /* ═══ v2.3.3516: A SHARD MAY HOLD ITS LAND'S RAW GEM (the worker's

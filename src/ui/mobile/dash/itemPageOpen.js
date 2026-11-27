@@ -19,7 +19,15 @@
  *                          worker's gate asks; equipActions refuses by it).
  * PR 1 opens it from Gear's card only ("Gear's Details opens it first;
  * nothing else moves yet"); the Codex, Bro's Equipment and the tooltips come
- * to it in PR 3 with a `from` of their own. */
+ * to it in PR 3 with a `from` of their own.
+ * v2.3.6689 (PR 3): two more roads, each by src/game/gearShowcase.js: Bro's
+ * Equipment showcase (`from: 'showcase'`, the SAME `cell` source as Gear's
+ * worn cell, so one item reads one set of facts) and the player card's
+ * equipment row (`from: 'profile'`: yours by Gear's cell, another player's by
+ * what the card knows of it, `peer`).  An `owner` makes it another player's:
+ * read-only (itemInspect.js ITEM_PLACES.other), named "<owner>'s".  THE
+ * CODEX's road (its drop card) is the Codex card's own (UI2-codex): it enters
+ * here with `{ from: 'codex', ... }` and itemPageInput's place 'codex'. */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemActionList, runItemAction, entryTarget } from './itemActions.js';
@@ -52,9 +60,12 @@ export const itemPageBus = {
 
 /** Open the one item page over the workspace that is up.  `src`:
  *    { from: 'gear', R, entry }   a bag entry (bagModel), Gear's pick;
- *    { from: 'gear', R, cell }    one of Gear's nine cells ('sword' ... 'amulet'). */
+ *    { from: 'gear', R, cell }    one of Gear's nine cells ('sword' ... 'amulet');
+ *    v2.3.6689: { from: 'showcase' | 'profile', R, cell, owner? } a worn cell
+ *    (another player's with `owner`); { from: 'profile', owner, peer } another
+ *    player's slot as their card knows it (gearShowcase.js). */
 export function openItemPage(src) {
-  if (!src || !src.R) return;
+  if (!src || !(src.R || src.peer)) return;
   _src = Object.freeze({ ...src });
   emit();
   try { dashboardPanelBus.push('item'); } catch (e) { /* no frame: nothing to draw it in */ }
@@ -155,12 +166,30 @@ function fromCell(R, id) {
   };
 }
 
+/* v2.3.6689: another player's slot, as their card knows it (gearShowcase.js
+   profileItemSource): its picture and name only; no numbers are invented */
+const PEER_KIND = Object.freeze({ weapon: 'weapon', shield: 'shield', chest: 'chest', legs: 'legs', cape: 'cape', amulet: 'amulet' });
+function fromPeer(src) {
+  const p = src.peer || {};
+  const kind = Object.prototype.hasOwnProperty.call(PEER_KIND, p.slot) ? PEER_KIND[p.slot] : 'item';
+  return {
+    target: null, card: {}, place: 'other',
+    input: { place: 'other', owner: src.owner, kind, name: p.name || '', art: p.art || null, glyph: null, quality: null, rows: [], line: '', actions: [] },
+  };
+}
+
 /** What the page draws from, or null when the item is gone. */
 export function itemPageInput(src) {
-  if (!src || !src.R) return null;
+  if (!src) return null;
+  if (src.peer) return fromPeer(src);
+  if (!src.R) return null;
   if (src.entry) return fromEntry(src.R, src.entry);
-  if (src.cell) return fromCell(src.R, src.cell);
-  return null;
+  if (!src.cell) return null;
+  const got = fromCell(src.R, src.cell);
+  /* v2.3.6689: another player's worn piece: read-only, named as theirs (no action reaches the
+     runner: inspectItem's ITEM_PLACES.other offers none, and none is handed over) */
+  if (got && src.owner) return { ...got, target: null, unequip: null, place: 'other', input: { ...got.input, place: 'other', owner: src.owner, actions: [] } };
+  return got;
 }
 
 /** Run one of the page's actions: the one runner, as Gear's card runs it.

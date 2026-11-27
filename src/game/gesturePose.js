@@ -300,18 +300,18 @@ export const GESTURE_TOOL_URLS = {
 
 /* ═══ v2.3.2760: THE MINI TOOL -- "a mini sprite of the tool being used" ═══
  * The item icons the bag already shows (a pickaxe, an axe, a rod), so the cue
- * is the same object the player owns -- at the bag's own ?v= (ITEMS_V in
- * InventoryPanel.jsx), because a query string is part of the cache key and a
- * different one would be a second download.  There is no pan icon, so the pan
+ * is the same object the player owns -- at the bag's own address (v2.3.6743:
+ * each file's own version, stamped by the build, where the hand key ITEMS_V
+ * was: a query string is part of the cache key and a different one would be
+ * a second download).  There is no pan icon, so the pan
  * is cell 0 of the pan strip.  `w`/`h` are the image's size; `vb` is the
  * window of it the button shows (the whole icon, or the pan's opaque box in
  * cell 0, measured: x 26..254, y 104..215).
  * Preloaded on the loading screen (gestureCuePreload.js) -- the LAW. */
-const ITEMS_V = '?v=2.3.4222';
 export const GESTURE_CUE_SPRITES = {
-  mining:      { url: '/icons/items/mining-pickaxe.webp' + ITEMS_V, w: 192, h: 192, vb: '0 0 192 192' },
-  woodcutting: { url: '/icons/items/woodcutting-axe.webp' + ITEMS_V, w: 192, h: 192, vb: '0 0 192 192' },
-  fishing:     { url: '/icons/items/fishing-pole.webp' + ITEMS_V, w: 256, h: 256, vb: '0 0 256 256' },
+  mining:      { url: '/icons/items/mining-pickaxe.webp', w: 192, h: 192, vb: '0 0 192 192' },
+  woodcutting: { url: '/icons/items/woodcutting-axe.webp', w: 192, h: 192, vb: '0 0 192 192' },
+  fishing:     { url: '/icons/items/fishing-pole.webp', w: 256, h: 256, vb: '0 0 256 256' },
   cooking:     { url: GESTURE_TOOL_URLS.cooking, w: 2048, h: 256, vb: '25 44 232 232' },
 };
 

@@ -124,8 +124,13 @@ export function dashNavStep(s, a) {
       if (a.replace && t) {
         if (same(t, a.id, a.who)) return s;
         const seq = s.seq + 1;
-        const e = entry(a.id, seq, { ...a, ret: t.ret });
-        return put(s, { seq, [ws]: Object.freeze([...stack.slice(0, -1), e]) });
+        /* v2.3.6691 (the mend of sitting 71): the same page under the opener (quest A's page open, a tap on
+           quest B's pinned card: open('quests') then push('questDetail')) is taken over too, with its way
+           home -- else the road stacked questDetail(A) > questDetail(B) and Back needed two presses */
+        const under = stack.length > 1 ? stack[stack.length - 2] : null;
+        const again = same(under, a.id, a.who);
+        const e = entry(a.id, seq, { ...a, ret: t.ret || (again ? under.ret : null) });
+        return put(s, { seq, [ws]: Object.freeze([...stack.slice(0, again ? -2 : -1), e]) });
       }
       if (same(t, a.id, a.who)) return s;
       const seq = s.seq + 1;
@@ -229,12 +234,14 @@ export function isGearRoot(id) { return Object.prototype.hasOwnProperty.call(GEA
 /** What the old `open(id)` asks: Gear's root for the bag; the Menu's root for
     'more' (More's page is the directory now); the Menu resumed for 'menu';
     any other page an arrival (from the world, a key, a toast). */
-/* A page that hands over to another as it opens: the quest's own page gives
-   the quest to the Quests tab and opens the tab (QuestDetailPanel.jsx
-   QuestDetailToPages, v2.3.6620).  The tab TAKES ITS PLACE (and its way
+/* A page that hands over to another as it opens TAKES ITS PLACE (and its way
    home), never goes over it: over it, Back would land on the page that hands
-   over again, which opens the tab again -- a Back that never leaves. */
-const HANDS_OVER = { questDetail: 1 };
+   over again, which opens the other again -- a Back that never leaves.
+   v2.3.6691 (card UI2-quests): none now.  The quest's own page handed the
+   quest to the Quests tab (QuestDetailPanel.jsx QuestDetailToPages,
+   v2.3.6620); under the frame it is a real page (QuestPage.jsx), and a push
+   from it (its Rewards) goes OVER it, so Back returns to the quest. */
+const HANDS_OVER = Object.freeze(Object.create(null));
 export function handsOver(id) { return Object.prototype.hasOwnProperty.call(HANDS_OVER, String(id)); }
 
 export function dashNavOpen(id, s) {

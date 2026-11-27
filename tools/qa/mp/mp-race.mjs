@@ -40,7 +40,9 @@ import { RACE } from '../../../server/src/race.js';
 export const lane = 'full';
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Speedy', wsPort, webPort, world: 'wheel' });
+  /* v2.3.6790 (card UI3 PR 10): the quest line left the world (the HUD alone in
+     the top left); the card's "Next" this test reads is ?questline=1's now */
+  const P = await H.newPlayer(browser, { name: 'Speedy', wsPort, webPort, world: 'wheel', query: 'questline=1' });
   /* v2.3.3580: walking up to Lil Bro from a side with nobody else on it.
      The harness's approachNpc steps away 420 px EAST of him first; in the
      world's BroTown that is the square's middle, beside Mayor Bro, and with

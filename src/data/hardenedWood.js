@@ -20,6 +20,7 @@
  * No '@/' imports: mirror-audit loads this file in node.
  */
 import { WOODWORKING_TIERS } from './gameSystems.js';
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 export const HARDENED_WOOD_RECIPES = Object.freeze({
   hardened_pine: Object.freeze({ log: 'wood_pine_log', logCost: 1, minLvl: 1, xp: 80, tier: 'pine', name: 'Hardened Pine Wood', logName: 'Pine Log', logPlural: 'Pine Logs' }),
@@ -68,4 +69,4 @@ export const isHardenedWoodKey = (k) => typeof k === 'string' && Object.prototyp
    tree's own log picture by tools/make_hardened_wood_icons.py.  v2.3.3281:
    the owner's painted ones now, each in its log's colours with two riveted
    iron bands (tools/ui/cut-bag-icons.py; the same file names). */
-export const hardenedWoodIcon = (k, v) => (isHardenedWoodKey(k) ? '/icons/items/hardened-' + HARDENED_WOOD_RECIPES[k].tier + '.webp' + (v || '') : null);
+export const hardenedWoodIcon = (k, v) => (isHardenedWoodKey(k) ? assetUrl('/icons/items/hardened-' + HARDENED_WOOD_RECIPES[k].tier + '.webp' + (v || '')) : null);   /* v2.3.6743: its file's version (card KEEP PR 3b) */

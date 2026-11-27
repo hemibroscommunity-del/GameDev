@@ -79,6 +79,7 @@ import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../fol
 import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare, folkSkillFallback } from '../folkSkill.js';   /* v2.3.5462: ...at their own trades (card TF) */
 import { folkBeatOf } from '../../game/townsfolkWalk.js';   /* v2.3.5462: his beat */
 import { exBodyPose, hideHeld, ownToolPose, poseHidesHeld } from '../../game/poseHides.js';   /* v2.3.6208: what a body's pose hides, asked by my bro and a peer alike */
+import { showDeathFrame } from '../../game/frameFoot.js';   /* v2.3.6209: a dying body's shadow hangs from its own frame's feet */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -97,7 +98,7 @@ import { getHatColor, getColoredHatTextures, coloredHatReady } from '../traits/h
 import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairReady } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { gearDrawFrame, gearDrawFramePhased } from '../gearWalkFrame.js';   /* v2.3.4999: the walking armour from the numbers */
 import { gearNumbersKey } from '../gearNumbers.js';   /* v2.3.5000: the bakes read the armour's numbers */
 import { frameInput, bakeTransfer, bakeUrlAnswer, bakeUrlProbe, bakeUrlsRead, bakeWorkerStuck } from '../bakeByAddress.js';   /* v2.3.5043: an input as its address */
@@ -170,12 +171,16 @@ import { _applyBuildScale, _bareOf, _capeTune, _chestFrameOf, _colouredEntry, _c
 export { figureFeetUnits, figureFeetX, figureFeetY, figureSwimLine, fittedShadeSpan, nominalStandFigure, standFootDy, standShadeSpan } from '../leaves/entity-look.js';   /* v2.3.6200: exported as before */
 import { _whirlGlow, cssColorToHex, getMonsterColor, getMonsterSize, getSlimeFrame, slimeTintFor } from '../leaves/entity-monsters.js';   /* v2.3.6200: its leaves (card EN) */
 export { getMonsterSize } from '../leaves/entity-monsters.js';   /* v2.3.6200: exported as before */
-import { _idleYield, _idleYieldSoon, _nextFrameP, _prewarmMasks, prewarmDirs } from '../leaves/entity-preload.js';   /* v2.3.6200: its leaves (card EN) */
+import { _idleYield, _idleYieldSoon, _nextFrameP, _prewarmMasks, prewarmDirs } from '../leaves/entity-preload.js';
+import { spareLaterOn, spareTime, spareSetsRan, laterBreath, laterJob } from '@/game/spareTime.js';
+import { uploadBakedTexturesOf, uploadGearTextures } from '../bakeUpload.js';   /* v2.3.6763: the uploads, moved */   /* v2.3.6763: the spare sets after the screen */   /* v2.3.6200: its leaves (card EN) */
 import { _hideExceptDeep, drawnAsContent } from '../leaves/entity-render.js';   /* v2.3.6200: its leaves (card EN) */
 import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.js';   /* v2.3.6200: its leaves (card EN) */
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
 import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, folkSheetsStep, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
 import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, resBarBoxes, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
+import { keepTell } from '../../game/bakeKeep.js';   /* v2.3.6761: the bakes kept on the disk (card LOAD PR 2) */
+import { userAgent } from '@/game/deviceProfile.js';   /* v2.3.6761: the bake's version names the browser */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
 export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
 export { MONSTER_SIZE_MULT, MINE_TRAIT_MUL, FISH_TRAIT_MUL };   /* v2.3.5345: still the renderer's exports (moved to ../tables/) */
@@ -3459,7 +3464,8 @@ export function planPrewarmProgress() {
      loading screen") -- the alt pass now bakes every catalog gear state
      (see _catalogWornSets), so plan: masked worn pass (armoured only) +
      one full pass per catalog family. */
-  const families = _catalogWornSets().length;
+  /* v2.3.6763: with the spare sets after the screen, the bar is the worn pass alone */
+  const families = SPARE_LATER ? 0 : _catalogWornSets().length;
   prewarmProgress.total = per * ((anyWorn ? 1 : 0) + families);
 }
 
@@ -3560,73 +3566,11 @@ function _noteOwnedGear(S, now) {
   }
 }
 
-/* v2.3.701: force-upload the baked masked-body textures to the GPU while the
-   intro overlay is still up.  Texture.from(canvas) uploads lazily on first
-   DRAW, so early play paid a stream of one-off upload stalls as the player
-   turned/moved through freshly-baked frames ('slowing down on a few frames
-   even after joining').  Feature-detected; harmless no-op if the renderer
-   doesn't expose an upload path. */
-/* v2.3.704: remember which sources already went up so repeat calls (the
-   equip-change re-prewarm below re-runs this) only push the NEW bakes
-   instead of re-uploading the whole ~100MB cache. */
-const _uploadedSources = new WeakSet();
-/* v2.3.2904: `opts.frameBudgetMs` -- in PLAY, upload for at most that long
-   per rendered frame.  The every-24 setTimeout(0) yield below was written for
-   the loading screen, where nothing else wants the thread; after an equip,
-   several of those 0 ms timers run back to back before the next frame, so the
-   ~150-200 new frames of a set went up in a few frames' worth of bursts
-   (texImage2D + mipmaps each), seconds after the equip. */
-export async function uploadBakedTextures(renderer, opts) {
-  if (!renderer) return;
-  const budgetMs = (opts && opts.frameBudgetMs) || 0;
-  let n = 0;
-  let t0 = budgetMs ? performance.now() : 0;
-  /* a snapshot: the cache is a live LRU (a draw re-inserts), and a Map
-     iterator that keeps meeting re-inserted entries across the awaits
-     below would never finish */
-  for (const t of (budgetMs ? Array.from(_maskedBodyCache.values()) : _maskedBodyCache.values())) {
-    if (!t || !t.source || t.source.destroyed || _uploadedSources.has(t.source)) continue;
-    try {
-      if (renderer.texture && typeof renderer.texture.initSource === 'function') {
-        renderer.texture.initSource(t.source);
-      } else if (renderer.prepare && typeof renderer.prepare.upload === 'function') {
-        renderer.prepare.upload(t);
-      } else return;
-      _uploadedSources.add(t.source);
-    } catch (e) { /* best-effort */ }
-    if (budgetMs) {
-      if (performance.now() - t0 >= budgetMs) { await _nextFrameP(); t0 = performance.now(); }
-    } else if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
-  }
-}
-
-/* v2.3.1022: force-upload the GEAR sheet textures too — idle/jog via the
-   gearSheets cache, swing/bowshot via the Assets cache that
-   effectsRenderer._gearStripFrame reads (warmed by preloadCombatGear).  Their
-   GPU upload was still deferred to first DRAW, so the first armored turn/swing
-   hitched.  Shares _uploadedSources so repeat calls push only new sources, and
-   stays staggered (every 24) to avoid a synchronous upload spike on iOS. */
-export async function uploadGearTextures(renderer) {
-  if (!renderer) return;
-  const up = (source) => {
-    if (!source || _uploadedSources.has(source)) return false;
-    try {
-      if (renderer.texture && typeof renderer.texture.initSource === 'function') renderer.texture.initSource(source);
-      else if (renderer.prepare && typeof renderer.prepare.upload === 'function') renderer.prepare.upload(source);
-      else return false;
-      _uploadedSources.add(source);
-    } catch (e) { /* best-effort */ }
-    return true;
-  };
-  let n = 0;
-  for (const source of getLoadedGearSources()) {
-    if (up(source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
-  }
-  /* v2.3.2774: the combat stand-in strips are no longer in the Assets cache
-     (they are cropped canvases now -- effectsRenderer _gearStripFrame); they
-     reach this upload through getLoadedGearSources above, which they register
-     with.  The old loop over combatGearUrls() found nothing to upload. */
-}
+/* v2.3.6763: the GPU uploads of the baked frames and the gear sheets moved,
+   unchanged, to ../bakeUpload.js (this file's line, four-lines); the same
+   names, the masked cache handed over */
+export const uploadBakedTextures = (renderer, opts) => uploadBakedTexturesOf(_maskedBodyCache, renderer, opts);
+export { uploadGearTextures };
 
 /* v2.3.704: renderer handle for the equip-change re-prewarm's GPU upload.
    pixiRenderer registers it at init; without it the rebaked frames uploaded
@@ -3636,10 +3580,44 @@ export async function uploadGearTextures(renderer) {
 let _prewarmRenderer = null;
 export function registerPrewarmRenderer(renderer) { _prewarmRenderer = renderer; }
 
+/* ═══ v2.3.6761: THE SETS ONE EQUIP AWAY WAIT FOR THE WORN ONE ═══
+   With the worn set's bakes kept (src/game/bakeKeep.js), its pass is a
+   string of answers from the disk -- but the sets one equip away
+   (prewarmAltWornSets, kicked by _noteOwnedGear while the screen is still up)
+   share the worker's one queue, and a frame of theirs not kept yet is a whole
+   bake between two of the worn set's answers.  Measured on the test box
+   (mp-bakekeep, a second login in copper with an iron plate in the bag): 264
+   of the worn set's answers from the disk, 22 spare frames baked among them,
+   and `masks` 92.5 s after the loads.  So a spare set starts once the worn
+   pass has ended.  (docs/specs/worn-first.md tried this before the keep and
+   took it out: then the worn set's own bakes were the wait, and this box could
+   not show a gain.) */
+/* ...and the page's FIRST worn pass too, before it has begun: _noteOwnedGear
+   kicks the spare sets while the loading screen's loads still run (measured:
+   the 27 frames of the iron plate one equip away baked first, `masks` 90 s
+   after the loads).  preloadPlayerAssets always runs the worn pass, armour or
+   none (it returns at once with none). */
+let _wornPassOpen = null;
+let _wornPass = new Promise((r) => { _wornPassOpen = r; });
+function _wornPassBegin() {
+  let end = null;
+  const p = new Promise((r) => { end = r; });
+  _wornPass = p;
+  if (_wornPassOpen) { const open = _wornPassOpen; _wornPassOpen = null; p.then(open); }
+  return end;
+}
 export async function prewarmMaskedBodyFrames(opts) {
+  const _passEnd = _wornPassBegin();   /* v2.3.6761: the spare sets wait for this pass (above) */
+  try {   /* v2.3.6761: ...to its end, whichever way it ends (the body below is not indented again) */
   /* v2.3.2874: start the bake worker behind the loading screen even with no
      armour on, so the first equip does not pay its start-up */
-  try { _getBakeWorker(); } catch (e) { /* inline path */ }
+  /* v2.3.6761: ...and tell it the keep's switch (`?bakekeep=0`) before its
+     first job of the session: a job kept on the disk is answered from there
+     (src/game/bakeKeep.js; docs/specs/bake-keep.md) */
+  try {
+    const probe = keepTell(_getBakeWorker(), { on: !sw('bakekeep'), verify: typeof window !== 'undefined' && window.__btBakeKeepVerify === true, ua: userAgent() });
+    if (probe && typeof window !== 'undefined') window.__btBakeKeep = probe;   /* QA (mp-bakekeep): the worker's counts */
+  } catch (e) { /* inline path */ }
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
@@ -3732,6 +3710,7 @@ export async function prewarmMaskedBodyFrames(opts) {
     }
   }
   await Promise.all(pending);
+  } finally { _passEnd(); }
 }
 
 /* v2.3.698: pre-bake the ALTERNATE worn states in the background so taking
@@ -3744,6 +3723,23 @@ export async function prewarmMaskedBodyFrames(opts) {
    never competes with gameplay.  Kicked after the current-set prewarm
    (pixiRenderer.preloadPlayerAssets) and re-kicked on equip changes. */
 let _altPrewarmSeq = 0;
+/* ═══ v2.3.6763: THE SPARE SETS AFTER THE LOADING SCREEN (card LOAD part 3b) ═══
+   The owner's first login (2026-11-27): "25.0 s The armour's body frames were
+   baked", "54.7 s The spare armour sets were baked" -- half a minute of the
+   loading screen spent on the sets one equip away.  Asked if they may finish
+   after the screen lifts, THE OWNER: "Yes".  So, by default, the screen no
+   longer waits for them (game/spareLater.js broChain): nothing of this pass
+   runs before the screen is gone (spareTime, game/spareTime.js, opened by pixiRenderer.js once
+   the world is in), and then it runs `later`: one job at the worker at a time,
+   the page's part of each (the job's inputs, the frames that came back sent
+   to the graphics chip, a few ms) at the TOP of a frame (framePacer.js
+   beforeDraw).  What you WEAR still bakes behind the screen (the worn pass).
+   Putting a piece on before its set is baked stops this pass at once (the
+   equip below) and the worn pass bakes the new set, as for a spare frame
+   skipped for room (v2.3.3704): the gear drawn at once, the body under it
+   plain for the frame or two each frame takes (_localMaskedFrame).
+   `?sparelater=0`: the old order, the spare sets behind the screen. */
+const SPARE_LATER = spareLaterOn();   /* the gate, its pace and QA's probe: game/spareTime.js */
 export async function prewarmAltWornSets(opts) {
   /* v2.3.700: `fast` mode runs behind the intro loading bar at full speed
      (nothing competes for the main thread there) -- the player joins with
@@ -3757,10 +3753,18 @@ export async function prewarmAltWornSets(opts) {
      total work, done in the spare time of frames that have some, instead of
      all at once in the frames right after the equip. */
   const soon = !fast && !!(opts && opts.soon);
+  /* v2.3.6763: `later` -- the pass after the loading screen (above) */
+  const later = !fast && !!(opts && opts.later);
   const seq = ++_altPrewarmSeq;
   if (!fast) {
     /* grace period: let the join settle (zone load, first combat) first */
-    await new Promise((r) => setTimeout(r, soon ? 300 : 5000));
+    if (!later) await new Promise((r) => setTimeout(r, soon ? 300 : 5000));
+    if (seq !== _altPrewarmSeq) return;
+    /* v2.3.6763: ...and never before the loading screen is gone (open at once with ?sparelater=0) */
+    await spareTime(later);
+    if (seq !== _altPrewarmSeq) return;
+    /* v2.3.6761: ...and the worn set's pass (above): running, or not begun yet */
+    await _wornPass;
     if (seq !== _altPrewarmSeq) return;
   }
   /* v2.3.1118: prewarmed ONLY the actually-worn loadout -- the speculative
@@ -3779,7 +3783,7 @@ export async function prewarmAltWornSets(opts) {
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
   const SETS = _catalogWornSets().map((worn) => ({ worn }));
-  if (!SETS.length) return;
+  if (!SETS.length) { spareSetsRan(fast); return; }   /* v2.3.6763: nothing to bake is a pass run to its end */
   /* v2.3.3577: a set with both pieces bakes its jog with the chain belt --
      waited for first, as in prewarmMaskedBodyFrames */
   if (SETS.some((set) => set.worn.length >= 2)) {
@@ -3790,10 +3794,15 @@ export async function prewarmAltWornSets(opts) {
   let sinceYield = 0;
   const pending = [];   /* v2.3.2904: `fast` keeps the worker fed, as prewarmMaskedBodyFrames does */
   const wornSig = _localWornSig();   /* v2.3.3704 */
+  let laterT0 = performance.now();   /* v2.3.6763: `later`, the page's share since the top of this frame */
   for (const set of SETS) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
     /* v2.3.3704: a set one equip away, not the one you wear */
     const spare = set.worn.map((w) => w[0] + ':' + w[1]).join(',') !== wornSig;
+    /* v2.3.6763: `later` -- the set you wear was the worn pass's, behind the
+       screen (its frames a string of hits here, each one an await: the first
+       run on the test box spent most of its 151 s on them) */
+    if (later && !spare) continue;
     for (const pose of PREWARM_POSES) {
       for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
@@ -3801,6 +3810,9 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
+          /* v2.3.6763: `later` never holds the page for more than a few ms at
+             a go, the frames it passes over (the worn set's, a look's) too */
+          if (later && (laterT0 = await laterBreath(laterT0)) && seq !== _altPrewarmSeq) return;
           /* v2.3.3752: a look the numbers draw: the worn set was decided by
              prewarmMaskedBodyFrames; a set one equip away is decided when it
              goes on (the plain body for the frame or two the worker takes),
@@ -3851,6 +3863,11 @@ export async function prewarmAltWornSets(opts) {
             if (fast) {
               pending.push(_prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }).catch(() => { /* best-effort */ }));
               if (pending.length >= 2) await pending.shift();
+            } else if (later) {
+              /* v2.3.6763: at the top of a frame, the frames already back go
+                 to the chip (2 ms at most) and the next job goes out; the
+                 bake itself is the worker's */
+              laterT0 = await laterJob(laterT0, () => seq === _altPrewarmSeq, () => uploadBakedTextures(_prewarmRenderer, { frameBudgetMs: 2 }), () => _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }));
             } else {
               try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
               await _nextFrameP();
@@ -3859,10 +3876,10 @@ export async function prewarmAltWornSets(opts) {
             continue;
           }
           try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }   /* v2.3.2874: off the main thread where it can be */
-          if (++sinceYield >= (fast ? 6 : (soon ? 1 : 2))) {
+          if (++sinceYield >= (fast ? 6 : ((soon || later) ? 1 : 2))) {
             sinceYield = 0;
             if (fast) await new Promise((r) => setTimeout(r, 0));
-            else if (soon) await _idleYieldSoon();
+            else if (soon || later) await _idleYieldSoon();   /* v2.3.6763: `later` with no worker paces as `soon` */
             else await _idleYield();
             if (seq !== _altPrewarmSeq) return;   /* v2.3.2873: superseded by a newer kick */
           }
@@ -3872,6 +3889,8 @@ export async function prewarmAltWornSets(opts) {
     }
   }
   await Promise.all(pending);
+  /* v2.3.6763: `later`, the last frames to the chip as the equip's pass sends its own (2 ms a frame) */
+  spareSetsRan(fast, later && laterT0, () => uploadBakedTextures(_prewarmRenderer, { frameBudgetMs: 2 }));
 }
 /* Equip-change re-kick: handled by _schedulePrewarm below (v2.3.692/693,
    frame-budgeted).  The intro-time prewarmAltWornSets keeps all three
@@ -3909,6 +3928,12 @@ function _schedulePrewarm() {
   }, 150);
 }
 for (const _sl of ['chest', 'legs']) onEquipChange(_sl, _schedulePrewarm);
+/* v2.3.6763: a piece put on stops the spare sets' pass where it is, so the
+   worn pass of what went on has the worker to itself (_schedulePrewarm), and
+   the next look at what you own (_noteOwnedGear, ~2 s) starts the spare sets
+   of the new outfit -- '' is no outfit's mark, so it starts even if the
+   outfit came back to the one before.  `?sparelater=0`: as before. */
+if (SPARE_LATER) for (const _sl of ['chest', 'legs']) onEquipChange(_sl, () => { _altPrewarmSeq++; _ownedSig = ''; });
 
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
    v2.3.609: the regions use the SAME transform as the reference sprite `sb`
@@ -7886,6 +7911,10 @@ export class EntityRenderer {
             n: _t && _t.__btN != null ? _t.__btN : null,
             sy: +d._spriteBody.scale.y.toFixed(3),
             y: +Number(d._spriteBody.y).toFixed(2),
+            /* v2.3.6209: where the display stands and how big it is drawn, the sprite's anchor row and its
+               frame's own foot (zoneTextures `__btFoot`) -- mp-deathshadow reads a dying body's ground off these */
+            dy: +Number(d.y).toFixed(2), ds: +Number(d.scale.y).toFixed(4), ay: +Number(d._spriteBody.anchor.y).toFixed(4),
+            oh: _t && _t.orig ? _t.orig.height : 0, foot: _t && _t.__btFoot != null ? _t.__btFoot : null,
             size: d._size,
             facing: d._lastFacing || null,
             idlePose: !!d._idlePose,
@@ -8041,7 +8070,7 @@ export class EntityRenderer {
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
             const tex = variantSprites.death.get(frameIdx);
             const sb = display._spriteBody;
-            if (tex && sb.texture !== tex) sb.texture = tex;
+            showDeathFrame(sb, tex);   /* v2.3.6209: set and marked: its shadow hangs from this frame's own feet (game/frameFoot.js) */
             /* Death scale: variant.deathScalePx if set, else falls
                back to liveScalePx so the cut from walk -> death stays
                continuous by default.  Set deathScalePx larger than
@@ -8099,7 +8128,7 @@ export class EntityRenderer {
             if (tex && (display._slimeState !== 'death' || display._slimeFrame !== frameIdx)) {
               display._slimeState = 'death';
               display._slimeFrame = frameIdx;
-              sb.texture = tex;
+              showDeathFrame(sb, tex);   /* v2.3.6209: as the variant's death above */
             }
             sb.scale.x = (96 / 128) * _peakK;
             sb.scale.y = (96 / 128) * _peakK;
@@ -8140,7 +8169,7 @@ export class EntityRenderer {
             const frameIdx = Math.max(0, Math.min(snowFc - 1, Math.floor(t * snowFc)));
             const tex = getSnowmanDeathFrame(frameIdx);
             const sb = display._spriteBody;
-            if (tex && sb.texture !== tex) sb.texture = tex;
+            showDeathFrame(sb, tex);   /* v2.3.6209: as the variant's death above */
             /* Smaller than the 64-px idle/hit scale — particles
                radiate out to the frame edges, so a smaller render
                keeps the explosion footprint from reading as a hard
