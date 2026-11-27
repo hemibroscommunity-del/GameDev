@@ -182,8 +182,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate(() => { const b = document.querySelector('[data-install-hint-dismiss]'); if (b) b.click(); });
       /* 6. the controls tour, every step */
       const opened = await P.page.evaluate(() => { const b = window.__btCtlTut; if (!b) return false; b.open(); return true; });
-      await P.page.waitForTimeout(600);
-      const steps = await P.page.evaluate(() => (window.__btCtlTutSteps ? window.__btCtlTutSteps().live.length : 0)).catch(() => 0);
+      /* the tour measures its steps once it has opened: wait for them (a slow box), never a fixed time */
+      const steps = await P.page.waitForFunction(() => (window.__btCtlTutSteps ? window.__btCtlTutSteps().live.length : 0) || 0,
+        null, { timeout: 6000, polling: 200 }).then((h) => h.jsonValue()).catch(() => 0);
       rec.ok(`${V.id} 6. the controls tour opens (${opened}, ${steps} steps)`, opened && steps > 0);
       for (let i = 0; i < steps; i++) {
         await watch('6-tour-' + (i + 1), 1200, 'controls tour card');
