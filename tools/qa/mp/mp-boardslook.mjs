@@ -41,7 +41,7 @@ export const lane = 'full';
 /* v2.3.5503 (card LB part 2): this checks the page BEFORE the Ranks page's new
    style -- the list down the left, the podium -- which `?rankstyle=0` gives
    back; the new page is mp-ranksstyle's */
-const RANKSTYLE_OLD = 'rankstyle=0';
+const RANKSTYLE_OLD = 'ui2=0&rankstyle=0';   /* v2.3.6692: today's pages live under ?ui2=0 (card UI2-ranks) */
 
 const PHONE = { width: 390, height: 844 };
 

@@ -10,7 +10,9 @@ import { BRO_WEAPONS, broStartWeapon, broWeaponStats } from './broStats.js';
 import { SkillTile, SKILL_XP_HOLD_MS } from '../dash/SkillTiles.jsx';   /* v2.3.4172: the combat skills, moved here from Gear */
 import { registerXpCard, displayXp, xpEasing } from '../../xpLanding.js';   /* v2.3.4191 (Lane A): the XP flight lands on these tiles */
 import { combatSkillState, WEAPON_SKILLS } from '../dash/combatSkill.js';
-import { SKILL_ROSTER, hasUnseenLevelUps } from './skillsModel.js';
+import { hasUnseenLevelUps } from './skillsModel.js';
+import { lifeTotal as lifeTotalOf, isLifeDoor } from '@/game/lifeProfile.js';   /* v2.3.6694 (card UI2-life) */
+import { LifeDoor } from './LifeSkillPage.jsx';   /* v2.3.6694: a life skill's page, All unlocks, How it works */
 import { achvLive, achvApTotal, achvSummary, askTitlePicker } from '@/game/achievements.js';
 import { ACHV_MEDAL_SRC } from '@/data/achievements.js';
 import { clanPartyOn } from '@/game/alliance.js';
@@ -33,6 +35,7 @@ import { SharedPage } from './SharedPage.jsx';   /* v2.3.6686: the Shared page *
 import { StatTree } from './StatTree.jsx';   /* v2.3.6686: the stat tree, a layer a page */
 import { GearShowcase } from './GearShowcase.jsx';   /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase */
 import { COMBAT_PAGES } from '@/game/combatHub.js';
+import { DashFeatsPage } from '../../lazyPanels.js';   /* v2.3.6695 (card UI2-feats): Feats' landing (the page id `achievements`), in the Achievements script */
 const isWeapon = (c) => Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(c));   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
 /* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
@@ -161,7 +164,7 @@ function Row({ id, icon, title, sub, n, live, dot, chevron = true, onTap, extra 
    BRO_HUB_PAGES: 'character', 'combat'), today's pages under the header until their steps;
    with none, under the new frame (dashboardPanelBus.frameOn; `?ui2=0` the one way back) the
    page is Bro's landing, six doors.  `who` whose page (null: yours; step 9 sets another's). */
-export const BroCard = ({ points, onPoints, door, who, page }) => {
+export const BroCard = ({ points, onPoints, door, who, page, sel }) => {
   const S = getState();
   const R = (S && S.rpg) || {};
   const n = Math.max(0, Math.floor(Number(points) || 0));
@@ -255,9 +258,7 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
   const plots = p && p.homestead ? Math.max(0, Number(p.homestead.plotsReady) || 0) : 0;
   const worn = p && Array.isArray(p.equipment) ? p.equipment.filter((s) => !s.ghost).length : 0;
   const slots = p && Array.isArray(p.equipment) ? p.equipment.length : 6;
-  const ls = R.lifeSkills || {};
-  let lifeTotal = 0;
-  for (const s of SKILL_ROSTER) lifeTotal += Math.max(0, Number(ls[s.key] && ls[s.key].level) || 0);
+  const lifeTotal = lifeTotalOf(R);   /* v2.3.6694 (card UI2-life): the ten, each as its tile reads it (a missing one is 1) */
   let lifeNew = false;
   try { lifeNew = hasUnseenLevelUps(R); } catch (e) { lifeNew = false; }
   let party = false;
@@ -306,6 +307,8 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
   if (door === 'character') return who != null ? <CharacterPage S={S} who={who} onWeapon={onWeapon} /> : landing;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
   if (door === 'equip') return <GearShowcase S={S} who={who == null ? null : who} onManage={openGear} />;   /* v2.3.6689: Manage Gear, Gear's road */
+  if (door === 'feats') return <DashFeatsPage S={S} who={who == null ? null : who} />;   /* v2.3.6695 (card UI2-feats): Feats' landing */
+  if (isLifeDoor(door)) return <LifeDoor S={S} door={door} page={page} sel={sel} who={who == null ? null : who} />;   /* v2.3.6694 (card UI2-life) */
 
   if (BRO_PAGES_ON) {
     const held = broStartWeapon(R);
@@ -490,9 +493,11 @@ export function BroDoorPage({ id, points, who: whoProp }) {
      read here because the frame hands only the id: without it a push of another player's Character
      drew yours */
   let who = whoProp == null ? null : whoProp;
-  if (who == null) {
-    try { const t = dashNavView(dashboardPanelBus.nav()).top; if (t && t.id === String(id) && t.who != null) who = t.who; } catch (e) { who = null; }
-  }
+  let sel = null;   /* v2.3.6694 (card UI2-life): and its `sel` (All unlocks' and How it works' skill), read once beside `who` */
+  try {
+    const t = dashNavView(dashboardPanelBus.nav()).top;
+    if (t && t.id === String(id)) { if (who == null && t.who != null) who = t.who; if (t.sel != null) sel = t.sel; }
+  } catch (e) { sel = null; }
   /* v2.3.6684: and Titles.  v2.3.6782: your Character, or an id the table does not know, is the one Bro
      page (null), never your old passport and never a blank (broHub.js broSelfPage) */
   const door = broSelfPage(id, who);
@@ -502,7 +507,7 @@ export function BroDoorPage({ id, points, who: whoProp }) {
   useEffect(() => { heroSectionBus.request('Card'); }, []);
   return (
     <div data-bro-door-page={door || 'bro'} style={{ height: '100%', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <BroCard door={door} page={id} who={who} points={points} onPoints={onPoints} />
+      <BroCard door={door} page={id} who={who} sel={sel} points={points} onPoints={onPoints} />
     </div>
   );
 }

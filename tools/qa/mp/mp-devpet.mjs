@@ -135,16 +135,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`3. the options off and Lv 1, the Frost chip: a ${p3 && p3.kind}, golden ${p3 && p3.gold}, level ${p3 && p3.level} -- nothing left over from before`,
     c3 && !!p3 && p3.gold === false && p3.level === 1 && p3.size < 1.25, { l3 });
 
-  /* ── 4. the Pets page lists both (More -> Pets, mp-trapping's way) ── */
+  /* ── 4. the Pets page lists both (Bro -> Pets -> Owned) ── */
   /* the panel's own Close, as a thumb shuts it */
   const shut = await clickSel(P, '[data-dev-close]');
   await P.page.waitForTimeout(500);
   rec.ok('4. the panel\'s Close shuts it', shut && !(await panelUp(P)));
-  await H.openDest(P, 'More').catch(() => {});
-  await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  const page = await P.page.waitForSelector('[data-pets-panel]', { timeout: 5000 }).then(() => true).catch(() => false);
-  const rows = page ? await P.page.$$eval('[data-pet-row]', (els) => els.map((el) => el.getAttribute('data-pet-row'))) : [];
+  /* v2.3.6696 (card UI2-pets): Bro's Pets door (H.dashOpen), then its Owned door: a card a pet */
+  await H.dashOpen(P, 'pets').catch(() => {});
+  const land = await P.page.waitForSelector('[data-pets-page="pets"]', { timeout: 15000 }).then(() => true).catch(() => false);
+  if (land) await P.page.click('[data-pets-door="owned"]').catch(() => {});
+  const page = land && await P.page.waitForSelector('[data-pets-owned]', { timeout: 15000 }).then(() => true).catch(() => false);
+  const rows = page ? await P.page.$$eval('[data-pets-owned] [data-pets-card]', (els) => els.map((el) => el.getAttribute('data-pets-card'))) : [];
   await P.page.screenshot({ path: join(OUT, 'devpet-pets-page.png') });
   rec.ok(`4. the Pets page lists both (${rows.length} rows)`, rows.length >= 2 && l3 && l3.every((p) => rows.includes(p.id)), { rows, l3 });
 

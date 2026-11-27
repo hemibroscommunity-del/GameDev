@@ -49,4 +49,6 @@ export const SAY = Object.freeze({
   'bottomDashboard.expand': 'Expand dashboard',
   'bottomDashboard.closeWord': 'CLOSE',
   'bottomDashboard.openWord': 'OPEN',
+  /* v2.3.6692 (card UI2-ranks): Ranks' own pages' row title (the header reads the group's or board's name) */
+  'bottomDashboard.titleRanksPage': 'Leaderboards',
 });

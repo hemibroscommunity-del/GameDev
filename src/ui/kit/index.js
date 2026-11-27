@@ -27,3 +27,6 @@ export { Ui2Empty } from './EmptyState.jsx';
 export { Ui2Confirm } from './Confirm.jsx';
 export { Ui2TwoPanel } from './TwoPanel.jsx';   /* v2.3.6688: two panels side by side (card UI2-gear PR 2) */
 export { Ui2ItemGrid, Ui2ItemCell } from './ItemGrid.jsx';   /* v2.3.6688: the one grid of item cells */
+/* v2.3.6693 (card UI2-codex): the collection (its kinds, its illustrated cards) and the showcase (an entry large, its doors) */
+export { Ui2Collection, Ui2CollectionCard } from './Collection.jsx';
+export { Ui2Showcase } from './Showcase.jsx';

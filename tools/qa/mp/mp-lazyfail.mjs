@@ -88,7 +88,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 4. the script back: opened again, it tries again */
     stale = false;
     await openAchv();
-    const achvIn = await P.page.locator('[data-achv-panel]').first().waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false);
+    /* v2.3.6695 (card UI2-feats): under the frame the page is Feats, in the same lazy Achievements script */
+    const achvIn = await P.page.locator('[data-feats-page]').first().waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false);
     rec.ok('opened again with its script back, the Achievements window tries again and opens', achvIn && (await cantOpen()) === 0, { achvAsked });
   } finally {
     await P.ctx.close().catch(() => {});

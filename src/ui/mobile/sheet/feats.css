@@ -1,0 +1,66 @@
+/* ═══ v2.3.6695: FEATS' PAGES, THEIR ARRANGEMENT ONLY (card UI2-feats) ═══
+ * The kit's three weights do the faces (src/ui/kit/ui2.css): AP the stat, the
+ * doors and the badges raised tiles, a medal's lines facts.  Here only where
+ * they sit (the master notes' part 3: 172 px of content upright at 390 x 844,
+ * 63 sideways), a tier's ring and the unearned medal's lock mark.  No face of
+ * its own on a fact (tools/guards/ui3-weights.test.mjs R6). */
+/* a page's root wears the kit's class itself (ui2RootClass), so its rules are compound (.ui2.u2-x): a
+   PANELS page has no .ui2 around it */
+.ui2.u2-feats { display: flex; flex-direction: column; gap: var(--ui2-space-s); height: 100%; min-height: 0; box-sizing: border-box; }
+.ui2.u2-feats.is-short { flex-direction: row; }
+.ui2 .u2-feats-ap { flex: none; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui2.u2-feats.is-short .u2-feats-ap { flex: 0 0 20%; justify-content: center; }
+.ui2 .u2-feats-ap .u2-stat { width: 100%; min-height: var(--ui2-size-touch); box-sizing: border-box; }
+.ui2 .u2-feats-note { font-size: var(--ui2-fs-small); line-height: 14px; color: var(--ui2-text-muted); padding: 0 var(--ui2-space-m); }
+.ui2 .u2-feats-grid { flex: 1 1 auto; min-height: 0; min-width: 0; display: grid; gap: var(--ui2-space-s);
+  grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(var(--ui2-size-touch), 1fr); }
+.ui2.u2-feats.is-short .u2-feats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(var(--ui2-size-touch), 1fr); }
+.ui2 .u2-feats-grid .u2-tile { min-width: 0; min-height: var(--ui2-size-touch); }
+.ui2 .u2-feats-grid .u2-tile-label, .ui2 .u2-feats-grid .u2-tile-sub { overflow: hidden; text-overflow: ellipsis; }
+/* a tier's ring, in its ACHV_TIERS colour (handed in as --feats-ring); Super-rare's prismatic */
+.ui2 .u2-feats-ringed .u2-tile-art { border-radius: 50%; box-sizing: border-box; border: 2px solid var(--feats-ring, transparent); padding: 1px; }
+.ui2 .u2-feats-ringed[data-tier='superrare'] .u2-tile-art {
+  border-color: transparent;
+  background: conic-gradient(from 210deg, var(--ui2-prism-0), var(--ui2-prism-1), var(--ui2-prism-2), var(--ui2-prism-3), var(--ui2-prism-4), var(--ui2-prism-0)) border-box;
+}
+/* a tier with none earned, or a medal not earned: the kit's muted tile (is-off) and a lock mark,
+   so the state is read without its colour */
+.ui2 .u2-feats-cell { position: relative; }
+.ui2 .u2-feats-cell.is-locked::after { content: '\1F512'; position: absolute; right: 2px; bottom: 1px; font-size: 11px; line-height: 1; }
+/* a tier's gallery: two rows upright, one sideways (the columns are set by the page) */
+.ui2 .u2-feats-gallery { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--ui2-space-xs); grid-auto-rows: minmax(var(--ui2-size-touch), 1fr); }
+.ui2 .u2-feats-gallery .u2-tile { min-width: var(--ui2-size-touch); padding: 2px; }
+.ui2 .u2-feats-gallery .u2-tile-art { width: 34px; height: 34px; }
+.ui2 .u2-feats-gallery .u2-tile-words { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ui2 .u2-feats-head { flex: none; display: flex; align-items: baseline; gap: var(--ui2-space-m); padding: 0 var(--ui2-space-m); min-width: 0; }
+.ui2 .u2-feats-head-k { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; }
+.ui2 .u2-feats-head-v { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-gold); white-space: nowrap; }
+/* a medal's page: the badge and its name beside its facts */
+.ui2.u2-medal { display: flex; flex-direction: row; gap: var(--ui2-space-m); height: 100%; min-height: 0; box-sizing: border-box; }
+.ui2 .u2-medal-id { flex: 0 0 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; text-align: center; }
+.ui2.u2-medal.is-short .u2-medal-id { flex: 0 0 120px; flex-direction: row; text-align: left; }
+.ui2 .u2-medal-art { width: 56px; height: 56px; object-fit: contain; }
+.ui2.u2-medal.is-short .u2-medal-art { width: 44px; height: 44px; }
+.ui2 .u2-medal-art.is-locked { opacity: 0.4; filter: grayscale(1); }
+.ui2 .u2-medal-name { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); line-height: 16px; overflow-wrap: anywhere; }
+.ui2 .u2-medal-lock { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); }
+.ui2.u2-medal .u2-facts { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.ui2.u2-medal .u2-fact.is-wrap .u2-fact-v { white-space: normal; text-align: right; line-height: 15px; }
+/* the Titles page's one family, three cells joined (CharacterPage.jsx TitlesPage) */
+.ui2 .u2-title-fam { display: flex; flex-direction: row; gap: 0; min-width: 0; }
+.ui2 .u2-title-fam > * { flex: 1 1 0; min-width: 0; }
+.ui2 .u2-title-fam > .u2-fam-cell { display: flex; align-items: center; gap: var(--ui2-space-s); min-height: var(--ui2-size-touch); padding: 0 var(--ui2-space-s); box-sizing: border-box; }
+.ui2 .u2-fam-cell img { width: 24px; height: 24px; object-fit: contain; flex: none; }
+.ui2 .u2-fam-cell.is-locked img, .ui2 .u2-fam-cell.is-next img { opacity: 0.4; filter: grayscale(1); }
+.ui2 .u2-fam-words { display: flex; flex-direction: column; min-width: 0; }
+.ui2 .u2-fam-name { font-size: var(--ui2-fs-small); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-fam-state { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; }
+.ui2 .u2-titles-how { font-size: var(--ui2-fs-small); line-height: 14px; color: var(--ui2-text-muted); padding: 0 var(--ui2-space-m); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* sideways the four sit in one row beside AP, each narrow: the art over the word, the word on two lines
+   where it is long ("Lifetime Records"), never smaller text */
+.ui2.u2-feats.is-short .u2-feats-grid .u2-tile.is-compact { flex-direction: column; justify-content: center; gap: 2px; padding: 2px var(--ui2-space-s); }
+.ui2.u2-feats.is-short .u2-feats-grid .u2-tile.is-compact .u2-tile-art { width: 24px; height: 24px; }
+.ui2.u2-feats.is-short .u2-feats-grid .u2-tile-words { align-items: center; text-align: center; }
+.ui2.u2-feats.is-short .u2-feats-grid .u2-tile-label, .ui2.u2-feats.is-short .u2-feats-grid .u2-tile-sub { white-space: normal; overflow-wrap: normal; }
+/* the Titles page's list (it scrolls as it did when titles are many): the family one row of its own */
+.ui2 .u2-titles .u2-title-fam { flex: none; }

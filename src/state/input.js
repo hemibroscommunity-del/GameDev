@@ -12,6 +12,7 @@
 export const SYSTEM = 'input';
 export const ROWS = [
   { field: '_burstMsgAt', system: 'input', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/playerActions.js elementBurst', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/playerActions.js'] },
+  { field: '_discKind', system: 'input', lifetime: 'sitting', suggested: '?', born: 'fly src/game/rangedStick.js discKindTo', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/rangedStick.js'] },
   { field: '_freeShots', system: 'input', lifetime: 'sitting', suggested: '?', born: 'fly src/game/freeAttack.js freeArrowGo', twoFiles: '', noRead: 'tests', noSet: false, phase: null, flag: false, writers: ['src/game/freeAttack.js'] },
   { field: '_hasUsedSwipe', system: 'input', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/playerActions.js specialAttack', twoFiles: '2+', noRead: false, noSet: false, phase: null, flag: true, writers: ['src/game/playerActions.js', 'src/ui/BroTown.jsx'] },
   { field: '_iceAttack', system: 'input', lifetime: 'sitting', reset: 'kept: nothing reads it (noRead): set true by an elemental special and never read or cleared, so a reset would change nothing; a leftover (card L\'s status, Found)', suggested: 'zone', born: 'fly src/game/playerActions.js specialAttack', twoFiles: '', noRead: true, noSet: false, phase: null, flag: true, writers: ['src/game/playerActions.js'] },
@@ -43,6 +44,7 @@ export const ROWS = [
   { variable: '_vh', file: 'src/game/latch.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/latch.js'] },
   { variable: '_vw', file: 'src/game/latch.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/latch.js'] },
   { variable: '_zoneWas', file: 'src/game/latch.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'let none', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/latch.js'] },
+  { variable: '_press', file: 'src/game/rangedStick.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/rangedStick.js'] },
   { variable: '_LINE', file: 'src/game/sight.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/sight.js'] },
   { variable: '_PICK', file: 'src/game/sight.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/sight.js'] },
   { variable: '_off', file: 'src/game/sight.js', system: 'input', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/sight.js'] },

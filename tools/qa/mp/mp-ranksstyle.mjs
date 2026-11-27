@@ -131,7 +131,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(SHOTS, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(SHOTS, `ranks-${name}.png`) }).catch(() => {});
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Sunburn', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', dpr: 2 });
+  const A = await H.newPlayer(browser, { name: 'Sunburn', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', dpr: 2, query: 'ui2=0' });   /* v2.3.6692: today's Ranks page, under ?ui2=0 (card UI2-ranks) */
   A.page.on('pageerror', (e) => errs.push(String((e && e.message) || e).slice(0, 200)));
   let stop = () => {};
   const bots = [];
@@ -317,7 +317,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(800);
 
     /* ── 7 ── a computer */
-    const D = await H.newPlayer(browser, { name: 'Deskbro', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true, dpr: 2 });
+    const D = await H.newPlayer(browser, { name: 'Deskbro', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true, dpr: 2, query: 'ui2=0' });
     others.push(D);
     D.page.on('pageerror', (e) => errs.push('desk: ' + String((e && e.message) || e).slice(0, 200)));
     await H.enterWorld(D);
@@ -338,7 +338,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } else rec.ok('7 the computer reached the Wheel', false, inD);
 
     /* ── 8 ── the switch */
-    const O = await H.newPlayer(browser, { name: 'Oldlook', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'rankstyle=0' });
+    const O = await H.newPlayer(browser, { name: 'Oldlook', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'ui2=0&rankstyle=0' });
     others.push(O);
     O.page.on('pageerror', (e) => errs.push('old: ' + String((e && e.message) || e).slice(0, 200)));
     await H.enterWorld(O);

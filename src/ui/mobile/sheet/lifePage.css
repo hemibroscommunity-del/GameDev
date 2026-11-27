@@ -1,0 +1,72 @@
+/* ═══ v2.3.6694: LIFE SKILLS UNDER THE FRAME (card UI2-life; LifeSkillsPage.jsx, LifeSkillPage.jsx, LifeUnlocks.jsx) ═══
+ * Built from the kit (src/ui/kit/ui2.css: its tokens, its three weights); only the pages' own
+ * arrangement is here.  NO font size of the pages' own: every word wears a kit class or a kit size
+ * token (the owner, 2026-11-26: "Match the rest of the game's typography"; a tile's name is the
+ * kit's `u2-tile-label`, the size every navigation tile wears).  Every press is 44 px or more. */
+
+/* ── the landing: the headline over two rows of five, the rows FILL what the headline leaves ── */
+.ui2.u2-life {
+  flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; box-sizing: border-box;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--ui2-space-s);
+}
+.ui2 .u2-life-total { grid-column: 1 / -1; min-height: 0; padding-top: var(--ui2-space-xs); padding-bottom: var(--ui2-space-xs); }
+.ui2 .u2-life-total .u2-stat-words { flex-direction: row; align-items: baseline; gap: var(--ui2-space-l); }
+.ui2 .u2-life-total .u2-stat-v { font-variant-numeric: tabular-nums; }
+.ui2 .u2-life-tile {
+  position: relative; min-width: 0; min-height: var(--ui2-size-touch); box-sizing: border-box; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--ui2-space-xs);
+  padding: var(--ui2-space-s) var(--ui2-space-xs) var(--ui2-space-s); border-radius: var(--ui2-radius-tile);
+  font-family: inherit; text-align: center; cursor: pointer; touch-action: manipulation;
+}
+/* the picture takes every px the words leave: the largest the tile holds */
+.ui2 .u2-life-pic { flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.ui2 .u2-life-art { display: block; height: 100%; width: 100%; max-height: 100%; min-height: 0; object-fit: contain; }
+.ui2 .u2-life-words { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: var(--ui2-space-xs); min-width: 0; width: 100%; }
+/* the name: the navigation word (u2-tile-label), allowed onto a second line at its joint (a <wbr>) */
+.ui2 .u2-life-name { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-wrap: balance; line-height: 1.1; }
+/* "Lv N" and the thin XP bar on one row, inside the face */
+.ui2 .u2-life-meta { display: flex; align-items: center; justify-content: center; gap: var(--ui2-space-s); width: 100%; min-width: 0; }
+.ui2 .u2-life-lv { font-size: var(--ui2-fs-small); font-weight: 700; line-height: 1.15; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* the thin XP bar, inside the face */
+.ui2 .u2-life-track { flex: 1 1 auto; min-width: 12px; max-width: 48px; height: 4px; }
+/* the brass dot of a level-up not yet looked at: inside the face's edge (the kit's dot: top 4, right 4) */
+.ui2 .u2-life-dot { top: var(--ui2-space-s); right: var(--ui2-space-s); }
+
+/* sideways: one row of eleven, the headline the first cell */
+.ui2.u2-life.is-short { grid-template-columns: repeat(11, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.ui2.u2-life.is-short .u2-life-total { grid-column: auto; }
+.ui2.u2-life.is-short .u2-life-total .u2-stat-words { flex-direction: column; align-items: center; gap: 0; }
+.ui2.u2-life.is-short .u2-life-total { justify-content: center; padding-left: var(--ui2-space-xs); padding-right: var(--ui2-space-xs); }
+
+/* ── a skill's page: the level row, then the facts beside the two doors ── */
+.ui2.u2-lsp { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--ui2-space-s); }
+.ui2 .u2-lsp-level { flex: 0 0 auto; min-height: 30px; display: flex; align-items: center; gap: var(--ui2-space-l); padding: var(--ui2-space-xs) var(--ui2-space-l); min-width: 0; }
+.ui2 .u2-lsp-art { width: 24px; height: 24px; object-fit: contain; flex: 0 0 auto; }
+.ui2 .u2-lsp-lv { font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui2 .u2-lsp-bar { flex: 1 1 auto; }
+.ui2 .u2-lsp-bar .u2-bar-top { line-height: 13px; }
+.ui2 .u2-lsp-bar .u2-bar-top > span { overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-lsp-track { width: 100%; height: 6px; }
+.ui2 .u2-lsp-body { flex: 1 1 auto; min-height: 0; display: flex; gap: var(--ui2-space-s); min-width: 0; }
+.ui2 .u2-lsp-facts { flex: 1 1 auto; min-width: 0; justify-content: center; }
+.ui2 .u2-lsp-doors { flex: 0 0 38%; display: flex; flex-direction: column; gap: var(--ui2-space-s); min-width: 0; }
+.ui2 .u2-lsp-doors > .u2-tile { flex: 1 1 0; justify-content: center; }
+/* sideways: one row, the level, the facts side by side, the doors */
+.ui2.u2-lsp.is-short { flex-direction: row; }
+.ui2.u2-lsp.is-short .u2-lsp-level { flex: 0 0 26%; flex-wrap: wrap; row-gap: 0; }
+.ui2.u2-lsp.is-short .u2-lsp-doors { flex: 0 0 34%; flex-direction: row; }
+
+/* ── How it works: the detail's facts ── */
+.ui2.u2-lsh { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.ui2 .u2-lsh-facts { flex: 1 1 auto; min-height: 0; justify-content: center; }
+.ui2 .u2-lsh-hint { margin: 0; padding: var(--ui2-space-xs) 0; font-size: var(--ui2-fs-body); line-height: 1.35; color: var(--ui2-text-ivory); }
+
+/* ── All unlocks: the long list, the one page that scrolls ── */
+.ui2.u2-lsu { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+.ui2 .u2-lsu-list { flex: 0 0 auto; }
+.ui2 .u2-lsu-name { white-space: nowrap; }
+.ui2 .u2-lsu-state { display: inline-block; min-width: 4.6em; text-align: left; font-size: var(--ui2-fs-small); font-weight: 400; color: var(--ui2-text-muted); white-space: nowrap; }
+.ui2 .u2-lsu-state.is-got { color: var(--ui2-text-ivory); }
+.ui2 .u2-lsu-state.is-next { color: var(--ui2-text-gold); font-weight: 700; }
+.ui2 .u2-lsu-rung .u2-fact-end { gap: var(--ui2-space-l); }

@@ -12,6 +12,9 @@ import { SAY } from '@/data/say/leaderboard.js';   /* v2.3.6327: its words, in t
 import { say } from '@/game/say.js';
 import { sw } from '@/game/switches.js';   /* v2.3.5503: `?rankstyle=0`, the page before the Ranks page */
 import { RanksPage } from './RanksPage.jsx';   /* v2.3.5503: the Ranks page in the owner's new style (card LB, part 2) */
+import { ui2FrameOn } from '../ui2Frame.js';   /* v2.3.6692: the new dashboard's Ranks (card UI2-ranks); today's pages under ?ui2=0 */
+import { RanksUi2 } from './RanksLanding.jsx';
+import { useRankRows } from './RankStandings.jsx';
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -516,39 +519,7 @@ function TableHead({ table, hint, setHint, swap, hintHere }) {
   );
 }
 
-/* ── a ranks board's rows: fetched from the Leaderboard object ──
-   v2.3.5503: one hook, the old page's RankBoard's and the Ranks page's
-   (RanksPage.jsx) table's: `{ rows, loading }`, the AP board's 0s left off */
-function useRankRows(cat) {
-  const [boards, setBoards] = useState(() => Object.create(null));
-  const [loading, setLoading] = useState(true);
-  /* Fetch per category, cache per category, refresh on a slow timer.  A
-     hiscores page is not a live readout — the server's own report throttle
-     means a row changes at most once a minute — so 20s is generous.
-     `boards` is Object.create(null): the keys are category ids that ride in
-     from a fetch response, and a plain {} silently no-ops on '__proto__'
-     (CLAUDE.md — three incidents in one day). */
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      act('http:/api/leaderboard/top', {}, { query: 'category=' + encodeURIComponent(cat) + '&limit=50' })   /* v2.3.5191: through the action door (actions.js) */
-        .then(r => r.json())
-        .then(d => {
-          if (!alive || !d || !d.ok) return;
-          setBoards(prev => { const next = Object.create(null); Object.assign(next, prev); next[cat] = d.results || []; return next; });
-        })
-        .catch(() => {})
-        .finally(() => { if (alive) setLoading(false); });
-    };
-    setLoading(!boards[cat]);
-    load();
-    const id = setInterval(load, 20000);
-    return () => { alive = false; clearInterval(id); };
-  }, [cat]);
-  /* v2.3.3527: the AP board leaves off everyone at 0 */
-  const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
-  return { rows, loading };
-}
+/* v2.3.6692: a ranks board's rows (useRankRows) live in RankStandings.jsx, beside the new board that reads them too */
 
 /** the line a board with nobody on it says */
 const emptyOf = (board, loading) => (loading ? say(SAY, 'leaderboard.loading') : board.id === 'ap' ? say(SAY, 'leaderboard.emptyAp') : board.id === 'kills' ? say(SAY, 'leaderboard.emptyKills')
@@ -782,6 +753,10 @@ export const LeaderboardPanel = () => {
     try { if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_e) { /* an old browser: the list is still a list */ }
   }, [cat, sideBySide]);
 
+  /* v2.3.6692 (card UI2-ranks): under the new dashboard, its Ranks (RanksLanding.jsx): the groups, a
+     board's standings, a tap on a player; today's pages only under ?ui2=0 (`?rankstyle=0` there too) */
+  if (ui2FrameOn()) return <RanksUi2 boards={boardsIn} getS={() => S} parts={{ me: { id: (S && S.myId) || '' }, useRows: useRankRows, fishWant,
+    valueOf: (board, r) => valueOfRow(board, r, powerVersion(S)), emptyOf: (board) => emptyOf(board, false) }} />;
   /* v2.3.5503: the Ranks page in the owner's new style; `?rankstyle=0` the page below */
   if (!sw('rankstyle')) return <RanksPage boards={boardsIn} want={catRaw} onBoard={setCat} parts={ranksParts(S, side, setSide, fishWant)} />;
 
