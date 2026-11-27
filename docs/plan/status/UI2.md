@@ -28,5 +28,7 @@ state: ready
 - (UI2-gear PR 3) `ItemTooltip.jsx` is not mounted (its parent `InventorySurface` left GameApp): no road to move, listed in the PR.
 - (UI2-gear PR 3, mended in its mend) mp-ui2bro's step 2c read "Equipment opens Gear": it now reads the showcase (page broEquip), Back to Bro, as #2405 reads it.
 
+- (UI2-feats, tag 6695) Feats is up beside Life Skills: its status `docs/plan/status/UI2-feats.md`; the Bro strip is four entries now (the title is Feats').
+
 ## Needs
 - Nothing.

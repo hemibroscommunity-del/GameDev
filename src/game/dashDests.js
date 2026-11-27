@@ -82,6 +82,9 @@ export const FRAME_PAGES = Object.freeze({
   questsDaily: 'dashFrame.questsDaily',
   questsDone: 'dashFrame.questsDone',
   questsOffers: 'dashFrame.questsOffers',
+  /* v2.3.6695 (card UI2-feats): Feats' landing (the page id stays `achievements`: src/game/broHub.js BRO_HUB_PAGES);
+     under ?ui2=0 the id is today's PANELS page */
+  achievements: 'dashFrame.feats',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:

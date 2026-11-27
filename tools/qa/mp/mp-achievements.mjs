@@ -234,7 +234,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.6600 (card BRO), the mend: the Bro tab is three pages by default (mp-bropages opens Achievements
      from them); this reads the card's rows (.bt-bro2-rowt), so it plays the card `?bropages=0` gives back.
      Before: the default card; after: the same card behind its switch, every check as before. */
-  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'bropages=0', init: '(' + WATCH.toString() + ')();' });
+  /* v2.3.6695 (card UI2-feats): under the new dashboard the page id `achievements` is Feats (mp-ui2feats plays it:
+     the count, the worker's AP, a medal, the title); this one's purpose is today's page and the worker's checks, so
+     it plays them where today's page is drawn, `?ui2=0` (its worker checks unchanged) */
+  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'bropages=0&ui2=0', init: '(' + WATCH.toString() + ')();' });
   A.page.on('pageerror', (e) => errs.push('A: ' + String(e && e.message || e).slice(0, 200)));
   let B = null, stopA = () => {}, stopB = () => {};
   try {

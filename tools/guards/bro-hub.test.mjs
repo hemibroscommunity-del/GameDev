@@ -43,7 +43,7 @@
  *   B3 a seventh tile (Titles or Character as a tile)
  *   B4 a strip entry given the raised form (u2-raised, Ui2Tile, Ui2Stat, the
  *      passport's PassDoor) or a border of its own
- *   B5 Titles unreachable for yourself (the title entry dropped)
+ *   B5 Titles unreachable for yourself (v2.3.6695: Feats' Titles door dropped, or the strip's title entry left)
  *   B6 a strip value on its way shown as 0
  *   B7 CharacterPage deleted, or unreachable for another player
  *   B8 your old passport drawn for yourself (`door === 'character'` with no
@@ -66,6 +66,7 @@ import { MENU_DESTS, FRAME_PAGES, menuGridShape } from '../../src/game/dashDests
 import { SAY } from '../../src/data/say/dashFrame.js';
 import { SAY as CSAY } from '../../src/data/say/charPage.js';
 import { broPassport, titleActions, PASSPORT_DOORS, PASSPORT_WEAPONS, broStrip, BRO_STRIP, broSelfPage } from '../../src/game/broHub.js';
+import { FEATS_DOORS } from '../../src/game/feats.js';   /* v2.3.6695 (card UI2-feats): Titles' home, Feats' door */
 import { screenActions } from '../../src/game/screenZones.js';
 import { DASH_HUBS, MORE_ROADS } from '../../src/game/dashDests.js';
 
@@ -424,13 +425,15 @@ function stripSuite(I) {
   const c = (name, ok, detail) => out.push({ name, ok: !!ok, detail });
   const me = I.strip(R_SEED, null);
   const ids = me.map((x) => x.id).join(',');
-  const t = me.find((x) => x.id === 'title') || {};
-  c('B5 Titles reachable for yourself: the strip\'s title entry opens broTitles', t.opens === 'page:broTitles' && t.v === 'Blooded', ids + ' | ' + JSON.stringify(t));
-  c('B5b the strip: AP, Quests, Clan, Guilds, title, in order, each a door of PASSPORT_DOORS', ids === BRO_STRIP.join(',') && ids === 'ap,quests,clan,guilds,title'
+  /* v2.3.6695 (card UI2-feats): "Titles could live within Feats": Titles' one home for yourself is Feats'
+     Titles door (src/game/feats.js FEATS_DOORS), and the strip's title entry is gone */
+  const t = (I.featsDoors || FEATS_DOORS).find((x) => x.id === 'titles') || {};
+  c('B5 Titles reachable for yourself: Feats\' Titles door opens broTitles (and the strip has no title entry)', t.opens === 'page:broTitles' && !me.some((x) => x.id === 'title'), ids + ' | ' + JSON.stringify(t));
+  c('B5b the strip: AP, Quests, Clan, Guilds, in order, each a door of PASSPORT_DOORS', ids === BRO_STRIP.join(',') && ids === 'ap,quests,clan,guilds'
     && me.every((x) => Object.values(PASSPORT_DOORS).indexOf(x.opens) >= 0), ids);
   const none = I.strip({ ...R_SEED, titleId: null, party: null }, null);
-  const nt = none.find((x) => x.id === 'title') || {}, nc = none.find((x) => x.id === 'clan') || {};
-  c('B5c no title: "No title equipped", still Titles\' door; no party: "No clan"', nt.key === 'charPage.noTitle' && nt.none && nt.opens === 'page:broTitles' && nc.key === 'charPage.noClan', JSON.stringify([nt, nc]));
+  const nc = none.find((x) => x.id === 'clan') || {};
+  c('B5c no party: "No clan"', nc.key === 'charPage.noClan', JSON.stringify([nc]));
   const wait = I.strip({ ...R_SEED, ap: null, quests: null }, null);
   const wa = wait.find((x) => x.id === 'ap') || {}, wq = wait.find((x) => x.id === 'quests') || {};
   c('B6 a strip value on its way is the placeholder, never 0', wa.loading && wa.v == null && wq.loading && wq.v == null, JSON.stringify([wa, wq]));
@@ -473,7 +476,8 @@ const RPLANTS = [
   ['B7 Character never another player\'s', 'B7', () => { I_SELF = { page: (id, w) => (broSelfPage(id, null)) }; return pageSuite(SRC); }],
   ['B8 your Character drawn as the passport', 'B8', () => { I_SELF = { page: (id, w) => (id === 'broCharacter' ? 'character' : broSelfPage(id, w)) }; return pageSuite(SRC); }],
   ['B10 an unknown id falls to Character', 'B10', () => { I_SELF = { page: (id, w) => broSelfPage(id, w) || 'character' }; return pageSuite(SRC); }],
-  ['B5 the title entry dropped', 'B5', () => stripSuite({ strip: (r, w) => broStrip(r, w).filter((x) => x.id !== 'title') })],
+  ['B5 Feats\' Titles door dropped', 'B5', () => stripSuite({ strip: broStrip, featsDoors: FEATS_DOORS.filter((x) => x.id !== 'titles') })],
+  ['B5 the strip\'s title entry left beside it', 'B5', () => stripSuite({ strip: (r, w) => [...broStrip(r, w), { id: 'title', k: 'charPage.title', v: 'Blooded', opens: PASSPORT_DOORS.titles }] })],
   ['B6 a value on its way shown as 0', 'B6', () => stripSuite({ strip: (r, w) => broStrip(r, w).map((x) => (x.loading ? { ...x, loading: false, v: 0 } : x)) })],
 ];
 for (const [name, want, run] of RPLANTS) {

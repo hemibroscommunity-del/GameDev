@@ -42,6 +42,8 @@
 import React, { startTransition, useEffect, useRef, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { winVh } from '../playViewport.js';
+import { TITLE_FAMILIES, inTitleFamily, wornHow } from '@/game/feats.js';   /* v2.3.6695 (card UI2-feats): the family, the worn title's how */
+import { TitleFamily } from './TitleFamily.jsx';
 import { frameTap } from '../dash/DashHeader.jsx';
 import { portraitSrc } from './portraitStore.js';
 import { BRO_WEAPONS } from './broStats.js';
@@ -393,6 +395,9 @@ export function TitlesPage({ S, who }) {
   useEffect(() => () => { try { window.__btTitles = null; } catch (e) { /* no window */ } }, []);
 
   const list = earnedTitles(S);
+  /* v2.3.6695 (card UI2-feats): the one family (Blooded, Veteran, Centurion) drawn as one row, the rest single */
+  const fams = TITLE_FAMILIES.filter((f) => f.ids.some((id) => list.some((t) => t.id === id)));
+  const singles = list.filter((t) => !inTitleFamily(t.id));
   const earned = (id) => !!(a && has(a.got, id));
   const send = (want) => {
     if (pendingHolds(pend, 'title:equip')) return;   /* a second press never goes out while the first is out */
@@ -413,6 +418,9 @@ export function TitlesPage({ S, who }) {
       {self && a && a.known ? <span className="u2-group-k" style={{ marginLeft: 'auto' }}>{say(SAY, 'charPage.earnedOf', { n: list.length, total: ACHIEVEMENTS.length })}</span> : null}
     </Ui2Group>
   );
+  /* v2.3.6695 (card UI2-feats): how the worn title was earned, under it (its requirement, word for word) */
+  const how = self && wornDef ? wornHow(S) : '';
+  const identity = how ? <>{head}<span className="u2-titles-how" data-titles-how="">{how}</span></> : head;
   let body;
   if (!achvLive(S)) body = <Ui2Empty kind="locked" title={say(SAY, 'charPage.titlesShut')} />;
   else if (!self) body = <Ui2Empty kind="absent" title={say(SAY, 'charPage.titlesOther')} />;
@@ -421,7 +429,8 @@ export function TitlesPage({ S, who }) {
   else {
     body = (
       <div className={'u2-titles' + (room.short ? ' is-short' : '')} data-titles-list={list.length}>
-        {list.map((t) => (
+        {fams.map((f) => <TitleFamily key={f.id} S={S} fam={f} picked={picked} worn={worn} onPick={setPicked} wearingWord={say(SAY, 'charPage.wearing')} />)}
+        {singles.map((t) => (
           <button key={t.id} type="button" className="u2-raised u2-title-row" aria-pressed={picked === t.id ? 'true' : 'false'}
             data-title-row={t.id} data-title-worn={t.id === worn ? 1 : 0} {...frameTap(() => setPicked(t.id))}>
             {t.art ? <img src={t.art} alt="" draggable={false} /> : null}
@@ -438,7 +447,7 @@ export function TitlesPage({ S, who }) {
     ? <Ui2Actions actions={acts} marks={marks} whyWord={(k) => word(k)} /> : null;
   return (
     <div ref={ref} className={ui2RootClass() + ' u2-pass' + (room.short ? ' is-short' : '')} data-titles-page={self ? 'self' : 'other'}>
-      <Ui2Zones style={room.short ? { flexDirection: 'row', gap: 4 } : undefined} identity={head} summary={body} actions={actions} />
+      <Ui2Zones style={room.short ? { flexDirection: 'row', gap: 4 } : undefined} identity={identity} summary={body} actions={actions} />
     </div>
   );
 }

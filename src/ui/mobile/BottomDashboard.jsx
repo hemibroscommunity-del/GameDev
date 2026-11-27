@@ -63,6 +63,7 @@ import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
 /* v2.3.3717: the pages opened now and then, each its own script, loaded when first opened with `?codelazy` (ui/lazyPanels.js) */
 import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as AchievementsHead, DashEncyclopediaPanel as EncyclopediaPanel,
   DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
+import { DashFeatsPages } from '../lazyPanels.js';   /* v2.3.6695 (card UI2-feats): Feats' deeper pages, in the Achievements script */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
 import { GuildPanel }        from './dash/GuildPanel.jsx';
@@ -86,6 +87,7 @@ import { MenuGrid, HomesteadPage, doorWord, openDoor, farmPlots, hubWordFor } fr
 import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests.js';
 import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
 import { BroDoorPage } from './sheet/BroCard.jsx';
+import { featsWord } from '@/game/feats.js';
 import { ranksTitle } from './dash/rankWords.js';   /* v2.3.6692 (card UI2-ranks): a Ranks group's or board's name in the header */
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
 import { DashGrowBox } from './dash/DashGrowBox.jsx';   /* v2.3.6682: the page grows out of the tile tapped (card UI2-frame PR 2) */
@@ -555,6 +557,18 @@ const PANELS = {
       vwBasis: desk ? DESK_SHEET_W : Math.min(playVw(), playVh()),
     }));
   } },
+  /* v2.3.6695 (card UI2-feats): Feats' pages past its landing (the landing is `achievements`, a frame page:
+     dashDests.js FRAME_PAGES), each drawn from its frame entry by sheet/FeatsPage.jsx FeatsPages, in the lazy Achievements script */
+  featsMedals:    { title: featsWord('featsMedals'), Component: DashFeatsPages },
+  featsCommon:    { title: featsWord('featsCommon'), Component: DashFeatsPages },
+  featsRare:      { title: featsWord('featsRare'), Component: DashFeatsPages },
+  featsArena:     { title: featsWord('featsArena'), Component: DashFeatsPages },
+  featsSuperrare: { title: featsWord('featsSuperrare'), Component: DashFeatsPages },
+  featsMedal:     { title: featsWord('featsMedal'), Component: DashFeatsPages },
+  featsAp0:       { title: featsWord('featsAp0'), Component: DashFeatsPages },
+  featsAp1:       { title: featsWord('featsAp1'), Component: DashFeatsPages },
+  featsAp2:       { title: featsWord('featsAp2'), Component: DashFeatsPages },
+  featsQuests:    { title: featsWord('featsQuests'), Component: DashFeatsPages },
 };
 
 /* v2.3.1283: the six toolbar destinations (nav-system spec).  Chat left

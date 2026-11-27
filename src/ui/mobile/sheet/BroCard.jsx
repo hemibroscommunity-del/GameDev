@@ -33,6 +33,7 @@ import { SharedPage } from './SharedPage.jsx';   /* v2.3.6686: the Shared page *
 import { StatTree } from './StatTree.jsx';   /* v2.3.6686: the stat tree, a layer a page */
 import { GearShowcase } from './GearShowcase.jsx';   /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase */
 import { COMBAT_PAGES } from '@/game/combatHub.js';
+import { DashFeatsPage } from '../../lazyPanels.js';   /* v2.3.6695 (card UI2-feats): Feats' landing (the page id `achievements`), in the Achievements script */
 const isWeapon = (c) => Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(c));   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
 /* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
@@ -306,6 +307,7 @@ export const BroCard = ({ points, onPoints, door, who, page }) => {
   if (door === 'character') return who != null ? <CharacterPage S={S} who={who} onWeapon={onWeapon} /> : landing;
   if (door === 'titles') return <TitlesPage S={S} who={who == null ? null : who} />;
   if (door === 'equip') return <GearShowcase S={S} who={who == null ? null : who} onManage={openGear} />;   /* v2.3.6689: Manage Gear, Gear's road */
+  if (door === 'feats') return <DashFeatsPage S={S} who={who == null ? null : who} />;   /* v2.3.6695 (card UI2-feats): Feats' landing */
 
   if (BRO_PAGES_ON) {
     const held = broStartWeapon(R);

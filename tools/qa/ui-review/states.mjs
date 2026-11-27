@@ -30,6 +30,14 @@ const bus = (P, method, id) => evalIn(P, ([m, i]) => {
   b[m](i);
   return null;
 }, [method, id]);
+/* v2.3.6695 (card UI2-feats): a push with its entry's `sel` (a medal's id, a tree layer's path), as the pages do */
+const busGo = (P, a) => evalIn(P, (x) => {
+  const b = window.__broDashPanelBus;
+  if (!b || typeof b.go !== 'function') return 'no dashboard bus';
+  b.open('hero');
+  b.go(x);
+  return null;
+}, a);
 /* A real press where a player's finger (a phone) or mouse (a computer) would
    go: the game's tabs, rows and bag tiles answer pointer events, not a
    synthetic click.  P.view is set by the runner. */
@@ -1006,21 +1014,70 @@ export const STATES = [
      locked rows */
   /* v2.3.4172: a page under Bro (moved from More; the card's Achievements
      row and AP open it, and the bus puts 'achievements' there) */
-  Object.assign(more('achievements', 'Bro: Achievements', 'The Achievements page, under Bro (the card\'s Achievements row and its AP open it): all 33 (v2.3.4036: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
-    id: 'dash-bro-achievements', group: 'Dashboard',
+  /* v2.3.6695 (card UI2-feats): under the new dashboard the page id `achievements` is FEATS (sheet/FeatsPage.jsx;
+     the owner 2026-11-25: "Feats is the approved replacement for Accomplishments"); today's Achievements page
+     only under ?ui2=0, which mp-achievements plays, so this state shows Feats, as Ranks' did (v2.3.6692) */
+  {
+    id: 'dash-bro-achievements', group: 'Dashboard', title: 'Bro: Feats',
+    about: 'Bro\'s Feats tile (v2.3.6695, card UI2-feats): under the one header (\u2039 Bro, Feats, Close) your achievement points LARGE, the worker\'s total, sunk (the kit\'s stat), a door to where they came from; under it four equal raised doors two by two: Achievements ("2 of 33"), Titles (the title you wear), Quest History, Lifetime Records. Sideways one row, AP first. When the points cannot be split honestly (a row lit by the owner\'s test lever pays nothing) the line "Where these came from is not known" and no door. Under ?ui2=0 today\'s Achievements page.',
     run: async ({ P, wsPort, myId }) => {
       for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
       await wait(P, 600);
       const e = await bus(P, 'open', 'achievements');
       if (e) return e;
-      await P.page.waitForSelector('[data-achv-panel]', { timeout: 6000 }).catch(() => {});
-      const state = await evalIn(P, () => { const p = document.querySelector('[data-achv-panel]'); return p ? p.dataset.achvPanel : null; });
-      if (state !== '1') return 'the Achievements page is ' + (state ? '"' + state + '"' : 'not there');
-      await evalIn(P, () => { const b = document.querySelector('[data-achv-title-use="first_blood"]'); if (b) b.click(); });
-      /* the worker's answer names it; the picture goes either way */
-      await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
+      await P.page.waitForSelector('[data-feats-page]', { timeout: 8000 }).catch(() => {});
+      if (!(await has(P, '[data-feats-page]'))) return 'Feats did not open';
     },
-  }),
+  },
+  {
+    id: 'ui2-feats-tiers', group: 'Dashboard', title: 'Feats: the medals by tier',
+    about: 'Feats, Achievements (header "Medals", \u2039 Feats): the game\'s four tiers, each its own -- Common, Rare, Arena, Super-rare (never Gold, Silver, Bronze; the arena not under Rare) -- as raised tiles: the tier\'s latest earned badge ringed in its colour (grey, blue, orange, prismatic), or its first badge muted with a lock when none is earned; "n of N" and the points earned of the points possible, by each row\'s own points. Each opens its gallery.',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'achv', myId, { id: 'first_blood' }).catch(() => {});
+      await wait(P, 600);
+      const e = await busGo(P, { type: 'push', id: 'featsMedals' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-tiers]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-gallery', group: 'Dashboard', title: 'Feats: a tier\'s badges',
+    about: 'A tier\'s gallery (here Common, header "Common", \u2039 Medals): its badges in the table\'s order, two rows upright and one sideways, each a raised tile 44 px or more; earned ones full, the rest muted with a lock mark and "Not earned" for a screen reader. Each opens its medal\'s page.',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'achv', myId, { id: 'first_blood' }).catch(() => {});
+      await wait(P, 600);
+      const e = await busGo(P, { type: 'push', id: 'featsCommon' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-gallery]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-medal', group: 'Dashboard', title: 'Feats: one medal',
+    about: 'A medal\'s page (here Veteran, not earned; header "Achievement"): the badge large (muted, "Not earned") and its name beside the kit\'s facts in one flat container: its tier, its AP, "Not earned yet" or the day it was earned, its requirement word for word, how far along you are where the game has a hint ("Your best: Lv 12") and nothing where it has none; an earned one of yours adds "Title: <name>", a door to Titles.',
+    run: async ({ P }) => {
+      const e = await busGo(P, { type: 'push', id: 'featsMedal', sel: 'combat_50' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-medal]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-ap', group: 'Dashboard', title: 'Feats: where your AP came from',
+    about: 'AP\'s tree, one layer at a time (the stat tree\'s own page, header "Achievement points"): your total, the line that says how its rows add up, and its rows: From achievements (a door to its tiers, then each tier\'s medals, each a door to its page) and From quests, guild rungs and the arena (one row: the game keeps those three as one total).',
+    run: async ({ P }) => {
+      const e = await busGo(P, { type: 'push', id: 'featsAp0', sel: { path: [] } });
+      if (e) return e;
+      await P.page.waitForSelector('[data-ap-tree]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-quests', group: 'Dashboard', title: 'Feats: Quest History',
+    about: 'Feats, Quest History: the Quests pages\' own Completed list, called as it is -- the AP your hand-ins paid, added, then each quest handed in with its +5; a row opens that quest\'s page. None yet: "No quests handed in yet" and how to.',
+    run: async ({ P }) => {
+      const e = await busGo(P, { type: 'push', id: 'featsQuests' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-quests]', { timeout: 8000 }).catch(() => {});
+    },
+  },
   /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
   more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
   /* v2.3.4172: Account -- Log out / Switch character, then the Login Key */

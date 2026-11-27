@@ -3,6 +3,8 @@ import { COL, panelStyle, getState } from './common.js';
 import { playIsLandscape } from '../playViewport.js';   /* v2.3.2171: the sideways pane stacks */
 import { SAY } from '@/data/say/journey.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';   /* v2.3.6351: a plain row goes through deskWords (v2.3.3773: "Tap" reads "Click" on a computer) */
+import { ui2FrameOn } from '../ui2Frame.js';   /* v2.3.6695: the new dashboard's record cards (careerRows) */
+import { careerRows } from '@/game/feats.js';
 import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy } from '@/game/accuracy.js';   /* v2.3.4545: how many of your shots hit */
 
 /* ═══ v2.3.3773: JOURNEY IS ITS OWN PAGE, UNDER MORE ═══
@@ -26,6 +28,20 @@ import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy }
 
    Refreshed once a second as the old page was: a kill or a duel changes a
    card while the page is open. */
+/* v2.3.6695 (card UI2-feats): under the new dashboard, Feats' Lifetime Records door opens this ONE page,
+   its cards only the counters the game truly keeps (src/game/feats.js careerRows: kills, deaths, lifetime
+   gold, lifetime XP).  Duels Won and Deepest Zone have no writer anywhere (always 0 and "shallow"): not
+   drawn there until the owner says (flagged); `?ui2=0` keeps today's six. */
+function careerWord(k) {
+  switch (k) {
+    case 'journey.kills': return say(SAY, 'journey.kills');
+    case 'journey.deaths': return say(SAY, 'journey.deaths');
+    case 'journey.lifetimeGold': return say(SAY, 'journey.lifetimeGold');
+    default: return say(SAY, 'journey.lifetimeXp');
+  }
+}
+const careerCards = (R) => careerRows(R).map((r) => [careerWord(r.k), r.v, r.icon]);
+
 export const JourneyPanel = () => {
   const [, force] = useState(0);
   useEffect(() => {
@@ -71,7 +87,7 @@ export const JourneyPanel = () => {
             fit whole.  Portrait keeps the 3x2 grid v2.3.1311c measured
             against its own no-scroll budget. */}
         <div style={{ display: 'grid', gridTemplateColumns: landPane ? '1fr' : 'repeat(3, 1fr)', gap: 5 }}>
-          {[
+          {(ui2FrameOn() ? careerCards(R) : [
             /* v2.3.1323 (owner icon sheet): each record card gets its
                icon — same magenta-key pipeline as the stat sheet.
                v2.3.1341 (owner art drop): rec-kills replaced with the
@@ -92,7 +108,7 @@ export const JourneyPanel = () => {
             [say(SAY, 'journey.lifetimeXp'), Number(R.xp || 0).toLocaleString(), 'rec-xp'],
             [say(SAY, 'journey.duelsWon'), cs.duelsWon ?? 0, 'rec-duels'],
             [say(SAY, 'journey.deepestZone'), cs.deepestZone ?? '—', 'rec-zone'],
-          ].map(([label, value, icon]) => {
+          ]).map(([label, value, icon]) => {
             /* v2.3.2176b: ONE rule for how big a record's value is printed,
                shared by both layouts.  Five of the six are short numbers,
                but Deepest Zone is a zone NAME and lifetime gold reaches
