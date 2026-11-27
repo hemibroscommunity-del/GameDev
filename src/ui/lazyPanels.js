@@ -48,6 +48,8 @@ export const LandOfficePanel = lazyPanel(() => import('./panels/buildings/LandOf
 export const DashAchievementsPanel = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsPanel');
 export const DashAchievementsHead = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsHead', null, true);   /* v2.3.3736: quiet: its page says it */
 export const DashEncyclopediaPanel = lazyPanel(() => import('./mobile/dash/EncyclopediaPanel.jsx'), 'EncyclopediaPanel');
+/* v2.3.6693 (card UI2-codex): a monster's showcase and its doors, the frame's Codex pages (its stage with it) */
+export const DashCodexDoorPage = lazyPanel(() => import('./mobile/dash/MonsterShowcase.jsx'), 'CodexDoorPage');
 export const DashLeaderboardPanel = lazyPanel(() => import('./mobile/dash/LeaderboardPanel.jsx'), 'LeaderboardPanel');
 export const DashClanPanel = lazyPanel(() => import('./mobile/dash/ClanPanel.jsx'), 'ClanPanel');
 export const DashFeedbackPanel = lazyPanel(() => import('./mobile/dash/FeedbackPanel.jsx'), 'FeedbackPanel');

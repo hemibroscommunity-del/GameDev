@@ -142,7 +142,8 @@ export function whereWords(place, owner) {
  *   hardness a weapon's 0-5, or null; gems: the gems set in it (names);
  *   req      the equip gate's requirement (getEquipReqLabel), or null;
  *   actions  the ONE list (itemActionList: { id, label, tone, off, why, attrs });
- *   doors    deeper pages ({ id, label }); none is invented.
+ *   doors    deeper pages ({ id, label }); none is invented;
+ *   rolls    (the Codex) the piece rolls its grade as it drops: no grade shown.
  * Returns { title, name, art, glyph, grade, gradeWord, stars, hidden, where,
  * readOnly, facts: [{ k, v }], line, doors, actions: [{ id, label, face, off,
  * why, attrs, lead }] } with the lead action first.
@@ -153,6 +154,9 @@ export function inspectItem(input) {
   const P = ITEM_PLACES[place];
   const hidden = !!i.hidden;
   const g = itemGrade(hidden ? null : i.quality);
+  /* v2.3.6693 (card UI2-codex): a Codex entry for a piece that rolls its grade as it drops (`rolls`) has none
+     to show ("Normal" there was false); anything else reads as it does everywhere */
+  const ungraded = hidden || (place === 'codex' && !!i.rolls);
   const req = reqWords(i.req);
 
   /* the facts: the item's own rows, then what the game knows of it beside
@@ -200,9 +204,9 @@ export function inspectItem(input) {
        better", in the rare blue): the tests part found the page and the summary reading "In your bag" with a star
        and the line lost behind the piece's rows (mp-revealbag 3).  Its name (the material and the kind, the same
        after the reveal) stays, as on today's card (GearTab.jsx's "shows its card's name"). */
-    grade: hidden ? null : g.grade,
-    gradeWord: hidden ? '' : g.word,
-    stars: hidden ? 0 : g.stars,
+    grade: ungraded ? null : g.grade,
+    gradeWord: ungraded ? '' : g.word,
+    stars: ungraded ? 0 : g.stars,
     hidden,
     where: whereWords(place, i.owner),
     readOnly: P.readOnly,

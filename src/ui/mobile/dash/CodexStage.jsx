@@ -112,7 +112,7 @@ function bake(im, recolor, tint) {
 /* Every strip the stage may draw, in the colour it is drawn in, once all are
    in: `{ key: url }`, or null while loading.  Its baked copies are revoked
    when the page closes or the colour changes. */
-function useStageStrips(kind, elder) {
+export function useStageStrips(kind, elder) {
   const [urls, setUrls] = React.useState(null);
   React.useEffect(() => {
     let live = true;
@@ -408,6 +408,33 @@ export function CodexStage({ kind, facts, elder, S }) {
       )}
       </div>
     </div>
+  );
+}
+
+/* ═══ v2.3.6693: THE SHOWCASE'S FIGURE -- THE MONSTER LARGE, IN ITS IDLE STRIP (card UI2-codex) ═══
+   A monster's showcase (dash/MonsterShowcase.jsx) draws it standing, at the
+   size of its box (`h` tall, at most `w` wide), from the SAME strips the stage
+   loads: useStageStrips, held while the showcase is drawn, so its pictures
+   load when the monster's page opens and are let go (its baked copies
+   revoked) when the page leaves -- the frame draws only its top page.  Until
+   they are in it stands as its portrait (the pet sheet the loading screen
+   already fetched); under prefers-reduced-motion its strip stands still. */
+export function CodexIdle({ kind, elder, h, w }) {
+  const st = CODEX_STAGE[kind];
+  const urls = useStageStrips(kind, elder);
+  if (!st) return null;
+  const L = CODEX_LOOKS[st.look];
+  const s0 = L.strips.idle;
+  const k = Math.min((h * 0.92) / L.artRows, w / Math.max(1, L.x1 - L.x0));
+  const s = reduced() ? { ...s0, still: true } : s0;
+  const cx = (L.x0 + L.x1) / 2;
+  return (
+    <span className="bt-cx-idle" data-cx-idle={kind} data-cx-ready={urls ? 1 : 0} style={{ position: 'relative', display: 'block', width: w, height: h, overflow: 'hidden' }}>
+      <span style={{ position: 'absolute', left: Math.round(w / 2), bottom: 0 }}>
+        {urls ? <Strip L={L} s={s} url={urls.idle} loop k={k} cx={cx} />
+          : <span className="bt-cx-portrait" style={{ left: -Math.round(h * 0.45), bottom: 0 }}><PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={Math.round(h * 0.9)} /></span>}
+      </span>
+    </span>
   );
 }
 

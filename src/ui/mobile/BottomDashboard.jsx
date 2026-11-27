@@ -63,6 +63,8 @@ import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
 /* v2.3.3717: the pages opened now and then, each its own script, loaded when first opened with `?codelazy` (ui/lazyPanels.js) */
 import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as AchievementsHead, DashEncyclopediaPanel as EncyclopediaPanel,
   DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
+import { DashCodexDoorPage as CodexDoorPage } from '../lazyPanels.js';   /* v2.3.6693: the Codex's frame pages (card UI2-codex) */
+import { codexPageTitle } from './dash/codexPageOpen.js';
 import { DashFeatsPages } from '../lazyPanels.js';   /* v2.3.6695 (card UI2-feats): Feats' deeper pages, in the Achievements script */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { LifeSkillsDoor }    from './dash/SkillsPanel.jsx';   /* v2.3.6694 (card UI2-life) */
@@ -533,6 +535,13 @@ const PANELS = {
   bag:          { title: say(SAY, 'bottomDashboard.titleBag'),         Component: InventoryPanel },
   hero:         { title: say(SAY, 'bottomDashboard.titleBro'),         Component: HeroExpanded },   /* v2.3.4172: the Bro page */
   item:         { get title() { return itemPageTitle(); }, Component: ItemPage },   /* v2.3.6687: the one item page (dash/ItemPage.jsx; card UI2-gear) */
+  /* v2.3.6693 (card UI2-codex): a monster's showcase and its doors, the item page's Found from (dash/codexPageOpen.js) */
+  codexMonster: { get title() { return codexPageTitle('codexMonster'); }, Component: CodexDoorPage },
+  codexCombat:  { get title() { return codexPageTitle('codexCombat'); }, Component: CodexDoorPage },
+  codexLoot:    { get title() { return codexPageTitle('codexLoot'); }, Component: CodexDoorPage },
+  codexHabitat: { get title() { return codexPageTitle('codexHabitat'); }, Component: CodexDoorPage },
+  codexStory:   { get title() { return codexPageTitle('codexStory'); }, Component: CodexDoorPage },
+  codexFound:   { get title() { return codexPageTitle('codexFound'); }, Component: CodexDoorPage },
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
