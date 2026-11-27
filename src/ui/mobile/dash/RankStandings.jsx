@@ -100,12 +100,10 @@ function useAsk(ask, subscribe) {
    worker's answer, or null while there is none, to the rule (ranksPage.js
    rankAnswer), and the page waits on the rule's `waiting`; no source says it
    is loaded on its own */
-const SPIN_STATE = { off: 'leaderboard.spinClosed', unavailable: 'leaderboard.spinUnreadable' };
-const FISH_STATE = { off: 'fishBoard.off', unavailable: 'fishBoard.unavailable' };
 function useSpin(getS, side) {
   useAsk(() => askSpinBoard(getS()), subscribeSpinBoard);
   const a = rankAnswer('spin', (getS() && getS()._spinBoard) || null, side);
-  return { ...a, state: a.state ? say(SAY, SPIN_STATE[a.state]) : null, value: (r) => amount(r.n),
+  return { ...a, state: a.state === 'off' ? say(SAY, 'leaderboard.spinClosed') : a.state ? say(SAY, 'leaderboard.spinUnreadable') : null, value: (r) => amount(r.n),
     empty: side === 'losses' ? say(SAY, 'leaderboard.spinEmptyLoss') : say(SAY, 'leaderboard.spinEmptyWin') };
 }
 /* The flip's store (aceFlipBus.js) starts as an EMPTY board, `{ wins: [],
@@ -128,7 +126,7 @@ function useFish(getS, sp) {
   useAsk(() => askFishBoard(getS()), subscribeFishWeigh);
   const a = rankAnswer('fish', (getS() && getS()._fishBoard) || null, sp);
   const name = (FISH_SPECIES.find((f) => f.id === sp) || {}).name || say(SAY_F, 'fishBoard.someFish');
-  return { ...a, state: a.state ? say(SAY_F, FISH_STATE[a.state]) : null, value: (r) => fishKg(r.g),
+  return { ...a, state: a.state === 'off' ? say(SAY_F, 'fishBoard.off') : a.state ? say(SAY_F, 'fishBoard.unavailable') : null, value: (r) => fishKg(r.g),
     tag: (r) => (r.v === 'albino' ? { id: 'albino', word: say(SAY_F, 'fishBoard.albino') } : r.v === 'large' ? { id: 'large', word: say(SAY_F, 'fishBoard.large') } : null),
     empty: say(SAY_F, 'fishBoard.empty', { name }) };
 }
