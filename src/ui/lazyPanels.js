@@ -47,10 +47,6 @@ export const LandOfficePanel = lazyPanel(() => import('./panels/buildings/LandOf
    feedback, settings */
 export const DashAchievementsPanel = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsPanel');
 export const DashAchievementsHead = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsHead', null, true);   /* v2.3.3736: quiet: its page says it */
-/* v2.3.6695 (card UI2-feats): Feats, the new dashboard's Achievements, in the same script (its landing drawn by
-   sheet/BroCard.jsx's door, its deeper pages BottomDashboard's PANELS rows) */
-export const DashFeatsPage = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'FeatsPage');
-export const DashFeatsPages = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'FeatsPanels');
 export const DashEncyclopediaPanel = lazyPanel(() => import('./mobile/dash/EncyclopediaPanel.jsx'), 'EncyclopediaPanel');
 export const DashLeaderboardPanel = lazyPanel(() => import('./mobile/dash/LeaderboardPanel.jsx'), 'LeaderboardPanel');
 export const DashClanPanel = lazyPanel(() => import('./mobile/dash/ClanPanel.jsx'), 'ClanPanel');
@@ -59,3 +55,8 @@ export const DashSettingsPanel = lazyPanel(() => import('./mobile/dash/SettingsP
 
 /* the debug overlay (?dev=1 only), GameApp.jsx */
 export const DebugOverlay = lazyPanel(() => import('../debug/DebugOverlay.jsx'), 'DebugOverlay');
+
+/* v2.3.6695 (card UI2-feats): Feats, the new dashboard's Achievements, in the same script (its landing drawn by
+   sheet/BroCard.jsx's door, its deeper pages BottomDashboard's PANELS rows) */
+export const DashFeatsPage = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'FeatsPage');
+export const DashFeatsPages = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'FeatsPanels');

@@ -16,4 +16,4 @@ state: working
 - FRAME_PAGES' header words go through MenuGrid.jsx doorWord's literal switch (UI3-menus'): Feats' deeper pages are PANELS rows (as Ranks'), so no MenuGrid line.
 
 ## Needs
-- The orchestrator's yes on two lines in src/ui/lazyPanels.js and the lines in dash/AchievementsPanel.jsx (Feats in the lazy Achievements script): asked, built meanwhile.
+- Nothing.  (The orchestrator, part 31, said yes to Feats in the lazy Achievements script: two lines at the END of src/ui/lazyPanels.js and the re-exports in dash/AchievementsPanel.jsx.)
