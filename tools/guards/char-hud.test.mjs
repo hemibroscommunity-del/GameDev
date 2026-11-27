@@ -388,8 +388,11 @@ check('9f PartyHUD\'s chip and list stand at --bt-party-top (92 as before under 
   const css = read('src/styles/game.css');
   check('9g game.css: the base, the top built on it, and the stack variables set only while the HUD is up',
     /html\{--bt-hud-base:calc\(56px \+ var\(--bt-bar-grow,0px\) \+ env\(safe-area-inset-top,0px\)\);\s*--bt-hud-top:calc\(var\(--bt-hud-base\) \+ var\(--bt-charhud-h,0px\)\)\}/.test(css)
-      && /html\[data-charhud="1"\]\{--bt-charhud-h:56px;\s*--bt-status-top:calc\(var\(--bt-hud-top\) \+ 44px\);\s*--bt-party-top:calc\(var\(--bt-status-top\) \+ 48px\)\}/.test(css)
-      && /@media \(max-height:480px\)\{html\[data-charhud="1"\]\{--bt-charhud-h:52px;\s*--bt-status-top:calc\(var\(--bt-hud-top\) \+ 34px\);\s*--bt-party-top:var\(--bt-hud-base\);--bt-party-left:192px\}\}/.test(css));
+      /* v2.3.6790: the stack's numbers (the status column and the party chip
+         under the HUD, with and without ?questline=1) are hudCorner()'s, held
+         by tools/guards/hud-corner.test.mjs; here only the HUD's own height */
+      && /html\[data-charhud="1"\]\{--bt-charhud-h:56px;/.test(css)
+      && /@media \(max-height:480px\)\{html\[data-charhud="1"\]\{--bt-charhud-h:52px;/.test(css));
 }
 
 /* v2.3.6781 (the mend of sitting 71): the gatekeeper planted `if (!on || !rpg)`

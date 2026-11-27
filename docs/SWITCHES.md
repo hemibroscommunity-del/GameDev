@@ -727,6 +727,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?p3colour` | page | switch | v2.3.2597 | 2026-09-17 | =0 | logic |  | no | The hero sheet's stats lose their colours. |
 | `?p3cols` | page | lever | v2.3.2597 |  | =1 | none |  | no | The hero sheet in one column, for the comparison. |
 | `?playvwlive` | page | switch | v2.3.4875 | 2026-11-11 | =1 | logic |  | no | The play view is measured on every read, as before. |
+| `?questline` | page | switch | v2.3.6790 | 2026-11-27 | =1 (remembered; =0 forgets) | logic |  | no | The tracked quest's one line comes back under the character HUD at the top left (card UI3, PR 10: the owner's "Leave only character hud in top left corner" took it out of the world), with the status chips and the party chip under it as before, on this device. |
 | `?rankstyle` | page | switch | v2.3.5503 | 2026-11-25 | =0 | logic |  | no | The Ranks page before the owner's 2026-11-25 mockup: the boards in a list down the left, the podium over the table (card LB part 2; src/ui/mobile/dash/LeaderboardPanel.jsx). |
 | `?starcue` | page | switch | v2.3.3872 | 2026-10-29 | =0 | logic |  | no | No star cue over what to do next. |
 | `?tradeside` | page | value | v2.3.3856 |  | =0 or =1 | logic |  | no | Picks which side the trade window's lanes are on. |

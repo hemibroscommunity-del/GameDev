@@ -508,13 +508,13 @@ export const STATES = [
   },
   /* v2.3.6781 (card UI3, PR 2): the character HUD, top left -- the face, the
      name, "Lv N" and the gold bar of the weapon whose next level raises it;
-     the tracked quest as one line under it.  Its own row a layout: upright,
+     (v2.3.6790: no quest line under it, the HUD alone in the corner).  Its own row a layout: upright,
      sideways (compact, 176 x 48) and a computer. */
   { id: 'charhud', group: 'The world (HUD)', title: 'The character HUD, top left (upright)', views: ['portrait'],
-    about: 'Top left under the top bar, opposite the minimap: your face (the dashboard\'s own portrait), your name and "Lv N" (the combat level) beside it, and under them a gold XP bar labelled with the weapon whose next level raises your combat level (its picture and its word, "45 / 120" in the bar). Under it the tracked quest as ONE line, "title \u00b7 count \u00b7 objective", a tap opening that quest. A tap anywhere on the HUD opens Bro. 184 x 52. No health or energy (the owner took those off the game screen, v2.3.4163). ?hud=0 gives back the old top left.',
+    about: 'Top left under the top bar, opposite the minimap: your face (the dashboard\'s own portrait), your name and "Lv N" (the combat level) beside it, and under them a gold XP bar labelled with the weapon whose next level raises your combat level (its picture and its word, "45 / 120" in the bar). Nothing else always there (v2.3.6790, the owner: "Leave only character hud in top left corner"): no quest tracker over the world (the quests are on the Quests page; ?questline=1 brings the one line back), and the status chips and the party chip, when they show, right under the HUD. A tap anywhere on the HUD opens Bro. 184 x 52. No health or energy (the owner took those off the game screen, v2.3.4163). ?hud=0 gives back the old top left.',
     run: async ({ P }) => { await wait(P, 600); } },
   { id: 'charhud-side', group: 'The world (HUD)', title: 'The character HUD, top left (sideways)', views: ['landscape'],
-    about: 'The same HUD on a phone held sideways: compact, 176 x 48, the face drawn 40 in its 44 px tap box; the one-line quest, the status chips and the party chip under it, clear of the minimap.',
+    about: 'The same HUD on a phone held sideways: compact, 176 x 48, the face drawn 40 in its 44 px tap box; the status chips under it and the party chip beside it (no quest line: v2.3.6790), clear of the minimap.',
     run: async ({ P }) => { await wait(P, 600); } },
   { id: 'charhud-desk', group: 'The world (HUD)', title: 'The character HUD, top left (a computer)', views: ['desktop'],
     about: 'The same HUD on a computer playing wide (184 x 52): a click on it opens Bro and never swings; its tooltip says "Click to open Bro".',
