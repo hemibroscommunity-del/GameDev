@@ -31,7 +31,7 @@
  *
  * Against an older worker, or with the kill switch on, the Enchanter keeps
  * its old local slot (EnchantPanel.jsx). */
-import { BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, SHIELD_GEM_STATS, recalcDerived } from '@/data/index.js';
+import { BLACKSMITH_TIERS, ELEMENTS, SHIELD_GEM_STATS, recalcDerived } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { shieldSig, shieldWearPayload } from '@/game/shieldWear.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a gem set in a shield, heard */

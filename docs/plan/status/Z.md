@@ -1,28 +1,28 @@
 card: Z
-branch: claude/plan-z-sitting-69
-prs: 5 lines listed (10 PRs); this PR (tag 5662, Z's block 5660 to 5679), the last line
+branch: claude/plan-z-sitting-70
+prs: 3 lines listed (6 PRs); this PR (tag 5664, Z's block 5660 to 5679), the last line
 state: ready
 
-## Done (sitting 69, main 7ec316e9; the owner's leave for an extra sitting, 18:1x UTC 11-26)
-- Heads from each PR, all ten as the orchestrator gave them; every check
-  green on each head (test, lint-build, playable, memory-budget, Pages).
-- Purpose review on the top model: KEEP (#2385/#2388/#2389) every card
-  dodge for `/sfx` RED, the named question answered (no hold); PRT
-  (#2384) the card's break proofs RED; TD #2382's deletions none acting;
-  LOAD #2386 read: no bug in behaviour. Next jobs: debts.md (69).
-- Rehearsed the whole order with every mend (the trees in log.md, 69):
-  gatekeeper.mjs on bbc8222cf59a8ff434aa65edc1a9a5d476170398: precheck 0
-  FAIL, switches-thrown --whole (94), claims-gain --whole, build,
-  questline 187/187 PASS; heldsweep's sample noisy on every tree (final
-  2 of 5 green, each prefix 1 of 2, main 2 of 2; a different job each
-  red): the box's, no branch's. `npm run lint` clean on the whole.
+## Done (sitting 70, main eb90c6fd)
+- Heads by ls-remote, all as the orchestrator gave them (none moved); every
+  check green on each head (test, lint-build, playable, memory-budget, Pages).
+- Rehearsed TD (with #2380's mend), PAD 9 and the grip: gatekeeper.mjs on
+  f5f4d55b: precheck 0 FAIL, switches-thrown --whole, claims-gain --whole,
+  build, questline 187/187 PASS; heldsweep's sample main's noise (final 1
+  of 2 by a helper, main 1 of 2). Without #2380: tree 1b236175.
+- Review on the top model: KEEP #2392's purpose review, the UI2 pair's and
+  PAD 9's reads (debts.md, 70). #2381 to #2383 unchanged since 69's review.
+- Registered UI3, SHOP and LOCK's blocks (nextBlock 6840); the owner's
+  standing leave in finish.md part 6 rule 7 and orchestrator.md; "No
+  tapping in monsters" under debts.md LOCK (70).
 ## The list (merge commits; each mend by the orchestrator, precheck before each push)
-1 KEEP: #2385, #2388, #2389 (unchanged).
-2 PAD #2387; 3 LOAD #2386 (unchanged).
-4 PRT #2384 (mend: tag-blocks.json, with LOAD's block).
-5 TD #2380 (the owner's Approve; mend: tag-blocks.json), #2381, #2382, #2383.
-6 Z (5662, a draft: mark it ready first).
-Not this sitting: UI2-grip #2390 (forwarded after the rehearsal began).
+1 TD: #2380 (the owner's words; mend: tag-blocks.json), #2381, #2382, #2383.
+2 PAD #2393 (retarget; no deploy after #2380).
+3 UI2-grip #2390.
+4 Z (5664, a draft: mark it ready first).
+Held: KEEP #2392 (keep-sfx 3-4 red on main + it); UI2-gear #2391 (the card's
+dodge green at its roads). Sitting 71's: UI3-kit #2395, LOCK #2397.
 ## Found
-- debts.md KEEP (69), PRT (69), LOAD (69), TD (69).
-- `docs/plan/status/LOAD.md` on #2386 still says `working`: stale.
+- debts.md KEEP (70), UI2 (70), PAD (70).
+- Once #2380 is on main, debts.md Found's first line (a `server/test/`
+  merge deploys) is mended: strike it at sitting 71.

@@ -15,7 +15,8 @@
  * described by their bottles (SHOP_ITEMS); they are not in this table.
  *
  * Dependency-free on purpose, like farmCrops.js: the bag imports it. */
-const DISH_ICON = (name) => '/icons/items/' + name + '.webp?v=2.3.4222';
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
+const DISH_ICON = (name) => assetUrl('/icons/items/' + name + '.webp');   /* v2.3.6743: its file's version, not the hand key ?v=2.3.4222 */
 export const DISHES = {
   meal_herb_bread: {
     slot: 'meal', buff: 'rest', power: 2, duration: 1800,

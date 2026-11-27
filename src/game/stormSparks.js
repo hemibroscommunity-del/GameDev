@@ -56,7 +56,6 @@ function lie(kind, angle, h) {
 export function cracklePieces(kind, g, now, seed, out) {
   const look = STORM_LOOKS[kind];
   if (!look || !look.duty) return 0;
-  const k = g.k > 0 ? g.k : 1;
   /* each body's slots start at its own moment, so a crowd does not flash as one */
   const t = now + (hash01(seed, 3) * STORM_FX.SLOT_MS | 0);
   const slot = Math.floor(t / STORM_FX.SLOT_MS);
