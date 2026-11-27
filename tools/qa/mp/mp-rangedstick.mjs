@@ -60,14 +60,16 @@ const PICK = (S, o) => {
 /* the page's recorders: every arrow or bolt the moment a frame first sees it,
    and every claim the phone sends */
 const TOOLS = () => {
-  const S0 = window._gameState.current, seen = new WeakSet();
-  for (const a of (S0.arrows || [])) seen.add(a);
+  /* a shot is known by its own stamp (_shotTs), never by its object: the game reuses an arrow's object */
+  const S0 = window._gameState.current, seen = new Set();
+  const key = (a) => (a._shotTs || 0) + ':' + a.ang;
+  for (const a of (S0.arrows || [])) if (a) seen.add(key(a));
   window.__rsShots = [];
   window.__rsOut = [];
   cancelAnimationFrame(window.__rsR);
   const f = () => {
     const S = window._gameState.current;
-    for (const a of (S.arrows || [])) if (a && !seen.has(a)) { seen.add(a); window.__rsShots.push({ ang: a.ang, staff: !!a.isStaff, f: S._frameCount || 0, tap: S._tapAtk ? S._tapAtk.ang : null }); }
+    for (const a of (S.arrows || [])) if (a && a._shotTs && !seen.has(key(a))) { seen.add(key(a)); window.__rsShots.push({ ang: a.ang, staff: !!a.isStaff, f: S._frameCount || 0, tap: S._tapAtk ? S._tapAtk.ang : null }); }
     window.__rsR = requestAnimationFrame(f);
   };
   window.__rsR = requestAnimationFrame(f);
@@ -86,7 +88,7 @@ const NOW = (P, id) => H.readState(P, bind((S, id) => {
   const m = (S.monsters || []).find((x) => x && String(x.id) === id);
   const el = document.querySelector('.bt-rjoy-base');
   return {
-    kind: S._discKind || null, disc: el ? el.getAttribute('data-disc') : null, latch: S._latchPhase || 'idle', lid: S._latchId == null ? null : String(S._latchId),
+    kind: S._discKind || null, disc: el ? el.getAttribute('data-disc') : null, latch: S._latchPhase || 'idle', end: S._latchEnd || null, lid: S._latchId == null ? null : String(S._latchId),
     sight: S._sightPhase || 'none', lock: S.lockedTarget ? String(S.lockedTarget.id) : null, aiming: !!S._aiming, aim: typeof S._aimAngle === 'number' ? S._aimAngle : null,
     auto: !!S.autoAttack, slot: S.rpg && S.rpg.activeSlot, f: S._frameCount || 0,
     mon: m ? { alive: !!m.alive, hp: m.curHp, a: Math.atan2(m.y - S.player.y, m.x - S.player.x), d: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) } : null,
@@ -189,8 +191,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (!s1.mon || !s1.mon.alive) { rec.skip(`3. ${label} ${W}`, 'the monster is gone', s1); continue; }
         const T = await hold(s1.mon.a, 120, 3, null);
         const tShots = T.got.shots.filter((x) => !x.tap);
-        rec.ok(`3${slot === 'staff' ? 's' : ''}. ${label}, ${W}: dragged TOWARD it: ${tShots.length} shot(s) the thumb's way, the monster hit (a claim on it), still nothing locked`,
-          tShots.length > 0 && tShots.every((x) => off(x.ang, s1.mon.a) < 2 * DEG) && T.got.out.some((o) => o.mid === mon.id) && T.during.every((s) => s.latch === 'idle' && s.lock == null),
+        rec.ok(`3${slot === 'staff' ? 's' : ''}. ${label}, ${W}: dragged TOWARD it: ${tShots.length} shot(s) the thumb's way, the monster hit (a claim on it, or its health down: a staff's bolt is the worker's to judge), still nothing locked`,
+          tShots.length > 0 && tShots.every((x) => off(x.ang, s1.mon.a) < 2 * DEG) && (T.got.out.some((o) => o.mid === mon.id) || !T.after.mon || !T.after.mon.alive || T.after.mon.hp < s1.mon.hp) && T.during.every((s) => s.latch === 'idle' && s.lock == null),
           { a: s1.mon.a, shots: tShots.slice(0, 4), out: T.got.out.slice(0, 4), during: T.during.slice(0, 2) });
       }
 
@@ -216,6 +218,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (full) {
         /* ── 6 ── the sword keeps its latch */
         await H.devOp(wsPort, 'kit', me, { what: 'weapons' }).catch(() => null);
+        /* a fresh monster for the sword and the switch: the bow's and the staff's shots have worn the first one down */
+        const mon2 = await H.readState(P, bind(PICK, { maxD: 3000, skip: used }));
+        if (mon2) { used.push(mon2.id); await H.hopTo(P, Math.round(mon2.x - 170), Math.round(mon2.y), { tries: 90 }); await P.page.waitForTimeout(800); mon.id = mon2.id; }
         await H.waitFor(P, (S) => ((S.rpg && S.rpg.weaponStash) || []).some((w) => w && w.type === 'greatsword') || !!(S.rpg && S.rpg.weapon && S.rpg.weapon.type === 'greatsword'), (v) => v, { timeout: 15000, label: 'the kit' }).catch(() => null);
         const eqS = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));
         await frames(P, 4);
@@ -227,7 +232,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await frames(P, 4);
           const s6b = await NOW(P, mon.id);
           rec.ok(`6. ${label}: a sword: the disc is a latch (data-disc ${s6b.disc}), the press locks the monster in sight, as today`,
-            !!(eqS && eqS.ok) && !!sighted && s6b.kind === 'latch' && s6b.disc === 'latch' && (s6b.latch === 'active' || s6b.latch === 'auto') && s6b.lid === mon.id, { eqS, sighted, s6b });
+            !!(eqS && eqS.ok) && !!sighted && s6b.kind === 'latch' && s6b.disc === 'latch' && ((s6b.latch === 'active' || s6b.latch === 'auto') && s6b.lid === mon.id || s6b.end === 'killed'), { eqS, sighted, s6b });
           /* let go: a press while locked strikes, a hold past the fill is auto, so the latch's own end: away */
           await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged'); await frames(P, 4);
           const s6c = await NOW(P, mon.id);
@@ -245,7 +250,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await frames(P, 4);
           const s7b = await NOW(P, mon.id);
           rec.ok(`7. ${label}: \`?rangedstick=0\`: today's bow, a latch (data-disc ${s7b.disc}): the press locks the monster in sight`,
-            s7b.kind === 'latch' && s7b.disc === 'latch' && s7b.slot === 'ranged' && (s7b.latch === 'active' || s7b.latch === 'auto') && s7b.lid === mon.id, s7b);
+            s7b.kind === 'latch' && s7b.disc === 'latch' && s7b.slot === 'ranged' && ((s7b.latch === 'active' || s7b.latch === 'auto') && s7b.lid === mon.id || s7b.end === 'killed'), s7b);
         } else rec.skip(`7. ${label}: \`?rangedstick=0\``, 'the monster is gone', s7);
         await P.page.evaluate(() => { const q = new URLSearchParams(location.search); q.delete('rangedstick'); history.replaceState(null, '', '?' + q.toString()); });
       }
