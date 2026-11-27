@@ -1,19 +1,19 @@
 card: PAD
-branch: claude/plan-pad-9-rimsprint (on part 8's branch, 897f7444)
-prs: #2354, #2363, part 6 (merged); #2387 part 8 (6643); part 9 (6644, draft)
+branch: claude/plan-pad-10-steel (on part 9's claude/plan-pad-9-rimsprint)
+prs: #2354, #2363, part 6, #2387 part 8 (merged); #2393 part 9 (6644, draft); part 10 (6645, draft)
 state: ready
 
 ## Done
 - 6640 part 1: the controls as a controller (`?padskin=0` today's look).
 - 6641 parts 3-5: ONE shell on the band, every control in a well, Block
   the big well in a fight, the shield a tap; the board's poll; Block's stamp.
-- 6642 part 6: Whirlwind and Shield Bash in a TIER over the right lobe
-  (padSkin.js specialLayout); Sprint stands over the tier (clearOfTier).
-- 6643 part 8 (cut down by the owner's "Do 1."): no game file changed;
-  mp-padskin 8c's read waits for Attack's socket.
-- 6644 part 9 (the owner: "remove sprint button"): on a touch screen the
-  usual stick past its rim sprints (stickZones.js rimSprintLive,
-  stickAnalog), no Sprint button; `?rimsprint=0` the button back.
+- 6642 part 6: Whirlwind and Shield Bash in a TIER over the right lobe.
+- 6643 part 8: no game file changed; mp-padskin 8c waits for Attack.
+- 6644 part 9 ("remove sprint button"): the stick past its rim sprints
+  (stickZones.js rimSprintLive); `?rimsprint=0` the button back.
+- 6645 part 10 ("I don't like the gold"): every public/ui/pad picture cut
+  off the owner's steel sheet (owner-2026-11-26-pad4/, cut-pad.mjs), same
+  names and sizes; re-measured padSkin CUT_R 420, TIER_BAND 75: DEPLOYS.
 
 ## Found
 - CHARGE: drawn in the top-left (mobility) well whenever the game shows it
@@ -34,5 +34,7 @@ state: ready
 - Nothing: message the orchestrator, stop.
 
 ## Needs
-- The gatekeeper's sitting for parts 8 and 9 (part 9 DEPLOYS the worker:
-  it touches server/test/stick-zones.test.mjs).
+- The gatekeeper's sitting for parts 9 and 10 (both DEPLOY the worker:
+  server/test/stick-zones.test.mjs, server/test/pad-skin.test.mjs).
+- The owner: which gold beside the controller goes next (part 10's PR lists
+  it, with pictures).

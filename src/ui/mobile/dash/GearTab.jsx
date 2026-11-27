@@ -26,6 +26,7 @@ import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' bad
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151: a "?" piece's mark, as on its card */
 import { beforeDraw } from '@/game/framePacer.js';   /* v2.3.6289: the bag's edges read at the top of the frame (card HB2 PR 10) */
 import { AFTER_PAINT } from '@/ui/afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2); v2.3.6283: the tab's redraw beside the game's (PR 4) */
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* ═══ v2.3.4151: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
@@ -395,7 +396,7 @@ const GearCellView = ({ c, R, slots, selCell, hand, t }) => {
      tile (its own steel-and-gold frame is the cell's border, so no second
      frame); 128 px webps, 256 colours, cut from the owner's sheet, loaded
      as plain <img> like the slot-*.webp ghosts they replace */
-  const tile = (!filled || (c.id === 'gem' && !(ct.els && ct.els.length))) && EQ_TILE.includes(c.id) ? `/icons/bag/equip-${c.id}.webp?v=2.3.4199` : null;
+  const tile = (!filled || (c.id === 'gem' && !(ct.els && ct.els.length))) && EQ_TILE.includes(c.id) ? assetUrl(`/icons/bag/equip-${c.id}.webp`) : null;   /* v2.3.6743: its file's version, not ?v=2.3.4199 */
   return (
     <div data-eqslot={c.id} data-gear-cell={c.id}
       data-gear-sel={blue ? '1' : undefined} data-gear-active={gold ? '1' : undefined}

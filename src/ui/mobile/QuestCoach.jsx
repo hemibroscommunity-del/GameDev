@@ -36,6 +36,7 @@ import { twoButtonsLive, holdAutoOn } from '@/game/latch.js';   /* v2.3.6544: th
 import { SAY } from '@/data/say/questCoach.js';
 import { SAY as GUIDE } from '@/data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 import { say } from '@/game/say.js';
+import { bandGripOn } from './dash/bandGripSwitch.js';   /* v2.3.6697: the handle's words only while it is drawn (card UI2-grip) */
 import { charHudSpan } from '@/game/charHud.js';   /* v2.3.6781: the character HUD and the quest line, one box to keep clear of */
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -597,7 +598,9 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: 'Your bag, your gear and your stats live down here. Tap the handle.' },   /* v2.3.4172: the grip replaced OPEN */
+        /* v2.3.6697: the handle is gone (card UI2-grip; `?bandgrip=1` brings it back):
+           its words only while it is drawn, else the sideways lesson's own "Open your dashboard" */
+        body: function () { return bandGripOn() ? 'Your bag, your gear and your stats live down here. Tap the handle.' : 'Your bag, your gear and your stats live down here. Open your dashboard.'; } },   /* v2.3.4172: the grip replaced OPEN */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         /* v2.3.3793: an arrow both ways now -- a phone on its side its chip,
            a computer the folded strip's arrow (BottomDashboard; the owner
@@ -804,7 +807,7 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: 'Mayor Bro paid you in gear. Tap the handle to find it.' },   /* v2.3.4172 */
+        body: function () { return bandGripOn() ? 'Mayor Bro paid you in gear. Tap the handle to find it.' : 'Mayor Bro paid you in gear. Open the dashboard to find it.'; } },   /* v2.3.4172; v2.3.6697: the handle's words only while it is drawn */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
       /* v2.3.6682 (card UI2-frame PR 2): under the new frame, the control that leads to Gear (its button, or the Menu root's "‹ Gear") */
@@ -1079,7 +1082,7 @@ const LESSONS = [
       { sel: '[data-nav="hero"]', reach: '[data-nav="hero"]',
         body: function (S) { return pointsTipWords('nav', S && S.rpg); } },
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: function (S) { return pointsTipWords('fold', S && S.rpg); } },
+        body: function (S) { return pointsTipWords(bandGripOn() ? 'fold' : 'side', S && S.rpg); } },   /* v2.3.6697: 'fold' says "Tap the handle": only while it is drawn */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: function (S) { return pointsTipWords('side', S && S.rpg); } },
     ],

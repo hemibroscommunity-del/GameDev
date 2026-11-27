@@ -1363,9 +1363,10 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
 const DEST_BY_LABEL = { Bro: 'hero', Gear: 'dashboard', Quests: 'quests', Codex: 'encyclopedia', More: 'more', Ranks: 'leaderboard', Leaderboards: 'leaderboard', Social: 'social', Settings: 'settings', Map: 'map', Homestead: 'homestead' };
 const MENU_DOOR = { hero: 'hero', quests: 'quests', socialHub: 'social', leaderboard: 'leaderboard', encyclopedia: 'encyclopedia', homestead: 'homestead', map: 'map', settingsHub: 'settings' };
 const OLD_MORE_WORD = { skills: 'Life Skills', social: 'Social', clan: 'Party', guild: 'Guild', settings: 'Settings', account: 'Account', map: 'Map', notifications: 'Notifications', feedback: 'Feedback', about: 'About', journey: 'Journey', pets: 'Pets', achievements: 'Achievements' };
-const BRO_DOOR_OF = { broCharacter: 'character', broCombat: 'combat', skills: 'skills', achievements: 'feats', pets: 'pets' };   /* v2.3.6683 */
-const HUB_OF = { social: 'socialHub', clan: 'socialHub', guild: 'socialHub', settings: 'settingsHub', notifications: 'settingsHub', account: 'settingsHub', feedback: 'settingsHub', about: 'settingsHub' };   /* v2.3.6684: Journey is the passport's door (PASSPORT_OF) */
-const PASSPORT_OF = { journey: 'journey', broTitles: 'titles' };   /* v2.3.6684 (card UI2-bro PR 2): doors of Character, the passport */
+const BRO_DOOR_OF = { broCombat: 'combat', skills: 'skills', achievements: 'feats', pets: 'pets', journey: 'journey' };   /* v2.3.6683; v2.3.6782 (card UI3-bro): Journey a tile, Character not one */
+const HUB_OF = { social: 'socialHub', clan: 'socialHub', guild: 'socialHub', settings: 'settingsHub', notifications: 'settingsHub', account: 'settingsHub', feedback: 'settingsHub', about: 'settingsHub' };   /* v2.3.6684: Journey left the Settings hub */
+const STRIP_OF = { broTitles: 'title' };   /* v2.3.6782 (card UI3-bro): entries of the Bro page's strip (BroStrip.jsx) */
+const SELF_IS_BRO = { broCharacter: 'hero' };   /* v2.3.6782: your Character is the one Bro page */
 const COMBAT_OF = { broSword: 'sword', broBow: 'bow', broStaff: 'staff' };   /* v2.3.6685 (card UI2-combat): doors of Combat's hub */
 async function frameUp(P) {
   return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
@@ -1402,20 +1403,22 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
     }
     return (await frameKind(P)) === 'gear-root';
   }
+  if (SELF_IS_BRO[id]) id = SELF_IS_BRO[id];
   await dashMenuRoot(P, { timeout });
   if (id === 'more' || id === 'menu') return true;
   /* v2.3.6683 (card UI2-bro): Bro's own pages through Bro's six doors (src/game/broHub.js):
      Character and Combat (today's pages under the header), Life Skills, Feats, Pets */
-  const bro = BRO_DOOR_OF[PASSPORT_OF[id] ? 'broCharacter' : COMBAT_OF[id] ? 'broCombat' : id];
+  const bro = STRIP_OF[id] ? 'strip' : BRO_DOOR_OF[COMBAT_OF[id] ? 'broCombat' : id];
   if (bro) {
     await tapTop(P.page, '[data-dash-grid="menu"] [data-dest="hero"]', timeout);
     await P.page.waitForTimeout(350);
+    if (STRIP_OF[id]) {
+      await tapTop(P.page, `[data-bro-strip] [data-bro-fact="${STRIP_OF[id]}"]`, timeout);
+      await P.page.waitForTimeout(350);
+      return true;
+    }
     await tapTop(P.page, `[data-dash-grid="bro"] [data-dest="${bro}"]`, timeout);
     await P.page.waitForTimeout(350);
-    if (PASSPORT_OF[id]) {
-      await tapTop(P.page, `[data-char-page] [data-char-door="${PASSPORT_OF[id]}"]`, timeout);
-      await P.page.waitForTimeout(350);
-    }
     if (COMBAT_OF[id]) {
       await tapTop(P.page, `[data-combat-hub] [data-combat-door="${COMBAT_OF[id]}"]`, timeout);
       await P.page.waitForTimeout(350);
