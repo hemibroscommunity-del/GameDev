@@ -601,7 +601,7 @@ import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedT
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW, BAND_ASSEMBLY_MAX_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { ctlLandscape } from './mobile/bandSideways.js'; /* v2.3.4152: the controls' sideways geometry over a folded band */
-import { playIsLandscape, playVw, playVh } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
+import { playIsLandscape, winVw, winVh } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
@@ -11153,7 +11153,7 @@ export var BroTown = function BroTown(_ref0) {
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
-      lts.from = stickFrom(t.clientX, t.clientY, playVw(), playVh());   /* v2.3.6647: where it landed in the play area, the full push's reach (stickZones.js stickReach; card PAD part 12) */
+      lts.from = stickFrom(t.clientX, t.clientY, winVw(), winVh());   /* v2.3.6647: where it landed on the glass (the window: sideways the play column is centred in it), the full push's reach (stickZones.js stickReach; card PAD part 12) */
       lts.moved = false;
       /* No cycle fire on touchstart -- v2.3.98 moved the trigger to
          touchend so a quick re-press to start moving after a single

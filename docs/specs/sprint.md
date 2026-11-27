@@ -43,7 +43,7 @@
 >   the Sprint button back.
 > - The rule is `src/game/stickZones.js` (`stickFrom`, `stickRoom`,
 >   `stickReach`, `rimPast`, `rimSprint`); `src/ui/BroTown.jsx` keeps the
->   landing box at touchstart (`playVw`, `playVh` and the band's own
+>   landing box at touchstart (the window's kept `winVw`, `winVh` and the band's own
 >   `--sheet-h` stamp: no layout read). Tests: `stick-zones.test` 12 (10 and
 >   11 now run under `?fullpush=0`), `mp-rimsprint`.
 >

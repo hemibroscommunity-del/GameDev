@@ -1028,7 +1028,7 @@ if (_fpLoc) Object.defineProperty(globalThis, 'location', _fpLoc); else delete g
     if (hadDoc === undefined) delete globalThis.document; else globalThis.document = hadDoc;
   }
   check('12g. off a page: no band; no box without a landing point or a width', bandPx() === 0 && stickFrom(NaN, 1, 390, 844, 0) === null && stickFrom(1, 1, 0, 844, 0) === null);
-  check('12g. BroTown\'s touchstart keeps where the thumb landed in the play area (stickFrom, the play column\'s size)', findIn('ui', /lts\.from = stickFrom\(t\.clientX, t\.clientY, playVw\(\), playVh\(\)\);/).length === 1);
+  check('12g. BroTown\'s touchstart keeps where the thumb landed on the glass (stickFrom, the window\'s kept size: sideways the column is centred in it)', findIn('ui', /lts\.from = stickFrom\(t\.clientX, t\.clientY, winVw\(\), winVh\(\)\);/).length === 1);
 
   /* 12h. the two buttons (`?manual=5`, stickDrive): the same rule */
   const R5 = 41.6, from5 = stickFrom(40, B - 120, VW, VH, BAND);

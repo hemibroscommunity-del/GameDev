@@ -17,7 +17,8 @@
  *       live, the worker's sprint supported; nothing in the page);
  *   r2. the controls tour's move step says "Push it past its edge to sprint";
  *   f1. landing ON the drawn disc and 20 px from the left edge, the thumb
- *       pushed west, south, south-west and east in 1.5 px steps (never a
+ *       (sideways the zone starts 46 px in: 20 px inside it) pushed west,
+ *       south, south-west and east in 3 px steps (never a
  *       swipe), never past the edge less 16 px (or, where the landing point
  *       is within 34 px of an edge, past 18 px, the floor: on the glass): the
  *       phone sprints (how 'rim') by then and not before about the drawn
@@ -54,7 +55,7 @@ const SCREENS = [
   ['sideways 844', { width: 844, height: 390 }],
 ];
 const EDGE = STICK_ZONES.EDGE_PX, FLOOR = STICK_ZONES.REACH_FLOOR;
-const STEP = 1.5;
+const STEP = 3;
 const WAYS = [['west', Math.PI], ['south', Math.PI / 2], ['south-west', (3 * Math.PI) / 4], ['east', 0]];
 
 /* the left disc's drawn box (its base: the drawn radius is its half width), and the left zone's bottom (the band's top) */
@@ -63,7 +64,7 @@ const DISC = (P) => P.page.evaluate(() => {
   const z = document.querySelector('[data-joyzone="L"]');
   if (!el || !z) return null;
   const b = el.getBoundingClientRect(), zb = z.getBoundingClientRect();
-  return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width, vw: innerWidth, bandTop: zb.bottom };
+  return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width, vw: innerWidth, bandTop: zb.bottom, zoneLeft: zb.left };
 });
 /* the sprint as the phone and its (absent) button see it */
 const RIMV = (P) => H.readState(P, (S) => {
@@ -187,15 +188,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       rec.ok(`${label}: standing on open ground, ${RAD} px clear west, south, south-west and east (guard)`, !!home, { error: spots.error, n: (spots.list || []).length, home });
       if (!home) continue;
-      const goHome = async () => { await H.hopTo(P, home.x, home.y, { tries: 200 }); await P.page.waitForTimeout(400); };
+      /* back home when a push carried him more than 120 px off it */
+      const goHome = async () => {
+        const at = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+        if (Math.hypot(at.x - home.x, at.y - home.y) > 120) { await H.hopTo(P, home.x, home.y, { tries: 200 }); await P.page.waitForTimeout(400); }
+      };
 
       /* f1: two landing points, four ways */
-      const LANDS = [['on the drawn disc', Math.round(D.x), Math.round(D.y)], ['20 px from the left edge', 20, Math.round(D.y)]];
+      /* 20 px inside the stick's zone: the screen's own left edge upright; sideways the play column (and the zone) is centred, 46 px in on this box */
+      const zl = Math.round(D.zoneLeft || 0);
+      const LANDS = [['on the drawn disc', Math.round(D.x), Math.round(D.y)], [zl ? `20 px inside the zone (${zl} px in)` : '20 px from the left edge', zl + 20, Math.round(D.y)]];
       for (const [where, x0, y0] of LANDS) {
         for (const [way, ang] of WAYS) {
           await goHome();
           await H.devOp(wsPort, 'vitals', me, { heal: true });
-          await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 99, { timeout: 20000, label: 'the bar full on the phone' }).catch(() => null);
+          await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 99, { timeout: 6000, label: 'the bar full on the phone' }).catch(() => null);
           await frames(P, 3);
           const rm = room(D, x0, y0, ang);
           const limit = Math.max(rm, FLOOR);   /* the farthest the thumb goes: the margin, or the floor's 18 px */

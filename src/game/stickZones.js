@@ -80,7 +80,7 @@ export const STICK_ZONES = Object.freeze({
      spends nothing; a thumb eased back a little keeps the run */
   FULL_AT: 1.0,
   FULL_OFF: 0.8,
-  /* the reach never ends nearer the play area's edge than this (CSS px; the
+  /* the reach never ends nearer the screen's edge than this (CSS px; the
      band's top is an edge going south): past it a thumb leaves the glass, or
      meets Safari's edge gestures */
   EDGE_PX: 16,
@@ -192,7 +192,7 @@ export function stickRead(dx, dy, travel, turn, full) {
  * energy runs out (the owner's idea), and easing off saves it (the
  * player keeps the choice).  THE REACH, in the thumb's direction, is the
  * smaller of the drawn radius and the room from where the thumb landed to
- * the play area's edge less EDGE_PX (the band's top an edge going south),
+ * the screen's edge less EDGE_PX (the band's top an edge going south),
  * never under REACH_FLOOR (stickReach): a full push is on the glass from
  * any landing point, any way.  The landing point never moves (a still
  * thumb moves nothing), and the walk is full at a full push (the knob drawn
@@ -233,10 +233,12 @@ export function bandPx() {
   } catch (e) { return 0; }
 }
 
-/** Where the thumb landed, and the play area it moves in: { x, y, l, t, r,
- *  b }, CSS px, the box from the column's top left to `vw` wide and down to
- *  the band's top (`vh` less `band`, else bandPx()).  Made once a touch
- *  (BroTown's touchstart), read by stickReach. */
+/** Where the thumb landed, and the glass it moves on: { x, y, l, t, r, b },
+ *  CSS px, the window's box (`vw` wide; sideways the play column is centred
+ *  in it, and a held thumb goes on past the column onto the glass) down to
+ *  the band's top (`vh` less `band`, else bandPx(): the zones end there,
+ *  `position: fixed` in the window).  Made once a touch (BroTown's
+ *  touchstart), read by stickReach. */
 export function stickFrom(x, y, vw, vh, band) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !(vw > 0) || !(vh > 0)) return null;
   const b = typeof band === 'number' && band >= 0 ? band : bandPx();
