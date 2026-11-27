@@ -26,7 +26,11 @@
  *   LIFE_PAGE_OF / lifeKeyOfPage  the ten frame pages, one a skill
  *
  * `who`: null is yours; another player's (step 9: nothing opens it yet) shows
- * levels only, read from `who.lifeSkills`: no XP, no "new" dot. */
+ * levels only, read from `who.lifeSkills`: no XP, no "new" dot.  v2.3.6694
+ * (the mend of sitting 72): a `who` that carries no `lifeSkills` (what the
+ * Ranks board's row hands today) has NO levels: null, never 1 each (a number
+ * the worker never sent) and never yours; its pages say "Not shared"
+ * (lifeShared). */
 import { LIFE_SKILLS, LIFE_SKILL_XP } from '../data/lifeSkills.js';
 import { FARM } from '../data/farmCrops.js';
 import { SKILL_GUILDS, getGuildRank } from '../data/gameSystems.js';
@@ -62,9 +66,17 @@ function levelsOf(rpg, who) {
   return (rpg && rpg.lifeSkills && typeof rpg.lifeSkills === 'object') ? rpg.lifeSkills : null;
 }
 
-/** The headline: the sum of the ten levels on screen (LIFE_SKILLS only, each read as its tile reads it). */
+/** v2.3.6694 (the mend of sitting 72): whether `who`'s page has levels to show: yours always; another
+ *  player's only when the worker sent their `lifeSkills`.  A page that is not shared says so, whole. */
+export function lifeShared(who) {
+  return who == null || levelsOf(null, who) !== null;
+}
+
+/** The headline: the sum of the ten levels on screen (LIFE_SKILLS only, each read as its tile reads it);
+ *  null for another player whose levels the worker did not send. */
 export function lifeTotal(rpg, who) {
   const ls = levelsOf(rpg, who);
+  if (who != null && ls === null) return null;
   let n = 0;
   for (const k of LIFE_SKILLS) n += lifeLevel(ls, k);
   return n;
@@ -74,7 +86,7 @@ export function lifeTotal(rpg, who) {
 export function lifeSkillProgress(rpg, key, who) {
   const ls = levelsOf(rpg, who);
   const lv = lifeLevel(ls, key);
-  if (who != null) return Object.freeze({ level: lv, cap: null, max: false, xpNow: null, xpNeed: null, frac: null });
+  if (who != null) return Object.freeze({ level: ls === null ? null : lv, cap: null, max: false, xpNow: null, xpNeed: null, frac: null });
   const s = own(ls, key) ? ls[key] : null;
   return progressOf(lv, s && typeof s === 'object' ? s.xp : 0, LIFE_SKILL_XP(lv), null);
 }
@@ -93,7 +105,7 @@ export function lifeTiles(rpg, who, fresh) {
     const p = lifeSkillProgress(rpg, sd.key, who);
     return Object.freeze({
       key: sd.key, name: sd.name, art: sd.iconSrc, page: LIFE_PAGE_OF[sd.key],
-      level: lifeLevel(ls, sd.key), frac: p.frac, dot: nu.indexOf(sd.key) >= 0,
+      level: p.level === null ? null : lifeLevel(ls, sd.key), frac: p.frac, dot: nu.indexOf(sd.key) >= 0,
     });
   }));
 }

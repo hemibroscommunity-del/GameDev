@@ -9,7 +9,8 @@ state: ready
 - `mp-ui2life`; mp-hitladder and mp-xpfade moved to How it works; states ui2-life-landing, ui2-life-skill, ui2-life-unlocks (dash-bro-skill-detail is How it works under the frame); UI-DESIGN-NOTES "Life Skills under the new dashboard"; the decision log's line (UI_ARCHITECTURE_V2.md part 13).
 
 ## Next
-- Nothing: the PR waits for the gatekeeper. Runs on the final code (the test box, by a helper; main e4f08ed6 and the Ranks base ab83d09f both already beneath, nothing new to merge): ui2life 28/28, hitladder 50/50, xpfade 31/31, membudget 12/12 (no line raised), ui2bro 25/26 (9: the Ranks base's, below); precheck 0 FAIL. Pictures in Merriweather (UI3-type's Source Sans 3 not yet on main).
+- Nothing: the PR waits for the gatekeeper's sitting 73.  THE MEND OF SITTING 72 (held: "the card's dodge 'another player's XP shown' is green"; the drawing's `who` was tested only in the rule): `life-profile.test` C1-C4 read each page's syntax tree (every lifeSkillProgress, lifeTiles and lifeTotal of a page with a `who` handed that who; the How it works door only under `self`; the How it works page only under `who == null`, and it takes no who; "Not shared" first), plants Q1-Q7 each red (Q1-Q3 the held head's three places). And a `who` with no `lifeSkills` (the Ranks row's) now has NO level (`lifeShared`, null; A8d said 1 each, a number the worker never sent): the landing, a skill's page and All unlocks say "Not shared" (a new say key). 10 hand mutants of the changed lines, 0 survivors. Then the Ranks branch's mended head merged in (it carries main 5ab943fe).
+- Before the mend: ui2life 28/28, hitladder 50/50, xpfade 31/31, membudget 12/12.
 
 ## Found
 - The names do not fit five across at the navigation size (Woodworking 91 px, a tile 72-83 upright, 57 sideways at 667 x 375): they break at their joint; told to the orchestrator.

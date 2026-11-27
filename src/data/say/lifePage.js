@@ -9,6 +9,8 @@ export const SAY = Object.freeze({
   'lifePage.total': 'Total level',
   'lifePage.totalAria': 'Total level {n}: the ten life skills added up',
   'lifePage.lv': 'Lv {n}',
+  /* v2.3.6694 (the mend of sitting 72): another player's life pages when the worker sent no levels */
+  'lifePage.notShared': 'Not shared',
   'lifePage.tileAria': '{name}, level {n}',
   'lifePage.tileAriaNew': '{name}, level {n}, a new level to see',
   'lifePage.xp': '{now} / {need} XP',

@@ -24,8 +24,8 @@ import { useClock, useRoom } from './CharacterPage.jsx';
 import { LifeBar, lifeKey } from './LifeSkillsPage.jsx';
 import { LifeUnlocks } from './LifeUnlocks.jsx';
 import { SkillHow } from './SkillHow.jsx';
-import { lifeKeyOfPage, lifeSkillOf, lifeSkillProgress, lifeSkillFacts, lifeGuildLine, LIFE_UNLOCKS_PAGE, LIFE_HOW_PAGE } from '@/game/lifeProfile.js';
-import { Ui2Facts, Ui2Fact, Ui2Tile, ui2RootClass } from '@/ui/kit/index.js';
+import { lifeKeyOfPage, lifeSkillOf, lifeSkillProgress, lifeSkillFacts, lifeGuildLine, lifeShared, LIFE_UNLOCKS_PAGE, LIFE_HOW_PAGE } from '@/game/lifeProfile.js';
+import { Ui2Facts, Ui2Fact, Ui2Tile, Ui2Empty, ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/lifePage.js';
 import { say } from '@/game/say.js';
 import './lifePage.css';
@@ -51,6 +51,9 @@ export function LifeSkillPage({ S, skill, who, live }) {
     try { window.__btLifePage = { skill, level: p.level, xpNow: p.xpNow, xpNeed: p.xpNeed, next: f.next, n: f.n }; } catch (e) { /* no window */ }
   });
   useEffect(() => () => { try { window.__btLifePage = null; } catch (e) { /* no window */ } }, []);
+  /* v2.3.6694 (the mend of sitting 72): another player whose levels the worker did not send has none here
+     (lifeProfile.js lifeShared): never yours, never 1 each */
+  if (!lifeShared(who)) return <div className={ui2RootClass() + ' u2-lsp'} data-life-unshared=""><Ui2Empty title={say(SAY, 'lifePage.notShared')} /></div>;
   if (!sd) return null;
   const push = (id) => dashboardPanelBus.go({ type: 'push', id, sel: skill, who: self ? undefined : who });
   const short = room.short;

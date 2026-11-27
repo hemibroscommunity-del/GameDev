@@ -10,7 +10,7 @@
  * level: the kit's empty state, with the skill's own way to earn.  Nothing is invented. */
 import React, { useEffect, useRef } from 'react';
 import { deskWords } from '@/game/deskWords.js';
-import { lifeRoadmap, lifeSkillOf, lifeSkillProgress } from '@/game/lifeProfile.js';
+import { lifeRoadmap, lifeSkillOf, lifeSkillProgress, lifeShared } from '@/game/lifeProfile.js';
 import { Ui2Facts, Ui2Fact, Ui2Empty, ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/lifePage.js';
 import { say } from '@/game/say.js';
@@ -35,6 +35,9 @@ export function LifeUnlocks({ S, skill, who }) {
       if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
     } catch (e) { /* no scroll */ }
   }, [skill]);
+  /* v2.3.6694 (the mend of sitting 72): another player whose levels the worker did not send has none here
+     (lifeProfile.js lifeShared): never yours, never 1 each */
+  if (!lifeShared(who)) return <div className={ui2RootClass() + ' u2-lsu'} data-life-unshared=""><Ui2Empty title={say(SAY, 'lifePage.notShared')} /></div>;
   if (!sd) return null;
   return (
     <div ref={ref} className={ui2RootClass() + ' u2-lsu'} data-life-unlocks={skill} data-life-rungs={road ? road.length : 0}>

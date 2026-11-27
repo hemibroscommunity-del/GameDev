@@ -30,7 +30,9 @@
  *       later), its states got / next / later by level
  *   A6  trapping and enchanting: no rung (null), never one invented
  *   A7  farming's rungs are its crops, every one, each at the level it asks
- *   A8  another player's: levels only (no XP, no fraction, no dot)
+ *   A8  another player's: levels only (no XP, no fraction, no dot); none at
+ *       all (null, "Not shared") when the worker sent no levels (the mend of
+ *       sitting 72, tag 6694: never 1 each, never yours)
  *   A9  the facts: the next unlock and the latest one, the guild's line
  *   A10 the ten page ids: one a skill, each a row of FRAME_PAGES and
  *       BRO_HUB_PAGES, its header word the skill's own name
@@ -47,6 +49,14 @@
  *       inline fontSize; the tile's name wears the kit's `u2-tile-label`
  *   B6  "Total level" is the STAT, recessed (`Ui2Stat`, no handler, never
  *       `u2-raised`); the ten are raised doors with a handler
+ *   C1-C4 WHOSE numbers each drawing reads (the mend of sitting 72, held:
+ *       "the card's dodge 'another player's XP shown' is green.
+ *       LifeSkillPage.jsx:47 `lifeSkillProgress(R, skill, null)` shows your XP
+ *       on their page; the How it works door (:87) and page (:124) do the
+ *       same"): C1 every reading of a page with a `who` is handed that `who`;
+ *       C2 the How it works door only on your page; C3 the How it works page
+ *       only for you; C4 another player's page with no levels sent says "Not
+ *       shared", whole.  Plants Q1-Q7, each red.
  *
  * Run: node tools/guards/life-profile.test.mjs   (Part B needs @babel/parser
  * and @babel/traverse: npm install in the root or server/)
@@ -160,7 +170,16 @@ const rec = (levels) => { const ls = {}; for (const k of Object.keys(levels)) ls
   check('A8b. another player\'s: no XP fraction and no dot, whatever `fresh` says', t.every((x) => x.frac === null && x.dot === false));
   const p = L.lifeSkillProgress({ lifeSkills: rec({ fishing: 2 }) }, 'fishing', who);
   check('A8c. another player\'s skill: its level, no XP numbers', p.level === 30 && p.xpNow === null && p.xpNeed === null && p.frac === null, p);
-  check('A8d. another player with no levels sent reads 1 each (never yours)', L.lifeTotal({ lifeSkills: rec({ fishing: 50 }) }, { name: 'x' }) === 10);
+  /* v2.3.6694 (the mend of sitting 72): no levels sent is NO level, never 1 each (the worker never said 1) and never yours */
+  const none = { name: 'x', id: 'p9', passport: {} };
+  const np = L.lifeSkillProgress({ lifeSkills: rec({ fishing: 50 }) }, 'fishing', none);
+  check('A8d. another player with no levels sent: no level, no total, no XP (never 1 each, never yours), and not shared',
+    L.lifeTotal({ lifeSkills: rec({ fishing: 50 }) }, none) === null && np.level === null && np.xpNow === null
+    && L.lifeTiles({ lifeSkills: rec({ fishing: 50 }) }, none, []).every((x) => x.level === null && x.frac === null)
+    && L.lifeShared(none) === false && L.lifeShared(who) === true && L.lifeShared(null) === true && L.lifeShared(undefined) === true
+    && L.lifeShared({ lifeSkills: 5 }) === false, np);
+  check('A8f. another player whose record lacks a skill: that skill reads as the worker reads it (1), the rest theirs',
+    L.lifeSkillProgress(null, 'cooking', who).level === 1 && L.lifeTotal(null, who) === 30 + 4 + 8);
   const mine = L.lifeTiles({ lifeSkills: rec({ fishing: 2 }) }, null, ['fishing']);
   check('A8e. yours: the dot on the fresh skill only', mine.filter((x) => x.dot).map((x) => x.key).join(',') === 'fishing');
 }
@@ -307,6 +326,92 @@ if (B) {
 }
 check('B2. no label of what kind of player you are, no radar, in the pages\' words', labelWords(LIFE_SAY).length === 0, labelWords(LIFE_SAY));
 
+/* ── C: whose numbers each drawing reads (the syntax tree; the mend of sitting 72) ── */
+const SKILL = 'src/ui/mobile/sheet/LifeSkillPage.jsx';
+const UNLOCKS = 'src/ui/mobile/sheet/LifeUnlocks.jsx';
+const READERS = ['lifeSkillProgress', 'lifeTiles', 'lifeTotal'];
+const isWho = (n) => n && n.type === 'Identifier' && n.name === 'who';
+const isWhoNull = (n) => n && n.type === 'BinaryExpression' && n.operator === '==' && isWho(n.left) && n.right.type === 'NullLiteral';
+/* `self` declared `who == null` in that function */
+const selfIsWhoNull = (fp) => { let ok = false; fp.traverse({ VariableDeclarator(q) { if (q.node.id.name === 'self' && isWhoNull(q.node.init)) ok = true; } }); return ok; };
+const fnOf = (ast, name) => { let f = null; B.traverse(ast, { FunctionDeclaration(q) { if (q.node.id && q.node.id.name === name) { f = q; q.stop(); } } }); return f; };
+const hasWhoParam = (fp) => fp.node.params.some((pa) => pa.type === 'ObjectPattern' && pa.properties.some((pr) => pr.key && pr.key.name === 'who'));
+/* C1: in a page that has a `who`, each reader is handed THAT who (`who`, `who == null ? null : who`, `self ? null : who`) */
+function whoReads(over) {
+  const bad = [];
+  for (const rel of PAGES) {
+    const ast = parse(read(rel, over));
+    B.traverse(ast, { FunctionDeclaration(fp) {
+      if (!hasWhoParam(fp)) return;
+      const self = selfIsWhoNull(fp);
+      fp.traverse({ CallExpression(q) {
+        const c = q.node.callee;
+        if (c.type !== 'Identifier' || !READERS.includes(c.name)) return;
+        const a = q.node.arguments[c.name === 'lifeSkillProgress' ? 2 : 1];
+        const ok = isWho(a) || (a && a.type === 'ConditionalExpression' && a.consequent.type === 'NullLiteral' && isWho(a.alternate)
+          && (isWhoNull(a.test) || (self && a.test.type === 'Identifier' && a.test.name === 'self')));
+        if (!ok) bad.push(`${rel}: ${fp.node.id.name} ${c.name} not handed the page's who`);
+      } });
+    } });
+  }
+  return bad;
+}
+/* C2: the How it works door only on your page (under `self`, `who == null`) */
+function howDoor(over) {
+  const ast = parse(read(SKILL, over));
+  const fp = fnOf(ast, 'LifeSkillPage');
+  if (!fp) return ['LifeSkillPage gone'];
+  const self = selfIsWhoNull(fp);
+  let doors = 0, guarded = 0;
+  fp.traverse({ JSXOpeningElement(q) {
+    if (!attr(q.node, 'data-life-how-door')) return;
+    doors++;
+    const c = q.findParent((x) => x.isConditionalExpression() || x.isLogicalExpression());
+    const t = c && c.node.test ? c.node.test : c && c.node.left;
+    const inYes = c && (c.isConditionalExpression() ? q.findParent((x) => x === c.get('consequent')) : c.node.operator === '&&');
+    if (inYes && (isWhoNull(t) || (self && t.type === 'Identifier' && t.name === 'self'))) guarded++;
+  } });
+  return doors === 1 && guarded === 1 ? [] : [`How it works doors ${doors}, only on your page ${guarded}`];
+}
+/* C3: the How it works page only for you (LifeDoor: `who == null ? <LifeHowPage> : null`) */
+function howPage(over) {
+  const ast = parse(read(SKILL, over));
+  const fp = fnOf(ast, 'LifeDoor');
+  if (!fp) return ['LifeDoor gone'];
+  let pages = 0, guarded = 0;
+  fp.traverse({ JSXOpeningElement(q) {
+    if (q.node.name.name !== 'LifeHowPage') return;
+    pages++;
+    const c = q.findParent((x) => x.isConditionalExpression());
+    if (c && isWhoNull(c.node.test) && q.findParent((x) => x === c.get('consequent'))) guarded++;
+  } });
+  const hp = fnOf(ast, 'LifeHowPage');
+  return pages === 1 && guarded === 1 && hp && !hasWhoParam(hp) ? [] : [`How it works pages ${pages}, only for you ${guarded}`];
+}
+/* C4: each page says "Not shared" first when another player's levels were not sent (`if (!lifeShared(who)) return ...`) */
+function unshared(over) {
+  const bad = [];
+  const OWN = { [LAND]: 'LifeSkillsPage', [SKILL]: 'LifeSkillPage', [UNLOCKS]: 'LifeUnlocks' };
+  for (const rel of PAGES) {
+    const fp = fnOf(parse(read(rel, over)), OWN[rel]);
+    let ok = false;
+    fp && fp.traverse({ IfStatement(q) {
+      const t = q.node.test;
+      if (t.type === 'UnaryExpression' && t.operator === '!' && t.argument.type === 'CallExpression' && t.argument.callee.name === 'lifeShared' && isWho(t.argument.arguments[0])
+        && q.node.consequent.type === 'ReturnStatement' && /lifePage\.notShared/.test(read(rel, over).slice(q.node.start, q.node.end))) ok = true;
+    } });
+    if (!ok) bad.push(`${rel}: no "Not shared" for another player whose levels were not sent`);
+  }
+  return bad;
+}
+if (B) {
+  const c1 = whoReads(null), c2 = howDoor(null), c3 = howPage(null), c4 = unshared(null);
+  check('C1. every reading of a page with a `who` is handed that who (never null: your XP on their page)', c1.length === 0, c1.join('; '));
+  check('C2. the How it works door only on your page', c2.length === 0, c2.join('; '));
+  check('C3. the How it works page only for you (another player\'s entry draws none)', c3.length === 0, c3.join('; '));
+  check('C4. another player\'s page with no levels sent says "Not shared", whole (the landing, a skill, All unlocks)', c4.length === 0, c4.join('; '));
+}
+
 /* ── P: the dodges planted, each must turn its check red ── */
 if (B) {
   const swap = (rel, from, to) => { const s = read(rel); return s.split(from).length === 2 ? { [rel]: s.replace(from, to) } : null; };
@@ -339,6 +444,21 @@ if (B) {
       swap(LAND, '<Ui2Stat className="u2-life-total" v={total}', '<Ui2Stat className="u2-life-total" onClick={() => open(tiles[0])} v={total}')],
     ['P14', 'a tile drawn flat (no raised face)', (o) => tileForm(o).length === 0,
       swap(LAND, 'className="u2-raised u2-life-tile"', 'className="u2-life-tile"')],
+    /* the mend of sitting 72: the held head's three places, and their kin */
+    ['Q1', 'a skill\'s page reading YOUR XP on their page (lifeSkillProgress(R, skill, null))', (o) => whoReads(o).length === 0,
+      swap(SKILL, 'const p = lifeSkillProgress(R, skill, self ? null : who);', 'const p = lifeSkillProgress(R, skill, null);')],
+    ['Q2', 'the How it works door on their page too', (o) => howDoor(o).length === 0,
+      swap(SKILL, "{self ? <Ui2Tile size=\"compact\" label={say(SAY, 'lifePage.how')}", "{true ? <Ui2Tile size=\"compact\" label={say(SAY, 'lifePage.how')}")],
+    ['Q3', 'the How it works page drawn for their entry (yours, under their name)', (o) => howPage(o).length === 0,
+      swap(SKILL, "if (door === 'lifeHow') return who == null ? <LifeHowPage S={S} skill={skill} /> : null;", "if (door === 'lifeHow') return <LifeHowPage S={S} skill={skill} />;")],
+    ['Q4', 'All unlocks marking the ladder by YOUR level on their page', (o) => whoReads(o).length === 0,
+      swap(UNLOCKS, 'lifeSkillProgress((S && S.rpg) || null, skill, who == null ? null : who)', 'lifeSkillProgress((S && S.rpg) || null, skill, null)')],
+    ['Q5', 'the landing\'s tiles read as yours on their page', (o) => whoReads(o).length === 0,
+      swap(LAND, 'const tiles = lifeTiles(R, who == null ? null : who, fresh);', 'const tiles = lifeTiles(R, null, fresh);')],
+    ['Q6', 'the How it works page handed a who (it reads only yours)', (o) => howPage(o).length === 0,
+      swap(SKILL, 'export function LifeHowPage({ S, skill }) {', 'export function LifeHowPage({ S, skill, who }) {')],
+    ['Q7', 'a skill\'s page with no "Not shared" (another player\'s levels drawn as 1 each)', (o) => unshared(o).length === 0,
+      swap(SKILL, "  if (!lifeShared(who)) return <div className={ui2RootClass() + ' u2-lsp'}", "  if (false) return <div className={ui2RootClass() + ' u2-lsp'}")],
   ];
   for (const [id, what, ok, over] of PL) {
     if (!over) { check(`${id} (${what}): its line is found once`, false, 'the plant\'s line moved: update the plant'); continue; }

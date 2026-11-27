@@ -26,9 +26,9 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashNavView } from '@/game/dashNav.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { unseenSkillKeys, markSkillsSeen } from './skillsModel.js';
-import { lifeTiles, lifeTotal } from '@/game/lifeProfile.js';
+import { lifeTiles, lifeTotal, lifeShared } from '@/game/lifeProfile.js';
 import { LIFE_SKILLS } from '../../../data/lifeSkills.js';
-import { Ui2Stat, ui2RootClass } from '@/ui/kit/index.js';
+import { Ui2Stat, Ui2Empty, ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/lifePage.js';
 import { say } from '@/game/say.js';
 import './lifePage.css';
@@ -85,6 +85,9 @@ export function LifeSkillsPage({ getS, who }) {
   const tiles = lifeTiles(R, who == null ? null : who, fresh);
   const total = lifeTotal(R, who == null ? null : who);
   const open = (t) => dashboardPanelBus.go({ type: 'push', id: t.page, who: who == null ? undefined : who });
+  /* v2.3.6694 (the mend of sitting 72): another player whose levels the worker did not send has none here
+     (lifeProfile.js lifeShared): never yours, never 1 each */
+  if (!lifeShared(who)) return <div className={ui2RootClass() + ' u2-life'} data-life-unshared=""><Ui2Empty title={say(SAY, 'lifePage.notShared')} /></div>;
   const tile = (t) => (
     <button key={t.key} type="button" className="u2-raised u2-life-tile" data-life-door={t.key} data-life-lv={t.level}
       data-life-xp={t.frac == null ? '' : t.frac.toFixed(4)}
