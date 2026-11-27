@@ -1,0 +1,5049 @@
+[
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   4,
+   657,
+   382,
+   183
+  ],
+  "drawn": [
+   21,
+   654,
+   369,
+   179
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "drawn": [
+   7,
+   653,
+   359,
+   182
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   4,
+   657,
+   382,
+   183
+  ],
+  "drawn": [
+   13,
+   663,
+   364,
+   171
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   4,
+   657,
+   382,
+   183
+  ],
+  "drawn": [
+   8,
+   658,
+   374,
+   171
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   4,
+   657,
+   382,
+   183
+  ],
+  "drawn": [
+   8,
+   666,
+   374,
+   158
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   4,
+   657,
+   382,
+   183
+  ],
+  "drawn": [
+   6,
+   663,
+   378,
+   170
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "390x844",
+  "form": "upright",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   601,
+   390,
+   243
+  ],
+  "head": 52,
+  "page": [
+   0,
+   653,
+   390,
+   191
+  ],
+  "inner": [
+   4,
+   657,
+   382,
+   183
+  ],
+  "drawn": [
+   10,
+   659,
+   181,
+   165
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   390,
+   615
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   4,
+   484,
+   367,
+   179
+  ],
+  "drawn": [
+   19,
+   481,
+   355,
+   176
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "drawn": [
+   7,
+   480,
+   348,
+   178
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   4,
+   484,
+   367,
+   179
+  ],
+  "drawn": [
+   13,
+   490,
+   349,
+   167
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   4,
+   484,
+   367,
+   179
+  ],
+  "drawn": [
+   8,
+   485,
+   359,
+   168
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   4,
+   484,
+   367,
+   179
+  ],
+  "drawn": [
+   8,
+   493,
+   359,
+   155
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   4,
+   484,
+   367,
+   179
+  ],
+  "drawn": [
+   6,
+   490,
+   362,
+   166
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "375x667",
+  "form": "upright",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   432,
+   375,
+   235
+  ],
+  "head": 48,
+  "page": [
+   0,
+   480,
+   375,
+   187
+  ],
+  "inner": [
+   4,
+   484,
+   367,
+   179
+  ],
+  "drawn": [
+   10,
+   486,
+   173,
+   161
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   375,
+   446
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   4,
+   403,
+   312,
+   161
+  ],
+  "drawn": [
+   14,
+   400,
+   305,
+   161
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "drawn": [
+   7,
+   399,
+   306,
+   168
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   4,
+   403,
+   312,
+   161
+  ],
+  "drawn": [
+   13,
+   409,
+   294,
+   149
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   4,
+   403,
+   312,
+   161
+  ],
+  "drawn": [
+   9,
+   404,
+   301,
+   151
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [
+   "Attack speed (wider than its box)"
+  ],
+  "overlapWords": [
+   "Attack speed / 1.67 /s"
+  ],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   4,
+   403,
+   312,
+   161
+  ],
+  "drawn": [
+   8,
+   412,
+   304,
+   141
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [
+   "Max Mana / +",
+   "Move speed / +"
+  ],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   4,
+   403,
+   312,
+   161
+  ],
+  "drawn": [
+   6,
+   409,
+   308,
+   155
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [
+   "Inventory (wider than its box)"
+  ],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [
+   "Staff: Pine Staff (not whole in view)",
+   "Legs, empty (not whole in view)",
+   "Gem, empty (not whole in view)"
+  ],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "320x568",
+  "form": "upright",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   351,
+   320,
+   217
+  ],
+  "head": 48,
+  "page": [
+   0,
+   399,
+   320,
+   169
+  ],
+  "inner": [
+   4,
+   403,
+   312,
+   161
+  ],
+  "drawn": [
+   10,
+   405,
+   146,
+   143
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [
+   "Copper Greatsword (taller than its box)",
+   "Worn · Normal (wider than its box)"
+  ],
+  "overlapWords": [
+   "Copper Greatsw / Worn · Normal"
+  ],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   320,
+   365
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   4,
+   601,
+   352,
+   175
+  ],
+  "drawn": [
+   17,
+   598,
+   342,
+   173
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "drawn": [
+   7,
+   597,
+   336,
+   174
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   4,
+   601,
+   352,
+   175
+  ],
+  "drawn": [
+   13,
+   607,
+   334,
+   163
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   4,
+   601,
+   352,
+   175
+  ],
+  "drawn": [
+   8,
+   602,
+   344,
+   165
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   4,
+   601,
+   352,
+   175
+  ],
+  "drawn": [
+   8,
+   610,
+   344,
+   152
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [
+   "Move speed / +"
+  ],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   4,
+   601,
+   352,
+   175
+  ],
+  "drawn": [
+   6,
+   607,
+   348,
+   162
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "360x780",
+  "form": "upright",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   545,
+   360,
+   235
+  ],
+  "head": 52,
+  "page": [
+   0,
+   597,
+   360,
+   183
+  ],
+  "inner": [
+   4,
+   601,
+   352,
+   175
+  ],
+  "drawn": [
+   10,
+   603,
+   166,
+   157
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   360,
+   559
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   4,
+   701,
+   406,
+   191
+  ],
+  "drawn": [
+   24,
+   698,
+   390,
+   185
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "drawn": [
+   7,
+   697,
+   377,
+   190
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   4,
+   701,
+   406,
+   191
+  ],
+  "drawn": [
+   13,
+   708,
+   388,
+   177
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   4,
+   701,
+   406,
+   191
+  ],
+  "drawn": [
+   8,
+   702,
+   398,
+   177
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   4,
+   701,
+   406,
+   191
+  ],
+  "drawn": [
+   8,
+   710,
+   398,
+   164
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   4,
+   701,
+   406,
+   191
+  ],
+  "drawn": [
+   6,
+   707,
+   402,
+   178
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "414x896",
+  "form": "upright",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   645,
+   414,
+   251
+  ],
+  "head": 52,
+  "page": [
+   0,
+   697,
+   414,
+   199
+  ],
+  "inner": [
+   4,
+   701,
+   406,
+   191
+  ],
+  "drawn": [
+   10,
+   703,
+   193,
+   173
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   414,
+   659
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   4,
+   731,
+   422,
+   197
+  ],
+  "drawn": [
+   26,
+   728,
+   404,
+   190
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "drawn": [
+   7,
+   727,
+   389,
+   196
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   4,
+   731,
+   422,
+   197
+  ],
+  "drawn": [
+   13,
+   741,
+   404,
+   180
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   4,
+   731,
+   422,
+   197
+  ],
+  "drawn": [
+   8,
+   732,
+   414,
+   182
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   4,
+   731,
+   422,
+   197
+  ],
+  "drawn": [
+   8,
+   740,
+   414,
+   168
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   4,
+   731,
+   422,
+   197
+  ],
+  "drawn": [
+   6,
+   737,
+   418,
+   184
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "430x932",
+  "form": "upright",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   675,
+   430,
+   257
+  ],
+  "head": 52,
+  "page": [
+   0,
+   727,
+   430,
+   205
+  ],
+  "inner": [
+   4,
+   731,
+   422,
+   197
+  ],
+  "drawn": [
+   10,
+   733,
+   201,
+   179
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   430,
+   689
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   4,
+   312,
+   836,
+   74
+  ],
+  "drawn": [
+   36,
+   309,
+   807,
+   66
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "drawn": [
+   24,
+   308,
+   814,
+   67
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   4,
+   312,
+   836,
+   74
+  ],
+  "drawn": [
+   13,
+   325,
+   761,
+   48
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   4,
+   312,
+   836,
+   74
+  ],
+  "drawn": [
+   13,
+   312,
+   823,
+   74
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   4,
+   312,
+   836,
+   74
+  ],
+  "drawn": [
+   13,
+   312,
+   823,
+   56
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   4,
+   312,
+   836,
+   74
+  ],
+  "drawn": [
+   11,
+   316,
+   821,
+   57
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 52x26, touched 52x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "844x390",
+  "form": "sideways",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   260,
+   844,
+   130
+  ],
+  "head": 48,
+  "page": [
+   0,
+   308,
+   844,
+   82
+  ],
+  "inner": [
+   4,
+   312,
+   836,
+   74
+  ],
+  "drawn": [
+   14,
+   327,
+   265,
+   46
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [
+   "Damage (wider than its box)"
+  ],
+  "overlapWords": [],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   136,
+   0,
+   572,
+   274
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   4,
+   302,
+   659,
+   69
+  ],
+  "drawn": [
+   25,
+   299,
+   641,
+   63
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "drawn": [
+   13,
+   298,
+   646,
+   64
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   4,
+   302,
+   659,
+   69
+  ],
+  "drawn": [
+   13,
+   313,
+   628,
+   48
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   4,
+   302,
+   659,
+   69
+  ],
+  "drawn": [
+   13,
+   302,
+   646,
+   69
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   4,
+   302,
+   659,
+   69
+  ],
+  "drawn": [
+   13,
+   302,
+   646,
+   54
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   4,
+   302,
+   659,
+   69
+  ],
+  "drawn": [
+   11,
+   306,
+   656,
+   55
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 52x26, touched 52x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [
+   "Gem, empty (not whole in view)"
+  ],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "667x375",
+  "form": "sideways",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   250,
+   667,
+   125
+  ],
+  "head": 48,
+  "page": [
+   0,
+   298,
+   667,
+   77
+  ],
+  "inner": [
+   4,
+   302,
+   659,
+   69
+  ],
+  "drawn": [
+   14,
+   315,
+   110,
+   44
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [
+   "Back to your gear / Details",
+   "Back to your gear / Unequip"
+  ],
+  "cut": [
+   "Unequip (clipped)"
+  ],
+  "overlapWords": [
+   "11.2 / Details"
+  ],
+  "mains": 2,
+  "hidden": [
+   "Unequip (not whole in view)"
+  ],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   58,
+   0,
+   551,
+   264
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   4,
+   292,
+   732,
+   64
+  ],
+  "drawn": [
+   30,
+   289,
+   709,
+   61
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "drawn": [
+   19,
+   288,
+   712,
+   62
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   4,
+   292,
+   732,
+   64
+  ],
+  "drawn": [
+   13,
+   301,
+   683,
+   46
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   4,
+   292,
+   732,
+   64
+  ],
+  "drawn": [
+   13,
+   292,
+   719,
+   64
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   4,
+   292,
+   732,
+   64
+  ],
+  "drawn": [
+   13,
+   292,
+   719,
+   51
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   4,
+   292,
+   732,
+   64
+  ],
+  "drawn": [
+   11,
+   296,
+   717,
+   52
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 52x26, touched 52x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "740x360",
+  "form": "sideways",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   240,
+   740,
+   120
+  ],
+  "head": 48,
+  "page": [
+   0,
+   288,
+   740,
+   72
+  ],
+  "inner": [
+   4,
+   292,
+   732,
+   64
+  ],
+  "drawn": [
+   14,
+   302,
+   161,
+   46
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [
+   "Back to your gear / Details"
+  ],
+  "cut": [
+   "DPS (clipped)",
+   "11.2 (clipped)",
+   "5–8 (clipped)"
+  ],
+  "overlapWords": [
+   "★ / 5–8",
+   "✕ / Details"
+  ],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   106,
+   0,
+   528,
+   254
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   4,
+   339,
+   924,
+   87
+  ],
+  "drawn": [
+   42,
+   336,
+   889,
+   72
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "drawn": [
+   31,
+   335,
+   894,
+   73
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   4,
+   339,
+   924,
+   87
+  ],
+  "drawn": [
+   13,
+   359,
+   827,
+   48
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   4,
+   339,
+   924,
+   87
+  ],
+  "drawn": [
+   13,
+   339,
+   911,
+   63
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   4,
+   339,
+   924,
+   87
+  ],
+  "drawn": [
+   13,
+   339,
+   911,
+   63
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   4,
+   339,
+   924,
+   87
+  ],
+  "drawn": [
+   11,
+   343,
+   909,
+   64
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 52x26, touched 52x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "932x430",
+  "form": "sideways",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   287,
+   932,
+   143
+  ],
+  "head": 48,
+  "page": [
+   0,
+   335,
+   932,
+   95
+  ],
+  "inner": [
+   4,
+   339,
+   924,
+   87
+  ],
+  "drawn": [
+   14,
+   361,
+   353,
+   46
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [
+   "Copper Greatsword (taller than its box)",
+   "Worn · Normal (wider than its box)"
+  ],
+  "overlapWords": [
+   "Copper Greatsw / Worn · Normal"
+  ],
+  "mains": 2,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   150,
+   0,
+   632,
+   301
+  ]
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   304,
+   713,
+   832,
+   183
+  ],
+  "drawn": [
+   377,
+   710,
+   762,
+   179
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "perRow": 4,
+  "mainW": 204,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "drawn": [
+   307,
+   709,
+   723,
+   182
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 276,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ],
+  "keys": {
+   "w": 270,
+   "gap": 16
+  }
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   304,
+   713,
+   832,
+   183
+  ],
+  "drawn": [
+   313,
+   719,
+   814,
+   171
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "perRow": 3,
+  "mainW": 273,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   304,
+   713,
+   832,
+   183
+  ],
+  "drawn": [
+   308,
+   714,
+   824,
+   171
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 276,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   304,
+   713,
+   832,
+   183
+  ],
+  "drawn": [
+   308,
+   722,
+   824,
+   158
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "perRow": 4,
+  "mainW": 207,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   304,
+   713,
+   832,
+   183
+  ],
+  "drawn": [
+   306,
+   719,
+   828,
+   169
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "perRow": 3,
+  "mainW": 46,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900",
+  "form": "computer",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   300,
+   709,
+   840,
+   191
+  ],
+  "inner": [
+   304,
+   713,
+   832,
+   183
+  ],
+  "drawn": [
+   310,
+   715,
+   406,
+   165
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "perRow": 2,
+  "mainW": 203,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   276,
+   581,
+   472,
+   183
+  ],
+  "drawn": [
+   304,
+   578,
+   447,
+   179
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "perRow": 4,
+  "mainW": 114,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ]
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "drawn": [
+   279,
+   577,
+   426,
+   182
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 156,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ],
+  "keys": {
+   "w": 244,
+   "gap": 16
+  }
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   276,
+   581,
+   472,
+   183
+  ],
+  "drawn": [
+   285,
+   587,
+   454,
+   171
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "perRow": 3,
+  "mainW": 153,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ]
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   276,
+   581,
+   472,
+   183
+  ],
+  "drawn": [
+   280,
+   582,
+   464,
+   171
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 156,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ]
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   276,
+   581,
+   472,
+   183
+  ],
+  "drawn": [
+   280,
+   590,
+   464,
+   158
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "perRow": 4,
+  "mainW": 117,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ]
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   276,
+   581,
+   472,
+   183
+  ],
+  "drawn": [
+   278,
+   587,
+   468,
+   169
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "perRow": 3,
+  "mainW": 46,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ]
+ },
+ {
+  "size": "1024x768",
+  "form": "computer",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   525,
+   1024,
+   243
+  ],
+  "head": 52,
+  "page": [
+   272,
+   577,
+   480,
+   191
+  ],
+  "inner": [
+   276,
+   581,
+   472,
+   183
+  ],
+  "drawn": [
+   282,
+   583,
+   226,
+   165
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "perRow": 2,
+  "mainW": 113,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1024,
+   539
+  ]
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   404,
+   613,
+   472,
+   183
+  ],
+  "drawn": [
+   432,
+   610,
+   447,
+   179
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "perRow": 4,
+  "mainW": 114,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ]
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "drawn": [
+   407,
+   609,
+   426,
+   182
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 156,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ],
+  "keys": {
+   "w": 270,
+   "gap": 16
+  }
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   404,
+   613,
+   472,
+   183
+  ],
+  "drawn": [
+   413,
+   619,
+   454,
+   171
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "perRow": 3,
+  "mainW": 153,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ]
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   404,
+   613,
+   472,
+   183
+  ],
+  "drawn": [
+   408,
+   614,
+   464,
+   171
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 156,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ]
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   404,
+   613,
+   472,
+   183
+  ],
+  "drawn": [
+   408,
+   622,
+   464,
+   158
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "perRow": 4,
+  "mainW": 117,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ]
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   404,
+   613,
+   472,
+   183
+  ],
+  "drawn": [
+   406,
+   619,
+   468,
+   169
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "perRow": 3,
+  "mainW": 46,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ]
+ },
+ {
+  "size": "1280x800",
+  "form": "computer",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   27,
+   557,
+   1226,
+   243
+  ],
+  "head": 52,
+  "page": [
+   400,
+   609,
+   480,
+   191
+  ],
+  "inner": [
+   404,
+   613,
+   472,
+   183
+  ],
+  "drawn": [
+   410,
+   615,
+   226,
+   165
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "perRow": 2,
+  "mainW": 113,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   27,
+   0,
+   1226,
+   571
+  ]
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "menu",
+  "name": "Directory (the Menu)",
+  "pr": "the directory (not this slice: Q3)",
+  "title": null,
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   484,
+   713,
+   472,
+   183
+  ],
+  "drawn": [
+   512,
+   710,
+   447,
+   179
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 8,
+  "perRow": 4,
+  "mainW": 114,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "bro",
+  "name": "Bro",
+  "pr": "PR 4 (UI4-bro)",
+  "title": "hero",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "drawn": [
+   487,
+   709,
+   426,
+   182
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 156,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 15,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ],
+  "keys": {
+   "w": 270,
+   "gap": 16
+  }
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "hub",
+  "name": "Combat hub",
+  "pr": "PR 4/5 (UI4-bro, UI4-combat)",
+  "title": "broCombat",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   484,
+   713,
+   472,
+   183
+  ],
+  "drawn": [
+   493,
+   719,
+   454,
+   171
+  ],
+  "controls": 7,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 4,
+  "perRow": 3,
+  "mainW": 153,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "weapon",
+  "name": "Weapon page (Sword)",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broSword",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   484,
+   713,
+   472,
+   183
+  ],
+  "drawn": [
+   488,
+   714,
+   464,
+   171
+  ],
+  "controls": 10,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 6,
+  "perRow": 3,
+  "mainW": 156,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "shared",
+  "name": "Shared",
+  "pr": "PR 5 (UI4-combat)",
+  "title": "broShared",
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   484,
+   713,
+   472,
+   183
+  ],
+  "drawn": [
+   488,
+   722,
+   464,
+   158
+  ],
+  "controls": 11,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 7,
+  "perRow": 4,
+  "mainW": 117,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 24,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "gear",
+  "name": "Gear",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   484,
+   713,
+   472,
+   183
+  ],
+  "drawn": [
+   486,
+   719,
+   468,
+   170
+  ],
+  "controls": 12,
+  "small": [],
+  "grown": [
+   "Filter: All drawn 44x24, touched 44x44"
+  ],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 9,
+  "perRow": 3,
+  "mainW": 46,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 11,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ },
+ {
+  "size": "1440x900-480",
+  "form": "computer",
+  "screen": "item",
+  "name": "Item summary (the worn sword)",
+  "pr": "PR 6 (UI4-gear)",
+  "title": null,
+  "band": [
+   0,
+   657,
+   1440,
+   243
+  ],
+  "head": 52,
+  "page": [
+   480,
+   709,
+   480,
+   191
+  ],
+  "inner": [
+   484,
+   713,
+   472,
+   183
+  ],
+  "drawn": [
+   490,
+   715,
+   226,
+   165
+  ],
+  "controls": 5,
+  "small": [],
+  "grown": [],
+  "over": [],
+  "cut": [],
+  "overlapWords": [],
+  "mains": 2,
+  "perRow": 2,
+  "mainW": 113,
+  "hidden": [],
+  "scrolled": false,
+  "minFont": 10,
+  "maxFont": 13,
+  "canvas": [
+   0,
+   0,
+   1440,
+   671
+  ]
+ }
+]
