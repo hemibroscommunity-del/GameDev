@@ -309,7 +309,8 @@ spec. Add a line here only for a new RULE every session must follow.
   (`preloadZoneAssets`) and is freed on exit, whatever displayed it dropping the
   texture, not just hiding it; and in the Wheel the monsters' looks load as you
   walk (`wheelMonsterArt.js`), a monster whose look is not ready NOT DRAWN. A
-  bake behind the loading screen uses the renderer's exact inputs and waits for
+  third, deliberate: the spare armour sets bake after the screen lifts (owner,
+  2026-11-27, `?sparelater=0`). A bake behind the loading screen uses the renderer's exact inputs and waits for
   every sheet it reads (TRAPS §251). Moving a load off the loading screen is the
   owner's call.
 - **MEMORY IS BUDGETED** (owner, 2026-10-06). The black screens are iPhone

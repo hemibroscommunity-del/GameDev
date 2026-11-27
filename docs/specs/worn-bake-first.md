@@ -61,6 +61,13 @@ full, and jogging north-west then `P P M M P M P M M P M P M M`. The same with
   cache it could only push out another spare frame, a bake thrown away for a
   bake. A spare piece whose frames were skipped is baked when it goes on, as
   before v2.3.2873.
+- **v2.3.6763: the spare sets bake after the loading screen** (the owner's
+  *"Yes"*, 2026-11-27: their first login's screen spent 25 s to 54.7 s on
+  them). Nothing of a spare pass runs while the screen is up; after it, one
+  job at a time with the page's share at the top of a frame. A piece put on
+  before its set is baked stops the spare pass and is baked by the worn pass,
+  exactly as a skipped one above. `?sparelater=0` the old order
+  (`docs/specs/load-times.md`).
 
 The cap is unchanged (900 frames), so the memory is unchanged.
 

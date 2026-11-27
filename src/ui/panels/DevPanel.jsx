@@ -26,11 +26,14 @@ const BRO_STEP_WORDS = {
   'bro-gear': 'The gear sheets were sent to the graphics chip',
   'bro-done': 'The bro was ready',
 };
+/* v2.3.6763: the spare sets now bake after the screen lifts (the owner's yes,
+   2026-11-27; game/spareLater.js): their line says so, listed last */
+const BRO_ALT_LATER = 'The spare armour sets were baked, after the loading screen';
 export function loadTimesLines(L) {
   const lf = L && L.lift;
   const out = ['Why it lifted: ' + (!lf ? '--' : lf.limit ? 'its ' + (lf.capS || 20) + ' s limit' : 'ready')];
   out.push("The bro's own steps (s since the page began):");
-  for (const st of ((L && L.bro) || [])) out.push((st.at == null ? '   --' : String(st.at.toFixed(1)).padStart(5) + ' s') + '  ' + (BRO_STEP_WORDS[st.key] || st.key));
+  for (const st of ((L && L.bro) || [])) out.push((st.at == null ? '   --' : String(st.at.toFixed(1)).padStart(5) + ' s') + '  ' + ((st.key === 'bro-alt' && L.spareLater ? BRO_ALT_LATER : BRO_STEP_WORDS[st.key]) || st.key));
   out.push('Armour frames ready when it lifted: ' + (!lf || !lf.armour ? '--'
     : lf.armour.want === 0 ? 'none worn' : lf.armour.have + ' of ' + lf.armour.want));
   return out;
