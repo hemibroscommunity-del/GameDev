@@ -1,7 +1,7 @@
 card: LOAD
 branch: claude/plan-load-3b-sparelater (part 3b; part 2 on claude/plan-load-2-bakekeep)
-prs: #2386 (part 1, tag 6760: merged); #2401 (part 2, tag 6761: in the merge round); part 3b (tag 6763: a draft, base part 2)
-state: working (part 3b: pushed, its phone run on the final code running)
+prs: #2386 (part 1, tag 6760: merged); #2401 (part 2, tag 6761: in the merge round); #2423 (part 3b, tag 6763: a draft, base part 2)
+state: ready (part 3b: #2423, the four checks green; the runs on the final code below)
 
 ## Done
 - Part 1 (#2386, 6760, merged): the Loading times readout says what the screen waited for and why it
@@ -18,8 +18,11 @@ state: working (part 3b: pushed, its phone run on the final code running)
   and the pace: one job at a time, the page's share at the top of a frame), the readout lists them last
   "after the loading screen"; `?sparelater=0` the old order. The GPU uploads moved unchanged to
   `src/rendering/bakeUpload.js` (entityRenderer's four-lines line). `sparelater` guard all ok, 6 plants RED.
-  On this box (first logins, `mp-sparelater` runs 1-2): the screen lifts on its limit either way (42 to 49 s;
-  the worn set's masks take 5 min here), the spare pass shut at the lift, `?sparelater=0` the old order.
+  Final code (main 02966bcb merged), `mp-sparelater` 18/20: spare pass shut at the lift and at `done`, ran
+  after (96 jobs, 339 s here), the page's longest stretch 3.2 ms; the iron torso put on at `done`: drawn every
+  frame, no blink, 8 plain frames. RED by this box's speed: 2a `?sparelater=0`'s `done` not within 15 min (the
+  old spare bake behind the screen), 3c the new set's 322 frames not all baked within 10 min. Screen 39.8 s
+  by default, 40.8 s with `?sparelater=0` (the limit both; worn masks 5.5 min here). Not run: bakekeep, loadlift.
 
 ## Next
 - The gatekeeper's next sitting reads #2401. Part 3 (6762) only if part 2's numbers call for it.
