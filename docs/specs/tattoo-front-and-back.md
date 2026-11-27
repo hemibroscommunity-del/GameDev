@@ -161,7 +161,7 @@ scrolls `.bt-paint` 67px sideways).
 # The zone picker replaces the switch (v2.3.2503)
 
 Owner, with a mockup of the finished screen
-(`docs/triage-2026-09-14/assets/tattoo-editor-mock.png`) and a sheet of UI art
+(`docs/archive/triage-2026-09-14/assets/tattoo-editor-mock.png`) and a sheet of UI art
 (`tools/gear/src-art/creator/tattoo-zone-ui.png`): the little character beside
 the editor gets **tappable frames over the head and the torso**, a **flip
 button** under him turns him round, and a **label** names the side and the zone.

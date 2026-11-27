@@ -53,6 +53,52 @@ export default [
       'valid-typeof': 'error',
     },
   },
+  /* v2.3.6701: THE WORKER IS LINTED TOO (card TD PR 2).  A peer review
+   * (2026-11-26) found `npm run lint` read `src` alone, so a name used out
+   * of scope under server/src -- the v2.3.756 class above -- reached a
+   * deploy unseen.  The SAME eight rules as the page's block, none more,
+   * none off.  Its globals are the fewest that give a clean run: the
+   * Workers runtime is a service worker's (fetch, Response, crypto,
+   * caches...) plus `WebSocketPair`, the one Cloudflare name it lacks.
+   * Add a global only when a real finding names one, never to quiet a
+   * missing import. */
+  {
+    files: ['server/src/**/*.{js,mjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.serviceworker,
+        WebSocketPair: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'error',
+      'no-dupe-keys': 'error',
+      'no-dupe-args': 'error',
+      'no-duplicate-case': 'error',
+      'no-unreachable': 'error',
+      'no-self-assign': 'error',
+      'use-isnan': 'error',
+      'valid-typeof': 'error',
+    },
+  },
+  /* v2.3.6702: UNUSED NAMES ARE REFUSED WHERE THE CODE IS CLEAN (card TD
+   * PR 3).  A name nobody reads is where a session wires a new feature into
+   * something that no longer runs.  src/game, src/state and src/ui/kit were
+   * brought to zero (32 names in 16 files of src/game, deleted; three kept
+   * under a disable line that says why), so the rule holds them there.
+   * Arguments and caught errors are left (a handler's shape), and `React`
+   * (imported for JSX the build no longer needs, in 104 files: harmless).
+   * NOT the rest of src (the screens: hundreds of names), and NOT
+   * server/src (39 names: clearing them deploys the worker, so they wait
+   * for a card that changes it anyway). */
+  {
+    files: ['src/game/**/*.{js,jsx}', 'src/state/**/*.{js,jsx}', 'src/ui/kit/**/*.{js,jsx}'],
+    rules: {
+      'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none', varsIgnorePattern: '^React$' }],
+    },
+  },
   /* v2.3.784: gameLoop.js / wsClient.js LEGACY DEBT blocks removed
      (Phase 1 deletion / Phase 5 rewrite with explicit imports).
      v2.3.1189: gameSystems.js (7), lifeSkills.js (1), and BroTown.jsx

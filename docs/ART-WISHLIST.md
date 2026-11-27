@@ -10,7 +10,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 
 ## What's left, in the order I'd make it (v2.3.3282)
 
-Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
+Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/archive/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
 
 1. ~~**The keepers**~~: not needed from ChatGPT any more. Since v2.3.3580 every townsperson is a bro from the character creator, your "NPCs should look like normal bro characters" (docs/specs/npc-creator-looks.md). A new keeper is a look written in `tools/qa/npc-looks.mjs` and photographed by the game; no picture to make.
 2. **The monsters**: none left. (The rock monster is done: since v2.3.4358 it is your rock golem, `docs/specs/rock-golem.md`. The Poison Forest's two are done: since v2.3.4357 they are your rotcap, `docs/specs/rotcap.md`.) (The Foundry's monster is done: since v2.3.4356 it is your storm eye, `docs/specs/storm-eye.md`.) (The fishman is done another way: since v2.3.4355 the Water Caves' monster is your water frog, cut from your videos, `docs/specs/water-frog.md`. Still wanted for it: a video from behind (idle and hop, and attack), and a side-on hop filmed whole. A back-right attack that does not turn its face would be a bonus.) Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
@@ -540,12 +540,12 @@ No text, frames, cell lines or shadows. Background: one flat magenta (#FF00FF) e
 
 Four of the eight lands play only a plain plaque when you cross in. Attach the Frost Ridge sheet and ChatGPT copies its layout, so I can cut each sheet into the banner exactly as with the first four.
 
-Fixed in v2.3.3282: the prompts said "the same flat black background", but your Frost Ridge sheet is see-through (no background at all), and the tool that cuts the banners (`tools/process_zone_banner_sheets.py`) reads its see-through edge; and "saved on this page" pointed at nothing. The sheet is `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`.
+Fixed in v2.3.3282: the prompts said "the same flat black background", but your Frost Ridge sheet is see-through (no background at all), and the tool that cuts the banners (`tools/process_zone_banner_sheets.py`) reads its see-through edge; and "saved on this page" pointed at nothing. The sheet is `docs/archive/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`.
 
 ### Stone Hollows: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Stone Hollows. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
+- **Attach:** the Frost Ridge ornament sheet, `docs/archive/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
@@ -561,7 +561,7 @@ No plaque, no bar, no frame, no writing and no numbers: only the two ornaments i
 ### Electric Foundry: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Electric Foundry. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
+- **Attach:** the Frost Ridge ornament sheet, `docs/archive/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
@@ -577,7 +577,7 @@ No plaque, no bar, no frame, no writing and no numbers: only the two ornaments i
 ### Water Caves: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Water Caves. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
+- **Attach:** the Frost Ridge ornament sheet, `docs/archive/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text
@@ -593,7 +593,7 @@ No plaque, no bar, no frame, no writing and no numbers: only the two ornaments i
 ### Poison Forest: land banner
 
 - **In the game:** Plays across the top of the screen as you cross into the Poison Forest. Today it shows the plain plaque only.
-- **Attach:** the Frost Ridge ornament sheet, `docs/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
+- **Attach:** the Frost Ridge ornament sheet, `docs/archive/triage-2026-09-17/assets/zonebanner-frost-ridge-ornament.png`
 - **How:** Ask for the same shape of picture as the attached sheet.
 
 ```text

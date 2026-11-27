@@ -10208,7 +10208,7 @@ export var BroTown = function BroTown(_ref0) {
       lStickRef.current.style.opacity = clampDist > 4 ? _lRodOp : '0';
     }
     var S = stateRef.current;
-    stickAnalog(S, dist, angle, maxR);   /* v2.3.6542: the analog read, moved whole to game/stickZones.js (the stick's one writer) */
+    stickAnalog(S, dist, angle, maxR, rect.width / 2, sprintTiredSay);   /* v2.3.6542: the analog read, moved whole to game/stickZones.js (the stick's one writer); v2.3.6644: + the thumb past the drawn rim sprints on a touch screen, the Sprint button gone (stickZones.js rimSprintLive; card PAD part 9) */
     lTrail.current.push({
       x: rawDx,
       y: rawDy,

@@ -143,7 +143,7 @@ Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 - **Files**: `src/rendering/tables/`: combat
 - **Files**: `server/src/`: combat, hits, abilities, accuracy, burst, freeswing, fightlock, killroll, threat, telegraph, elemental, oneformula, statcap, arrowblast, swordconvert, shieldwear, shieldgem, weapongem, amulet, pvpbalance, pvpextras, pvplunge
-- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
+- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, lockPick, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
 - **Doors**: `_monsterHit` in `server/src/hits.js` (MONSTER_HITS: every monster hit on a player)
 - **Switches**: [its rows in the switch table](SWITCHES.md#combat)
 - **Words**: `combat`, `hit`, `ability`, `abilit`, `bow`, `arrow`, `sword`, `staff`, `shield`, `weapon`, `pvp`, `damage`, `whirl`, `dodge`, `elemental`, `accuracy`
@@ -331,6 +331,7 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
 - **Files**: `src/game/`: assetUrl, assetTable
+- **Files**: `src/rendering/`: sheetPage
 - **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
@@ -380,6 +381,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
 - **Files**: `src/game/`: itemInspect
 - **Files**: `src/game/`: compare, equipProject, workspace
+- **Files**: `src/game/`: gearShowcase
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

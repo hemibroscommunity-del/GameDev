@@ -14,7 +14,15 @@
  *            load as you walk: wheelMonsterArt.js);
  *   fight    swings at the nearest monster there;
  *   home     the walk back to where it arrived;
- *   windows  three windows opened and closed (gear, the bro's page, quests).
+ *   windows  three windows opened and closed (gear, the bro's page, quests);
+ *            v2.3.6743 (card KEEP PR 3b, the icons): and every window that
+ *            shows item icons, with a bag the worker filled (fish, ore, bars,
+ *            essences, hardened wood, seeds, dishes, a shard, the weapons
+ *            kit): Gear and its bag, a shop (the General Store), the market
+ *            (the Auction House), the Smithy, the Codex.  In each, no /icons
+ *            picture may be missing (a 404, or an <img> whose file did not
+ *            decode): an icon asked for at a built address with a wrong name
+ *            shows as its glyph, and only this sees it.
  * Every request the browser makes for a file of tools/assets/shipped.json
  * (and the sprite bot's .webp twins) is read by tools/assets/versions.mjs
  * classify():
@@ -49,6 +57,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { versionTable, readRows, addressOf, classify, folderOf, KINDS, NONE } from '../../assets/versions.mjs';
+import { essenceKey } from '../../../src/data/salvage.js';   /* v2.3.6743: a bag of built icons */
+import { HARDENED_WOOD_RECIPES } from '../../../src/data/hardenedWood.js';
+import { DISHES } from '../../../src/data/dishes.js';
+import { FARM_CROP_ORDER } from '../../../src/data/farmCrops.js';
 
 export const lane = 'full';
 
@@ -193,7 +205,7 @@ function markdown({ t, reqs, sha, when, swings, reach }) {
     + 'Not measured on a phone; the counts are the page\'s requests, which do not depend on the device.');
   L.push('');
   L.push('**The tour:** one load (from the navigation), into BroTown; a walk to the Flame Fields\' first spawn; '
-    + `a fight there (${swings} swings, ${reach} px from the spot); home; three windows (gear, the bro's page, quests).`);
+    + `a fight there (${swings} swings, ${reach} px from the spot); home; three windows (gear, the bro's page, quests); with a bag the worker filled, the item icons' windows (Gear and its bag, the General Store, the Auction House, the Smithy, the Codex), each checked for a missing /icons picture.`);
   L.push('');
   L.push('**The columns** (`tools/assets/versions.mjs classify`): **table** asks with `v=` equal to the first 10 characters of the file\'s '
     + 'SHA-256 in `tools/assets/shipped.json` (the version this card gives every file); **hand** with any other query (a hand-kept key: '
@@ -357,6 +369,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(800);
     }
     rec.ok(`three windows opened (${opened.join(', ')})`, opened.every((s) => / opened$/.test(s)), opened);
+
+    /* v2.3.6743: the item icons' windows, each looked at for a missing icon */
+    const grants = ['fish_trout', 'fish_salmon', 'ore_iron_ore', 'bar_copper', 'wood_cedar_wood',
+      essenceKey('rare', 'iron'),
+      Object.keys(HARDENED_WOOD_RECIPES)[0], Object.keys(DISHES)[0], 'seed_' + (FARM_CROP_ORDER[0] || 'carrot'), 'cooked_fish_trout'].filter(Boolean);
+    for (const k of grants) await H.grant(wsPort, myId, 'item', { invKey: k, count: 2 }).catch(() => null);
+    await H.devOp(wsPort, 'kit', myId, { what: 'weapons' }).catch(() => null);
+    await P.page.waitForTimeout(1500);
+    const broken = () => P.page.evaluate(() => [...document.querySelectorAll('img')]
+      .filter((i) => /\/icons\//.test(i.currentSrc || i.src) && i.complete && i.naturalWidth === 0)
+      .map((i) => (i.currentSrc || i.src).replace(/^https?:\/\/[^/]+/, '')));
+    const shown = () => P.page.evaluate(() => [...document.querySelectorAll('img')]
+      .filter((i) => /\/icons\//.test(i.currentSrc || i.src) && i.complete && i.naturalWidth > 0).length);
+    const looked = [];
+    const look = async (name, open, close) => {
+      const did = await open().then(() => true).catch(() => false);
+      await P.page.waitForTimeout(SETTLE_MS);
+      const bad = did ? await broken().catch(() => ['?']) : [];
+      const n = did ? await shown().catch(() => 0) : 0;
+      looked.push({ name, did, shown: n, bad });
+      await close().catch(() => {});
+      await P.page.waitForTimeout(800);
+    };
+    const building = (id) => () => P.page.evaluate((b) => { window.__btBuildingWindow.open(b); }, id);
+    const shut = () => P.page.evaluate(() => { window.__btBuildingWindow.open(null); });
+    await look('gear (the bag)', () => H.dashOpen(P, 'gear'), () => H.closeDest(P));
+    await look('shop (the General Store)', building('store'), shut);
+    await look('market (the Auction House)', building('auctionhouse'), shut);
+    await look('smithy', building('forge'), shut);
+    await look('codex', () => H.dashOpen(P, 'encyclopedia'), () => H.closeDest(P));
+    const icon404 = reqs.filter((r) => r.stage === 'windows' && /^\/icons\//.test(r.url) && r.missing).map((r) => r.url);
+    for (const w of looked) console.log(`    ${w.name.padEnd(28)} ${w.did ? 'opened' : 'NOT opened'}  ${w.shown} icons shown, ${w.bad.length} missing`);
+    rec.ok('the item icons\' windows opened (gear and its bag, a shop, the market, the smithy, the codex), each showing icons',
+      looked.every((w) => w.did && w.shown > 0), looked.map((w) => [w.name, w.did, w.shown]));
+    rec.ok('no /icons picture missing in them (no 404, no <img> that did not decode)',
+      looked.every((w) => w.bad.length === 0) && icon404.length === 0, { bad: looked.filter((w) => w.bad.length), icon404 });
     await P.page.waitForTimeout(SETTLE_MS);
     stopAlive = true;
 

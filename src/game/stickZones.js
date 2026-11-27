@@ -37,7 +37,7 @@
  */
 import { readerFor, swValue, sw } from './switches.js';
 import { sprintSupported, startSprint, stopSprint } from './sprint.js';   /* v2.3.6545: the rim's sprint, a hold through sprint.js's own start and stop (sprint.js imports nothing) */
-import { twoButtonsLive } from './latch.js';   /* v2.3.6545: rimSprintLive, the one gate's answer and the rim's switch */
+import { fineInput } from './deviceProfile.js';   /* v2.3.6644: rimSprintLive, a touch screen's main pointer and the rim's switch (v2.3.6545 asked latch.js twoButtonsLive: the trial only) */
 
 export const STICK_ZONES = Object.freeze({
   /* the share of the travel that is nothing at all (4.5 px upright, 5.4
@@ -156,7 +156,8 @@ export function stickRead(dx, dy, travel, turn) {
  * sprint button back.
  *
  * S._rimSprint { out, ready }: made only on the first push past SPRINT_AT
- * (a page in mode 4 never has one), written only here. */
+ * (a computer's page never has one), written only here.  v2.3.6644: the
+ * usual controls' stick feeds it too (stickAnalog), on a touch screen. */
 
 /** Is the thumb past the rim?  `was` its answer last time (the band: on at
  *  SPRINT_AT, off below SPRINT_OFF). */
@@ -170,9 +171,16 @@ export function rimSprintOn(search) {
   return !(typeof search === 'string' ? readerFor(search).sw('rimsprint') : sw('rimsprint'));
 }
 
-/** The two buttons are played AND the rim sprints (the button's place). */
+/** A touch screen's main pointer AND the rim sprints (the button's place).
+ *  v2.3.6644 (card PAD part 9; the owner, 2026-11-26, told "no button; push
+ *  the stick to its edge": "Yeah do that and remove sprint button"): in
+ *  EVERY control mode, not only the two buttons (v2.3.6545 asked
+ *  twoButtonsLive).  It hides the sprint button (SprintButton.jsx), feeds
+ *  the usual stick's rim (stickAnalog, below) and says the tour's line.  A
+ *  computer, or a touch screen whose main pointer is a mouse, keeps the
+ *  button and Shift as today; `?rimsprint=0` gives the button back. */
 export function rimSprintLive() {
-  return twoButtonsLive() && rimSprintOn();
+  return !fineInput() && rimSprintOn();
 }
 
 /** A sprint the rim started is under way (the turn ring's colour). */
@@ -290,16 +298,25 @@ export function stickDrive(S, dx, dy, radius, knob, rod, op, say) {
  * sideways); inside the 12 px dead zone nothing, else the share past it,
  * full at maxR (v2.3.949's relative drag). */
 export const STICK_DEAD_PX = 12;
-export function stickAnalog(S, dist, angle, maxR) {
+/* v2.3.6644 (card PAD part 9): `radius` the disc's DRAWN radius (its box's
+ * half width, the share stickDrive reads) and `say` the refusal's words: the
+ * usual stick's thumb past the rim sprints, as the two buttons' does
+ * (rimSprint, above), on a touch screen while the rim is on (rimSprintLive).
+ * The share is the thumb's own distance, never clamped: the usual stick
+ * draws its knob only to `maxR` (20 px inside the rim) and its walk is full
+ * there, but the thumb itself goes on past the rim.  Called with no radius
+ * it reads the walk alone, as before. */
+export function stickAnalog(S, dist, angle, maxR, radius, say) {
   if (dist < STICK_DEAD_PX) {
     S.stickX = 0;
     S.stickY = 0;
-    return;
+  } else {
+    /* Analog: normalize to -1..1 range based on distance from center */
+    const strength = Math.min((dist - STICK_DEAD_PX) / (maxR - STICK_DEAD_PX), 1);
+    S.stickX = Math.cos(angle) * strength;
+    S.stickY = Math.sin(angle) * strength;
   }
-  /* Analog: normalize to -1..1 range based on distance from center */
-  const strength = Math.min((dist - STICK_DEAD_PX) / (maxR - STICK_DEAD_PX), 1);
-  S.stickX = Math.cos(angle) * strength;
-  S.stickY = Math.sin(angle) * strength;
+  if (radius > 0 && rimSprintLive()) rimSprint(S, dist / radius, Date.now(), say);
 }
 /** The thumb lifted, in every mode: no walk, the stick at rest (stickTo
  *  writes only when mode 5 moved it). */
@@ -352,3 +369,9 @@ export function stickFrame(S, K, frozen, lootFrozen) {
   _IN.dx = dx; _IN.dy = dy;
   return _IN;
 }
+/** v2.3.6820 (card LOCK; the orchestrator's yes, 2026-11-26): this frame's
+ *  walk as stickFrame made it -- the stick, or the keys when the stick is at
+ *  rest, 0 when frozen -- for the lock's pick (targeting.js: the push chooses
+ *  between two monsters about as near), so it reads no S.stickX of its own
+ *  (stick-zones §8's closed list).  The one object, never copied. */
+export function walkNow() { return _IN; }

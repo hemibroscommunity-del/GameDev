@@ -18,7 +18,9 @@
  *
  * A door's `opens` (the same words as broPages.js's doors):
  *   page:<id>  a page pushed under Bro, the header's Back returning here;
- *   gear       the Gear workspace (BroCard openGear: Equipment until step 5).
+ *   gear       the Gear workspace (BroCard openGear: Equipment until step 5;
+ *              v2.3.6689, card UI2-gear PR 3: Equipment opens its showcase,
+ *              page:broEquip, whose Manage Gear is this road).
  * Character's and Combat's pages are the frame's own (dashDests.js
  * FRAME_PAGES broCharacter, broCombat): today's pages under the header until
  * PR 2 (the passport) and step 4 (the combat hub) replace them.
@@ -42,7 +44,7 @@
 export const BRO_HUB_DOORS = Object.freeze([
   Object.freeze({ id: 'character', word: 'dashFrame.character', art: '/icons/ui/panel-self.webp', opens: 'page:broCharacter' }),
   Object.freeze({ id: 'combat', word: 'dashFrame.combat', art: '/icons/ui/combat-melee.webp', opens: 'page:broCombat' }),
-  Object.freeze({ id: 'equipment', word: 'dashFrame.equipment', art: '/icons/ui/panel-loadout.webp', opens: 'gear' }),
+  Object.freeze({ id: 'equipment', word: 'dashFrame.equipment', art: '/icons/ui/panel-loadout.webp', opens: 'page:broEquip' }),   /* v2.3.6689: the showcase (sheet/GearShowcase.jsx) */
   Object.freeze({ id: 'skills', word: 'dashFrame.lifeSkills', art: '/icons/ui/nav-lifeskills.webp', opens: 'page:skills', key: 'L' }),
   Object.freeze({ id: 'feats', word: 'dashFrame.feats', art: '/icons/achievements/achievements.webp', opens: 'page:achievements', cap: 'achievements' }),
   Object.freeze({ id: 'pets', word: 'dashFrame.pets', art: '/icons/ui/pets-paw.webp', opens: 'page:pets', cap: 'petbook' }),
@@ -56,6 +58,8 @@ export const BRO_HUB_PAGES = Object.freeze({
   broSword: 'sword', broBow: 'bow', broStaff: 'staff',
   /* v2.3.6686 (card UI2-combat PR 2): the Shared page, and the stat tree's layers (combatHub.js TREE_PAGES) */
   broShared: 'shared',
+  /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase, the figure and the nine worn cells (sheet/GearShowcase.jsx) */
+  broEquip: 'equip',
   broTree0: 'tree', broTree1: 'tree', broTree2: 'tree', broTree3: 'tree', broTree4: 'tree', broTree5: 'tree', broTree6: 'tree',
 });
 

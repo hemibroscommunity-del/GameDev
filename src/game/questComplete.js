@@ -24,7 +24,6 @@
  */
 import { deriveQuestLog } from '@/ui/mobile/sheet/questModel.js';
 import { pushDmgPopup } from './combatHelpers.js';
-import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a quest's tasks done, heard */
 
 const POLL_MS = 500;

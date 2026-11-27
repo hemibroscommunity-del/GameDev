@@ -25,7 +25,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SHOT = `${REPO}/docs/triage-2026-09-16/assets/points-target-detail-view.png`;
+const SHOT = `${REPO}/docs/archive/triage-2026-09-16/assets/points-target-detail-view.png`;
 const b64 = readFileSync(SHOT).toString('base64');
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });

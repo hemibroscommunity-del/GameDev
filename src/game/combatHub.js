@@ -40,6 +40,7 @@ import {
 } from '../data/prog3.js';
 import { weaponProgress } from './progression.js';
 import { POINTS_ART_DIR, POINTS_ART_V } from '../data/pointsHeadArt.js';
+import { assetUrl } from './assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* the frame's page of each door (src/game/dashDests.js FRAME_PAGES; src/game/broHub.js BRO_HUB_PAGES) */
 export const COMBAT_PAGES = Object.freeze({ sword: 'broSword', bow: 'broBow', staff: 'broStaff' });
@@ -76,7 +77,7 @@ export const COMBAT_DOORS = Object.freeze([
   Object.freeze({ id: 'bow', cat: 'bow', word: 'combatHub.bow', art: '/icons/ui/combat-bow.webp', opens: 'page:' + COMBAT_PAGES.bow }),
   Object.freeze({ id: 'staff', cat: 'staff', word: 'combatHub.staff', art: '/icons/ui/combat-magic.webp', opens: 'page:' + COMBAT_PAGES.staff }),
   /* v2.3.6686 (PR 2): its own page, the Shared page (v2.3.6685 opened the Points window on its Shared column) */
-  Object.freeze({ id: 'shared', cat: null, word: 'combatHub.shared', art: `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`, opens: 'page:' + SHARED_PAGE }),
+  Object.freeze({ id: 'shared', cat: null, word: 'combatHub.shared', art: assetUrl(`${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`), opens: 'page:' + SHARED_PAGE }),
 ]);
 
 const WEAPON_OF = Object.freeze({ broSword: 'sword', broBow: 'bow', broStaff: 'staff' });

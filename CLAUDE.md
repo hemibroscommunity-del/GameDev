@@ -55,7 +55,8 @@ spec. Add a line here only for a new RULE every session must follow.
 - **The code is the truth.** STALE, never a blueprint to change, "fix" or
   "restore" behaviour: `README.md` / `gdd.md` (the old design document, not a
   setup guide: no tooling docs in it), `docs/ARCHITECTURE.md`,
-  `docs/STATE-SCHEMA.md` (its shapes only). `docs/WORLD-DEPTH-PLAN.md` is
+  `docs/STATE-SCHEMA.md` (its shapes only), and everything under
+  `docs/archive/`. `docs/WORLD-DEPTH-PLAN.md` is
   intent: work from `docs/DEPTH-ROADMAP.md`. A system found in the code may be
   dormant (collectibles): ask the owner before building on one.
 - **Current**:
@@ -134,8 +135,9 @@ spec. Add a line here only for a new RULE every session must follow.
   preview URL. **Server**: `.github/workflows/deploy-worker.yml` deploys
   `server/` on a merge to main touching `server/**`, once the suite passes on
   that commit (the token from the `production` environment).
-- **Every merge touching `server/**` deploys**, a new file in `server/test/`
-  included (TRAPS §277): merge a batch of them together.
+- **Every merge touching `server/**` deploys**, save one whose only files
+  there are under `server/test/` or `server/README.md` (v2.3.6700; TRAPS
+  §277): merge a batch of them together.
 - **NEVER deploy the worker from a local machine** (2026-06-10: a stale clone
   rolled back three weeks of server work and broke combat).
 - **REPO SAFETY** (`docs/REPO-SAFETY.md`):
