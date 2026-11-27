@@ -751,6 +751,8 @@ Ten life skills share one curve (Part 3.7). Gathering feeds crafting: ore → ba
 
 **Tools** come from the tour's givers on accepting their first quests (the pickaxe from Blacksmith Bro, the hatchet from Woodworker Bro, the rod from Diego) and are kept through an ordinary death; lost in No man's land, each is bought back from Diego at 100 gold. Without the tool a resource is not drawn, not on the minimap and does not block you.
 
+**A lost shield (v2.3.6800, caps.shieldshop, docs/specs/shop-shield.md):** the only first shield is the Pine Shield tut_1 gives on accept, and nothing crafts one, so Diego sells it back: ONE, at 100 gold (burnt), to a player tut_1 gave one who owns none (none worn, none in the bag). It lands in the bag, as the quest's does. A shield listed at the auction house is not owned (it is in escrow), so a second can be bought. He buys no shield. `shieldshop: false` in the live flags takes it off his shelf.
+
 **Where things grow**, in five bands, richer the farther from town:
 
 | Band | Tier | Ore (Mining level) | Wood (Woodcutting level) | Fish (Fishing level) | Node HP |

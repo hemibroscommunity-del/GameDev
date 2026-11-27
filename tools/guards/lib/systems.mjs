@@ -154,7 +154,7 @@ export const SYSTEMS = Object.freeze({
     files: [f('src/rendering/tables', 'economy') /* v2.3.5346: its hand-tuned tables (card M) */,
       f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|econcard|worldsum|valuepause|inbox|itemdrop|deathpile|gearstash|stash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
       f('server/src', 'playerroads'),   /* v2.3.5280 (card R): the roads between players, one table */
-      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes|econCard'),
+      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|shieldAdopt|arenaStakes|econCard'),
     ],
     words: ['gold', 'bag', 'bank', 'market', 'shop', 'store', 'trade', 'inbox', 'drop', 'loot', 'chest', 'salvage', 'gamble', 'dice', 'daily', 'auction', 'gear', 'coin'],
     traps: ['economy'],

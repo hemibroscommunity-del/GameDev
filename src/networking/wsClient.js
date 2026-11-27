@@ -61,6 +61,7 @@ import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pet
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { poolsLand } from '@/game/guardBreak.js'; /* v2.3.6554: the pools land, and the worker's guard break takes the phone's shield down (card CT part 20) */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
+import { adoptStateShields } from '@/game/shieldAdopt.js'; /* v2.3.6800: the worker's shields, added to the phone's bag by id (sitting 71's hold) */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
 import { setClientOff } from '@/game/clientOff.js'; /* v2.3.3755: each memory saver off from the Test panel */
@@ -3124,6 +3125,16 @@ export function setupWebSocket(ctx) {
                   try { if (adoptShieldGem(S.rpg, _svShield)) _shieldGemChanged = true; } catch (e) { /* the next echo carries it */ }
                 }
               }
+              /* ═══ v2.3.6800 (card SHOP; the mend of sitting 71's hold) ═══
+                 The worker's copy of the bag's shields (`shieldStash`, echoed
+                 since v2.3.2523 and read by nothing) is read here, AFTER the
+                 worn shield above: every recorded piece it holds that this
+                 copy holds nowhere is added by id (src/game/shieldAdopt.js;
+                 add, never take).  A shield bought from Diego whose
+                 `shop_result` was lost is seen on the rejoin's full state and
+                 on a re-sent request's resend (reqonce.js), paid once.  Only
+                 against a worker that says `shieldshop` (its own cap). */
+              adoptStateShields(S, msg.payload);
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
               /* v2.3.1697: adopt the worker's legs piece.  ps.legsArmor has
                  been a real persisted field + echo since v2.3.1679, but no

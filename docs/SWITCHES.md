@@ -211,6 +211,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `risekeep` | worker | switch | v2.3.5802 | 2026-11-17 | false | logic |  | no | The oplog prune deletes the rise chest's stamps at 48 h, as before (MD-1: the same character opens the chest again every two days). |
 | `salvage` | worker | switch | v2.3.3141 | 2026-10-07 | false | logic |  | no | Un-advertises salvage and refuses both acts. |
 | `season` | worker | switch | v2.3.3400 | 2026-10-18 | true | logic |  | no | Thrown (true), the dropped season comes back on the free spin. |
+| `shieldshop` | worker | switch | v2.3.6800 | 2026-11-26 | false | logic |  | no | Takes the Pine Shield off Diego's shelf and refuses every buy. |
 | `storeGear` | worker | switch | v2.3.2528 | 2026-09-15 | false | logic |  | no | Un-advertises gear in the store and stops it taking a listing. |
 | `storehealnow` | worker | switch | v2.3.4920 | 2026-11-12 | false | logic |  | no | A stuck store row is healed at the next restart, as before. |
 | `storehealwait` | worker | switch | v2.3.4842 | 2026-11-11 | false | logic |  | no | The store's prune runs as before, without waiting for a leftover. |
