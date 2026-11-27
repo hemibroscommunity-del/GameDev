@@ -148,7 +148,10 @@ steps. So:
 3. **Phone-test runs go to helpers** on the cheapest model: more than three
    scenario runs, or any repeat run, is a helper's. A helper changes no
    file and sends back the PASS and FAIL lines.
-4. **A push is 22 to 43 paid minutes.** Push when a PR's line is done. The
+4. **A push is about 10 paid minutes** from the push to all checks done
+   (10.2 at the median, 30.2 at worst: a lane over about 200 PR runs a
+   check, 11-24 03:10 to 11-27 16:30; the old "22 to 43" was from before
+   card CK; v2.3.5667). Push when a PR's line is done. The
    status file rides the work's commit: never a status-only push to an open
    PR. Merge `main` once, before the last push.
 5. **Output to a file**; print its tail and its FAIL lines.
@@ -170,6 +173,17 @@ steps. So:
    the sessions of those hours: that sum is about one week. At each sweep
    it sums this week's sessions and reads its own `rate_limit_info`. Past
    80% of a week, no new card starts and the owner is told.
+
+9. **The lean order for small requests** (the owner, about 17:00 UTC
+   2026-11-27, *"Yes make that the rule from now on"*; v2.3.5667): ONE PR
+   with no server, money, logins or wire is built least-first (precheck
+   green, one build, one run of its phone test, push and the draft PR
+   inside about 40 minutes), its Pages preview address to the orchestrator
+   at once for the owner, its dodges and neighbouring scenarios by helpers
+   while the checks run (a second push only for a plant left green or a red
+   of its own), one picture, no mutation run, then the fast lane (part 8).
+   The question, the measurement and the steps:
+   `docs/plan/orchestrator.md`, "The lean order for small requests".
 
 The orchestrator itself: **the top model, high effort.** Its judgement (a
 card's purpose, an answer to a session, the order) is what the review found
