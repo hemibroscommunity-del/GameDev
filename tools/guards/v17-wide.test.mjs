@@ -29,13 +29,13 @@
  *   4. NEVER LARGER WORDS OR ART: every CSS declaration under src/ that reads
  *      var(--band-max-w) is a max-width or a left (the block's edge, the
  *      keys list beside it), never a font, a width of a picture, a transform
- *      or a zoom; and BroTown stamps it from BAND_ASSEMBLY_MAX_W;
- *      ...and on a computer, where the keys list stands beside the block, the
- *      block yields to it (deskBlockW: 840 at 1440, 706 at 1280 x 800, never
- *      under 480, never past the band), game.css's rule the module's numbers;
+ *      or a zoom; and BroTown stamps it from bandBlockFor (sheetGeometry);
+ *      ...and on a computer's band, where the keys list stands beside the
+ *      block, a STEP (deskBlockW): 840 where the band holds it and the list
+ *      (1360 or more: 1440 x 900), else 480, never a width between;
  *   5. THE DODGES (the card's), each planted and seen red, every run: the
  *      switch read backwards (the address, the memory); `=0` not remembered;
- *      the yield's 480 floor dropped; no yield;
+ *      a width between (a slide); no step; 480 made narrower on a short band;
  *      the widths swapped; the band made taller for the wide row; the world
  *      given the block's width; the camera reading the block; a page's words
  *      sized by the block (an importer, and a CSS font).
@@ -101,13 +101,12 @@ function behave(M) {
   t('1 no storage at all: 840', w('', null) === 840);
   for (const other of ['?wide=0', '?v17widex=0', '?v17look=0', '?xv17wide=0']) t(`1 ${other} is not the switch`, w(other, mem()) === 840);
   t('1 the two widths are V17\'s 840 and the owner\'s 480', M.V17_WIDE_W === 840 && M.BAND_NARROW_W === 480);
-  /* the yield to the keys list (a computer): V17's 840 where it fits, never under 480, never past the band */
-  const d = (bw, on) => { try { return M.deskBlockW(bw, M.bandBlockW(on)); } catch (e) { return 'threw'; } };
-  t('1 yield: 840 on a 1440 band (V17\'s row)', d(1440, true) === 840);
-  t('1 yield: 706 on a 1280 x 800 laptop\'s 1226 band, 504 on 1024 (the keys list keeps its 260 a side)', d(1226, true) === 706 && d(1024, true) === 504);
-  t('1 yield: never under 480 (a short band keeps today\'s block)', d(900, true) === 480 && d(700, true) === 480);
-  t('1 yield: never past the band', d(460, true) === 460 && d(460, false) === 460);
-  t('1 yield: ?v17wide=0\'s 480 the same at every band (1000 to 2560)', [1000, 1024, 1226, 1440, 1920, 2560].every((bw) => d(bw, false) === 480));
+  /* the step beside the keys list (a computer's band): 840 only where the band holds it and the list, else 480 */
+  const d = (bw, on, keys = true) => { try { return M.deskBlockW(bw, M.bandBlockW(on), keys); } catch (e) { return 'threw'; } };
+  t('1 step: 840 on a 1440 band (V17\'s row) and on 1360 (840 and 260 a side)', d(1440, true) === 840 && d(1360, true) === 840 && d(1920, true) === 840);
+  t('1 step: 480 on a 1280 x 800 laptop\'s 1226 band, a 1366 x 768\'s 1155, 1024, 1359 (never a width between)', [1226, 1155, 1024, 1359].every((bw) => d(bw, true) === 480));
+  t('1 step: no keys list (a tablet, a narrow window): the switch\'s own width', d(1024, true, false) === 840 && d(768, true, false) === 840);
+  t('1 step: ?v17wide=0\'s 480 the same at every band, with the list or without', [700, 1000, 1226, 1440, 2560].every((bw) => d(bw, false) === 480 && d(bw, false, false) === 480));
   return bad;
 }
 const WMOD = 'src/game/v17Wide.js';
@@ -181,7 +180,7 @@ function importsOf(src) {
     ImportDeclaration(p) {
       const from = p.node.source.value;
       if (/(^|\/)v17Wide(\.js)?$/.test(from)) got.push('v17Wide');
-      if (/(^|\/)sheetGeometry(\.js)?$/.test(from) && p.node.specifiers.some((s) => s.imported && s.imported.name === 'BAND_ASSEMBLY_MAX_W')) got.push('BAND_ASSEMBLY_MAX_W');
+      if (/(^|\/)sheetGeometry(\.js)?$/.test(from) && p.node.specifiers.some((s) => s.imported && (s.imported.name === 'BAND_ASSEMBLY_MAX_W' || s.imported.name === 'bandBlockFor'))) got.push('BAND_ASSEMBLY_MAX_W');
       if (/(^|\/)sheetGeometry(\.js)?$/.test(from) && p.node.specifiers.some((s) => s.type === 'ImportNamespaceSpecifier')) got.push('sheetGeometry.*');
     },
   });
@@ -197,7 +196,7 @@ function census(files, srcOf) {
   const strangers = [], camera = [];
   for (const f of files) {
     const s = srcOf(f);
-    if (!/v17Wide|BAND_ASSEMBLY_MAX_W|sheetGeometry/.test(s)) continue;
+    if (!/v17Wide|BAND_ASSEMBLY_MAX_W|bandBlockFor|sheetGeometry/.test(s)) continue;
     const got = importsOf(s).filter((g) => g !== 'sheetGeometry.*' || CAMERA(f));
     if (!got.length) continue;
     if (CAMERA(f)) camera.push(`${f}: ${got.join(', ')}`);
@@ -241,16 +240,6 @@ function cssBad(srcOf) {
   const n = CSS.reduce((a, f) => a + cssReads(read(f)).length, 0);
   check(`4. every CSS read of --band-max-w places the block's edge (max-width, left), never a font, a picture, a transform or a zoom (${n} reads)`, bad.length === 0 && n >= 2, bad.join('\n     '));
 }
-/* game.css's yield is the module's rule: min(var(--band-max-w), max(480px, calc(100% - 520px)), 100%) */
-function cssYield(css) {
-  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  const m = /max-width\s*:\s*min\(\s*var\(--band-max-w[^)]*\)\s*,\s*max\(\s*(\d+)px\s*,\s*calc\(\s*100%\s*-\s*(\d+)px\s*\)\s*\)\s*,\s*100%\s*\)/.exec(bare);
-  return m ? { floor: +m[1], keys: +m[2] } : null;
-}
-{
-  const y = cssYield(read('src/styles/game.css'));
-  check('4. game.css\'s yield to the keys list is the module\'s (deskBlockW: the floor BAND_NARROW_W, the band less 2 x KEYS_SIDE)', !!y && y.floor === WM.BAND_NARROW_W && y.keys === 2 * WM.KEYS_SIDE, JSON.stringify(y));
-}
 function stamps(src) {
   let ok = false;
   B.traverse(parse(src), {
@@ -258,12 +247,12 @@ function stamps(src) {
       const n = p.node;
       if (n.callee.type !== 'MemberExpression' || !n.callee.property || n.callee.property.name !== 'setProperty') return;
       const [k, v] = n.arguments;
-      if (k && k.type === 'StringLiteral' && k.value === '--band-max-w' && v && v.type === 'BinaryExpression' && v.left.type === 'Identifier' && v.left.name === 'BAND_ASSEMBLY_MAX_W') ok = true;
+      if (k && k.type === 'StringLiteral' && k.value === '--band-max-w' && v && v.type === 'BinaryExpression' && v.left.type === 'CallExpression' && v.left.callee.name === 'bandBlockFor') ok = true;
     },
   });
   return ok;
 }
-check('4. BroTown stamps --band-max-w from BAND_ASSEMBLY_MAX_W (the CSS reads the switch\'s number)', stamps(read('src/ui/BroTown.jsx')));
+check('4. BroTown stamps --band-max-w from bandBlockFor (the CSS reads the switch\'s number, stepped beside the keys list)', stamps(read('src/ui/BroTown.jsx')));
 
 /* ── 5. the dodges: each planted, each red ── */
 async function plantSwitch(name, from, to) {
@@ -275,8 +264,9 @@ await plantSwitch('the switch read backwards (the address)', "    return v === '
 await plantSwitch('the switch read backwards (the memory)', "  try { return !(ls && ls.getItem(V17_WIDE_KEY) === '0'); }", "  try { return !!(ls && ls.getItem(V17_WIDE_KEY) === '0'); }");
 await plantSwitch('?v17wide=0 not remembered', "if (v === '0') ls.setItem(V17_WIDE_KEY, '0'); else ls.removeItem(V17_WIDE_KEY);", 'void 0;');
 await plantSwitch('the widths swapped', '  return on ? V17_WIDE_W : BAND_NARROW_W;', '  return on ? BAND_NARROW_W : V17_WIDE_W;');
-await plantSwitch('the yield\'s 480 floor dropped (?v17wide=0 narrower on a short computer)', '  return Math.min(blockW, Math.max(BAND_NARROW_W, bandW - 2 * KEYS_SIDE), bandW);', '  return Math.min(blockW, bandW - 2 * KEYS_SIDE, bandW);');
-await plantSwitch('no yield (the keys list squeezed beside 840)', '  return Math.min(blockW, Math.max(BAND_NARROW_W, bandW - 2 * KEYS_SIDE), bandW);', '  return Math.min(blockW, bandW);');
+await plantSwitch('a width between (the block slides to the band less the list)', '  return bandW - 2 * KEYS_SIDE >= blockW ? blockW : BAND_NARROW_W;', '  return Math.max(BAND_NARROW_W, Math.min(blockW, bandW - 2 * KEYS_SIDE));');
+await plantSwitch('no step (the keys list squeezed beside 840)', '  return bandW - 2 * KEYS_SIDE >= blockW ? blockW : BAND_NARROW_W;', '  return blockW;');
+await plantSwitch('480 made narrower on a short band (the list\'s room taken from ?v17wide=0 too)', '  if (!keys || blockW <= BAND_NARROW_W) return blockW;\n  return bandW - 2 * KEYS_SIDE >= blockW ? blockW : BAND_NARROW_W;', '  if (!keys) return blockW;\n  return bandW - 2 * KEYS_SIDE >= blockW ? blockW : Math.min(BAND_NARROW_W, bandW - 2 * KEYS_SIDE);');
 await plantSwitch('always 840 (the off-ramp gone)', '  return on ? V17_WIDE_W : BAND_NARROW_W;', '  return V17_WIDE_W;');
 async function plantGeometry(name, anchor, extra) {
   if (gSrc.indexOf(anchor) < 0) { check('5 plant "' + name + '" finds its text', false, anchor); return; }

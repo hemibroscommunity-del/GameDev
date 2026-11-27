@@ -44,9 +44,9 @@
    through v2.3.1635 and is --cols-h from here — renamed rather than
    reused so a stale stylesheet cannot silently size the new row with the
    old row's number. */
-import { deskWideActive, deskKeysW, DESK_SHEET_W } from '../../deskWide.js';   /* v2.3.3687 */
+import { deskWideActive, deskKeysW, DESK_SHEET_W, deskBandActive } from '../../deskWide.js';   /* v2.3.3687 */
 import { oneBandActive } from '../../oneBand.js';                                 /* v2.3.4072 */
-import { v17WideWanted, bandBlockW } from '../../../game/v17Wide.js';             /* v2.3.6842: the computer's block, 840 or 480 */
+import { v17WideWanted, bandBlockW, deskBlockW } from '../../../game/v17Wide.js';             /* v2.3.6842: the computer's block, 840 or 480 */
 
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
@@ -578,6 +578,13 @@ export function navButtonSize(vw, vh) {
    this number.  The owner's 480 of v2.3.4243 against V17's 840 is their
    call (card UI4's Q9). */
 export const BAND_ASSEMBLY_MAX_W = bandBlockW(v17WideWanted());
+/* v2.3.6842: ...and the width resize() stamps (--band-max-w), the band's world width given: on a computer's
+   band the keys list stands right of the block (v2.3.4263), so 840 only where the band holds it and the
+   list, else 480 (game/v17Wide.js deskBlockW: a step, never a width between).  deskBandActive is a class
+   and a media query (no layout read); a phone or a tablet is never the computer's band. */
+export function bandBlockFor(playW) {
+  return deskBlockW(playW, BAND_ASSEMBLY_MAX_W, deskBandActive());
+}
 /* ...and the row fills that block (CLOSE at its left, the five buttons taking
    equal shares of the rest) wherever the buttons would otherwise stop at
    their ceiling and leave the row's ends empty: a tablet, a computer.  A

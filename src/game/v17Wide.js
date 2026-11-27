@@ -56,14 +56,18 @@ export function v17WideWanted(search, store) {
 }
 
 /* the room the keys list beside the block takes on a computer, a side (the block is centred): the list's
-   ~232 px, its 16 px gap and the band's 12 px edge.  game.css's band-keys block writes the same numbers
-   (520 = 2 x 260, and 480 its floor); tools/guards/v17-wide.test.mjs holds the two equal. */
+   ~232 px, its 16 px gap and the band's 12 px edge (game.css .bt-band-keys: left = half the block + 16). */
 export const KEYS_SIDE = 260;
 
-/** A computer's block where the keys list stands beside it (pointer:fine, a window 1000 wide or more):
- *  the switch's width, yielding to the list but never under 480 and never past the band. */
-export function deskBlockW(bandW, blockW) {
-  return Math.min(blockW, Math.max(BAND_NARROW_W, bandW - 2 * KEYS_SIDE), bandW);
+/** The block a computer's band is given where the keys list stands beside it (`keys`: the computer's band,
+ *  deskBandActive): the switch's width where the band holds it AND the list (V17's 840 on a 1440 band,
+ *  any band of 1360 or more), else the 480 of `?v17wide=0`.  A STEP, never a width between: only the two
+ *  widths the owner has seen, and the old layouts never meet a third (mp-oneband's 1280 x 720, the
+ *  `?ui2=0` Gear's three panels).  Without the list (a tablet, a narrow window) the switch's width; the
+ *  CSS caps it at the band either way (min(var(--band-max-w), 100%)). */
+export function deskBlockW(bandW, blockW, keys) {
+  if (!keys || blockW <= BAND_NARROW_W) return blockW;
+  return bandW - 2 * KEYS_SIDE >= blockW ? blockW : BAND_NARROW_W;
 }
 
 /** The block's width for this answer: 840 on, 480 off. */
