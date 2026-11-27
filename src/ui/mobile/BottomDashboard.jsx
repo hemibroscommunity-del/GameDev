@@ -59,7 +59,8 @@ import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
 import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
-import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
+import { PetsPanel, PetsFramePage } from './dash/PetsPanel.jsx'; /* v2.3.3120; v2.3.6696: Pets' frame pages */
+import { petsPageTitle }     from './dash/petsPageOpen.js';   /* v2.3.6696 (card UI2-pets) */
 /* v2.3.3717: the pages opened now and then, each its own script, loaded when first opened with `?codelazy` (ui/lazyPanels.js) */
 import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as AchievementsHead, DashEncyclopediaPanel as EncyclopediaPanel,
   DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
@@ -534,6 +535,10 @@ const PANELS = {
   codexHabitat: { get title() { return codexPageTitle('codexHabitat'); }, Component: CodexDoorPage },
   codexStory:   { get title() { return codexPageTitle('codexStory'); }, Component: CodexDoorPage },
   codexFound:   { get title() { return codexPageTitle('codexFound'); }, Component: CodexDoorPage },
+  /* v2.3.6696 (card UI2-pets): Pets' Owned, a pet's page and All (the journal), dash/petsPageOpen.js */
+  petsOwned:    { get title() { return petsPageTitle('petsOwned'); }, Component: PetsFramePage },
+  petsOne:      { get title() { return petsPageTitle('petsOne'); }, Component: PetsFramePage },
+  petsAll:      { get title() { return petsPageTitle('petsAll'); }, Component: PetsFramePage },
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
@@ -714,7 +719,8 @@ const BAND_BEAT_WHOLE = (() => { try { return /(^|[?&])bandbeat=(0|off|false)(&|
    (a resumed Menu whose page is gone falls to its root: dashNav's 'menu') ═══ */
 const FRAME_ACTIVE = Object.freeze({ title: '', Component: null });
 let _capsNow = null;
-const CAP_PAGES = Object.freeze({ pets: 'petbook', achievements: 'achievements' });
+const CAP_PAGES = Object.freeze({ pets: 'petbook', achievements: 'achievements',
+  petsOwned: 'petbook', petsOne: 'petbook', petsAll: 'petbook' });   /* v2.3.6696: Pets' pages, as Pets */
 dashboardPanelBus.setOffers((id) => !!(PANELS[id] || FRAME_PAGES[id]) && (!CAP_PAGES[id] || !_capsNow || !!_capsNow[CAP_PAGES[id]]));
 const titleOf = (id) => (id === 'menu' ? doorWord('dashFrame.menu') : FRAME_PAGES[id] ? doorWord(FRAME_PAGES[id]) : (PANELS[id] && PANELS[id].title) || doorWord('dashFrame.page'));
 

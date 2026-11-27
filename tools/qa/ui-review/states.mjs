@@ -2057,6 +2057,28 @@ export const STATES = [
       await wait(P, 900);
       return tapSel(P, '[data-codex-loot] [data-cx-drop="irongreatsword"]');
     } },
+  /* v2.3.6696 (card UI2-pets): Pets under the new dashboard (before the kit's row, which must stay last);
+     the empty state is more-pets (the landing, before these seed two pets) */
+  { id: 'dash-pets-companion', group: 'Dashboard', title: 'Pets: the companion',
+    about: 'Bro\'s Pets door under the new dashboard (v2.3.6696): the pet out with you large on the left (a tap opens its page), its name and its kind, Golden and Big over two doors, Owned ("2 of 30") and All ("2 of 18 caught"), and its level, XP and ward flat under them; its XP bar under its name; one action, Put away. With none out: "No pet out with you" and the doors; with no pets: how to catch one. `?ui2=0`: today\'s one scrolling page.',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'trapping', myId, { level: 30, pet: { home: 'frost', level: 20 } }).catch(() => {});
+      await H.devOp(wsPort, 'trapping', myId, { pet: { home: 'ember', level: 35 } }).catch(() => {});
+      await H.devOp(wsPort, 'trapping', myId, { level: 30 }).catch(() => {});
+      await wait(P, 900);
+      const e = await bus(P, 'open', 'pets');
+      if (e) return e;
+    } },
+  { id: 'dash-pets-owned', group: 'Dashboard', title: 'Pets: Owned', about: 'Owned: the Pet House\'s More room at the top (its price; asked once, the kit\'s confirmation; at 120 "as many as it can"), then a card a pet, three across: its picture, its name, the level it works at (held under your Trapping level: "Lv 30 (35)"), Golden and Big, "With you" on the one out. A card opens the pet\'s page.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('pets'); b.go({ type: 'push', id: 'petsOwned' }); }); } },
+  { id: 'dash-pets-one', group: 'Dashboard', title: 'Pets: a pet\'s page', about: 'One pet (the header its name, Back Owned): the pet large, its kind and badges, its level, XP and ward ("when out" on one not out), the held note when it works under its own level; the row of actions: Take out or Put away, Rename (both at once), Release (asked once, for good), Sell where the store sells pets (off on the pet out, "Put it away to trade or sell it").',
+    run: async ({ P }) => {
+      const id = await evalIn(P, () => { const b = window._gameState.current._petBook; return b && b.list.length ? b.list[b.list.length - 1].id : null; });
+      if (!id) return 'no pet to open';
+      await evalIn(P, (pid) => { const b = window.__broDashPanelBus; b.open('pets'); b.go({ type: 'push', id: 'petsOwned' }); b.go({ type: 'push', id: 'petsOne', sel: pid }); }, id);
+    } },
+  { id: 'dash-pets-all', group: 'Dashboard', title: 'Pets: All (the journal)', about: 'All: the pet journal, the Codex\'s Pets door\'s page too: the two stages as its kinds (Levels 1-20, Levels 21-40), nine cards each: a caught one its picture, name, land, catches and biggest, golden on its picture; an uncaught one its shape, "Not tried" or "Not caught"; "2 of 18 caught". A card opens its monster\'s page in the Codex.',
+    run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('pets'); b.go({ type: 'push', id: 'petsAll' }); }); } },
   /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
   {

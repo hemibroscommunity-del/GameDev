@@ -14,10 +14,12 @@ import { Ui2Tile } from './Tile.jsx';
 import { Ui2Facts, Ui2Fact } from './Facts.jsx';
 import './collection.css';
 
-export function Ui2Showcase({ figure, doors = [], facts = [], short, locked, className, ...rest }) {
+export function Ui2Showcase({ figure, head, doors = [], facts = [], short, locked, className, ...rest }) {
   return (
-    <div className={'u2-show' + (short ? ' is-short' : '') + (locked ? ' is-locked' : '') + (className ? ' ' + className : '')} {...rest}>
+    <div className={'u2-show' + (short ? ' is-short' : '') + (locked ? ' is-locked' : '') + (head ? ' has-head' : '') + (className ? ' ' + className : '')} {...rest}>
       <div className="u2-show-figure" data-u2-show-figure="">{figure}</div>
+      {/* v2.3.6696 (card UI2-pets): `head`, the entry's own words above its doors, where the frame's title names the page (Pets) */}
+      {head ? <div className="u2-show-head" data-u2-show-head="">{head}</div> : null}
       {locked ? <div className="u2-show-locked">{locked}</div> : (
         <>
           {doors.length ? (
@@ -30,7 +32,7 @@ export function Ui2Showcase({ figure, doors = [], facts = [], short, locked, cla
           ) : null}
           {facts.length ? (
             <Ui2Facts dir="row" className="u2-show-facts" data-u2-show-facts={facts.length}>
-              {facts.map((f) => <Ui2Fact key={f.id || f.k} k={f.k} v={f.v} data-u2-show-fact={f.id || f.k} />)}
+              {facts.map((f) => <Ui2Fact key={f.id || f.k} k={f.k} v={f.v} data-u2-show-fact={f.id || f.k} {...(f.attrs || {})} />)}   {/* v2.3.6696: a fact's own marks (`attrs`) */}
             </Ui2Facts>
           ) : null}
         </>

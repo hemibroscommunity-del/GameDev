@@ -205,24 +205,32 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
   await shot(P, 'pet-levelled');
 
   /* ── 6. the Pets page: the XP bar and the journal ── */
-  await H.openDest(P, 'More').catch(() => {});
-  await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  /* v2.3.3425: 15 s, the page's first draw can take longer than 5 on this box
-     (step 7, below) */
-  const page = await P.page.waitForSelector('[data-pets-panel]', { timeout: 15000 }).then(() => true).catch(() => false);
-  const bar = page ? await P.page.$eval('[data-pet-xp]', (el) => ({ v: el.getAttribute('data-pet-xp'), text: el.innerText.replace(/\s+/g, ' ') })).catch(() => null) : null;
+  /* v2.3.6696 (card UI2-pets): Bro's Pets door under the new dashboard (H.dashOpen: the Menu, Bro, Pets),
+     the companion's landing; the journal is its All door, a stage at a time.  15 s: the page's first
+     draw can take longer than 5 on this box (v2.3.3425) */
+  await H.dashOpen(P, 'pets').catch(() => {});
+  const page = await P.page.waitForSelector('[data-pets-page="pets"]', { timeout: 15000 }).then(() => true).catch(() => false);
+  const bar = page ? await P.page.$eval('[data-pets-page="pets"] [data-pet-xp]', (el) => ({ v: el.getAttribute('data-pet-xp'), text: el.innerText.replace(/\s+/g, ' ') })).catch(() => null) : null;
   const pv = await H.readState(P, (S) => (S._petBook && S._petBook.list[0]) || null);
   rec.ok(`the Pets page shows its XP bar ("${bar && bar.text}"), the worker's numbers`, !!bar && bar.v === pv.xp + '/' + Math.ceil(25 * Math.pow(1.08, pv.lv - 1)), { bar, pv });
   await shot(P, 'pets-xp');
-  const journal = page ? await P.page.evaluate(() => {
-    const j = document.querySelector('[data-pets-journal]');
-    if (!j) return null;
-    j.scrollIntoView({ block: 'start' });
-    const cells = Array.from(j.querySelectorAll('[data-journal-cell]')).map((c) => ({ k: c.getAttribute('data-journal-cell'), caught: c.getAttribute('data-journal-caught') === '1',
-      shadow: !!c.querySelector('[data-pet-shadow]'), text: c.innerText.replace(/\s+/g, ' ') }));
-    return { n: j.getAttribute('data-pets-journal'), cells };
-  }) : null;
+  let journal = null;
+  if (page) {
+    await P.page.click('[data-pets-door="all"]').catch(() => {});
+    await P.page.waitForSelector('[data-pets-all]', { timeout: 15000 }).catch(() => {});
+    const read = () => P.page.evaluate(() => {
+      const j = document.querySelector('[data-pets-all]');
+      if (!j) return null;
+      const cells = Array.from(j.querySelectorAll('[data-pets-cell]')).map((c) => ({ k: c.getAttribute('data-pets-cell'), caught: c.getAttribute('data-pets-caught') === '1',
+        shadow: !!c.querySelector('[data-pet-shadow]'), text: c.innerText.replace(/\s+/g, ' ') + ' ' + (c.getAttribute('aria-label') || '') }));
+      return { n: j.getAttribute('data-pets-journal'), cells };
+    });
+    const one = await read();
+    await P.page.click('[data-pets-all] [data-u2-shelf="2"]').catch(() => {});
+    await P.page.waitForTimeout(500);
+    const two = await read();
+    journal = one && two ? { n: one.n, cells: one.cells.concat(two.cells) } : null;
+  }
   await P.page.waitForTimeout(500);
   const snow = journal && journal.cells.find((c) => c.k === 'snowling.1');
   rec.ok(`the journal: every kind at both stages (${journal ? journal.cells.length : 0}), "1 of 18 caught", the Snowling in colour ("${snow && snow.text}"), the rest their shapes`,
@@ -260,7 +268,7 @@ async function body({ P, wsPort, rec, errors, npcReqs }) {
   /* v2.3.3425: 15 s, not 5 -- the page's first draw after a tap takes longer
      than 5 s on this box (mp-petsmatter's More tile showed it: the page came
      up just after its 5 s wait gave up) */
-  const tapped = await H.waitFor(P, () => ({ tap: window.__btNpcTap || null, page: !!document.querySelector('[data-pets-panel]') }),
+  const tapped = await H.waitFor(P, () => ({ tap: window.__btNpcTap || null, page: !!document.querySelector('[data-pets-page="pets"]') }),   /* v2.3.6696: the companion's landing */
     (v) => v.page, { timeout: 15000, label: 'the Pets page' }).catch(() => null);
   const lastTap = tapped ? null : await P.page.evaluate(() => window.__btNpcTap || null);
   rec.ok('his line done, a tap on him opens the Pets page', !!tapped && tapped.tap && tapped.tap.npc === 'Beastmaster Bro' && tapped.tap.result === 'pets', { css, tapped, lastTap, t0 });

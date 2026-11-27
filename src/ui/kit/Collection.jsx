@@ -20,12 +20,15 @@ import './collection.css';
 export function Ui2Collection({ shelves = [], shelf, onShelf, side, big, head, label, children, className, ...rest }) {
   return (
     <div className={'u2-coll' + (side ? ' is-side' : '') + (big ? ' is-big' : '') + (className ? ' ' + className : '')} {...rest}>
-      <div className="u2-coll-shelves" role="group" aria-label={label}>
-        {shelves.map((s) => (
-          <Ui2Tile key={s.id} size="compact" label={s.word} selected={s.id === shelf} className="u2-coll-shelf"
-            data-u2-shelf={s.id} onClick={() => { if (onShelf) onShelf(s.id); }} />
-        ))}
-      </div>
+      {/* v2.3.6696 (card UI2-pets): no kinds (Pets' Owned), no row of them */}
+      {shelves.length ? (
+        <div className="u2-coll-shelves" role="group" aria-label={label}>
+          {shelves.map((s) => (
+            <Ui2Tile key={s.id} size="compact" label={s.word} selected={s.id === shelf} className="u2-coll-shelf"
+              data-u2-shelf={s.id} onClick={() => { if (onShelf) onShelf(s.id); }} />
+          ))}
+        </div>
+      ) : null}
       <div className="u2-coll-body" data-u2-coll-body="">
         {head ? <div className="u2-coll-head">{head}</div> : null}
         {children}
