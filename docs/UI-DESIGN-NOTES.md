@@ -390,7 +390,7 @@ Screens: hud-pvp, nml-popup, hud-outlaw
 Sources: src/ui/mobile/NmlBadge.jsx, src/ui/mobile/placeName.js, src/game/placeSafety.js, src/ui/PlayerFrame.jsx, server/src/nomansland.js, docs/specs/no-mans-land.md
 
 ## The character HUD (top left)
-Screens: charhud, charhud-side, charhud-desk
+Screens: charhud, charhud-side, charhud-desk, hudart, hudart-side
 
 **What it is for:** Who you are and how you are progressing, always, whatever menu is open: the owner, 2026-11-26 (docs/design/UI_FEEDBACK_2026-11-26.md part 1): "I strongly agree with moving the character portrait into the top-left corner. It gives players a persistent sense of identity and progression, regardless of which menu they have open." "Portrait: Always visible and tappable. Name and combat level: Immediately adjacent to the portrait. XP bar: Persistent gold progression bar. Quest: Smaller, single-line tracker underneath." "Since combat level is determined by the highest weapon level, I would display the XP progress of whichever weapon is closest to increasing the overall combat level. Label the XP bar with that weapon so players understand the relationship." "Tapping the portrait should immediately open the character dashboard." And: "the upper HUD tells you who you are and how you're progressing, while the bottom dashboard lets you manage your character. Those two areas shouldn't unnecessarily repeat each other's information."
 
@@ -403,6 +403,7 @@ Screens: charhud, charhud-side, charhud-desk
 - `?questline=1` (remembered on the device; `?questline=0` forgets) brings back the one line of v2.3.6781 under the HUD: "title · count · objective" (the owner's own "[Into the Wild · 3/5 · Defeat 5 monsters]"), never wrapping; between quests "Next: <quest> · Talk to <giver>" and "+n more"; its tap opens that quest.
 - The things that show only at times take the line's place: the status chips (the snowflake, the flame, the buffs, the trap's button) right under the HUD, the same left edge, and the party chip under their two rows; sideways the party chip stands BESIDE the HUD, under the top bar, as before. With `?questline=1` they sit under the line as v2.3.6781 had them. Nothing crosses at 375 x 667 or 667 x 375 (on the test box). Where these sit is the owner's to change.
 - `?hud=0` (remembered on the device; `?hud=1` forgets) gives back the old top left exactly: the full quest card with its fold, the top bar's XP, the chips where they were.
+- **In the owner's pictures** (tag 6787, card UI3 PR 8; src/ui/hud/HudArt.jsx, its rules src/game/hudArt.js, its pieces public/ui/hud/ cut by tools/art/cut-hud.mjs from assets/icons-source/owner-2026-11-26-hud/sheet.png). The owner, 2026-11-26 (20:3x UTC), with one picture: "Use these art assets for a new compact hud in top left and weapon xp bar"; and (20:4x UTC): "The tiny pill on the right of weapon xp bar should have weapon level. Inside character badge goes combat lvl"; and, asked which weapon the bar follows (20:5x UTC): "Weapon in hand". So: your own face in the steel ring, the COMBAT level in the gold badge hanging under it, and to its right one steel bar: the weapon IN HAND in its small ring (the sheet's sword; the bow and the staff wear the game's own small pictures), its progress to its next level the green fill, its LEVEL in the pill at the bar's right end (100 at the cap, the fill full). Laid out as the sheet's top row (the bar centred on the ring's middle, the badge over the ring's bottom), the ring 48 px and everything to it, in UI3-hud's own box (184 x 52; sideways the same at 92 %, 169 x 48), so nothing under it moves; the sheet's bar would be 162 px at that size, it is drawn 134 (its middle stretches, its round ends never). The name stays above the bar (11 px) and the "45 / 120" count in it (10 px): neither is on the sheet, both kept so nothing is lost. Two buttons: the face opens Bro, the bar the weapon's page (Combat, then the weapon's; Back goes to Combat). The fill is green as on the sheet, where the panel's bar was gold (the owner's morning word, "Persistent gold progression bar": the picture is their later word). Before the worker's record the badge and the pill are empty, never "1". `?hudart=0` (remembered; `?hudart=1` forgets) gives back the drawn panel above, with its own rule for the weapon; `?hud=0` hides both.
 
 **Tried before, and changed:**
 - An identity strip with the name, XP and gold, cut as "way too busy" (v2.3.1848–1857).
@@ -410,6 +411,7 @@ Screens: charhud, charhud-side, charhud-desk
 - Its face out, 2026-11-03 ("Remove the character pfp in the top left corner if you haven't already", v2.3.4093).
 - The frame out, 2026-11-03 ("No remove them from the game screen: they're already seeing it on the dashboard and whenever they enter combat or have any resource depletion it appears above their character head anyway", v2.3.4163).
 - The reversal, 2026-11-26: the face, the name, the level and one weapon's XP bar back as this HUD, by the owner's later word (v2.3.6781). Health and energy stay off.
+- The drawn panel (a square face, "Lv N" in words, a gold bar of the weapon closest to raising the combat level), dressed the same evening in the owner's pictures with the weapon in hand (tag 6787); the panel stays under `?hudart=0`.
 - The quest line under the HUD (v2.3.6781, the owner's "Quest: Smaller, single-line tracker underneath"), out of the world a day later by their next word (v2.3.6790), kept behind `?questline=1`.
 
 **Please don't suggest:**
@@ -418,7 +420,7 @@ Screens: charhud, charhud-side, charhud-desk
 - The online player count on the HUD (it left in v2.3.1227; the owner suggests the Social menu or a small mark in the top bar, a later step's).
 - A second XP bar for weapon XP in the top bar while the HUD is up.
 
-Sources: docs/design/UI_FEEDBACK_2026-11-26.md, docs/plan/cards/UI3-hud.md (on claude/plan-orc), src/ui/hud/CharacterHud.jsx, src/ui/hud/charHud.css, src/ui/hud/hudColumn.js, src/game/charHud.js, src/ui/QuestCard.jsx, src/ui/mobile/ZoneHeader.jsx, src/ui/panels/PartyHUD.jsx, src/ui/mobile/QuestCoach.jsx, src/styles/game.css, tools/guards/char-hud.test.mjs, tools/qa/mp/mp-charhud.mjs
+Sources: docs/design/UI_FEEDBACK_2026-11-26.md, docs/plan/cards/UI3-hud.md (on claude/plan-orc), docs/plan/cards/UI3-hudart.md, src/ui/hud/HudArt.jsx, src/ui/hud/hudArt.css, src/game/hudArt.js, tools/art/cut-hud.mjs, tools/guards/hud-art.test.mjs, tools/qa/mp/mp-ui3hudart.mjs, src/ui/hud/CharacterHud.jsx, src/ui/hud/charHud.css, src/ui/hud/hudColumn.js, src/game/charHud.js, src/ui/QuestCard.jsx, src/ui/mobile/ZoneHeader.jsx, src/ui/panels/PartyHUD.jsx, src/ui/mobile/QuestCoach.jsx, src/styles/game.css, tools/guards/char-hud.test.mjs, tools/qa/mp/mp-charhud.mjs
 
 ## Townsfolk, quest badges and the keepers
 Screens: near-mayor

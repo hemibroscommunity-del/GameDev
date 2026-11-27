@@ -34,6 +34,8 @@ import { XP_BAR_ICONS } from '@/ui/mobile/xpBarArt.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { SAY } from '@/data/say/charHud.js';
 import { say } from '@/game/say.js';
+import { hudArtOn } from '@/game/hudArt.js';   /* v2.3.6787: the owner's pictures (card UI3 PR 8) */
+import HudArt from './HudArt.jsx';
 import './charHud.css';
 
 /* QA only: what the HUD shows, for mp-charhud (the probe reads the model) */
@@ -78,6 +80,12 @@ export default function CharacterHud({ rpgState, live }) {
   publish(model, got);
 
   if (!on || !rpg) return null;
+  /* v2.3.6787: the owner's pictures (HudArt.jsx; `?hudart=0` keeps the panel
+     below): the face ring, the combat level's badge, the weapon in hand's bar */
+  /* v2.3.6787 (the mend of sitting 72): handed the three fields it reads, never
+     the model whole, so char-hud 9i still sees every model.level under
+     model.ready (the badge's number: hud-art.test 6i) */
+  if (hudArtOn()) return <HudArt live={S} rpg={rpg} hud={{ ready: model.ready, level: model.ready ? model.level : null, name: model.name }} xb={xb} />;
 
   const open = (e) => {
     e.stopPropagation();

@@ -526,6 +526,9 @@ export const ASSET_FAMILIES = Object.freeze([
   /* v2.3.6640 (card PAD): the controller's eighteen pieces, cut from the owner's four sheets */
   fam('ui-pad', 'made', 'public/ui/pad/*.png',
     { tool: 'tools/art/cut-pad.mjs', sources: 'assets/icons-source/owner-2026-11-25-pad3/*.png', draw: 'dom', loader: 'src/ui/panels/controlSkin.jsx' }),
+  /* v2.3.6787: the character HUD's pieces (card UI3 PR 8), from the owner's sheet of 2026-11-26 */
+  fam('ui-hud', 'made', 'public/ui/hud/*.png',
+    { tool: 'tools/art/cut-hud.mjs', sources: 'assets/icons-source/owner-2026-11-26-hud/sheet.png', draw: 'dom', loader: 'src/game/hudArt.js' }),
   fam('ui-daily-spin', 'made', 'public/ui/daily-spin/*.png',
     { tool: 'unknown', sources: 'assets/ui/daily-spin/*.png', draw: 'dom', loader: 'src/ui/mobile/LoginSpinWindow.jsx' }),
   /* v2.3.5500 (card LB): the leaderboards' new look, cut by the sheet's own alpha from the owner's sheet; nothing draws them until LB's PR 2 */
