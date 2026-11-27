@@ -12,14 +12,16 @@ state: working
   mp-charhud 4 and 5 on the running page; the switch's row; states.mjs,
   UI-DESIGN-NOTES and `docs/specs/hud-corner.md`.
 
+- tag 6790: the coach's 5th first step "Your quest" rings the Menu button
+  ("Your quests are in the Menu.") when no quest card is drawn (the
+  orchestrator's answer, part 34: "fallback anchor"); main 5b30c929 merged.
+
 ## Next
-- the phone runs on the final code; the PR; one message to the orchestrator.
+- the phone runs on the final code (helpers); one message to the orchestrator.
 
 ## Found
-- the coach's 5th first step `questPill` rings `[data-quest-hud]`: with the
-  line gone it is skipped as unreachable and never done, so `passkey` (the
-  Login Key lesson, QuestCoach.jsx near 1592) would never come. Asked the
-  orchestrator (QuestCoach.jsx is UI3-tutor's beyond the charHudSpan lines).
+- (answered) the coach's `questPill` rang only `[data-quest-hud]`: with the
+  line gone it would never be done and the Login Key lesson never come.
 
 ## Needs
-- the orchestrator's answer on `questPill` (see Found).
+- nothing.
