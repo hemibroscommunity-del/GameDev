@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8201861d94ae5c280485fdfb1f89fc2534fb7f29",
+  "tree": "ea84fb7345a042920ac1c185a1a6d820ac9571df",
+  "committedAt": "2026-11-27T12:19:38-08:00",
+  "subject": "Merge pull request #2413 from hemibroscommunity-del/claude/plan-ui2-14-pets",
+  "files": 9253,
+  "bytes": 1089006159,
+  "listingSha256": "93ba2454ff1bf409bb428fcc4e8ff16f1726c79bb1c974913a3bd64d70b2d304",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
