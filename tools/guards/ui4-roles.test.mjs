@@ -62,7 +62,7 @@ function check(name, ok, detail) {
 /* ── T. the table: the nine roles, V17's lines, and the one mapping of yesterday's props ── */
 {
   check('T1. the nine roles, in V17\'s order, with the game\'s names', UI_ROLE_IDS.join() === 'info,inspect,go,selected,adjust,commit,danger,disabled,slot', UI_ROLE_IDS);
-  check('T2. each row names its V17 line (39 to 47) and its press', UI_ROLES.every((r, i) => r.line === 39 + i && /^(must|never|may)$/.test(r.press) && r.v17 && r.says), UI_ROLES);
+  check('T2. each row names its V17 line (39 to 47) and its press', UI_ROLES.every((r, i) => r.line === 39 + i && /^(must|never|may)$/.test(r.press)), UI_ROLES);
   check('T3. a fact is never pressed; inspect, go, adjust, commit and danger always are',
     uiRole('info').press === 'never' && ['inspect', 'go', 'adjust', 'commit', 'danger'].every((id) => uiRole(id).press === 'must'));
   check('T4. uiRole() of a name that is no role (or __proto__) is null', uiRole('button') === null && uiRole('__proto__') === null && uiRole(undefined) === null);

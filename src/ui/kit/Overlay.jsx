@@ -22,7 +22,7 @@ import { Ui2Header } from './Header.jsx';   /* the kit's one header: its ✕ is 
  */
 export function Ui2Overlay({ title, onClose, w, h, headH = 52, label, children, className, style, ...rest }) {
   return (
-    <section className={ui2RootClass('u2-frame u2-over' + (className ? ' ' + className : ''))} role="dialog" aria-label={label || (typeof title === 'string' ? title : undefined)}
+    <section className={ui2RootClass(['u2-frame', 'u2-over'].join(' ') + (className ? ' ' + className : ''))} role="dialog" aria-label={label || (typeof title === 'string' ? title : undefined)}
       style={{ width: w, maxHeight: h, ...(style || null) }} data-u2-overlay="" {...rest}>
       <div style={{ height: headH, display: 'flex', alignItems: 'center', flex: '0 0 auto' }}>
         <Ui2Header title={title} onBack={false} onMenu={false} onClose={onClose} />

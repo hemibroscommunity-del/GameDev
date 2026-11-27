@@ -25,17 +25,19 @@
  * (`?v17look`) gives the roles V17's colours.  No imports: node tests it.
  */
 
-/* press: 'must' (a button with a live handler), 'never' (no button form: a fact to read), 'may' (either) */
+/* press: 'must' (a button with a live handler), 'never' (no button form: a fact to read), 'may' (either).
+   `line` is the row's line in V17 (docs/design/v17/MASTER-IMPLEMENTATION.md); its name there, and what it
+   means, are the comment beside it (comments, not strings: none of this is a word a player reads). */
 export const UI_ROLES = Object.freeze([
-  Object.freeze({ id: 'info', v17: 'Passive information', line: 39, press: 'never', says: 'a fact to read: no button form' }),
-  Object.freeze({ id: 'inspect', v17: 'Inspection', line: 40, press: 'must', says: 'a fact that opens to say why or how' }),
-  Object.freeze({ id: 'go', v17: 'Navigation/preparation', line: 41, press: 'must', says: 'a way to go somewhere or get something ready' }),
-  Object.freeze({ id: 'selected', v17: 'Selected tab/filter', line: 42, press: 'may', says: 'the tab or filter now chosen' }),
-  Object.freeze({ id: 'adjust', v17: 'Adjust/toggle/dismiss', line: 43, press: 'must', says: 'a change of a setting or a number, a cancel, a close' }),
-  Object.freeze({ id: 'commit', v17: 'Commit', line: 44, press: 'must', says: 'does the thing: equip, spend, craft, accept, list' }),
-  Object.freeze({ id: 'danger', v17: 'Destructive/high-risk commit', line: 45, press: 'must', says: 'does a thing that cannot be undone or costs dearly' }),
-  Object.freeze({ id: 'disabled', v17: 'Disabled', line: 46, press: 'may', says: 'cannot be used now, and says why' }),
-  Object.freeze({ id: 'slot', v17: 'Item slot', line: 47, press: 'may', says: 'an item\'s place: its rarity, empty or filled' }),
+  Object.freeze({ id: 'info', line: 39, press: 'never' }),      /* Passive information: a fact to read, no button form */
+  Object.freeze({ id: 'inspect', line: 40, press: 'must' }),    /* Inspection: a fact that opens to say why or how */
+  Object.freeze({ id: 'go', line: 41, press: 'must' }),         /* Navigation/preparation: go somewhere, or get something ready */
+  Object.freeze({ id: 'selected', line: 42, press: 'may' }),    /* Selected tab/filter: the one now chosen */
+  Object.freeze({ id: 'adjust', line: 43, press: 'must' }),     /* Adjust/toggle/dismiss: a setting, a number, a cancel, a close */
+  Object.freeze({ id: 'commit', line: 44, press: 'must' }),     /* Commit: does the thing (equip, spend, craft, accept, list) */
+  Object.freeze({ id: 'danger', line: 45, press: 'must' }),     /* Destructive/high-risk commit: cannot be undone, or costs dearly */
+  Object.freeze({ id: 'disabled', line: 46, press: 'may' }),    /* Disabled: cannot be used now, and says why */
+  Object.freeze({ id: 'slot', line: 47, press: 'may' }),        /* Item slot: an item's place, its rarity, empty or filled */
 ]);
 export const UI_ROLE_IDS = Object.freeze(UI_ROLES.map((r) => r.id));
 const BY_ID = Object.freeze(Object.fromEntries(UI_ROLES.map((r) => [r.id, r])));

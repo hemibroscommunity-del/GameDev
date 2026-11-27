@@ -18,8 +18,8 @@ import { Ui2Badge } from './Badge.jsx';
 export function Ui2Tabs({ label, children, className, ...rest }) {
   const onKey = (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    const row = e.currentTarget;
-    const tabs = Array.prototype.slice.call(row.querySelectorAll('[role="tab"]'));
+    /* its own children, read on a key press (no layout read: the row's tabs by their role) */
+    const tabs = Array.prototype.filter.call(e.currentTarget.children, (c) => c.getAttribute('role') === 'tab');
     const at = tabs.indexOf(document.activeElement);
     if (at < 0) return;
     const next = tabs[(at + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
@@ -35,7 +35,7 @@ export function Ui2Tabs({ label, children, className, ...rest }) {
 /** one tab: `label` its word (always written: the cue is never colour alone), `art` a small picture, `badge` a count */
 export function Ui2Tab({ label, art, badge, dot, selected, state, onClick, className, ...rest }) {
   const r = ui2Role('Ui2Tab', { selected, onClick });
-  const cls = 'u2-raised u2-tile is-compact u2-tab' + stateClass(state) + (className ? ' ' + className : '');
+  const cls = ['u2-raised', 'u2-tile', 'is-compact', 'u2-tab'].join(' ') + stateClass(state) + (className ? ' ' + className : '');
   return (
     <button type="button" role="tab" className={cls} data-u2-role={r.role} aria-selected={selected ? 'true' : 'false'}
       tabIndex={selected ? 0 : -1} onClick={onClick} {...rest}>
