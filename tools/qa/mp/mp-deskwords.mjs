@@ -125,6 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await key(P, k, 900);
       pages[k.toUpperCase()] = await tapsShown(P);
       if (k === 'j') {
+        /* v2.3.6691 (card UI2-quests): J is the landing, your quests as rows; a row opens the quest's own page */
         const row = await P.page.evaluate(() => {
           const b = document.querySelector('[data-quest-row="tut_1"]') || document.querySelector('[data-quest-row]');
           if (!b) return null;

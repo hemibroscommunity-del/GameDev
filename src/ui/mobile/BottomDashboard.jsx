@@ -75,6 +75,7 @@ import { BandGrip, BandClose } from './dash/BandGrip.jsx';           /* v2.3.417
 import { bandGripOn, foldHook } from './dash/bandGripSwitch.js';  /* v2.3.6697: the handle gone (?bandgrip=1 brings it back); the fold's hook on the row's own control */
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
+import { QuestFramePage, isQuestFramePage } from './dash/QuestPage.jsx'; /* v2.3.6691 (card UI2-quests) */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape, winVh } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape; v2.3.6241: + winVh */
@@ -1814,6 +1815,7 @@ export const BottomDashboard = () => {
               <div className={ui2RootClass()} data-dash-page={framePage} style={{ flex: 1, minHeight: 0, padding: 4 }}>
                 {framePage === 'homestead' ? <HomesteadPage plots={plotsReady} />
                   : isBroHubPage(framePage) ? <BroDoorPage id={framePage} points={_pts} />   /* v2.3.6683 (card UI2-bro): Character, Combat */
+                  : isQuestFramePage(framePage) ? <QuestFramePage id={framePage} S={Sb} />   /* v2.3.6691 (card UI2-quests): Rewards, Daily, Completed, On offer */
                   : <MenuGrid label={framePage} doors={framePage === 'menu' ? MENU_DESTS : DASH_HUBS[framePage]} marks={marks.doors}
                       wordFor={framePage === 'socialHub' ? hubWord : undefined} onDoor={openDoor} />}
               </div>

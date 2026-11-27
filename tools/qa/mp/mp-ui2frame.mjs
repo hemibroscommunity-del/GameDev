@@ -220,7 +220,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const word = F.back;
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
     const G8 = await read(P);
-    rec.ok('8. the quest card\'s road (its page hands the quest to the Quests tab, which takes its place): Back says World and closes the dashboard again', F.page === 'quests' && /World/.test(word || '') && G8.kind === 'closed' && G8.nav.menu.indexOf('quests') < 0 && G8.nav.menu.indexOf('questDetail') < 0, { page: F.page, word, after: G8.kind, nav: G8.nav });
+    /* v2.3.6691 (card UI2-quests): the quest's own page is a real page now (QuestPage.jsx), no hand-over to the tab */
+    rec.ok('8. the quest card\'s road (the quest\'s own page takes the opener\'s place): Back says World and closes the dashboard again', F.page === 'questDetail' && /World/.test(word || '') && G8.kind === 'closed' && G8.nav.menu.indexOf('quests') < 0 && G8.nav.menu.indexOf('questDetail') < 0, { page: F.page, word, after: G8.kind, nav: G8.nav });
     /* a page from the world on its own (a fish's weigh-in card opens the Ranks) */
     await P.page.evaluate(() => window.__broDashPanelBus.open('leaderboard'));
     await P.page.waitForTimeout(800);

@@ -771,51 +771,60 @@ export const STATES = [
      default: it is off unless `?hemiface=1` (docs/specs/hemi-portrait.md) */
   /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
      quest you are on (a run has taken Into the Blue at quest-accepted) */
-  /* v2.3.6620 (card QP): the Quests tab in pages (dash/QuestPages.jsx; `?questpages=0` the old page) */
-  dash('quests', 'Quests', 'The Quests tab, page 1 (v2.3.6620: the tab in pages, each whole with no scrolling): the row Active (n) | Daily | Completed with the three page marks; the quest\'s head (the giver\'s face, its name, "In progress" and the giver, Track); what to do now with its picture, count and bar (a tap opens the journey); where, with Map; the rewards in one row of tiles (a tap opens page 3).'),
+  /* v2.3.6620 (card QP): the Quests tab in pages (dash/QuestPages.jsx; `?questpages=0` the old page).
+     v2.3.6691 (card UI2-quests): under the new dashboard Quests is the landing and a quest's own page
+     (dash/QuestsLanding.jsx, QuestPage.jsx); today's pages only under ?ui2=0 (mp-questpages plays them),
+     so the four states that showed them are the new pages' (a run has taken Into the Blue at quest-accepted) */
   {
-    id: 'dash-quest-journey', group: 'Dashboard', title: 'Quests: the quest journey',
-    about: 'Page 2 of a quest (v2.3.6620): the head, then its steps as a line: done steps green with their tick (and what the giver handed over), the step in hand gold with its place and count, the steps to come grey.',
+    id: 'ui2-quest-landing', group: 'Dashboard', title: 'Quests: your quests as rows',
+    about: 'The Menu\'s Quests tile (v2.3.6691, card UI2-quests): under the one header (‹ Menu, Quests, Close) your quests in hand as rows -- the giver\'s face, the quest\'s name, its count ("0/4") where it counts, a green "Ready" once it can be handed in, the gold star on the one you track (first) -- scrolling inside their zone; under them the doors Daily (when the game shows it today), Completed (n) and On offer (n). No tabs, no page marks, no picker. Nothing in hand: the game\'s own line and the same doors. Sideways the doors sit at the rows\' end. Under ?ui2=0 today\'s pages.',
     run: async ({ P }) => {
-      await bus(P, 'open', 'quests');
+      const e = await bus(P, 'open', 'quests');
+      if (e) return e;
       await wait(P, 600);
-      if (!(await has(P, '[data-quest-mark="journey"]'))) return 'no quest open in pages';
-      await evalIn(P, () => { const b = document.querySelector('[data-quest-mark="journey"]'); if (b) b.click(); });
-      await wait(P, 400);
-      if (!(await has(P, '[data-quest-view="journey"]'))) return 'the journey did not open';
+      if (!(await has(P, '[data-quests-ui2="landing"]'))) return 'the landing did not open';
     },
   },
   {
-    id: 'dash-quest-rewards', group: 'Dashboard', title: 'Quests: rewards and what is next',
-    about: 'Page 3 of a quest (v2.3.6620): the head with the count, the completion rewards as tiles, and the next quest (its giver\'s face, its name, who and where, a lock: "Available after" this one).',
+    id: 'ui2-quest-page', group: 'Dashboard', title: 'Quests: a quest\'s journey up to now',
+    about: 'A row of the landing opens the quest\'s own page (header "Quest"): the giver\'s face, the name and its state; the steps behind you, each with its green tick (and what the giver handed over), scrolling inside their zone; then NOW, framed in gold and never behind a scroll: the thing\'s picture, what to do, its count and bar, and the place; then one quiet line, "The adventure continues". No step still to come, no hand-in until it is ready, no "Then:", no count of steps, no percent. At the bottom Track (☆/★, at once), Show on map (only where the game can show the road) and the Rewards door. Sideways the name and the steps stand on the left, NOW and its actions beside them.',
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      if (!(await has(P, '[data-quest-mark="rewards"]'))) return 'no quest open in pages';
-      await evalIn(P, () => { const b = document.querySelector('[data-quest-mark="rewards"]'); if (b) b.click(); });
-      await wait(P, 400);
-      if (!(await has(P, '[data-quest-view="rewards"]'))) return 'page 3 did not open';
+      if (!(await has(P, '[data-quest-row]'))) return 'no quest in hand';
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-row]'); if (b) b.click(); });
+      await wait(P, 600);
+      if (!(await has(P, '[data-quest-ui2-page]'))) return 'the quest\'s page did not open';
     },
   },
   {
-    id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
-    about: 'A quest opened by name, as the pinned quest card in the world opens it ("Open quest"): since v2.3.6620 it lands on that quest\'s page 1 in the Quests tab (with `?questpages=0`, its own page: NOW, WHERE, WHO, GIVEN TO YOU, REWARD, NEXT and Track).',
+    id: 'ui2-quest-rewards', group: 'Dashboard', title: 'Quests: a quest\'s Rewards',
+    about: 'The quest page\'s Rewards door (header "Rewards", ‹ Quest): the quest\'s name and its completion rewards as the game\'s tiles (the gold, the XP, the achievement points, the items with their pictures). Back returns to the quest. No Story door: the game has no story text for a quest.',
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      /* the quest the tab is on (the pages), else a row of the old page's list */
-      const qid = await evalIn(P, () => {
-        const pg = document.querySelector('[data-quests-page]');
-        const el = document.querySelector('[data-quest-row]') || document.querySelector('[data-quest-offer-row]');
-        return (pg && pg.getAttribute('data-quest-open')) || (el ? (el.getAttribute('data-quest-row') || el.getAttribute('data-quest-offer-row')) : null);
-      });
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-row]'); if (b) b.click(); });
+      await wait(P, 600);
+      if (!(await has(P, '[data-quest-door="rewards"]'))) return 'no Rewards door';
+      await evalIn(P, () => { const b = document.querySelector('[data-quest-door="rewards"]'); if (b) b.click(); });
+      await wait(P, 500);
+      if (!(await has(P, '[data-quest-ui2-rewards]'))) return 'Rewards did not open';
+    },
+  },
+  {
+    id: 'ui2-quest-road', group: 'Dashboard', title: 'Quests: a quest opened from the world',
+    about: 'A quest opened by name, as the pinned quest card in the world opens it ("Open quest"): that quest\'s own page (as from the landing), its header\'s Back saying "World" (it closes the dashboard again). Completed and On offer open the same page: a done quest shows its whole history, the hand-in done and the journal\'s "Next: ..." line (no Track, no map); an offer shows the talk to its giver as NOW.',
+    run: async ({ P }) => {
+      await bus(P, 'open', 'quests');
+      await wait(P, 600);
+      const qid = await evalIn(P, () => { const el = document.querySelector('[data-quest-row]'); return el ? el.getAttribute('data-quest-row') : null; });
       if (!qid) return 'no quest to open';
       await bus(P, 'open', 'bag');
       await wait(P, 300);
       const ok = await evalIn(P, (q) => { if (!window.__btQuestDetail) return false; window.__btQuestDetail.open(q); return true; }, qid);
       if (!ok) return 'no quest-detail probe';
-      await wait(P, 500);
-      if (!(await has(P, `[data-quest-open="${qid}"][data-quest-view="quest"]`)) && !(await has(P, '[data-journal-page]'))) return 'the quest\'s page did not open';
+      await wait(P, 600);
+      if (!(await has(P, `[data-quest-ui2-page="${qid}"]`))) return 'the quest\'s page did not open';
     },
   },
   /* v2.3.4172: Life Skills are a page under Bro (the card's Life Skills row;
