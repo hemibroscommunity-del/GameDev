@@ -30,9 +30,13 @@
  *   R10 the tracked quest not first
  *   R11 a loading list read as empty
  *   R12 Rewards' Back landing on the landing (it replaced the quest's page)
+ *   R13 the bus read before the entry's own quest; R14 one key for every quest's page
+ *       (v2.3.6691, sitting 71: quest A's page kept for B's pinned card)
  *   V1 the page drawing journeySteps(...).filter(s => s.state !== 'done') (the grey ones)
  *   V2 `{page.next.text}` drawn "for now"
  *   V3 a count of steps beside the title ("Step 2 of 5")
+ *   V3b-d the same bare, as "2/6" and as "4 steps" (v2.3.6691, sitting 71: W2 read
+ *       only "N of M" and "%"; W2b is an allow list: only the game's words and the labels)
  *   V4 Show on map drawn `disabled` where the game has no road
  *   V5 a Story door drawn
  *   V6 the hand-in drawn under NOW on a quest in hand
@@ -48,6 +52,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundleViews, html, textOf, loadEsbuild } from './lib/jsxText.mjs';
 import { dashNavInit, dashNavStep, dashNavView } from '../../src/game/dashNav.js';
+import { SAY as SAY_QP } from '../../src/data/say/questPages.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RULES = 'src/game/questPages.js';
@@ -95,6 +100,20 @@ const LIST = {
   done: [{ id: 'd1', title: 'Old one', ap: 5 }, { id: 'd2', title: 'Older one', ap: 5 }],
 };
 const NOFM = /\b\d+\s+of\s+\d+\b|\d\s*%|percent/i;
+/* v2.3.6691 (the mend of sitting 71): what is left of a page's words once the game's own and the page's fixed
+   labels are taken out (W2b's allow list).  The labels are the say table's values without a {placeholder}: a
+   template ("Completed ({n})") would let a number in. */
+const LABELS = Object.values(SAY_QP).filter((v) => typeof v === 'string' && !v.includes('{'));
+const MARKS = /[\s\u00b7\u2605\u2606\u203a\u2713.,:;!?()'"\u201c\u201d\u2018\u2019\-\u2013\u2014]/g;
+function leftOver(text, p, j) {
+  const own = [p.title, p.statusLabel, p.npc, ...(j ? [...j.done.map((s) => s.text), j.next] : [])];
+  if (j && j.now) own.push(j.now.text, j.now.where, j.now.count ? j.now.count.have + '/' + j.now.count.n : null);
+  /* a step's own tick is drawn apart (Step strips the journal's "... \u2713"): both spellings are the game's */
+  for (const w of own.slice()) if (typeof w === 'string') own.push(w.replace(/\s*\u2713\s*$/, ''));
+  let t = ' ' + text + ' ';
+  for (const w of own.concat(LABELS).filter((w) => typeof w === 'string' && w.trim()).sort((a, b) => b.length - a.length)) t = t.split(w).join(' ');
+  return t.replace(MARKS, '');
+}
 
 /* ── part 1: the rules ── */
 function ruleChecks(M) {
@@ -167,6 +186,14 @@ function ruleChecks(M) {
   const lastOne = M.journeyToNow({ ...page('done'), next: null }, '');
   c('M3', 'a done quest with no next line has none', lastOne.next === null && lastOne.history === true);
   c('M4', 'a tap of no kind opens nothing; Rewards needs the quest\'s id', M.questOpens({ kind: 'nope', id: 'q' }) === null && M.questOpens({ kind: 'rewards', id: 5 }) === null && M.questOpens({ kind: 'rewards', id: '' }) === null);
+  /* v2.3.6691 (the mend of sitting 71): which quest a quest's page shows, once per entry */
+  const sA = M.questPageSel({ key: 7, sel: 'A' }, 'B');
+  const sB = M.questPageSel({ key: 9, sel: null }, 'B');
+  c('S1', 'a page shows its entry\'s own quest (Back finds it again); an entry with none takes the bus\'s and keeps it',
+    sA.qid === 'A' && sA.kept === true && sA.key === 7 && sB.qid === 'B' && sB.kept === false && sB.key === 9
+    && M.questPageSel(null, 'B').qid === 'B' && M.questPageSel(null, 5).qid === null && M.questPageSel({ key: 1, sel: '' }, null).qid === null, words([sA, sB]));
+  c('S2', 'each entry draws its own page (quest B\'s road after quest A\'s is a new page, not A\'s kept)',
+    M.questPageKey({ key: 7 }) !== M.questPageKey({ key: 9 }) && M.questPageKey({ key: 7 }) === M.questPageKey({ key: 7, sel: 'A' }) && typeof M.questPageKey(null) === 'string');
   /* the survivors, each with its why (equivalent for every input the game gives):
      - `typeof c.tracked === 'string' && c.tracked` -> `||`: trackedQuestId() gives a string or null, never another truthy thing;
      - journeyToNow's fallback `at < 0` -> `at <= 0`: a quest in hand's step 0 is always the talk, done, never current;
@@ -189,6 +216,16 @@ function viewChecks(V, M) {
   c('W1b', '...and nothing of what is to come: no future step, no hand-in, no "Then:"', !FUTURE.test(t) && !/Hand it in/.test(t) && !/Then:/.test(t), t);
   const one = textOf(drawPage(page('active'), null));
   c('W2', 'no count of steps and no percent in the words a player reads (the thing\'s own "0/4" only)', !NOFM.test(t) && !NOFM.test(one) && /0\/4/.test(one), one);
+  /* v2.3.6691 (the mend of sitting 71): W2 matched only "N of M" and "%", so a bare {page.who.steps.length} beside
+     the title ("Into the Blue 4", "2/6", "4 steps") stayed green.  An ALLOW list instead, never a list of spellings:
+     every word a quest's page draws is the game's own (the journal page's fields, the journey's steps and NOW, its
+     count as "have/n") or one of the page's fixed labels; whatever is left over must be only spaces, marks and
+     punctuation, so any added word or number turns it red, however it is spelled. */
+  const left = [[ACTIVE4, 'tut_1'], [page('active'), null], [page('ready'), 'tut_1'], [page('done'), 'tut_1'], [page('available'), null]]
+    .map(([p, tr]) => ({ p, rest: leftOver(textOf(drawPage(p, tr)), p, M.journeyToNow(p, 'Collect 4 Slime Remains')) }))
+    .filter((x) => x.rest);
+  c('W2b', 'a quest\'s page draws only the game\'s own words and the page\'s labels (nothing added beside the title or anywhere)', !left.length,
+    left.map((x) => x.p.status + ': ' + JSON.stringify(x.rest)).join(' | '));
   const nomapH = drawPage(page('active', { where: { text: 'Somewhere', map: false } }), null);
   const nomap = textOf(nomapH);
   c('W3', 'the game cannot map it: no Show on map drawn at all', !/Show on map/.test(nomap) && !/data-journal-map/.test(nomapH) && /Track/.test(nomap), nomap);
@@ -227,6 +264,8 @@ else {
 const swap = (text, from, to) => (text.split(from).length === 2 ? text.replace(from, to) : null);
 const R_PLANTS = [
   ['R1', 'J1', 'a step still to come kept', "  out.done = steps.slice(0, at).filter((x) => x.state === 'done');", "  out.done = steps.filter((x) => x.state !== 'current');"],
+  ['R13', 'S1', 'the bus read before the entry (Back to quest A\'s page shows the last card tapped)', "  if (entry && typeof entry.sel === 'string' && entry.sel) return { qid: entry.sel, key, kept: true };", "  if (typeof busQid === 'string' && busQid) return { qid: busQid, key, kept: false };\n  if (entry && typeof entry.sel === 'string' && entry.sel) return { qid: entry.sel, key, kept: true };"],
+  ['R14', 'S2', 'one key for every quest\'s page (React keeps quest A\'s page for B\'s road)', "export function questPageKey(entry) { return entry && entry.key != null ? 'qp-' + entry.key : 'qp-none'; }", "export function questPageKey(entry) { return 'qp'; }"],
   ['R2', 'J1c', 'the hand-in shown on a quest in hand', "at = steps.findIndex((s) => s.state === 'todo' && s.kind !== 'handin');", "at = steps.findIndex((s) => s.state === 'todo');"],
   ['R3', 'J2', 'a "Then:" line on a quest in hand', '  out.continues = inHand;', '  out.continues = inHand;\n  out.next = page.next ? page.next.text : null;'],
   ['R4', 'J3', '"2 of 5" in what to do now', "    text: typeof now.text === 'string' && now.text ? now.text : (s.text || ''),", "    text: (typeof now.text === 'string' && now.text ? now.text : (s.text || '')) + ' (' + at + ' of ' + steps.length + ')',"],
@@ -252,6 +291,10 @@ const V_PLANTS = [
     ["import { rewardTiles } from '@/game/questPages.js';", "import { rewardTiles, journeySteps } from '@/game/questPages.js';"]]],
   ['V2', 'W1b', '{page.next.text} drawn "for now"', [['      {more}\n      {actions}', "      {more}\n      {page.next ? <div className=\"u2-qp-more\">{page.next.text}</div> : null}\n      {actions}"]]],
   ['V3', 'W2', 'a count of steps beside the title', [['data-journal-title="">{page.title}</span>', "data-journal-title=\"\">{page.title}{' (Step ' + (j.done.length + 1) + ' of ' + (page.who.steps.length + 2) + ')'}</span>"]]],
+  /* v2.3.6691 (the mend of sitting 71): the bare count beside the title, three spellings W2 let through, each red by W2b's allow list */
+  ['V3b', 'W2b', 'a bare {page.who.steps.length} beside the title ("Into the Blue 4")', [['data-journal-title="">{page.title}</span>', "data-journal-title=\"\">{page.title}{' ' + page.who.steps.length}</span>"]]],
+  ['V3c', 'W2b', 'the steps as "2/6" beside the title', [['data-journal-title="">{page.title}</span>', "data-journal-title=\"\">{page.title}{' ' + j.done.length + '/' + (page.who.steps.length + 2)}</span>"]]],
+  ['V3d', 'W2b', '"4 steps" beside the title', [['data-journal-title="">{page.title}</span>', "data-journal-title=\"\">{page.title}{' \u00b7 ' + page.who.steps.length + ' steps'}</span>"]]],
   ['V4', 'W3', 'Show on map drawn disabled where the game has no road', [["{map ? <Ui2Action c=\"blue\" label={short ? say(SAY, 'questPages.showOnMapShort') : say(SAY, 'questPages.showOnMap')} aria-label={say(SAY, 'questPages.showOnMap')} data-journal-map={page.id} onClick={onMap} /> : null}",
     "<Ui2Action c=\"blue\" label={say(SAY, 'questPages.showOnMap')} disabled={!map} data-journal-map={page.id} onClick={onMap} />"]]],
   ['V6', 'W1b', 'the hand-in drawn under NOW on a quest in hand', [['      {steps}\n      {nowBox}\n', "      {steps}\n      {nowBox}\n      <div className=\"u2-qp-more\">{say(SAY, 'questPages.handIn', { npc: giver })}</div>\n"]]],

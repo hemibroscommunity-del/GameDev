@@ -48,7 +48,7 @@ import { DonePane, DailyPane } from './questParts.jsx';
 import { QuestRow, QuestPageView, QuestRewardsView } from './questViews.jsx';   /* the drawing (node renders it) */
 import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { deskWords } from '@/game/deskWords.js';
-import { journeyToNow, questActions, questOpens, QUEST_FRAME_PAGES } from '@/game/questPages.js';
+import { journeyToNow, questActions, questOpens, questPageSel, questPageKey, QUEST_FRAME_PAGES } from '@/game/questPages.js';
 import { ui2RootClass, Ui2Empty } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/questPages.js';
 import { SAY as SAY_J } from '@/data/say/questJournal.js';
@@ -57,14 +57,12 @@ import { say } from '@/game/say.js';
 /** Is this one of the frame's Quests pages (BottomDashboard's framePage switch)? */
 export function isQuestFramePage(id) { return QUEST_FRAME_PAGES.indexOf(String(id)) >= 0; }
 
-/* the quest the page is about: the entry's own selection, else the bus */
-function selOf() {
-  let t = null;
-  try { t = dashNavView(dashboardPanelBus.nav()).top; } catch (e) { t = null; }
-  if (t && typeof t.sel === 'string' && t.sel) return { qid: t.sel, key: t.key, kept: true };
-  const qid = questDetailBus.selected();
-  return { qid: typeof qid === 'string' ? qid : null, key: t ? t.key : null, kept: false };
-}
+/* the quest the page is about: the entry's own selection, else the bus (questPages.js questPageSel; v2.3.6691,
+   the mend of sitting 71: read once per ENTRY -- QuestDetailPanel keys this page on questPageKey) */
+function topEntry() { try { return dashNavView(dashboardPanelBus.nav()).top; } catch (e) { return null; } }
+function selOf() { return questPageSel(topEntry(), questDetailBus.selected()); }
+/** the key QuestDetailPanel draws the page under: a new entry (another quest's road) is a new page */
+export function questPageAt() { return questPageKey(topEntry()); }
 
 function pageOf(S, qid) {
   if (!qid) return null;
