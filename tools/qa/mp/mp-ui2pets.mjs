@@ -260,7 +260,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ['844 x 390 (sideways)', { viewport: { width: 844, height: 390 }, touch: true }, 'ui2-pets-companion-844x390.png'],
     ['a computer (1280 x 800)', { viewport: { width: 1280, height: 800 }, wide: true }, 'ui2-pets-companion-computer.png'],
   ]) {
-    const Q = await H.newPlayer(browser, { name: 'Petsize' + label.slice(0, 3).trim(), wsPort, webPort, dpr: 2, world: 'wheel', ...opts });
+    const nm = 'Petsize' + label.slice(0, 3).trim();
+    const Q = opts.wide
+      ? await H.newPlayer(browser, { name: nm, wsPort, webPort, dpr: 2, world: 'wheel', viewport: opts.viewport, wide: true })
+      : await H.newPlayer(browser, { name: nm, wsPort, webPort, dpr: 2, world: 'wheel', viewport: opts.viewport, touch: true });
     Q.page.on('pageerror', (e) => errors.push(String(e && e.message || e).slice(0, 200)));
     try {
       if (!(await inWorld(Q, rec, label))) continue;
