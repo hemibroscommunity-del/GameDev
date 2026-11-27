@@ -1,7 +1,7 @@
 card: UI3-corner
 branch: claude/plan-ui3-10-corner
-prs: (the draft PR, base claude/plan-ui3-2-hud: opened with this commit)
-state: working
+prs: #2419 (draft, base main; ready)
+state: ready
 
 ## Done
 - tag 6790: the corner holds the character HUD alone. `src/game/hudCorner.js`
@@ -16,12 +16,18 @@ state: working
   ("Your quests are in the Menu.") when no quest card is drawn (the
   orchestrator's answer, part 34: "fallback anchor"); main 5b30c929 merged.
 
+- phone runs on the final app code (helpers, ccc14870): charhud, firststeps,
+  questline, coachdesk, topbarplace, trackquest, race, weaponswap, membudget
+  all green; questguide 7 red, the same 7 on main. main 380317e6 merged.
+
 ## Next
-- the phone runs on the final code (helpers); one message to the orchestrator.
+- the new head's checks; then one ready message to the orchestrator.
 
 ## Found
 - (answered) the coach's `questPill` rang only `[data-quest-hud]`: with the
   line gone it would never be done and the Login Key lesson never come.
+- mp-questguide is red on main 02966bcb (7: the tutorial quest never reaches
+  "ready"); not this card's.
 
 ## Needs
 - nothing.
