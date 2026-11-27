@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "112bc5e694fcc50dc896487620101d320586bce3",
+  "tree": "b56f48090777c78c61fb19dfd8dc37e1ffb563be",
+  "committedAt": "2026-11-27T12:32:31-08:00",
+  "subject": "Merge pull request #2411 from hemibroscommunity-del/claude/plan-ui3-9-ownplate",
+  "files": 9267,
+  "bytes": 1097154240,
+  "listingSha256": "a396716411dcb52606d06b0cc520fd42366f8ea655c560b295d43cd0df0553d8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
