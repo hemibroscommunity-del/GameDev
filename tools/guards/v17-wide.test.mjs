@@ -186,11 +186,17 @@ function importsOf(src) {
   });
   return got;
 }
+/* the screen file that stamps --band-max-w (resize()), found by what it does in the ui system's files, never
+   by its path: it may split (tests-by-system 2, lib/filesOf.mjs) */
+const { readSystem } = await import('./lib/filesOf.mjs');
+const STAMPERS = [...readSystem('ui')].filter(([f, src]) => /\.jsx$/.test(f) && src.includes("setProperty('--band-max-w'"));
+check('3. one screen file stamps --band-max-w (found by the ui system\'s files)', STAMPERS.length === 1, STAMPERS.map(([f]) => f));
+const [STAMPER, STAMPER_SRC] = STAMPERS[0] || [null, ''];
 const KNOWN = {
   'src/ui/mobile/sheet/sheetGeometry.js': 'the rule\'s one reader',
-  'src/ui/BroTown.jsx': 'resize() stamps --band-max-w for game.css',
   'src/ui/kit/UiKitPage.jsx': 'the kit\'s sample band (?uikit=1) draws a computer\'s block as the band does',
 };
+if (STAMPER) KNOWN[STAMPER] = 'resize() stamps --band-max-w for game.css';
 const CAMERA = (f) => f === 'src/game/worldViewport.js' || f === 'src/game/viewCap.js' || f === 'src/ui/mobile/playViewport.js' || f.startsWith('src/rendering/');
 function census(files, srcOf) {
   const strangers = [], camera = [];
@@ -252,7 +258,7 @@ function stamps(src) {
   });
   return ok;
 }
-check('4. BroTown stamps --band-max-w from bandBlockFor (the CSS reads the switch\'s number, stepped beside the keys list)', stamps(read('src/ui/BroTown.jsx')));
+check('4. the screen file stamps --band-max-w from bandBlockFor (the CSS reads the switch\'s number, stepped beside the keys list)', stamps(STAMPER_SRC));
 
 /* ── 5. the dodges: each planted, each red ── */
 async function plantSwitch(name, from, to) {

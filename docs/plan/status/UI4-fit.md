@@ -1,4 +1,4 @@
-card: UI4 (PR 3, UI4-fit, tag 6842)
+card: UI4-fit
 branch: claude/ui4-fit
 prs: PR 3 (UI4-fit): draft, base main
 state: ready
