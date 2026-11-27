@@ -39,6 +39,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { visit } from './lib/writesOf.mjs';
+import { bigFiles } from './lib/bigFileSuites.mjs';   /* the big files by their names, never their paths written here */
 import { housingBoxes, clearOf, meets, AIR, TUTOR_MESSAGES, HOUSING_TOP_REF, REF_H } from '../../src/game/tutorClear.js';
 import { padLayout } from '../../src/game/padSkin.js';
 import { PAD_ART } from '../../src/data/padArt.js';
@@ -219,10 +220,11 @@ function check7(files) {
       visit(code, { FunctionDeclaration(p) {
         if (p.node.id.name !== 'place') return;
         let k = false, c = false;
-        p.traverse({ CallExpression(q) { const n = q.node.callee.name; if (n === 'tutorKeep') k = true; if (n === 'clearOf') c = true; } });
+        p.traverse({ CallExpression(q) { const n = q.node.callee.name; if (n === '_keep') k = true; if (n === 'clearOf') c = true; } });
         ok = k && c;
       } });
-      if (!ok) bad.push('arrow: place() does not ask the rule (clearOf with tutorKeep)');
+      if (!ok) bad.push('arrow: place() does not ask the rule (clearOf with the housings handed in, _keep)');
+      if (!/^guideArrowKeep\(tutorKeep\);$/m.test(files['src/ui/tutorSpot.js'] || '')) bad.push('arrow: tutorSpot.js never hands it the housings (guideArrowKeep(tutorKeep))');
       continue;
     }
     const els = messagesIn(code, m.attr);
@@ -245,6 +247,7 @@ function check7(files) {
 }
 const FILES = Object.create(null);
 for (const m of Object.values(TUTOR_MESSAGES)) FILES[m.file] = read(m.file);
+FILES['src/ui/tutorSpot.js'] = read('src/ui/tutorSpot.js');
 {
   const b = check7(FILES);
   check('7  every message asks the rule (coach, toast, install card, the arrow\'s words, the tour\'s card)', b.length === 0, b.join('; '));
@@ -282,8 +285,9 @@ function walkSrc(dir, acc) {
 }
 /* the census on main at this PR (tag 6791): it only falls.  A message moved
    onto the rule leaves it; a new one hung from the band is red. */
+const BIG = bigFiles().find((p) => /\/BroTown\.jsx$/.test(p));
 const KNOWN = Object.freeze({
-  'src/ui/BroTown.jsx': 10,
+  [BIG]: 10,   /* the big file (filesOf.mjs reads code by system; its path is not written here) */
   'src/ui/mobile/BottomDashboard.jsx': 2,
   'src/ui/mobile/ChatBubble.jsx': 1,
   'src/ui/mobile/FarmBedPrompt.jsx': 1,

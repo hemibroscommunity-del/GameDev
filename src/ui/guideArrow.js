@@ -50,7 +50,6 @@ import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader 
 import { SAY as GUIDE } from '../data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 import { say } from '../game/say.js';
 import { beforeDraw } from '../game/framePacer.js';   /* v2.3.6286: the tick at the top of the game's frame (card HB2 PR 7) */
-import { tutorKeep } from './tutorSpot.js';   /* v2.3.6791: the controller's housings (game/tutorClear.js) */
 import { clearOf, fromTop } from '../game/tutorClear.js';
 import { winVh } from './mobile/playViewport.js';
 import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6286: `?afterpaint` */
@@ -69,6 +68,10 @@ export const COMBAT_MS = 14000;   /* v2.3.4343: the phone's special / shield les
 const SIZE = 56;                /* the arrow, CSS px */
 const GAP = 6;                  /* between its point and the target's edge */
 const WORDS_H = 26;             /* v2.3.6791: the words' box (13 px at 1.2, 3 px of padding, the 1.5 px border), never measured */
+/* v2.3.6791: the controller's housings, handed in by ui/tutorSpot.js (tutorKeep), so this file imports no glue
+   (node tests it); none until then */
+let _keep = () => [];
+export function guideArrowKeep(fn) { _keep = typeof fn === 'function' ? fn : () => []; }
 const GOLD = '#F5CE3C', EDGE = '#3A2606';
 const LS_PREFIX = 'bt_guideArrow:';
 
@@ -485,7 +488,7 @@ function place(r, words, fromLeft, follow) {
      them, still pointing down at its target.  Only from above or the left
      (from below the words would cover the target). */
   if (words && side !== 'below') {
-    const keep = tutorKeep();
+    const keep = _keep();
     if (keep.length && _sheetPx >= 0) {   /* the first tick has no reading yet: the next one lifts it */
       const bandTop = (winVh() || 0) - Math.max(0, _sheetPx);
       const wTop = side === 'above' ? top - 2 - WORDS_H : top + SIZE + 2;
@@ -515,7 +518,7 @@ function place(r, words, fromLeft, follow) {
 let _sheetPx = -1;
 function tick(getS) {
   _sheetPx = -1;
-  if (tutorKeep().length) {
+  if (_keep().length) {
     /* the shell's own edge: --sheet-h, else --dash-h (PadHousings.jsx `bottom`) */
     try { const cs = getComputedStyle(document.documentElement); const v = parseFloat(cs.getPropertyValue('--sheet-h')); _sheetPx = v >= 0 ? v : (parseFloat(cs.getPropertyValue('--dash-h')) || 0); } catch (e) { _sheetPx = -1; }
   }

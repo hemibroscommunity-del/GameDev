@@ -13,6 +13,7 @@ import { padTierBus } from '@/ui/panels/padTier.js';
 import { playIsLandscape, playVw, winVw } from '@/ui/mobile/playViewport.js';
 import { storeToastBus } from '@/ui/mobile/storeToastBus.js';
 import { installHintBus } from '@/ui/mobile/installHintBus.js';
+import { guideArrowKeep } from '@/ui/guideArrow.js';   /* the big arrow is handed the housings (it imports no glue: node tests it) */
 
 /** the housings now, px up from the band's top, x from the shell's left
  *  (the window's: the shell is `left: 0`, fixed) */
@@ -107,13 +108,15 @@ export function ctlCardClear(box, at, shell) {
   return { top: Math.round(got.top), transform: 'translateX(-50%)', maxHeight: got.cut > 0 ? CTL_CARD_H - got.cut : undefined };
 }
 
+guideArrowKeep(tutorKeep);
+
 /* QA's probe (mp-tutorclear): the housings the rule clears, in the window's
    px, and the two messages a first minute may not bring on cue (a "Next:"
    toast, the Add to Home Screen card: iPhone Safari only, when quiet) */
 if (typeof window !== 'undefined') {
   window.__btTutorClear = {
     keep: tutorKeep,
-    say: (text) => storeToastBus.push(String(text || 'Next: a step')),
+    say: (text) => storeToastBus.push(String(text)),
     install: () => installHintBus.open(),
   };
 }

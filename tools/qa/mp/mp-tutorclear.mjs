@@ -39,9 +39,9 @@ import { HOUSING_TOP_REF, REF_H } from '../../../src/game/tutorClear.js';
 export const lane = 'full';
 
 const VIEWS = [
-  { id: 'upright', opts: { viewport: { width: 375, height: 667 }, touch: true } },
-  { id: 'sideways', opts: { viewport: { width: 667, height: 375 }, touch: true } },
-  { id: 'computer', opts: { viewport: { width: 1280, height: 800 }, wide: true } },
+  { id: 'upright', viewport: { width: 375, height: 667 }, touch: true },
+  { id: 'sideways', viewport: { width: 667, height: 375 }, touch: true },
+  { id: 'computer', viewport: { width: 1280, height: 800 }, touch: false },
 ];
 
 /* the words of each message: [selector, name] */
@@ -125,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (SHOTS) mkdirSync(SHOTS, { recursive: true });
   const args = { WORDS, TOP: HOUSING_TOP_REF, REFH: REF_H };
   for (const V of VIEWS.filter((v) => !process.env.BT_TC_ONLY || v.id === process.env.BT_TC_ONLY)) {
-    const P = await H.newPlayer(browser, { name: 'Tutor' + V.id.slice(0, 4), wsPort, webPort, world: 'wheel', ...V.opts });
+    const P = await H.newPlayer(browser, { name: 'Tutor' + V.id.slice(0, 4), wsPort, webPort, world: 'wheel', viewport: V.viewport, touch: V.touch, wide: !V.touch });
     const errors = [];
     P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
     const shot = async (n) => {
