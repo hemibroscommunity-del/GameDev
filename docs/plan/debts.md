@@ -752,6 +752,133 @@ stays with that PR until it lands, and is marked (held).
   slow box by reading (wall-clock 600 ms waits, the held page delaying the
   press past pressGate's window: `ShieldButton.jsx`:890-897).
 
+## The fast lane read at sitting 73 (v2.3.5667; finish.md part 8)
+
+Each landed alone on its own green; read afterwards on the top model. Two
+bugs in behaviour, mends owed on `main` (told to the owner at the top of the
+list); the rest are each card's next jobs (plants green in its guard).
+
+- **UI3-corner #2419, A BUG (behind `?ui2=0` / `?oneband=0` only)**:
+  `src/ui/mobile/QuestCoach.jsx`:780, first step 5's fallback
+  `[data-nav="hero"]` says "Your quests are in the Menu." but with the old
+  frame (the HUD on, the line gone) that is the old rail's "Bro" button, the
+  Quests button beside it; sideways under `?oneband=0` the rail is hidden at
+  rest, so the step never measures and the Login Key waits until the band
+  opens. Next jobs (hud-corner.test): `hudCorner.js`:93 `cornerQuest`
+  untested (`hud || questLineNow()`, `&& false`), :59 `_want = true`;
+  `QuestCard.jsx`:137, :181 both 'line' branches dead, :120 `data-questline`
+  never written; `hudColumn.js`:17 a fixed +44; `BottomDashboard.jsx`:1190
+  the Quests ready dot removed; `game.css`:2573 single quotes or `:root`
+  keeping +44; `CharacterHud.jsx`:92 `data-charhud-box` renamed.
+- **PAD part 13 #2425, A BUG**: `src/ui/BroTown.jsx`:11801-11803, `bE`
+  returns at `if (!t) return;` before :11858's `handleRBtnRelease('b');
+  discLift(...)`; v2.3.6548 moved the latch's release above that lookup ("a
+  150 ms tap's lift missed it there"), the stick's lift was not moved: on
+  that miss a held bow or staff keeps `S._aiming` and `autoAttack` (the bow
+  keeps loosing through `stickLoose`) until the next press. Next jobs
+  (ranged-stick.test): a computed-key second writer of `S._discKind`
+  (`aimMarks.js` `S[_DK]`; a joined key in BroTown.jsx); after a live switch
+  to a mouse a stale 'stick' kind skips the bow's sight gate until the next
+  disc press. Card dodges (a) to (j): RED.
+- UI2-equipgreen #2418 (equip-look.test): the 94% scoped to Gear's root
+  (`gearPanels.css`:94); a pale title rule ungated or unscoped; `opacity:.25`
+  on the head; `equipLook.js`:28 `_on = true`; the Bag tinted
+  `--ui2-green-face-0`; `.u2-slot > img` 94% reaching every kit slot; a
+  token alias on `.is-storage`; an ungated `.u2-pane.is-worn` background
+  (green under `?equiplook=0`).
+- UI3-tutor #2420 (tutor-clear.test reads the pure rule and a call in each
+  style only): a new message at `bottom:160` / `top:520`; the toast's
+  `tutorOver(...)*0+14`, InstallHint's `Math.min(12, ...)`; `tutorSpot.js`:26
+  `padNow(false)`, :28 `hi:0` and the tier dropped, :69/:83 coachClear's
+  answer dropped, :79/:81/:108 the ceilings dropped;
+  `ControlsTutorial.jsx`:320 cardAt's top dropped; `guideArrow.js`:490, :497
+  the lift never applied; `bottom: TIP_B` and `['bot'+'tom']`.
+- EN-deathshadow #2421 (frame-foot.test): `entityRenderer.js`:8045 a number
+  for one monster (`_variantKey`) and the mirrored case (`scale.x < 0`);
+  `zoneTextures.js`:194 the last frame (`i === 0`), :159 the recoloured
+  strip losing `feet`, :434 the packer's foot in crop coordinates;
+  `casters.js`:190-192 the walk shadow moved.
+- LOAD part 3b #2423 with #2401 (sparelater.test): the screen still waits
+  (`pixiRenderer.js`:185 `upload` awaiting `whenSpareSetsBaked`); the spare
+  sets never bake (`entityRenderer.js`:3803 `continue`; `spareTime.js`:22
+  never resolving); laterJob's check `() => true` (:3868); `spareTime.js`:13
+  `!sw('sparelater') || true`, :40 `laterBreath <= 40`; a destructure rename
+  (`pixiRenderer.js`:176/220); the spare sets started before the world
+  (:213). #2401's hold (four-lines 1b) is CURED on main (7992 of 8008); its
+  readers' plants and the store's three: RED.
+- PAD part 12 #2424 (stick-zones.test): under `?fullpush=0` the "Not enough
+  energy!" words once, the reach setting the usual stick's top walk and the
+  two-button walk (12i checks the sprint only); `stickLift` handing
+  `rimSprint` 0.8 (10g/11c run under `?fullpush=0`; 12 never lifts). Its
+  only file under `server/`, `stick-zones.test.mjs`, imports no worker code:
+  no deploy.
+
+## The PRs of sitting 73 (their next jobs; none holds)
+
+- UI2-codex #2408 (loot-rows.test, L7 a text match): `MonsterShowcase.jsx`:51
+  `shared: killRollLive(S) || true` / `Object.assign(.., {shared:true})`;
+  `import * as LR` overriding `roll`; a local `codexItemName` in `lootOf`;
+  the row drawing `{r.key}`; at the page (the rule suites read the rules
+  only): loot for an unmet monster, met at 0 kills (`CodexPage` `countsOf`),
+  a roll range or "common" or a Health fact in a row, the Loot door's count
+  `rows.slice(1)` (:61), Found without shardcrack / `metOf: () => true`,
+  "Wheel" in Habitat, doors for an unmet monster.
+- UI2-pets #2413 (pet-pages.test sees direct calls by name only): Release
+  sending through `const rel = sendPetRelease`, a `.bind`, an import
+  rename, `PB.sendPetRelease`, `Object.assign(face.release, ..)`,
+  `Reflect.apply`; a second send from `usePress`; Take out through a
+  `setTimeout` or an aliased `go`; at the page: a rarity tag, Sell's reason
+  `check: () => null`, More room at 120, the journal count from the list,
+  the first pet as companion, `who` dropped, "No pets yet" while loading.
+  Sitting 72's "bug" (Release unasked) was the suite's blindness: on
+  85710851 the page already asked.
+- UI3 own plate #2411 (own-plate.test): `ownPlateFx.js`:59 / :69 `on &&
+  container._never` (ownPlateBuild untested); `entityRenderer.js`:11661
+  `ownPlateSync(display, false, ..)` in the peer update; :14903 hiding
+  `_hudHpBarFrame` beside the call (the guard reads its body only); the HP
+  bar or skull hidden through a computed key or alias; `pill['visible'] =
+  false; return;`; `nameDrawn` renamed or read as `OP['nameDrawn']` every
+  frame, `.bind`; `Object.assign(pill, {visible:false})`, `const p = pill`.
+  Found: `src/state/render.js` has no `_camFollow` row.
+- UI3 HUD art #2414 (hud-art.test 6i reads HudArt.jsx only):
+  `CharacterHud.jsx` `level: model.ready ? model.wLevel : null` puts a
+  weapon's level in the badge (mend: an ALLOW row for `<HudArt>`'s `hud`
+  prop, or hudArtModel ignoring `hud.level`); a CSS `:empty::after`; the
+  titles say "Tap", not `deskWords()`; mp-ui3hudart lost the group against
+  the line under `?questline=1`.
+- SHOP part 2 #2426 (gear-adopt.test holds wsClient's call by its shape and
+  never runs it): `!sw('gearadopt')`; `S.rpg` for `S`; `null` for
+  `getEquip` (dodge (g) at the call); the call inside `if ('armor' in
+  payload)` or before the worn slots; the push census reads literal forms
+  only (`Object.assign` into `S.rpg.armorStash`, `.push.bind`,
+  `Rr['armorStash'].push`) and inserts only (a splice in `gameEvents.js`);
+  a worn armour piece with NO gid against an echo copy with one, untested.
+  What a player meets: the mail's shield piece is refused when its gid is
+  already held (stays on under `?gearadopt=0`).
+
+- UI2-ranks #2412 (ranks-ui2.test; W6 matches the source text): sitting
+  72's bug is gone (`ranksPage.js`:416 `rankAnswer`, `RankStandings.jsx`
+  :116-121 `FLIP_UNANSWERED`); green: useFlip `Object.assign({}, .., {waiting:
+  false})`, useSpin renaming `waiting` away, useSpin `|| {}`, useFish `??
+  {boards:{}}` (the last two say "nobody" before the answer); the fish icon's
+  path (:173 `assetUrl`) is held by mp-ui2ranks 4e only.
+- UI2-life #2415 (life-profile.test): a module-level wrapper
+  `(r,k) => lsp0(r,k,null)` under a renamed import; `{ who: whose }` plus
+  `const who = null` (C1 skips the page); a second How it works door without
+  its mark. On another player's page the guild line opens your own Guilds
+  page (`LifeSkillPage.jsx`:86-88). "Not shared" where the worker sent no
+  levels is the card's reading 7 (no number invented); whatever builds `who`
+  later passes the Ranks row's levels as `lifeSkills`.
+- UI2-feats #2417 (feats.test reads the rules and four imports; feats-mount
+  the mount): at the pages, `FeatsPage` `ap.loading && false` (AP 0 before
+  the record); `JourneyPanel` `false ? careerCards(R)` (Duels Won back);
+  MedalTiers and QuestHistory drawing another player's as yours (`who !=
+  null` false); the medals' lock removed (MedalTiers, MedalPage); the "not
+  known" note removed; in the rules, `featsTiers` `has(a.n)`, `featsGallery`
+  `has(a.n ?? {})`, `featsMedal` `Object.assign({}, prog ? {got:true} : {})`
+  (F7's data carries `n: {}`); AP from `rpg.achievementPoints ?? null`. Its
+  merge of Life (c20a2470): nothing lost or doubled.
+
 ## Found (no card's debt)
 
 - FOR THE OWNER (72), a bug on `main` today: the phone's gear bag

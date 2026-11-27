@@ -24,6 +24,31 @@ session writes no game code for it. It merges only the gatekeeper's list,
 in its order, as the planning session (`docs/plan/README.md`): never a PR
 that is not on a list, its own included.
 
+**The lean order for small requests** (v2.3.5667; the owner, about 17:00
+UTC 2026-11-27, *"Yes make that the rule from now on"*). Asked after the
+owner's *"Can you also just get all these changes done in like 20 minutes
+or less instead of 3 hours that's excessive"* and *"Maybe the automatic
+tests aren't a good way to keep going then. Have they turned up enough
+errors that it's worth keeping them?"* A lane measured the checks (about
+200 PR runs a check, 11-24 03:10 to 11-27 16:30): 10.2 minutes from a push
+to all checks done at the median, 30.2 at worst; failed runs: `test` 4,
+`memory-budget` 2, `playable` 0, `lint-build` 0, five of them real (the
+guards hud-corner #2419, gear-showcase #2408 and #2391; memory over by 0.1
+and 0.2 MB), one housekeeping, no flake. The tests stay; the time is the
+work around a change. So a small request (ONE PR, no server, money, logins
+or wire: the fast lane's kind, `finish.md` part 8) is built in this order:
+1. the least that makes precheck green (the rule module, its wiring, its
+   suite's plain cases, its phone test, the card and notes), ONE build, ONE
+   run of its phone test, push, the draft PR: inside about 40 minutes;
+2. at once ONE line to the orchestrator with the PR's Cloudflare Pages
+   PREVIEW address, which goes to the owner to try;
+3. while the checks run: the card's dodges planted, the neighbouring
+   scenarios by helpers on the cheapest model; a second push only for a
+   plant left green or a red of its own;
+4. ONE picture; no mutation run; then the ready message and the fast lane.
+A change with the server, money, logins or the wire keeps the full order
+and the gatekeeper.
+
 ## A request, in order
 
 1. **Understand it.** Ask the owner at most one question, in plain words,

@@ -148,7 +148,10 @@ steps. So:
 3. **Phone-test runs go to helpers** on the cheapest model: more than three
    scenario runs, or any repeat run, is a helper's. A helper changes no
    file and sends back the PASS and FAIL lines.
-4. **A push is 22 to 43 paid minutes.** Push when a PR's line is done. The
+4. **A push is about 10 paid minutes** from the push to all checks done
+   (10.2 at the median, 30.2 at worst: a lane over about 200 PR runs a
+   check, 11-24 03:10 to 11-27 16:30; the old "22 to 43" was from before
+   card CK; v2.3.5667). Push when a PR's line is done. The
    status file rides the work's commit: never a status-only push to an open
    PR. Merge `main` once, before the last push.
 5. **Output to a file**; print its tail and its FAIL lines.
@@ -170,6 +173,17 @@ steps. So:
    the sessions of those hours: that sum is about one week. At each sweep
    it sums this week's sessions and reads its own `rate_limit_info`. Past
    80% of a week, no new card starts and the owner is told.
+
+9. **The lean order for small requests** (the owner, about 17:00 UTC
+   2026-11-27, *"Yes make that the rule from now on"*; v2.3.5667): ONE PR
+   with no server, money, logins or wire is built least-first (precheck
+   green, one build, one run of its phone test, push and the draft PR
+   inside about 40 minutes), its Pages preview address to the orchestrator
+   at once for the owner, its dodges and neighbouring scenarios by helpers
+   while the checks run (a second push only for a plant left green or a red
+   of its own), one picture, no mutation run, then the fast lane (part 8).
+   The question, the measurement and the steps:
+   `docs/plan/orchestrator.md`, "The lean order for small requests".
 
 The orchestrator itself: **the top model, high effort.** Its judgement (a
 card's purpose, an answer to a session, the order) is what the review found
@@ -230,7 +244,32 @@ missing, and rules 1, 5 and 6 keep it cheap.
     that card's NEXT JOB, one line with the file and the plant, and the PR
     lands. The next review holds that card to it.
   - A third sitting ran on 2026-11-24 by the owner's leave for that day;
-    the rule of two a day stands for other days.
+    the rule of two a day stands for other days. Another, 2026-11-27 (the
+    orchestrator, "may a third merge round run today?"; the owner, about
+    16:10 UTC: *"Yes it can"*): sitting 73.
+- **The fast lane** (v2.3.5667; in use since 2026-11-27 04:49 UTC, written
+  here at sitting 73). The orchestrator (part 34) asked: "may a small change
+  that only touches what's on screen (no game server, no money, no logins)
+  land as soon as its own tests pass, with the checker reading it
+  afterwards? Server and money changes would keep the full check first."
+  The owner, 04:49 UTC 2026-11-27: *"Yes they should"*. A PR lands without
+  a list when ALL of these hold:
+  1. its diff against `main` has no file under `server/`, `.github/` or
+     `src/networking/`, and no gold, bag, login or wire code. The one file
+     under `server/` it may carry is a suite under `server/test/` that
+     imports nothing from `server/src/` (it tests the page's own rules, as
+     `stick-zones.test.mjs` does, #2424): it is no game server and does not
+     deploy (`deploy-worker.yml` skips `server/test/`, #2380). A suite that
+     imports worker code, or holds a door (gold, bag, stash, hp, quest, xp,
+     points, the wire), keeps the full check;
+  2. `test`, `playable`, `memory-budget` and `lint-build` are green on its
+     exact head;
+  3. its base is `main` and it merges clean, alone, with the expected head;
+  4. the next sitting READS it afterwards (its purpose and its card's
+     dodges, as a ready PR's): a bug in behaviour found there is a mend owed
+     on `main`, told to the owner at the top of the list; anything else is
+     its card's next job in `docs/plan/debts.md`.
+  Everything else keeps the full check first.
 - **Notes go to `docs/plan/log.md`**, one line a step a sitting. The plan
   keeps its boxes.
 - **At most two sittings a day**; the rehearsal throws every switch once
