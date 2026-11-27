@@ -138,7 +138,9 @@ export function PetsPage({ getS, who, wire }) {
       );
     }
   }
-  const actions = m.actions.length ? (
+  /* sideways (about 63 px of page) the companion, its level and its two doors take the row: Put away is on the
+     pet's own page, one tap on the pet (what cannot fit becomes a door, never smaller words) */
+  const actions = m.actions.length && !short ? (
     <Ui2Actions marks={{ away: marks[PET_HOLDS.active] }}
       actions={m.actions.map((a) => ({ ...a, label: say(SAY, 'pets.putAway'), c: 'silver',
         onPress: () => press(PET_HOLDS.active, () => sendPetActive(S, null)) }))} />
@@ -300,7 +302,8 @@ function One({ getS, id }) {
     );
   }
   return (
-    <div ref={ref} className={ui2RootClass('u2-pets')} data-pets-page="petsOne" data-pets-one={id} data-pets-out={v.out ? 1 : 0} data-pets-side={short ? 1 : 0}>
+    /* sideways a pet's page scrolls in its box: the pet, then its notes, then its actions */
+    <div ref={ref} className={ui2RootClass('u2-pets' + (short ? ' is-scroll' : ''))} data-pets-page="petsOne" data-pets-one={id} data-pets-out={v.out ? 1 : 0} data-pets-side={short ? 1 : 0}>
       <Ui2Zones identity={identity} summary={notes.length ? <span className="u2-pets-notes">{notes}</span> : null} actions={actions} />
     </div>
   );

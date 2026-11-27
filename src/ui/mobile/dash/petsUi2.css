@@ -7,6 +7,10 @@
 
 .ui2.u2-pets { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; padding: 2px; box-sizing: border-box; }
 .ui2.u2-pets > .u2-zones { flex: 1 1 auto; min-height: 0; }
+/* sideways a pet's page scrolls in its box (its zones their own height) */
+.ui2.u2-pets.is-scroll { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.ui2.u2-pets.is-scroll > .u2-zones { flex: 0 0 auto; height: auto; min-height: 100%; }
+.ui2.u2-pets.is-scroll .u2-show { height: auto; min-height: 63px; }
 
 /* the companion, large: a tap opens its page (a plain button: the picture is the door, never a raised face) */
 .ui2 .u2-pets-figure {
@@ -20,6 +24,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ui2 .u2-pets-tags { min-width: 0; font-size: var(--ui2-fs-small); color: var(--ui2-text-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-pets-show .u2-fact-end { min-width: 0; max-width: 100%; overflow: hidden; }
 .ui2 .u2-pets-show .u2-show-doors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ui2 .u2-show.is-short.u2-pets-show .u2-show-doors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ui2 .u2-show.is-short.u2-pets-show .u2-show-facts.u2-facts.is-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
