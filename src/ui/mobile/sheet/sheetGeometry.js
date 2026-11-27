@@ -46,6 +46,7 @@
    old row's number. */
 import { deskWideActive, deskKeysW, DESK_SHEET_W } from '../../deskWide.js';   /* v2.3.3687 */
 import { oneBandActive } from '../../oneBand.js';                                 /* v2.3.4072 */
+import { v17WideWanted, bandBlockW } from '../../../game/v17Wide.js';             /* v2.3.6842: the computer's block, 840 or 480 */
 
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
@@ -568,7 +569,15 @@ export function navButtonSize(vw, vh) {
    don't need a bunch of extra dark space to make them appear wider"): 480, a
    big phone's width, not 840 -- the panels hug their cells as on a phone, the
    nav row and the panels one block, centred. */
-export const BAND_ASSEMBLY_MAX_W = 480;
+/* v2.3.6842 (card UI4, PR 3; the owner's V17 handoff, its Desktop row: "840 x
+   243 centered", "use extra horizontal space for additional entries, not
+   larger art, text or gameplay view"): 840 again under `?v17wide` (on by
+   default, remembered; `=0` the 480 above), read once at load
+   (game/v17Wide.js).  The pages lay out from the box they get, so the room is
+   more entries a row; the band's height, the world and the camera never read
+   this number.  The owner's 480 of v2.3.4243 against V17's 840 is their
+   call (card UI4's Q9). */
+export const BAND_ASSEMBLY_MAX_W = bandBlockW(v17WideWanted());
 /* ...and the row fills that block (CLOSE at its left, the five buttons taking
    equal shares of the rest) wherever the buttons would otherwise stop at
    their ceiling and leave the row's ends empty: a tablet, a computer.  A
