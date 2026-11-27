@@ -75,3 +75,13 @@ export function shieldsInFrame(type, payload) {
   }
   return [];
 }
+
+/* wsClient's player_state case, in one call: the state's shields, only
+   against a worker that says `shieldshop` (S: the game's state).  Never
+   throws: the next state carries the list again. */
+export function adoptStateShields(S, payload) {
+  try {
+    if (!S || !S.rpg || !S._serverCaps || !S._serverCaps.shieldshop) return 0;
+    return adoptHeldShields(S.rpg, shieldsInFrame('player_state', payload));
+  } catch (e) { return 0; }
+}

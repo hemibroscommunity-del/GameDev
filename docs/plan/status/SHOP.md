@@ -11,7 +11,13 @@ state: ready
   the panel's row, the phone's bag copy (gameEvents.js), the spec
   docs/specs/shop-shield.md. shop.test's section saw every planted mistake red.
 
-- Seen green on the final code: precheck 0 FAIL (the whole server suite in
+- THE MEND of sitting 71's hold (a lost `shop_result` left a paid shield
+  unseen): the phone adds, by id, every recorded shield the worker holds
+  that it holds nowhere (src/game/shieldAdopt.js; add, never take; with the
+  cap): from `player_state.shieldStash`, `shop_result.shield`, and `held`
+  on a shield's "have" quote and refusal (shop.js `shieldHeld`). shop.test
+  "A LOST ANSWER LOSES NOTHING" (a, b, c; v1 and v2): red on c36704eb, green.
+- Seen green on c36704eb: precheck 0 FAIL (the whole server suite in
   it), mp-shieldshop 12 of 12 (row, buy, bag, Equip, no row for a holder).
 
 ## Next

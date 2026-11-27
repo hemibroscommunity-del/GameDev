@@ -263,9 +263,16 @@ export function shieldWhyNot(ps, off) {
    it from its twin). */
 export const SHIELD_HELD_MAX = 48;
 export function shieldHeld(ps) {
-  if (!ps) return [];
-  const all = [ps.shield, ...(Array.isArray(ps.shieldStash) ? ps.shieldStash : [])];
-  return all.filter((p) => p && typeof p === 'object' && typeof p.gid === 'string' && p.gid).slice(0, SHIELD_HELD_MAX);
+  const out = [];
+  if (!ps) return out;
+  const recorded = (p) => !!(p && typeof p === 'object' && typeof p.gid === 'string' && p.gid);
+  /* copies, read only: the answer never holds the worker's own pieces */
+  if (recorded(ps.shield)) out.push({ ...ps.shield });
+  for (const p of Array.isArray(ps.shieldStash) ? ps.shieldStash : []) {
+    if (out.length >= SHIELD_HELD_MAX) break;
+    if (recorded(p)) out.push({ ...p });
+  }
+  return out;
 }
 
 export const SHOP_FISH_MULT = Object.freeze({ albino: 5, large: 10 });
