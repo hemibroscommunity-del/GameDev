@@ -856,6 +856,29 @@ list); the rest are each card's next jobs (plants green in its guard).
   What a player meets: the mail's shield piece is refused when its gid is
   already held (stays on under `?gearadopt=0`).
 
+- UI2-ranks #2412 (ranks-ui2.test; W6 matches the source text): sitting
+  72's bug is gone (`ranksPage.js`:416 `rankAnswer`, `RankStandings.jsx`
+  :116-121 `FLIP_UNANSWERED`); green: useFlip `Object.assign({}, .., {waiting:
+  false})`, useSpin renaming `waiting` away, useSpin `|| {}`, useFish `??
+  {boards:{}}` (the last two say "nobody" before the answer); the fish icon's
+  path (:173 `assetUrl`) is held by mp-ui2ranks 4e only.
+- UI2-life #2415 (life-profile.test): a module-level wrapper
+  `(r,k) => lsp0(r,k,null)` under a renamed import; `{ who: whose }` plus
+  `const who = null` (C1 skips the page); a second How it works door without
+  its mark. On another player's page the guild line opens your own Guilds
+  page (`LifeSkillPage.jsx`:86-88). "Not shared" where the worker sent no
+  levels is the card's reading 7 (no number invented); whatever builds `who`
+  later passes the Ranks row's levels as `lifeSkills`.
+- UI2-feats #2417 (feats.test reads the rules and four imports; feats-mount
+  the mount): at the pages, `FeatsPage` `ap.loading && false` (AP 0 before
+  the record); `JourneyPanel` `false ? careerCards(R)` (Duels Won back);
+  MedalTiers and QuestHistory drawing another player's as yours (`who !=
+  null` false); the medals' lock removed (MedalTiers, MedalPage); the "not
+  known" note removed; in the rules, `featsTiers` `has(a.n)`, `featsGallery`
+  `has(a.n ?? {})`, `featsMedal` `Object.assign({}, prog ? {got:true} : {})`
+  (F7's data carries `n: {}`); AP from `rpg.achievementPoints ?? null`. Its
+  merge of Life (c20a2470): nothing lost or doubled.
+
 ## Found (no card's debt)
 
 - ~~FOR THE OWNER (72): the phone's gear bag never reads the worker's echo~~:
