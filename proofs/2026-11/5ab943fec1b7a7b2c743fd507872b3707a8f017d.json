@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5ab943fec1b7a7b2c743fd507872b3707a8f017d",
+  "tree": "dfc0aa81e519a5d7c7b390bfe021daeda0110dd4",
+  "committedAt": "2026-11-27T02:21:14-08:00",
+  "subject": "Merge pull request #2424 from hemibroscommunity-del/claude/plan-pad-12-fullpush",
+  "files": 9130,
+  "bytes": 1050727688,
+  "listingSha256": "eb3206b71abc7e1128059c199b582e13c01b6a43ae305fe11d7238905749f038",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
