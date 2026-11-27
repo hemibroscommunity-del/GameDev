@@ -13,7 +13,7 @@
  *       on the page and in its saved copy;
  *   A2. it logs in again: every piece the worker holds is in the phone's bag,
  *       by its id, ONCE (and the worker still holds each once);
- *   A3. Gear's bag side shows them (a tile each);
+ *   A3. Gear's bag side shows them (look-alikes share a tile with its count);
  *   A4. a second join: still once each, nothing doubled;
  *   B.  no page errors.
  */
@@ -88,12 +88,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(900);
     let tiles = 0;
     for (let t = 0; t < 40; t++) {
-      tiles = await A.page.evaluate(() => document.querySelectorAll('[data-gear-bag] [data-bag-key^="stashArmor-"], [data-gear-bag] [data-bag-key^="stashLegs-"]').length);
+      /* look-alike pieces share a tile with its count ("2"): the counts summed */
+      tiles = await A.page.evaluate(() => [...document.querySelectorAll('[data-gear-bag] [data-bag-key^="stashArmor-"], [data-gear-bag] [data-bag-key^="stashLegs-"]')]
+        .reduce((n, el) => n + (parseInt((el.textContent || '').replace(/\D+/g, ''), 10) || 1), 0));
       if (tiles >= want.armorStash.length + want.legsStash.length) break;
       await A.page.waitForTimeout(250);
     }
     await shot(A, 'A3-gear');
-    rec.ok('A3 Gear\'s bag side shows a tile for each piece', tiles === want.armorStash.length + want.legsStash.length, { tiles, want });
+    rec.ok('A3 Gear\'s bag side shows every piece (a tile each, look-alikes counted on theirs)', tiles === want.armorStash.length + want.legsStash.length, { tiles, want });
 
     /* A4. a second join: still once each */
     await A.page.reload({ waitUntil: 'domcontentloaded' });
