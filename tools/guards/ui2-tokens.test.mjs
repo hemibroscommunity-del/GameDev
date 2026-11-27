@@ -49,7 +49,7 @@
  *      failed 15 would take the nearest that passes, and be listed here: none);
  *  17. the type: each kit size under the look sits in its V17:49 band, the
  *      smallest word 12 (the badge's 10), and a screen that keeps 11 is a root's
- *      own class;
+ *      own class or data mark;
  *  18. the look is its own block (`.ui2.ui2-v17`, after yesterday's), none of its
  *      properties in ui2Vars() (yesterday's hash), and it changes only sizes V17
  *      moves.
@@ -375,8 +375,8 @@ if (process.argv.includes('--write')) {
   }
   for (const k of Object.keys(UI2_V17_TYPE)) { const t = UI2_V17_TYPE[k]; if (!(t.token >= t.band[0] && t.token <= t.band[1])) bad.push(`token ${k} ${t.token}`); }
   const least = Math.min(...Object.keys(UI2_V17_SIZES).filter((k) => k !== 'badge').map((k) => UI2_V17_SIZES[k].px));
-  const keep = UI2_V17_SMALL11.filter((sel) => !/^\.[a-z0-9-]+(\.[a-z0-9-]+)*$/.test(sel));
-  check(`17. every kit size sits in its V17:49 band under the look; the smallest word ${least} (badge ${UI2_V17_SIZES.badge.px}); ${UI2_V17_SMALL11.length} screen(s) keep 11, each a root's class`,
+  const keep = UI2_V17_SMALL11.filter((sel) => !/^\.[a-z0-9-]+(\.[a-z0-9-]+)*$|^\[data-[a-z0-9-]+\]$/.test(sel));
+  check(`17. every kit size sits in its V17:49 band under the look; the smallest word ${least} (badge ${UI2_V17_SIZES.badge.px}); ${UI2_V17_SMALL11.length} screen(s) keep 11, each a root's class or data mark`,
     bad.length === 0 && least === 12 && UI2_V17_SIZES.badge.px === 10 && keep.length === 0, bad.concat(keep).join('; '));
 }
 

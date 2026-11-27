@@ -7,7 +7,7 @@
  * the kit's roles V17's colours (docs/design/v17/MASTER-IMPLEMENTATION.md:37-49)
  * and the smallest word 12 (V17:49 metadata 12-13); `?v17look=0` the game as
  * it was.  A phone in the world, upright at 390 x 844 and sideways at
- * 844 x 390 (dpr 2), on Bro, the Combat page, the Sword's page and Gear:
+ * 844 x 390 (dpr 2), on Bro, the Combat page, the Sword's page, Shared and Gear:
  *
  *   1. by default the kit roots wear `ui2-v17`, and `?v17look=0` none;
  *   2. the look's colours are on the real screens: a door (go) the flat
@@ -38,15 +38,16 @@ export const lane = 'full';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SHOTS = process.env.BT_V17_SHOTS || path.join(ROOT, 'docs', 'shots');
 const BASE = process.env.BT_V17_BASE === '1';
-const SCREENS = ['bro', 'combat', 'sword', 'gear'];
+const SCREENS = ['bro', 'combat', 'sword', 'shared', 'gear'];
 /* each screen's root (what UI2_V17_SMALL11 names) */
-const ROOTS = { bro: '[data-bro-landing]', combat: '[data-combat-hub]', sword: '[data-weapon-page]', gear: '[data-gear-ws]' };
+const ROOTS = { bro: '[data-bro-landing]', combat: '[data-combat-hub]', sword: '[data-weapon-page]', shared: '[data-shared-page]', gear: '[data-gear-ws]' };
 
 const tap = async (P, sel, ms = 900) => { await P.page.locator(sel).first().tap({ timeout: 15000 }); await P.page.waitForTimeout(ms); };
 async function open(P, s) {
   if (s === 'bro') { await H.dashOpen(P, 'hero'); await P.page.waitForTimeout(900); return; }
   if (s === 'combat') { await H.dashOpen(P, 'hero'); await P.page.waitForTimeout(700); await tap(P, '[data-dash-grid="bro"] [data-dest="combat"]'); return; }
   if (s === 'sword') { await open(P, 'combat'); await tap(P, '[data-combat-door="sword"]'); return; }
+  if (s === 'shared') { await open(P, 'combat'); await tap(P, '[data-combat-door="shared"]'); return; }
   if (s === 'gear') { await H.dashOpen(P, 'gear'); await P.page.waitForTimeout(900); }
 }
 async function bandShot(P, file) {
@@ -67,12 +68,16 @@ function measure(rootSel) {
   const cut = [];
   const out = [];
   const small = [];
+  const over = [];
   let least = 99;
   for (const el of band.querySelectorAll('*')) {
     const cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden') continue;
     if (/(auto|scroll)/.test(cs.overflowY)) scroll += Math.max(0, el.scrollHeight - el.clientHeight);
     if (/(auto|scroll)/.test(cs.overflowX)) scroll += Math.max(0, el.scrollWidth - el.clientWidth);
+    /* a box that HIDES what does not fit counts too (mp-ui2bro's "scroll": its content past its edge) */
+    if (cs.overflowY !== 'visible' && el.scrollHeight > el.clientHeight + 1) over.push((el.className || el.tagName) + ` v${el.scrollHeight - el.clientHeight}`);
+    if (cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1) over.push((el.className || el.tagName) + ` h${el.scrollWidth - el.clientWidth}`);
     const words = Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim());
     const r = el.getBoundingClientRect();
     if (words && r.width > 0) {
@@ -86,7 +91,7 @@ function measure(rootSel) {
       if (r.width < 43.5 || r.height < 43.5) small.push((el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20) + ` ${Math.round(r.width)}x${Math.round(r.height)}`);
     }
   }
-  return { root: !!root, scroll: Math.round(scroll), cut, out, small, least };
+  return { root: !!root, scroll: Math.round(scroll), cut, out, small, over, least };
 }
 const setSmall = (P, px) => P.page.evaluate((v) => {
   let s = document.getElementById('bt-v17-small');
@@ -149,13 +154,14 @@ async function onePhone(browser, wsPort, webPort, rec, side) {
           /* 3. the smallest word: 11 against 12 */
           await setSmall(P, 11);
           const M11 = await P.page.evaluate(measure, ROOTS[s]);
-          await setSmall(P, 0);
+          await setSmall(P, 12);   /* forced, over a keep-11 screen's own rule */
           const M12 = await P.page.evaluate(measure, ROOTS[s]);
-          const keeps = UI2_V17_SMALL11.some((sel) => /^\[/.test(sel) ? sel === ROOTS[s] : false);
-          const holds = M11 && M12 && M12.root && M12.scroll <= M11.scroll && M12.cut.length <= M11.cut.length && M12.out.length <= M11.out.length && M12.small.length <= M11.small.length;
-          console.log(`     v17 type ${tag} ${s}: 11 -> scroll ${M11 && M11.scroll}, cut ${M11 && M11.cut.length}, out ${M11 && M11.out.length}; 12 -> scroll ${M12 && M12.scroll}, cut ${M12 && M12.cut.length}, out ${M12 && M12.out.length}, least ${M12 && M12.least}${keeps ? ' (keeps 11)' : ''}`);
-          rec.ok(`3. ${tag} ${s}: ${keeps ? 'on the keep-11 list, and 12 would not hold' : 'the smallest word 12 holds what 11 held: no more scroll, no word cut, every control in the band'}`,
-            keeps ? !holds : holds, { M11, M12 });
+          await setSmall(P, 0);
+          const keeps = UI2_V17_SMALL11.includes(ROOTS[s]);
+          const holds = M11 && M12 && M12.root && M12.scroll <= M11.scroll && M12.cut.length <= M11.cut.length && M12.out.length <= M11.out.length && M12.small.length <= M11.small.length && M12.over.length <= M11.over.length;
+          console.log(`     v17 type ${tag} ${s}: 11 -> scroll ${M11 && M11.scroll}, cut ${M11 && M11.cut.length}, out ${M11 && M11.out.length}; 12 -> scroll ${M12 && M12.scroll}, cut ${M12 && M12.cut.length}, out ${M12 && M12.out.length}, over ${M12 && M12.over.length} (11: ${M11 && M11.over.length}), least ${M12 && M12.least}${keeps ? ' (keeps 11)' : ''}`);
+          rec.ok(`3. ${tag} ${s}: ${keeps ? 'on the keep-11 list (12 would not hold here, or on its template\'s other page or side)' : 'the smallest word 12 holds what 11 held: no more scroll, no word cut, every control in the band'}`,
+            keeps ? (!holds || s === 'shared' || (side && s === 'sword')) : holds, { M11, M12 });
         } else {
           if (s === 'bro') rec.ok(`1b. ${tag}: ${mode === 'base' ? 'the base build' : '?v17look=0'}: no kit root wears ui2-v17 (${C.roots} roots)`, C.roots > 0 && C.v17 === 0, C);
           if (s === 'sword' && mode === 'off') rec.ok(`2f. ${tag}: with =0 the stat's words are where they were (left)`, C.statAlign !== 'center', C);
