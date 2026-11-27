@@ -26,7 +26,10 @@
  *   6. the drawing reads no health, energy or mana, measures nothing (no
  *      layout read under src/ui/hud/), the face opens Bro and the bar the
  *      weapon's page by Bro's road, each stopping the press, nothing on
- *      pointerup, every picture undraggable; no CSS filter;
+ *      pointerup, every picture undraggable; no CSS filter; and (6i, the
+ *      mend of sitting 72) what each slot of the drawing is FED, by its tree:
+ *      an ALLOW list a slot (the badge's number and words the combat level,
+ *      the pill's the weapon in hand's level, both empty before the record);
  *   7. the dodges, each planted and seen red.
  * Run by server/test/run.mjs (tools/guards/*.test.mjs): no deploy.
  */
@@ -332,6 +335,129 @@ const noFilter = (css) => !/(^|[;{\s])(-webkit-)?(backdrop-)?filter\s*:/.test(cs
 const touchAll = (css) => /\.bt-hudart\s*\*\s*\{[^}]*touch-action:manipulation/.test(css) && /\.bt-hudart\{[^}]*touch-action:manipulation/.test(css);
 check('6h hudArt.css: no CSS filter (an iPhone pays a layer), touch-action: manipulation on every element', noFilter(cssSrc) && touchAll(cssSrc));
 
+/* ── 6i. what each slot of the drawing is FED (v2.3.6787, the mend of sitting 72) ──
+ * The gatekeeper: "three card dodges are green at the drawing, because
+ * hud-art.test reads hudArtModel only: the pill showing the combat level; the
+ * badge reading the weapon's level; '1' in the badge before the record".  So
+ * the drawing's tree is read here (finish.md part 5, rule 2: the tree, never a
+ * pattern of text): every slot that shows a number is found by its mark, what
+ * feeds it is written out with each const followed to its value and each
+ * import to its file, and it must be one row of its ALLOW list.  A new feed is
+ * a row added here on purpose; any other shape fails closed. */
+function feedOf(node, scope, depth = 0) {
+  if (!node || depth > 12) return '<?>';
+  const f = (n) => feedOf(n, scope, depth + 1);
+  switch (node.type) {
+    case 'Identifier': {
+      if (node.name === 'undefined') return 'undefined';
+      const b = scope.getBinding(node.name);
+      if (!b) return node.name;
+      if (b.kind === 'module') {
+        const d = b.path.parent;
+        const imported = b.path.node.imported ? (b.path.node.imported.name || b.path.node.imported.value) : 'default';
+        return imported + '@' + (d && d.source ? d.source.value : '?');
+      }
+      if (b.path.type === 'VariableDeclarator' && b.path.node.id.type === 'Identifier' && b.path.node.init) {
+        if (!b.constant) return 'let:' + node.name;
+        if (/Function/.test(b.path.node.init.type)) return 'fn:' + node.name;
+        return feedOf(b.path.node.init, b.path.scope, depth + 1);
+      }
+      return (b.kind === 'param' ? 'param:' : b.kind + ':') + node.name;
+    }
+    case 'MemberExpression': case 'OptionalMemberExpression':
+      return f(node.object) + (node.computed ? '[' + f(node.property) + ']' : '.' + node.property.name);
+    case 'ConditionalExpression': return '(' + f(node.test) + ' ? ' + f(node.consequent) + ' : ' + f(node.alternate) + ')';
+    case 'LogicalExpression': case 'BinaryExpression': return '(' + f(node.left) + ' ' + node.operator + ' ' + f(node.right) + ')';
+    case 'UnaryExpression': return node.operator + f(node.argument);
+    case 'StringLiteral': return JSON.stringify(node.value);
+    case 'NumericLiteral': return String(node.value);
+    case 'BooleanLiteral': return String(node.value);
+    case 'NullLiteral': return 'null';
+    case 'TemplateLiteral': return node.expressions.length ? '`<' + node.expressions.map(f).join(',') + '>`' : JSON.stringify(node.quasis[0].value.cooked);
+    case 'CallExpression': return f(node.callee) + '(' + node.arguments.map(f).join(', ') + ')';
+    case 'ObjectExpression': return '{' + node.properties.map((p) => p.type === 'ObjectProperty' ? (p.key.name || p.key.value) + ': ' + f(p.value) : '...' + f(p.argument)).join(', ') + '}';
+    default: return '<' + node.type + '>';
+  }
+}
+const attrOf = (el, n) => el.openingElement.attributes.find((a) => a.type === 'JSXAttribute' && a.name && a.name.name === n);
+function slots(src) {
+  const out = { found: Object.create(null), feeds: Object.create(null), extra: [], writes: [] };
+  const put = (k, v) => { (out.feeds[k] = out.feeds[k] || []).push(v); };
+  const childFeeds = (el, scope) => el.children.map((c) => c.type === 'JSXExpressionContainer' ? (c.expression.type === 'JSXEmptyExpression' ? null : feedOf(c.expression, scope))
+    : c.type === 'JSXText' ? (c.value.trim() ? 'text:' + c.value.trim() : null)
+      : c.type === 'JSXElement' ? 'element:' + c.openingElement.name.name : '<' + c.type + '>').filter((x) => x !== null);
+  const attrFeed = (el, n, scope) => {
+    const a = attrOf(el, n);
+    if (!a || !a.value) return null;
+    return a.value.type === 'StringLiteral' ? JSON.stringify(a.value.value) : feedOf(a.value.expression, scope);
+  };
+  B.traverse(parse(src), {
+    JSXElement(p) {
+      const el = p.node, sc = p.scope;
+      const mark = (m) => !!attrOf(el, m);
+      const note = (k) => { out.found[k] = (out.found[k] || 0) + 1; };
+      if (mark('data-charhud-lv')) {
+        note('badge');
+        for (const v of childFeeds(el, sc)) put('badge', v);
+        /* the box around the number holds the picture and the number only */
+        const box = p.parentPath && p.parentPath.node;
+        if (!box || box.type !== 'JSXElement' || !attrOf(box, 'data-hudart-badge')) out.extra.push('the badge\'s number is not inside [data-hudart-badge]');
+        else for (const c of box.children) if (c !== el && !(c.type === 'JSXText' && !c.value.trim()) && !(c.type === 'JSXElement' && c.openingElement.name.name === 'img')) out.extra.push('badge box: ' + (c.type === 'JSXExpressionContainer' ? feedOf(c.expression, sc) : c.type));
+        put('badge.aria', attrFeed(box || el, 'aria-label', sc));
+      }
+      if (mark('data-hudart-pill')) {
+        note('pill');
+        for (const v of childFeeds(el, sc)) put('pill', v);
+        const box = p.parentPath && p.parentPath.node;
+        const cls = box && box.type === 'JSXElement' && attrOf(box, 'className');
+        if (!cls || !cls.value || cls.value.value !== 'bt-hudart__pill') out.extra.push('the pill\'s number is not inside .bt-hudart__pill');
+        else for (const c of box.children) if (c !== el && !(c.type === 'JSXText' && !c.value.trim()) && !(c.type === 'JSXElement' && c.openingElement.name.name === 'img')) out.extra.push('pill box: ' + (c.type === 'JSXExpressionContainer' ? feedOf(c.expression, sc) : c.type));
+      }
+      if (mark('data-hudart')) { note('root'); put('root.level', attrFeed(el, 'data-charhud-level', sc)); put('root.wlevel', attrFeed(el, 'data-hudart-wlevel', sc)); }
+      if (mark('data-hudart-face')) { note('face'); put('face.aria', attrFeed(el, 'aria-label', sc)); }
+      if (mark('data-hudart-bar')) { note('bar'); put('bar.aria', attrFeed(el, 'aria-label', sc)); }
+      if (mark('data-xp-bar') && mark('data-xp-level')) { note('xp'); put('xp.level', attrFeed(el, 'data-xp-level', sc)); }
+    },
+    /* the model is read, never written: `art.level = ...` would feed the badge behind the list */
+    AssignmentExpression(p) {
+      const l = p.node.left;
+      if (l.type === 'MemberExpression' && l.object.type === 'Identifier' && l.object.name === 'art') out.writes.push(feedOf(l, p.scope));
+    },
+    UpdateExpression(p) { const a = p.node.argument; if (a.type === 'MemberExpression' && a.object.type === 'Identifier' && a.object.name === 'art') out.writes.push(feedOf(a, p.scope)); },
+  });
+  return out;
+}
+/* the model, as the tree writes it: `art` is `hudArtModel(rpg, hud)` from src/game/hudArt.js */
+const MODEL = 'hudArtModel@@/game/hudArt.js(param:rpg, param:hud)';
+const READY = MODEL + '.ready';
+const SLOT_ALLOW = Object.freeze({
+  /* the badge: the COMBAT level ("Inside character badge goes combat lvl"), nothing before the record */
+  badge: ['(' + READY + ' ? ' + MODEL + '.level : "")'],
+  'badge.aria': ['(' + READY + ' ? say@@/game/say.js(SAY@@/data/say/charHud.js, "charHud.artLevel", {n: ' + MODEL + '.level}) : undefined)'],
+  'face.aria': ['say@@/game/say.js(SAY@@/data/say/charHud.js, "charHud.aria", {name: param:hud.name, n: (' + READY + ' ? ' + MODEL + '.level : "")})'],
+  'root.level': ['(' + READY + ' ? ' + MODEL + '.level : "")'],
+  /* the pill: the weapon IN HAND's level ("The tiny pill ... should have weapon level") */
+  pill: ['(' + READY + ' ? ' + MODEL + '.weaponLevel : "")'],
+  'root.wlevel': ['(' + READY + ' ? ' + MODEL + '.weaponLevel : "")'],
+  'xp.level': ['(' + READY + ' ? ' + MODEL + '.weaponLevel : "")'],
+  'bar.aria': ['(' + MODEL + '.cat ? say@@/game/say.js(SAY@@/data/say/charHud.js, "charHud.artBarAria", {weapon: (' + MODEL + '.cat ? fn:weaponWord('
+    + MODEL + '.cat) : ""), n: ' + MODEL + '.weaponLevel}) : undefined)'],
+});
+const SLOT_ONCE = ['badge', 'pill', 'root', 'face', 'bar', 'xp'];
+function slotFaults(src) {
+  const s = slots(src), bad = [];
+  for (const k of SLOT_ONCE) if (s.found[k] !== 1) bad.push(k + ' found ' + (s.found[k] || 0) + ' times (once)');
+  for (const k of Object.keys(SLOT_ALLOW)) {
+    const got = s.feeds[k] || [];
+    if (got.length !== 1) bad.push(k + ': fed ' + got.length + ' things (one): ' + got.join(' | '));
+    for (const v of got) if (!SLOT_ALLOW[k].includes(v)) bad.push(k + ' fed ' + v);
+  }
+  bad.push(...s.extra, ...s.writes.map((w) => 'the model written: ' + w));
+  return bad;
+}
+const sf = slotFaults(artSrc);
+check('6i the drawing\'s slots, by its tree: the badge (and its words) fed the model\'s combat level only, the pill the weapon in hand\'s level only, both empty before the record; nothing else in their boxes; the model never written', sf.length === 0, sf.join('\n     '));
+
 /* ── 7. the dodges: each planted, each red ── */
 async function plantModule(name, pairs, why) {
   let src = modSrc;
@@ -377,6 +503,21 @@ plantSrc('the bar acting on pointerup', artSrc, 'onClick={openWeapon}>', 'onPoin
 plantSrc('a draggable picture', artSrc, "src={hudArtUrl('pill')} alt=\"\" draggable={false}", "src={hudArtUrl('pill')} alt=\"\"", (s) => { const b = buttons(s); return b.dragless === b.imgs; });
 plantSrc('the art drawn even under ?hud=0', hudSrc, '  if (!on || !rpg) return null;\n', '', branch);
 plantSrc('a CSS filter', cssSrc, '.bt-hudart__disc{', '.bt-hudart__disc{filter:brightness(1.1);', noFilter);
+/* the drawing's slots (6i): the three the gatekeeper named at sitting 72, and their near kin */
+const slotsOk = (s) => slotFaults(s).length === 0;
+const BADGE = 'data-charhud-lv="1">{art.ready ? art.level : \'\'}</span>';
+const PILL = 'data-hudart-pill="1">{art.ready ? art.weaponLevel : \'\'}</span>';
+plantSrc('the pill showing the combat level (HudArt.jsx, the pill\'s number)', artSrc, PILL, 'data-hudart-pill="1">{art.ready ? art.level : \'\'}</span>', slotsOk);
+plantSrc('the badge reading the weapon\'s level (HudArt.jsx, the badge\'s number)', artSrc, BADGE, 'data-charhud-lv="1">{art.ready ? art.weaponLevel : \'\'}</span>', slotsOk);
+plantSrc('"1" in the badge before the record (HudArt.jsx, the badge\'s number)', artSrc, BADGE, 'data-charhud-lv="1">{art.ready ? art.level : 1}</span>', slotsOk);
+plantSrc('"1" in the badge before the record, by `||`', artSrc, BADGE, 'data-charhud-lv="1">{art.level || 1}</span>', slotsOk);
+plantSrc('"1" in the pill before the record', artSrc, PILL, 'data-hudart-pill="1">{art.ready ? art.weaponLevel : \'1\'}</span>', slotsOk);
+plantSrc('the badge fed the weapon\'s level through a const', artSrc, '  const art = hudArtModel(rpg, hud);\n',
+  '  const art = hudArtModel(rpg, hud);\n  const lv = art.weaponLevel;\n', (s) => slotsOk(s.split(BADGE).join('data-charhud-lv="1">{art.ready ? lv : \'\'}</span>')));
+plantSrc('the model written (art.level = art.weaponLevel)', artSrc, '  const art = hudArtModel(rpg, hud);\n', '  const art = hudArtModel(rpg, hud);\n  art.level = art.weaponLevel;\n', slotsOk);
+plantSrc('the weapon\'s level drawn beside the badge\'s number', artSrc, BADGE, BADGE + '{art.weaponLevel}', slotsOk);
+plantSrc('the badge\'s words saying the weapon\'s level', artSrc, "say(SAY, 'charHud.artLevel', { n: art.level })", "say(SAY, 'charHud.artLevel', { n: art.weaponLevel })", slotsOk);
+plantSrc('the pill\'s mark moved off its number', artSrc, PILL, 'data-x="1">{art.ready ? art.level : \'\'}</span>', slotsOk);
 plantSrc('the pictures not warmed', preSrc, '  urls.push(...HUD_ART_URLS);\n', '', preloads);
 
 try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* the system's */ }
