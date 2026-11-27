@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d9b59740aff70db2f52d4e1443296b8a11104930",
+  "tree": "ccdd954aea7bd33581471133c1b0c3b09629993b",
+  "committedAt": "2026-11-26T18:02:07-08:00",
+  "subject": "Merge pull request #2392 from hemibroscommunity-del/claude/plan-keep-4-icons",
+  "files": 8907,
+  "bytes": 999864005,
+  "listingSha256": "e000212d64cc6f80848ba624acdbba2aa99deb98d9efa2d94d4e1d31b8986bbe",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
