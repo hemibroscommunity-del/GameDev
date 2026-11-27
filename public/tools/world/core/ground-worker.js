@@ -691,6 +691,7 @@ function idleBlock() {
 }
 
 async function handle(m) {
+  if (m.type === 'objects') { objectsAt = keptManifest(m.manifest); return null; }   /* v2.3.6744: before init */
   if (m.type === 'init') return init(m);
   if (m.type === 'chunk') return chunk(m);
   if (m.type === 'blocks') return blocksIn(m);
@@ -1000,12 +1001,23 @@ function whereIs(x, y) {
    network throws, and startFetch tries again */
 const jsonOrNull = (r) => (r.ok ? r.json().catch((e) => { if (e instanceof SyntaxError) return null; throw e; }) : null);
 
+/* v2.3.6744: the objects' manifest at its file's version, handed by the
+   page ({ type: 'objects' }, src/game/wheelTrial.js; card KEEP PR 3c), so
+   /world/objects/ can be kept a year: a changed manifest is a new address,
+   and the browser may keep this one.  Only that exact form: anything else
+   (none, `npm run dev`'s bare address, a studio) asks at a fresh address. */
+let objectsAt = null;
+const KEPT_MANIFEST = /^\/world\/objects\/manifest\.json\?v=[0-9a-f]{10}$/;
+function keptManifest(u) { return typeof u === 'string' && KEPT_MANIFEST.test(u) ? u : null; }
+
 /* v2.3.2975: the game's objects manifest -- which pictures there are, and
    on which sprite sheet; null when there is none (nothing is drawn) */
 async function objectsManifest() {
   try {
-    /* v2.3.4370: a time limit and a retry (startFetch), a fresh address each try */
-    const man = await startFetch(() => OBJECTS_BASE + 'manifest.json?t=' + Date.now(), jsonOrNull, { init: { cache: 'no-cache' } });
+    /* v2.3.4370: a time limit and a retry (startFetch), a fresh address each try.
+       v2.3.6744: at its version where the page gave it (the same address each try) */
+    const man = objectsAt ? await startFetch(objectsAt, jsonOrNull)
+      : await startFetch(() => OBJECTS_BASE + 'manifest.json?t=' + Date.now(), jsonOrNull, { init: { cache: 'no-cache' } });
     return man && Array.isArray(man.objects) && Array.isArray(man.atlases) ? man : null;
   } catch (e) { return null; }
 }

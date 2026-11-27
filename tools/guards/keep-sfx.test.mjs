@@ -39,6 +39,16 @@
  * `a || b` or `c ? a : b` to the door is the door's.  LEFT lists the built
  * addresses other cards' files hold (it only falls), and 5 holds a family
  * not kept yet to NO block while its census reads hand or bare.
+ *
+ * v2.3.6744 (card KEEP PR 3c): /world/objects, kept.  A sheet is two files,
+ * and Pixi (and png8Worker.js, which copies it) asks for a sheet's page at
+ * the SHEET's query: so 6 holds the doors that give the page its own
+ * version -- the page's worker asks at the address it is handed; the
+ * objects' and the farm's sheet loads are handed their page (`texture`,
+ * sheetPage.js), every Assets.load of a sheet in the family's files too; the
+ * ground worker asks for the manifest at the version the page posts it
+ * ({ type: 'objects' }); and every atlas of the manifest names its page as
+ * its sheet does (the address the page builds is the file the sheet cuts).
  */
 import { readFileSync, readdirSync, existsSync, mkdtempSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -61,6 +71,8 @@ import { keepVersions } from '../assets/keepVersions.mjs';
 const FAMILIES = [
   { folder: '/sfx', prefix: '/sfx/', kept: true },
   { folder: '/icons', prefix: '/icons/', kept: false },
+  /* v2.3.6744 (PR 3c): the world's object sheets, their pages and manifest */
+  { folder: '/world/objects', prefix: '/world/objects/', kept: true },
 ];
 /* Built addresses another card's file holds, listed so the count can only
    fall: each names its file (by its name: tests-by-system reads suites by
@@ -299,6 +311,11 @@ const alikeOf = (code) => unstampable(code, parse(code), versionOf, folders);
     ['4f: a hand ?v= built onto an /icons address', "const u = '/icons/items/' + k + '.webp?v=' + ICON_V;", 'hand'],
     ['4g: a hand ?v= in a template on an /icons address', "const u = `/icons/shards/${k}.webp?v=2.3.4222`;", 'hand'],
     ['4h: two v= handed to assetUrl', "const u = assetUrl('/icons/items/' + k + '.webp?v=2?v=' + K);", 'twice'],
+    /* v2.3.6744: the objects' */
+    ['3g: a /world/objects literal naming no file of the table', "const u = '/world/objects/not-a-sheet.json';", 'no-file'],
+    ['4i: a built /world/objects sheet on its folder const, no assetUrl', "const BASE = '/world/objects/'; const u = BASE + a.sheet;", 'built'],
+    ['4j: the farm\'s copy built with its own query, no assetUrl', "const u = '/world/objects/' + a + '.json?farm=1';", 'built'],
+    ['4k: the manifest at a fresh address built in src/', "fetch('/world/objects/manifest.json?t=' + Date.now());", 'built'],
   ];
   for (const [name, code, why] of plants) {
     const h = P(code);
@@ -320,6 +337,9 @@ const alikeOf = (code) => unstampable(code, parse(code), versionOf, folders);
     "const u = assetUrl('/icons/achievements/' + id + '.webp?v=' + K);",
     "const DIR = '/icons/ui/points/'; const u = assetUrl(`${DIR}gold-${d}.png?v=${V}`); const d2 = DIR;",
     "const u = '/icons/items/bow.webp?v=2.3.4222';",
+    "const BASE = '/world/objects/'; const s = assetUrl(BASE + a.sheet); const i = assetUrl(BASE + (a.image || a.sheet.replace(/\\.json$/, '.png')));",
+    "const OBJ_BASE = '/world/objects/'; const u = farmCopy(assetUrl(OBJ_BASE + a + '.json'));",
+    "w.postMessage({ type: 'objects', manifest: assetUrl('/world/objects/manifest.json') });",
   ];
   const noisy = clean.map((c) => [c, P(c)]).filter(([, h]) => h.length);
   check('3-4 clean: a stamped literal, assetUrl or loadSample around a built one, a comment, a sentence, a prefix test, a key: none flagged', noisy.length === 0, noisy);
@@ -384,6 +404,90 @@ check('3-4 LEFT only falls: every row still names a built address in its file (s
   const p = readFileSync(join(ROOT, 'src', 'rendering', 'p256.js'), 'utf8');
   const door = /if \(e\.twin\.startsWith\('\/icons\/'\)\) \{\s*const own = assetUrl\(e\.twin\.split\('\?'\)\[0\]\);/;
   check('4 door (icons): p256Twin asks for an /icons twin at its own version (assetUrl), not its original\'s query joined on', door.test(p) && !door.test(p.replace("assetUrl(e.twin.split('?')[0])", "e.twin.split('?')[0]")));
+}
+
+/* ---- 6. the objects' sheets: each page at its OWN version (v2.3.6744) ---------- */
+{
+  const rd = (r) => readFileSync(join(ROOT, r), 'utf8');
+  const pw = rd('src/rendering/png8Worker.js');
+  const pwDoor = 'const image = ownPage ? new URL(ownPage, jr.url).href : imageUrlOf(m.url, data.meta.image);';
+  const pwKeep = "if (m.pageOf != null && typeof m.image === 'string') { _pageAt.set(m.pageOf, m.image); return; }";
+  check('6a door: png8Worker.js asks for a sheet\'s page at the address it is handed ({ pageOf, image }), not the sheet\'s query copied on',
+    pw.includes(pwDoor) && pw.includes(pwKeep) && !pw.replace(pwDoor, 'const image = imageUrlOf(m.url, data.meta.image);').includes(pwDoor));
+  const wo = rd('src/rendering/wheelObjects.js');
+  const woPost = 'if (image) w.postMessage({ pageOf: id, image });   /* v2.3.6744: first, the page\'s own address (png8Worker.js) */\n      w.postMessage({ id, url, bases: _basesWay() });';
+  const woImages = "images: man.atlases.map((a) => assetUrl(BASE + (a.image || a.sheet.replace(/\\.json$/, '.png'))))";
+  check('6b door: wheelObjects.js builds each page\'s own address (assetUrl) and hands it to the worker that reads it',
+    wo.includes(woPost) && wo.includes(woImages) && wo.includes('loadPalettePage(url, image)'), { post: wo.includes(woPost), images: wo.includes(woImages) });
+  /* every Assets.load of a sheet (an object with a cachePrefix) in the family's files is handed its page */
+  const sheetLoads = (code) => {
+    const bad = [];
+    (function walk(n) {
+      if (!n || typeof n.type !== 'string') return;
+      if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && n.callee.object.name === 'Assets' && calleeName(n.callee) === 'load'
+        && n.arguments[0] && n.arguments[0].type === 'ObjectExpression') {
+        const data = n.arguments[0].properties.find((q) => q.key && (q.key.name || q.key.value) === 'data');
+        const keys = data && data.value.type === 'ObjectExpression' ? data.value.properties.map((q) => q.key && (q.key.name || q.key.value)) : [];
+        if (keys.includes('cachePrefix') && !keys.includes('texture')) bad.push(n.loc ? n.loc.start.line : 0);
+      }
+      for (const k of Object.keys(n)) {
+        if (k === 'loc') continue;
+        const v = n[k];
+        if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v);
+      }
+    })(parse(code).program);
+    return bad;
+  };
+  const fw = rd('src/rendering/farmWorld.js');
+  /* the break proofs on the real code: a sheet's address, and the farm's, built again without assetUrl */
+  const woF = join(ROOT, 'src', 'rendering', 'wheelObjects.js'), fwF = join(ROOT, 'src', 'rendering', 'farmWorld.js');
+  check('6 break proof: wheelObjects.js\'s sheet built without assetUrl -> red (built)', wo.includes('assetUrl(BASE + a.sheet)')
+    && holes(wo.replace('assetUrl(BASE + a.sheet)', 'BASE + a.sheet'), alike, undefined, woF).some((h) => h.why === 'built' && h.value === '/world/objects/'));
+  check('6 break proof: farmWorld.js\'s page built without assetUrl -> red (built)', fw.includes("farmCopy(assetUrl(OBJ_BASE + a + '.png'))")
+    && holes(fw.replace("farmCopy(assetUrl(OBJ_BASE + a + '.png'))", "farmCopy(OBJ_BASE + a + '.png')"), alike, undefined, fwF).some((h) => h.why === 'built'));
+  const fam = [...texts].filter(([, t]) => t.includes('/world/objects/'));
+  const unhanded = fam.map(([f, t]) => [relative(ROOT, f), sheetLoads(t)]).filter(([, b]) => b.length);
+  check(`6c: every Assets.load of a sheet in the /world/objects files (${fam.length}) is handed its page (data.texture: sheetPage.js)`, fam.length >= 3 && unhanded.length === 0, unhanded);
+  check('6c plant: wheelObjects.js\'s page load without its texture -> red',
+    sheetLoads(wo.replace('data: { cachePrefix: CACHE_PREFIX, texture }', 'data: { cachePrefix: CACHE_PREFIX }')).length === 1);
+  check('6c plant: farmWorld.js\'s sheet load without its texture -> red',
+    sheetLoads(fw.replace('data: { cachePrefix: OBJ_PREFIX, texture }', 'data: { cachePrefix: OBJ_PREFIX }')).length === 1);
+  /* v2.3.6744: ...and forgets its address first: Pixi's resolver keeps the first load's data (its page) for an
+     address, so a sheet asked for again after it was let go got the first visit's page, destroyed (mp-palette's
+     ?nopalette phone after a rebuild: no objects).  The line before each such load is forgetSheet(url). */
+  const forgets = (code) => (code.match(/forgetSheet\(url\);[^\n]*\n\s*return Assets\.load\(\{ src: url, data: \{ cachePrefix: [A-Z_]+, texture \} \}\)/g) || []).length;
+  check('6c\': wheelObjects.js and farmWorld.js forget the sheet\'s address just before loading it with its page (sheetPage.js forgetSheet)',
+    forgets(wo) === 1 && forgets(fw) === 1, { wheelObjects: forgets(wo), farmWorld: forgets(fw) });
+  check('6c\' plant: the forget taken out of farmWorld.js -> red', forgets(fw.replace(/forgetSheet\(url\);/, '')) === 0);
+  const farmPage = "page = farmCopy(assetUrl(OBJ_BASE + a + '.png'))";
+  check('6d door: the farm\'s copy asks for each page at its own version (farmCopy(assetUrl(...)))', fw.includes(farmPage) && fw.includes("const farmCopy = (u) => u + (u.indexOf('?') >= 0 ? '&' : '?') + 'farm=1';"));
+  const wt = rd('src/game/wheelTrial.js');
+  const post = "w.postMessage({ type: 'objects', manifest: assetUrl('/world/objects/manifest.json') });\n      w.postMessage({ type: 'init',";
+  check('6e door: wheelTrial.js posts the objects\' manifest at its version (assetUrl) just before init', wt.includes(post));
+  const gw = rd('public/tools/world/core/ground-worker.js');
+  const gwDoor = /if \(m\.type === 'objects'\) \{ objectsAt = keptManifest\(m\.manifest\); return null; \}\s*[^\n]*\n\s*if \(m\.type === 'init'\)/;
+  const gwAsk = 'const man = objectsAt ? await startFetch(objectsAt, jsonOrNull)';
+  check('6f door: the ground worker keeps the manifest\'s address the page posts (before init) and asks for it there',
+    gwDoor.test(gw) && gw.includes(gwAsk) && !gwDoor.test(gw.replace("objectsAt = keptManifest(m.manifest)", 'objectsAt = null')));
+  /* the form it keeps: one exact address, the version's 10 hex; anything else asks fresh */
+  const km = /const KEPT_MANIFEST = (\/.*\/);/.exec(gw);
+  const KM = km ? eval(km[1]) : null;
+  const mv = versionOf('/world/objects/manifest.json');
+  check('6g: the worker keeps only /world/objects/manifest.json?v=<10 hex> (a bare one, another query, another file: a fresh address)',
+    !!KM && !!mv && KM.test('/world/objects/manifest.json?v=' + mv) && !KM.test('/world/objects/manifest.json') && !KM.test('/world/objects/manifest.json?v=2')
+      && !KM.test('/world/objects/manifest.json?t=1') && !KM.test('/world/ground/manifest.json?v=' + mv) && !KM.test('//x/world/objects/manifest.json?v=' + mv));
+  /* every atlas names its page as its sheet does (the page the loader builds is the one the sheet cuts) */
+  const pageFaults = (man, sheetOf) => (man.atlases || []).filter((a) => {
+    const j = sheetOf(a.sheet);
+    return !a.image || a.image !== a.sheet.replace(/\.json$/, '.png') || !j || !j.meta || j.meta.image !== a.image;
+  }).map((a) => a.name);
+  const objDir = join(ROOT, 'public', 'world', 'objects');
+  const man = JSON.parse(readFileSync(join(objDir, 'manifest.json'), 'utf8'));
+  const sheetOf = (f) => { try { return JSON.parse(readFileSync(join(objDir, f), 'utf8')); } catch { return null; } };
+  const pf = pageFaults(man, sheetOf);
+  check(`6h: every atlas of the objects' manifest (${(man.atlases || []).length}) names its page as its sheet does (x.json cuts x.png)`, (man.atlases || []).length > 0 && pf.length === 0, pf);
+  check('6h plant: a sheet whose page is another file -> red',
+    pageFaults(man, (f) => { const j = sheetOf(f); return f === man.atlases[0].sheet ? { ...j, meta: { ...j.meta, image: 'other.png' } } : j; }).length === 1);
 }
 
 /* ---- 5. _headers and the census ---------------------------------------------- */
