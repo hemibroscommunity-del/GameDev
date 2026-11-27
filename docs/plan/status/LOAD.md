@@ -1,7 +1,7 @@
 card: LOAD
 branch: claude/plan-load-2-bakekeep
 prs: #2386 (part 1, tag 6760: merged); #2401 (part 2, tag 6761: a draft, held in sitting 71, mended 2026-11-27)
-state: part 2 mended, waiting on the gatekeeper's next sitting
+state: ready
 
 ## Done
 - Part 1 (#2386, 6760, merged): the Loading times readout says what the screen waited for and why it
@@ -19,6 +19,11 @@ state: part 2 mended, waiting on the gatekeeper's next sitting
   answered from the store, byte for byte. 7: the store's cap on the disk across logins, a version that
   empties it, a store that throws switched off. The gatekeeper's seven plants and two of the mend's own:
   all eleven RED (the guard's header). No plant showed a real fault in the key, the cap or the version.
+- On the final code (main e8ccff26 merged), the test box, 2026-11-27: precheck OK (0 FAIL); bake-keep all ok
+  (about 6 s); `membudget` 12/12; `bakekeep` 18/19: 266 kept answers and 24 baked at the second login,
+  a kept frame the baked one 176 of 176, `?bakekeep=0` reads and writes nothing. RED as at the last run
+  (the spec's numbers: 92 s then): `masks` 95 s after `loads` (the page asks for one job at a time and
+  this box draws a few frames a second; the loads themselves 44.7 s, past the 20 s limit, here).
 
 ## Next
 - The gatekeeper's next sitting reads #2401. Part 3 (6762) only if part 2's numbers call for it.
