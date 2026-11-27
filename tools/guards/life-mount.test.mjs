@@ -44,7 +44,7 @@ const B = loadBabel(ROOT);
 check('0. @babel/parser and @babel/traverse load (npm install in the root or server/)', !!B);
 if (!B) process.exit(1);
 const DASH = 'src/ui/mobile/BottomDashboard.jsx';
-const LAND = 'src/ui/mobile/sheet/LifeSkillsPage.jsx';
+const LAND = 'src/ui/mobile/dash/SkillsPanel.jsx';   /* the choice, LifeSkillsDoor */
 const CARD = 'src/ui/mobile/sheet/BroCard.jsx';
 const MARKS = ['data-life-page', 'data-skill-grid', 'data-life-skill', 'data-life-unlocks', 'data-life-how'];
 const SWITCH = { switchFile: 'src/ui/mobile/ui2Frame.js', switchName: 'ui2FrameOn' };
@@ -110,13 +110,13 @@ check('3. the frame\'s own pages (BroDoorPage > BroCard\'s door switch): a skill
 
 const text = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const swap = (rel, from, to) => { const s = text(rel); return s.split(from).length !== 2 ? null : { [rel]: s.replace(from, to) }; };
-const CHOICE = "return ui2FrameOn() ? <LifeSkillsPage who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;";
+const CHOICE = "return ui2FrameOn() ? <LifeSkillsPage getS={getState} who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;";
 const LIFE_LINE = "if (isLifeDoor(door)) return <LifeDoor S={S} door={door} page={page} sel={sel} who={who == null ? null : who} />;";
 const PLANTS = [
-  ['M1', 'the choice drawing today\'s page again under the frame', swap(LAND, CHOICE, "return ui2FrameOn() ? <SkillsPanel who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;")],
-  ['M2', 'the choice made on another switch', swap(LAND, CHOICE, "return deskWideActive() ? <LifeSkillsPage who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;")],
-  ['M3', 'both drawn under the frame', swap(LAND, CHOICE, "return ui2FrameOn() ? <><LifeSkillsPage who={e && e.who != null ? e.who : null} /><SkillsPanel /></> : <SkillsPanel />;")],
-  ['M4', 'the choice turned round', swap(LAND, CHOICE, "return !ui2FrameOn() ? <LifeSkillsPage who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;")],
+  ['M1', 'the choice drawing today\'s page again under the frame', swap(LAND, CHOICE, "return ui2FrameOn() ? <SkillsPanel getS={getState} /> : <SkillsPanel />;")],
+  ['M2', 'the choice made on another switch', swap(LAND, CHOICE, "return deskWideActive() ? <LifeSkillsPage getS={getState} who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;")],
+  ['M3', 'both drawn under the frame', swap(LAND, CHOICE, "return ui2FrameOn() ? <><LifeSkillsPage getS={getState} who={e && e.who != null ? e.who : null} /><SkillsPanel /></> : <SkillsPanel />;")],
+  ['M4', 'the choice turned round', swap(LAND, CHOICE, "return !ui2FrameOn() ? <LifeSkillsPage getS={getState} who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;")],
   ['M5', 'PANELS.skills left on today\'s SkillsPanel', swap(DASH, "Component: LifeSkillsDoor },", "Component: SkillsPanel },")],
   ['M6', 'BroCard\'s life line removed', swap(CARD, LIFE_LINE, '')],
   ['M7', 'BroCard\'s life line drawing today\'s page', swap(CARD, LIFE_LINE, "if (isLifeDoor(door)) return <SkillsPanel />;")],

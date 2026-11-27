@@ -19,14 +19,11 @@
  * kind of player you are, no "highest" badge (the specification's 4.1: the owner's to define).
  *
  * The page id stays `skills` (every road in lands here); under `?ui2=0` today's page
- * (dash/SkillsPanel.jsx) is drawn instead: LifeSkillsDoor, BottomDashboard's PANELS.skills.
+ * (dash/SkillsPanel.jsx) is drawn instead: SkillsPanel.jsx LifeSkillsDoor, BottomDashboard's PANELS.skills.
  * `who`: another player's page (step 9: nothing opens it yet) shows levels only. */
 import React, { useEffect, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashNavView } from '@/game/dashNav.js';
-import { ui2FrameOn } from '../ui2Frame.js';
-import { getState } from '../dash/common.js';
-import { SkillsPanel } from '../dash/SkillsPanel.jsx';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { unseenSkillKeys, markSkillsSeen } from './skillsModel.js';
 import { lifeTiles, lifeTotal } from '@/game/lifeProfile.js';
@@ -72,11 +69,11 @@ export function entryOf(id) {
 }
 
 /**
- * S     the game's state (default: the game's own, read each draw)
+ * getS  () => the game's state (handed by the choice: the page never reaches for it)
  * who   whose page (null: yours)
  */
-export function LifeSkillsPage({ S: S0, who }) {
-  const live = () => S0 || getState();
+export function LifeSkillsPage({ getS, who }) {
+  const live = () => (typeof getS === 'function' ? getS() : null);
   useClock(() => lifeKey(live(), who), 600);
   const [ref, room] = useRoom();
   /* a level-up not yet looked at: read as the page opens, BEFORE opening it marks them seen (below),
@@ -111,12 +108,6 @@ export function LifeSkillsPage({ S: S0, who }) {
       {tiles.map(tile)}
     </div>
   );
-}
-
-/** BottomDashboard's PANELS.skills: the new landing under the frame, today's page under `?ui2=0`. */
-export function LifeSkillsDoor() {
-  const e = ui2FrameOn() ? entryOf('skills') : null;
-  return ui2FrameOn() ? <LifeSkillsPage who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;
 }
 
 export default LifeSkillsPage;

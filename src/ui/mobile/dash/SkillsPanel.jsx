@@ -3,7 +3,9 @@ import { deskWideActive } from '../../deskWide.js';   /* v2.3.3687 */
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
 import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, unseenSkillKeys /* v2.3.3522 */ } from '../sheet/skillsModel.js';
-import { SkillHow } from '../sheet/SkillHow.jsx';   /* v2.3.6694 (card UI2-life): the detail's lines, shared with "How it works" */
+import { SkillHow } from '../sheet/SkillHow.jsx';
+import { LifeSkillsPage, entryOf } from '../sheet/LifeSkillsPage.jsx';   /* v2.3.6694 (card UI2-life): the new landing */
+import { ui2FrameOn } from '../ui2Frame.js';   /* v2.3.6694 (card UI2-life): the detail's lines, shared with "How it works" */
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
 import { SAY } from '@/data/say/skills.js';   /* v2.3.6324: its words, in the one table (docs/specs/player-words.md, W1) */
@@ -40,19 +42,21 @@ import { say } from '@/game/say.js';
    grouping survives spatially without the headings. */
 
 export const SkillsPanel = () => {
+  /* v2.3.6694 (card UI2-life): the game's state read once a draw, here (the open hand's census: the page's
+     first reader, its effect and its draw share it; it is the same object every draw) */
+  const S = getState();
   const [, force] = useState(0);
   const [detailKey, setDetailKey] = useState(() => skillDetailBus.consumeOpen());
   /* v2.3.3522: the skills with a level-up not yet looked at, read as the page
      opens -- before opening it marks them seen (below) -- so each tile can
      wear the dashboard's dot for this visit */
-  const [fresh] = useState(() => { const S0 = getState(); return unseenSkillKeys((S0 && S0.rpg) || {}); });
+  const [fresh] = useState(() => unseenSkillKeys((S && S.rpg) || {}));
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 600);
     return () => clearInterval(id);
   }, []);
   /* Level-up badge lifecycle: viewing the expanded panel = seen. */
   useEffect(() => {
-    const S = getState();
     markSkillsSeen((S && S.rpg) || {});
   }, []);
   /* Compact-tile taps while already mounted: open that detail live. */
@@ -61,7 +65,6 @@ export const SkillsPanel = () => {
     if (k) setDetailKey(k);
   }), []);
 
-  const S = getState();
   const ls = (S && S.rpg && S.rpg.lifeSkills) || {};
 
   /* ── In-panel detail view (same sheet height, back chip returns) ── */
@@ -259,6 +262,13 @@ export const SkillsPanel = () => {
     </div>
   );
 };
+
+/* v2.3.6694 (card UI2-life): BottomDashboard's PANELS.skills -- the new landing under the frame (handed the
+   game's state), today's page above under ?ui2=0 */
+export function LifeSkillsDoor() {
+  const e = ui2FrameOn() ? entryOf('skills') : null;
+  return ui2FrameOn() ? <LifeSkillsPage getS={getState} who={e && e.who != null ? e.who : null} /> : <SkillsPanel />;
+}
 
 /* v2.3.3522: a skill's tile, CSS px a side (the home screen's app) */
 const SKILL_TILE_PX = 52;

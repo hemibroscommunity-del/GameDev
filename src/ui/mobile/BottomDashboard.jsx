@@ -64,7 +64,7 @@ import { PetsPanel }         from './dash/PetsPanel.jsx'; /* v2.3.3120 */
 import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as AchievementsHead, DashEncyclopediaPanel as EncyclopediaPanel,
   DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
-import { LifeSkillsDoor }    from './sheet/LifeSkillsPage.jsx';   /* v2.3.6694 (card UI2-life) */
+import { LifeSkillsDoor }    from './dash/SkillsPanel.jsx';   /* v2.3.6694 (card UI2-life) */
 import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
