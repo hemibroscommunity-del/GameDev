@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js'; /* v2.3.2284 */
 import { installHintBus } from './installHintBus.js';
 import { onIOS } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { tutorOver } from '../tutorSpot.js';   /* v2.3.6791: clear of the controller's housings (game/tutorClear.js) */
+import { winVw } from './playViewport.js';
 
 /* ═══ v2.3.2159: THE ADD-TO-HOME-SCREEN CARD ═══
  *
@@ -106,6 +108,7 @@ export function InstallHint() {
   return (
     <div
       data-install-hint=""
+      data-tutor="install"
       /* Owner: "allow the user to just tap on the messages to dismiss it".
          This is the one tutorial-era card with NO auto-expire -- it appears
          eight seconds into a first session on iPhone Safari and then sits
@@ -122,7 +125,11 @@ export function InstallHint() {
            the 50% it replaces everywhere else. */
         left: 'calc(var(--world-x, 0px) + var(--play-w, 100%) / 2)',
         transform: 'translateX(-50%)',
-        bottom: 'calc(var(--dash-h, 145px) + 12px)',   /* zLayers rule 2: clear the band geometrically */
+        /* zLayers rule 2: clear the band geometrically; v2.3.6791 (card UI3
+           PR 11, the owner: "Needs to fix tutorial messages over new
+           controller area"): and the controller's housings standing on it
+           (game/tutorClear.js), not the band's height alone */
+        bottom: 'calc(var(--sheet-h, var(--dash-h, 145px)) + ' + tutorOver(Math.min(0.92 * (winVw() || 390), 340), 12, 120) + 'px)',
         zIndex: 31,
         width: 'min(92vw, 340px)',
         boxSizing: 'border-box',

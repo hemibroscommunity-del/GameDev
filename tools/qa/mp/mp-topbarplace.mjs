@@ -11,7 +11,10 @@
  *      says "safe"; no day/night icon;
  *   2. (v2.3.4163) no player frame on the game screen (the owner took it
  *      away), and --bt-hud-top, where the quest card starts, just under the
- *      top bar;
+ *      top bar; v2.3.6781: the character HUD (card UI3) now stands there, so
+ *      the bar's bottom line is --bt-hud-base (what --bt-hud-top is under
+ *      `?hud=0`, mp-charhud 6 plays that whole), the HUD's top just under the
+ *      bar, and the quest card's line under the HUD;
  *   3. (v2.3.4113) the other states on the plate (staged, __btPlaceHold):
  *      "No man's land 2" and "Outlaw · 18 min" in red; a tap on the plate
  *      opens the window with the gold and the bag count in plain words;
@@ -44,6 +47,9 @@ const look = (P) => P.page.evaluate(() => {
   probe.style.cssText = 'position:fixed;top:var(--bt-hud-top);left:0;width:1px;height:1px;pointer-events:none';
   document.body.appendChild(probe);
   const hudTop = Math.round(probe.getBoundingClientRect().top);
+  /* v2.3.6781: the bar's own line (what --bt-hud-top is under ?hud=0) */
+  probe.style.top = 'var(--bt-hud-base)';
+  const hudBase = Math.round(probe.getBoundingClientRect().top);
   probe.remove();
   return {
     zone: S && S.currentZone,
@@ -58,7 +64,9 @@ const look = (P) => P.page.evaluate(() => {
     frame: r(document.querySelector('[data-player-frame], .bt-pf')),
     rpg: S && S.rpg ? { lv: S.rpg.level, hp: Math.round(S.rpg.hp), maxHp: Math.round(S.rpg.maxHp), en: Math.round(S.rpg.stamina), maxEn: Math.round(S.rpg.maxStamina), coins: S.rpg.coins } : null,
     mini: window.__btWheelMini ? { l: Math.round(window.__btWheelMini.left), t: Math.round(window.__btWheelMini.top) } : null,
-    hudTop, vw: innerWidth, vh: innerHeight,
+    hudTop, hudBase, vw: innerWidth, vh: innerHeight,
+    /* v2.3.6781: the character HUD (src/ui/hud/CharacterHud.jsx) */
+    charHud: r(document.querySelector('[data-charhud-box]')),
   };
 });
 const dash = (P) => P.page.evaluate(() => { const b = window.__broDashPanelBus; return b ? { mode: b.state.mode, root: b.state.stack[0] || null } : null; });
@@ -86,8 +94,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && /^safe/.test(a.chip.words || '') && !a.chip.red && !a.tod, a);
 
     /* ── 2. (v2.3.4163) no player frame; the quest card's line under the bar ── */
-    rec.ok(T + `2: no player frame on the game screen (v2.3.4163: the owner, "No remove them from the game screen"), and the quest card's line (--bt-hud-top ${a && a.hudTop}) just under the top bar (${a && a.header && a.header.b})`,
-      !!a && !a.frame && !!a.header && a.hudTop >= a.header.b && a.hudTop - a.header.b <= 16, a);
+    rec.ok(T + `2: no player frame on the game screen (v2.3.4163: the owner, "No remove them from the game screen"), and the bar's line (--bt-hud-base ${a && a.hudBase}, the quest card's under ?hud=0) just under the top bar (${a && a.header && a.header.b})`,
+      !!a && !a.frame && !!a.header && a.hudBase >= a.header.b && a.hudBase - a.header.b <= 16, a);
+    /* v2.3.6781: the character HUD there, and the quest card's line under it */
+    rec.ok(T + `2b: the character HUD's top (${a && a.charHud && a.charHud.t}) just under the top bar, and the quest card's line (${a && a.hudTop}) under the HUD (${a && a.charHud && a.charHud.b})`,
+      !!a && !!a.charHud && !!a.header && a.charHud.t >= a.header.b && a.charHud.t - a.header.b <= 16 && a.charHud.t === a.hudBase && a.hudTop >= a.charHud.b, a);
 
     /* ── 3. the other states, staged ── */
     await P.page.evaluate(() => { window.__btPlaceHold = { nml: 2, red: 0 }; });

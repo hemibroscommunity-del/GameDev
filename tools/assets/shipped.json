@@ -331,6 +331,8 @@
     {"path":"public/icons/ui/bldg-woodwork.webp","bytes":12436,"sha256":"971bcb693cf8b376669b628fc05ae788c78a18c24c013be441779cf6f9dbd4d6","family":"icons-sheets","kind":"made"},
     {"path":"public/icons/ui/blocks-mp.p256.png","bytes":52339,"sha256":"d2ad0e46ccd781326f79404c700749babf8d8552fe8799a38c99c1d120cc67e1","family":"icons-from-uploads-world-twins","kind":"made"},
     {"path":"public/icons/ui/blocks-mp.webp","bytes":39396,"sha256":"ba70c59c7670b48a7568b95575ae554f5e4dd5258f200196b35640a09e8d483f","family":"icons-from-uploads-world","kind":"supplied"},
+    {"path":"public/icons/ui/blocks-stam-steel.p256.png","bytes":49448,"sha256":"2403a02bc4bcdf89cecf75b34f6a1668a35d0eed9a2b3c6f3796ba120fe33369","family":"icons-from-uploads-world-twins","kind":"made"},
+    {"path":"public/icons/ui/blocks-stam-steel.webp","bytes":40544,"sha256":"fbf0ac966bddfcc890bb975efb5e80d0a5e7e771059e1deb7470a8563eb8c40c","family":"icons-steel-blocks","kind":"made"},
     {"path":"public/icons/ui/blocks-stam.p256.png","bytes":49665,"sha256":"38fd350d1defe62302c54e556b2e8f5fbf42353ded587600a632e5bd32632c12","family":"icons-from-uploads-world-twins","kind":"made"},
     {"path":"public/icons/ui/blocks-stam.webp","bytes":38832,"sha256":"0d50960dcfd6a522de37c167704ae91bd76df731df142928c426803452c12f83","family":"icons-from-uploads-world","kind":"supplied"},
     {"path":"public/icons/ui/buff-bleed.webp","bytes":2130,"sha256":"f999c61f9121d48cc98a2bc8cd2c02e4501d9ee890757b1a5fa43aa11e9b8c88","family":"icons-owner","kind":"made"},

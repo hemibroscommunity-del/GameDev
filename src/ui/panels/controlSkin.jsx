@@ -1,8 +1,8 @@
 import React from 'react';
 import { metalIconPath, weaponMaterial } from '../../rendering/traits/materialTints.js';
-import { pageAddress } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
+import { pageAddress, sw } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T); v2.3.6646: sw, `?padgold` */
 import { TALK_PILL_DATA } from '../../data/talkPill.js';   /* v2.3.6552: TALK_PILL_URL, below */
-import { padFace, padPictures, PAD_ACCENT } from '../../game/padSkin.js';   /* v2.3.6640: the controller's faces (card PAD) */
+import { padFace, padPictures, padAccent, padMetal, PAD_STEEL_RING } from '../../game/padSkin.js';   /* v2.3.6640: the controller's faces (card PAD); v2.3.6646: its steel */
 
 /* ═══ v2.3.3018: ONE SKIN FOR EVERY TOUCH CONTROL ═══
  *
@@ -77,6 +77,12 @@ const RING_GRADIENTS = {
   btSkinDim: [['0', '#646A70'], ['.48', '#464B50'], ['1', '#26292D']],
   btSkinGrey: [['0', '#B9BEC2'], ['.42', '#8A9095'], ['1', '#585D62']],
   btSkinQuiet: [['0', '#78808A'], ['.48', '#545B63'], ['1', '#30353A']],
+  /* v2.3.6646 (card PAD part 11, the owner: "Turn steel"): the ring of a
+     button in the controller's tier (Whirlwind, Shield Bash) in the steel
+     sheet's rim, its light at the top to its dark at the bottom, every stop
+     measured (padSkin.js PAD_STEEL_RING); pressed, the same a step darker */
+  btSkinSteel: PAD_STEEL_RING.ring,
+  btSkinSteelPress: PAD_STEEL_RING.press,
 };
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export function ensureSkinDefs() {
@@ -154,6 +160,9 @@ function sparklePath(x, y, s) {
  * iPhone pays a layer for one).  The face is the socket's size, centred in
  * the button's box (which keeps today's size when that is bigger).  What a
  * state wears is padSkin.js padFace's. */
+/* v2.3.6646 (card PAD part 11): the ring's metal for an older button in the
+   controller's tier, the switch read here (padSkin.js padMetal) */
+export function tierMetal(inTier) { return padMetal(!!inTier, sw('padgold')) || undefined; }
 export const PAD_ART_VER = '2.3.6641';   /* v2.3.6641: part 3's pieces (one shell) */
 export function padArtUrl(name) { return '/ui/pad/' + name + '.png?v=' + PAD_ART_VER; }
 export const PAD_ART_URLS = padPictures().map(padArtUrl);
@@ -169,7 +178,7 @@ function PadSkin(props) {
   var name = props.pad, face = props.face;
   var f = padFace(name, props.state || 'normal', props.progress);
   var attack = name === 'attack';
-  var acc = PAD_ACCENT[name] || PAD_ACCENT.special;
+  var acc = padAccent(name, sw('padgold'));   /* v2.3.6646 (card PAD part 11): Attack's and Special's ready glow the steel's cold light; `?padgold=1` the gold */
   var c = face / 2, r = face * 0.37 / 2, circ = 2 * Math.PI * r;
   var pics = attack ? [['on', 'attack-sword'], ['off', 'attack-off'], ['bow', 'attack-bow'], ['staff', 'attack-staff'], ['socket', 'socket']] : [['on', f.pic]];
   return React.createElement('span', {
@@ -254,6 +263,8 @@ export function Skin(props) {
     className: 'bt-skin',
     'data-tone': tone,
     'data-state': state,
+    /* v2.3.6646: `metal: 'steel'`, the ring in the controller's steel (game.css .bt-skin[data-metal]) */
+    'data-metal': props.metal || undefined,
     'data-flash': props.flash ? '1' : undefined,
     style: { '--ring': ring + 'px' },
   },

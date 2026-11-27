@@ -154,7 +154,7 @@ export const SYSTEMS = Object.freeze({
     files: [f('src/rendering/tables', 'economy') /* v2.3.5346: its hand-tuned tables (card M) */,
       f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|econcard|worldsum|valuepause|inbox|itemdrop|deathpile|gearstash|stash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
       f('server/src', 'playerroads'),   /* v2.3.5280 (card R): the roads between players, one table */
-      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes|econCard'),
+      f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|shieldAdopt|arenaStakes|econCard'),
     ],
     words: ['gold', 'bag', 'bank', 'market', 'shop', 'store', 'trade', 'inbox', 'drop', 'loot', 'chest', 'salvage', 'gamble', 'dice', 'daily', 'auction', 'gear', 'coin'],
     traps: ['economy'],
@@ -251,7 +251,7 @@ export const SYSTEMS = Object.freeze({
   },
   input: {
     what: 'touch and the controls on a phone',
-    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch|freeAttack|thumbSide|thumbGlue|thumbArc|contextButton|lockFace|bowSpecialNow|aimMarks|padSkin'), f('src/ui', 'tapDismiss|swallowTapClick')],   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons); v2.3.6547: + freeAttack (item 8); v2.3.6549: + thumbSide, thumbGlue, thumbArc (part 16); v2.3.6550: + contextButton (part 17); v2.3.6551: + lockFace (part 18); v2.3.6557: + bowSpecialNow (part 23 PR 2); v2.3.6555: + aimMarks (card CT part 22, the aim's frame and caret); v2.3.6640: + padSkin (card PAD, the controller) */
+    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch|freeAttack|thumbSide|thumbGlue|thumbArc|contextButton|lockFace|bowSpecialNow|aimMarks|padSkin|tutorClear'), f('src/ui', 'tapDismiss|swallowTapClick|tutorSpot')],   /* v2.3.6791: + the messages' rule clear of the controller and its glue (card UI3 PR 11) */   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons); v2.3.6547: + freeAttack (item 8); v2.3.6549: + thumbSide, thumbGlue, thumbArc (part 16); v2.3.6550: + contextButton (part 17); v2.3.6551: + lockFace (part 18); v2.3.6557: + bowSpecialNow (part 23 PR 2); v2.3.6555: + aimMarks (card CT part 22, the aim's frame and caret); v2.3.6640: + padSkin (card PAD, the controller) */
     words: ['touch', 'control', 'tap', 'thumb', 'swallow'],
     traps: ['input'],
     doors: [],
@@ -286,7 +286,7 @@ export const SYSTEMS = Object.freeze({
   },
   preload: {
     what: 'what loads behind the loading screen, and what loads later on purpose',
-    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels'), f('src/game', 'assetUrl|assetTable') /* v2.3.6742: a file's address with its file's version (card KEEP PR 3) */, f('src/rendering', 'sheetPage') /* v2.3.6744: a sheet's page at its own version (card KEEP PR 3c) */],
+    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels'), f('src/game', 'assetUrl|assetTable') /* v2.3.6742: a file's address with its file's version (card KEEP PR 3) */, f('src/rendering', 'sheetPage') /* v2.3.6744: a sheet's page at its own version (card KEEP PR 3c) */, f('src/game', 'spareLater|spareTime') /* v2.3.6763: the spare armour sets after the loading screen (card LOAD part 3b) */],
     words: ['preload', 'loading', 'lazy', 'warm'],
     traps: ['preload'],
     doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' },
@@ -294,7 +294,9 @@ export const SYSTEMS = Object.freeze({
   },
   art: {
     what: 'loading art in play: strips of 256 colours, the readers off the page\'s thread, bakes on workers',
-    files: [f('src/rendering', 'zoneTextures|stripRead|stripPack|png8Decode|png8Worker|p256|webpImage|artBottoms|artHolds|workerCanvas|trimPack|trimRules|fxStrips|bodyBake|bodyBakeWorker|maskedBake|maskedBakeWorker|retintPalette|sharpPixels|tiledMaps')],
+    files: [f('src/rendering', 'zoneTextures|stripRead|stripPack|png8Decode|png8Worker|p256|webpImage|artBottoms|artHolds|workerCanvas|trimPack|trimRules|fxStrips|bodyBake|bodyBakeWorker|maskedBake|maskedBakeWorker|retintPalette|sharpPixels|tiledMaps'),
+      f('src/game', 'bakeKeep'),   /* v2.3.6761: the masked bakes kept on the disk, the key and the store's rules (card LOAD) */
+    ],
     words: ['art', 'strip', 'png', 'p256', 'bake', 'sprite', 'pic'],
     traps: ['art'],
     doors: [{ name: 'loadTrackedStrip', file: 'src/rendering/zoneTextures.js', what: 'art that loads while the world is in play' }],
@@ -308,7 +310,7 @@ export const SYSTEMS = Object.freeze({
   },
   render: {
     what: 'drawing the world: the Pixi renderer, the entity and effects renderers, light, fx',
-    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'poseHides|cameraFollow') /* v2.3.6208: what a body's pose hides (card EN); v2.3.6660: the camera's follow (card GR) */],
+    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'poseHides|cameraFollow|frameFoot') /* v2.3.6208: what a body's pose hides (card EN); v2.3.6660: the camera's follow (card GR); v2.3.6209: a dying body's frame's own ground (card EN) */],
     rest: [re('^src/rendering/')],
     words: ['render', 'draw', 'fx', 'pixi', 'batch', 'light', 'camera'],
     traps: ['render'],
@@ -316,7 +318,8 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|dashGrow|broHub|screenZones|pending|combatHub|progression|metricTree') /* v2.3.6686: a headline number as a tree (card UI2-combat PR 2) */ /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6685: Combat's hub and its pools, a skill's progress (card UI2-combat) */ /* v2.3.6682: + the page's growing motion (card UI2-frame PR 2); v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */, f('src/game', 'compare|equipProject|workspace') /* v2.3.6688: Gear's comparison, its projection, the two-panel workspace (card UI2-gear PR 2) */, f('src/game', 'gearShowcase') /* v2.3.6689: Bro's Equipment showcase, the body's one shape, the item page's roads (card UI2-gear PR 3) */, f('src/game', 'menuTile|gearGeometry') /* v2.3.6784: the Menu's picture, Gear's whole rows (card UI3-menus) */],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|dashGrow|broHub|screenZones|pending|combatHub|progression|metricTree') /* v2.3.6686: a headline number as a tree (card UI2-combat PR 2) */ /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6685: Combat's hub and its pools, a skill's progress (card UI2-combat) */ /* v2.3.6682: + the page's growing motion (card UI2-frame PR 2); v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */, f('src/game', 'compare|equipProject|workspace') /* v2.3.6688: Gear's comparison, its projection, the two-panel workspace (card UI2-gear PR 2) */, f('src/game', 'equipLook') /* v2.3.6698: the Equipped panel's look, its one switch (card UI2-equipgreen) */, f('src/game', 'gearShowcase') /* v2.3.6689: Bro's Equipment showcase, the body's one shape, the item page's roads (card UI2-gear PR 3) */, f('src/game', 'menuTile|gearGeometry') /* v2.3.6784: the Menu's picture, Gear's whole rows (card UI3-menus) */, f('src/game', 'charHud') /* v2.3.6781: the character HUD's rules, top left (card UI3 PR 2) */,
+      f('src/game', 'hudCorner') /* v2.3.6790: what the top-left corner holds (card UI3 PR 10) */, f('src/game', 'topGold') /* v2.3.6786: the gold on the top bar's rules (card UI3 PR 7) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

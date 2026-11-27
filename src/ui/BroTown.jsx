@@ -463,7 +463,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift, stickFrom } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress, twoButtonRelease, twoButtonSlide } from '@/game/freeAttack.js'; import { ctxButtonsLive, ctxTap, ctxSkillOf } from '@/game/contextButton.js'; import { ContextButton, ctxButtonFrame } from './panels/ContextButton.jsx'; import { thumbFrame } from '@/game/thumbGlue.js';   /* v2.3.6549 */   /* v2.3.6550: the button under the thing, mode 5 (card CT part 17) */   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -601,10 +601,10 @@ import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedT
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW, BAND_ASSEMBLY_MAX_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { ctlLandscape } from './mobile/bandSideways.js'; /* v2.3.4152: the controls' sideways geometry over a folded band */
-import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
+import { playIsLandscape, winVw, winVh } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
-import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
+import { stampSheetH, sheetPx } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
@@ -629,6 +629,7 @@ import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "ta
 import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
 import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.4040: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
+import CharacterHud from '@/ui/hud/CharacterHud.jsx'; import { hudColumnStyle } from '@/ui/hud/hudColumn.js';   /* v2.3.6781: the character HUD above it, and the status column's place */
 import { fineInput, computerFrame } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { act } from '@/game/actions.js';   /* v2.3.5192: the page's requests leave through the action door (card K PR 7, the last of the family) */
 
@@ -10189,11 +10190,12 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     /* v2.3.6541: the two buttons (`?manual=5`, a trial): the stick's three zones, rest, turn and walk, by the thumb's share of the disc's DRAWN radius; the knob, the walk, the turn's facing and the phase are stickDrive's (game/stickZones.js; card CT PR 2) */
-    if (twoButtonsLive()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity, sprintTiredSay); return; }   /* v2.3.6545: + the thumb past the rim sprints (stickZones.js rimSprint; card CT item 6) */
+    if (twoButtonsLive()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity, sprintTiredSay, _lts && _lts.from); return; }   /* v2.3.6545: + the thumb past the rim sprints (stickZones.js rimSprint; card CT item 6) */
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
     var maxR = rect.width / 2 - 20;
-    var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
+    var S = stateRef.current;
+    var clampDist = stickAnalog(S, dist, angle, maxR, rect.width / 2, sprintTiredSay, _lts && _lts.from);   /* v2.3.6542: the analog read, moved whole to game/stickZones.js (the stick's one writer); v2.3.6644: + the thumb past the drawn rim sprints on a touch screen, the Sprint button gone (stickZones.js rimSprintLive; card PAD part 9); v2.3.6647: + where it landed: a FULL push sprints, reachable from anywhere, and the knob's length is the read's (card PAD part 12) */
     var knobX = Math.cos(angle) * clampDist;
     var knobY = Math.sin(angle) * clampDist;
     if (knobRef.current) {
@@ -10207,8 +10209,6 @@ export var BroTown = function BroTown(_ref0) {
       var _lRodOp = (base && base.style && base.style.opacity) || '0.5';
       lStickRef.current.style.opacity = clampDist > 4 ? _lRodOp : '0';
     }
-    var S = stateRef.current;
-    stickAnalog(S, dist, angle, maxR, rect.width / 2, sprintTiredSay);   /* v2.3.6542: the analog read, moved whole to game/stickZones.js (the stick's one writer); v2.3.6644: + the thumb past the drawn rim sprints on a touch screen, the Sprint button gone (stickZones.js rimSprintLive; card PAD part 9) */
     lTrail.current.push({
       x: rawDx,
       y: rawDy,
@@ -11153,6 +11153,7 @@ export var BroTown = function BroTown(_ref0) {
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
+      lts.from = stickFrom(t.clientX, t.clientY, winVw(), winVh(), sheetPx());   /* v2.3.6647: where it landed on the glass (the window: sideways the play column is centred in it), the full push's reach (stickZones.js stickReach; card PAD part 12) */
       lts.moved = false;
       /* No cycle fire on touchstart -- v2.3.98 moved the trigger to
          touchend so a quick re-press to start moving after a single
@@ -14343,15 +14344,7 @@ export var BroTown = function BroTown(_ref0) {
       WebkitTapHighlightColor: 'transparent'
     }
   }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 'calc(var(--bt-hud-top, 56px) - 12px)', /* v2.3.4163: as before the player frame (44 under a 1x bar), following the bar as it grows (v2.3.3974-v2.3.4093 put them under the frame) */
-      left: 8,
-      zIndex: 18,
-      fontSize: 11,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.6)'
-    }
+    style: hudColumnStyle() /* v2.3.6781: the status column's place, under the HUD's stack (src/ui/hud/hudColumn.js; v2.3.4163's place its fallback) */
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
@@ -14523,7 +14516,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 800,
       animation: 'pulse-dot 1s ease-in-out infinite'
     }
-  }, "\u2694\uFE0F DUEL")), /* v2.3.3918: the pinned quest card (src/ui/QuestCard.jsx) */ React.createElement(QuestCard, { rpgState: rpgState, live: stateRef.current }), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
+  }, "\u2694\uFE0F DUEL")), /* v2.3.3918: the pinned quest card (src/ui/QuestCard.jsx) */ React.createElement(CharacterHud, { rpgState: rpgState, live: stateRef.current }) /* v2.3.6781: the character HUD, top left (src/ui/hud/) */, React.createElement(QuestCard, { rpgState: rpgState, live: stateRef.current }), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
     if (!dd || dd.length === 0) return null;
     var active = dd.filter(function (d) {

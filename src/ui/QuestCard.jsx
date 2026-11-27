@@ -17,9 +17,28 @@
  * The old 'bt_quest_hud_collapsed' preference is simply no longer read.
  *
  * Placed at top: var(--bt-hud-top, 56px), so a frame above it (the top bar's
- * player status) can push it down by setting the variable.
+ * player status) can push it down by setting the variable. *
+ * ═══ v2.3.6781: ONE LINE UNDER THE CHARACTER HUD (card UI3, PR 2) ═══
+ * The owner, 2026-11-26: "Quest: Smaller, single-line tracker underneath."
+ * While the HUD is up (src/ui/hud/CharacterHud.jsx; game/charHud.js
+ * charHudOn) the card is ONE line under it, `title · count · objective`
+ * (charHudQuestLine), or between quests `Next: <quest> · Talk to <giver>` and
+ * "+n more": never wrapping, the HUD's width, 30 px drawn in a 44 px hit box.
+ * Its tap opens the quest; there is no fold (the one line IS the folded
+ * form).  Every data-quest-hud mark stays.  The HUD moves --bt-hud-top down
+ * by its own height (game.css), so this card's top line is unchanged.  Under
+ * `?hud=0` the card is exactly as before.
+ *
+ * ═══ v2.3.6790: AND THE LINE LEAVES THE WORLD (card UI3, PR 10) ═══
+ * The owner, 2026-11-27: "Maybe just keep quests in quest area for now.
+ * Leave only character hud in top left corner."  With the HUD up this card
+ * draws NOTHING (game/hudCorner.js cornerQuest 'none'): the tracked quest,
+ * its steps and its ready live on the Quests page, whose button keeps its
+ * ready dot.  `?questline=1` (remembered) brings the one line back, and
+ * while it is drawn html[data-questline="1"] (a write, never a read) moves
+ * the status column under it (game.css).  `?hud=0`: main's card, as before.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   QUEST_CHAINS, QUEST_STATUS, questObjectiveDone, questSteps,
 } from '@/data/gameSystems.js';
@@ -33,6 +52,9 @@ import { questDetailBus } from '@/ui/mobile/sheet/questDetailBus.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { SAY } from '@/data/say/questCard.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { charHudQuestLine } from '@/game/charHud.js';   /* v2.3.6781: under the character HUD, one line */
+import { cornerQuest } from '@/game/hudCorner.js';   /* v2.3.6790: the corner holds the HUD alone (or the line, ?questline=1) */
+import { SAY as HUD_SAY } from '@/data/say/charHud.js';
 
 const GOLD = '#D8A94D';
 const GREEN = '#59BF91';
@@ -58,6 +80,17 @@ const titleRow = (color) => ({
 const subLine = { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(255,255,255,.72)' };
 /* v2.3.4207: the next step reads at a glance -- bold and fully white */
 const stepLine = { ...subLine, fontWeight: 700, color: '#fff' };
+/* v2.3.6781: the one line (charHud.css's palette: the recessed panel, the
+   border, the off-white text, the gold).  The line is 30 drawn at the top of
+   its 44 hit box; the box is transparent below it. */
+const LINE_HIT = { position: 'absolute', top: 'var(--bt-hud-top, 56px)', left: 8, zIndex: 17, width: 184, height: 44, boxSizing: 'border-box' };
+const LINE_DRAWN = (edge) => ({
+  height: 30, boxSizing: 'border-box', padding: '0 8px 0 6px', display: 'flex', alignItems: 'center', gap: 5,
+  background: 'rgba(14,29,41,.88)', border: '1px solid ' + edge, borderRadius: 6,
+  fontSize: 12, fontWeight: 700, lineHeight: '28px', color: '#F1F0E9',
+});
+const LINE_TEXT = { flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const lineMark = { width: 14, height: 14, flex: '0 0 auto', objectFit: 'contain' };
 
 /* v2.3.4207: THE TAP-TO-FOLD IS BACK (the owner: "bring back the feature where
    if you tap the top left active quest it minimizes a bit to just show the
@@ -80,7 +113,14 @@ export function openQuestPage(qid) {
 
 export default function QuestCard({ rpgState, live }) {
   const [folded, setFolded] = useState(readFold);
-  if (!rpgState) return null;
+  /* v2.3.6790: 'card' (no HUD), 'line' (?questline=1) or 'none' (the HUD alone) */
+  const corner = cornerQuest();
+  useEffect(() => {
+    if (corner !== 'line') return undefined;
+    try { document.documentElement.setAttribute('data-questline', '1'); } catch (e) { /* no page */ }
+    return () => { try { document.documentElement.removeAttribute('data-questline'); } catch (e) { /* no page */ } };
+  }, [corner]);
+  if (!rpgState || corner === 'none') return null;
   const liveRpg = (live && live.rpg) || rpgState;
   let active = Object.entries(rpgState._quests || {})
     .filter(([, status]) => status === QUEST_STATUS.active)
@@ -93,6 +133,24 @@ export default function QuestCard({ rpgState, live }) {
     let to = null;
     try { to = tourOffer(liveRpg, live); } catch (e) { to = null; }
     if (!to) return null;
+    const talk = 'Talk to ' + folkDisplayName(to.npc) + (TOUR_MEET[to.npc] ? ' ' + TOUR_MEET[to.npc] : '');
+    if (corner === 'line') {
+      /* v2.3.6781: one line under the HUD; takes no taps, as before */
+      return (
+        <div data-quest-hud="1" data-quest-hud-next={to.quest.id} data-quest-hud-oneline="1"
+          style={{ ...LINE_HIT, pointerEvents: 'none' }}>
+          <div style={LINE_DRAWN('rgba(234,196,116,.45)')}>
+            <img src="/icons/ui/panel-quests.webp" alt={say(SAY, 'questCard.markQuest')} draggable={false} style={lineMark} />
+            <span style={LINE_TEXT}>{charHudQuestLine(null, { next: say(SAY, 'questCard.next', { quest: to.quest.title }), talk })}</span>
+            {to.more > 0 && (
+              <span data-quest-hud-more={to.more} style={{ flex: '0 0 auto', color: '#EAC474', whiteSpace: 'nowrap' }}>
+                {say(HUD_SAY, 'charHud.more', { more: to.more })}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
     return (
       <div data-quest-hud="1" data-quest-hud-next={to.quest.id}
         style={boxStyle({ pointerEvents: 'none', border: '1px solid rgba(216,169,77,.35)' })}>
@@ -100,7 +158,7 @@ export default function QuestCard({ rpgState, live }) {
           <img src="/icons/ui/panel-quests.webp" alt={say(SAY, 'questCard.markQuest')} draggable={false} style={markStyle} />
           <span style={{ flex: 1, minWidth: 0 }}>{say(SAY, 'questCard.next', { quest: to.quest.title })}</span>
         </div>
-        <div style={subLine}>{'Talk to ' + folkDisplayName(to.npc) + (TOUR_MEET[to.npc] ? ' ' + TOUR_MEET[to.npc] : '')}</div>
+        <div style={subLine}>{talk}</div>
         {/* v2.3.3525: others have work too, and where they show */}
         {to.more > 0 && (
           <div data-quest-hud-more={to.more} style={{ ...subLine, color: 'rgba(216,169,77,.85)' }}>
@@ -119,6 +177,40 @@ export default function QuestCard({ rpgState, live }) {
   let steps = null;
   try { steps = questSteps(q, rpgState, live); } catch (e) { steps = null; }
   const w = questCardWords(q, { done, steps, rpg: liveRpg });
+
+  if (corner === 'line') {
+    /* v2.3.6781: one line under the HUD -- the owner's "[Into the Wild · 3/5 ·
+       Defeat 5 monsters]"; a tap opens the quest's page; no fold */
+    const tone = done ? GREEN : '#EAC474';
+    return (
+      <div
+        data-quest-hud="1"
+        data-quest-hud-quest={q.id}
+        data-quest-hud-ready={done ? '1' : '0'}
+        data-quest-hud-oneline="1"
+        role="button"
+        aria-label={say(SAY, 'questCard.openAria')}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); openQuestPage(q.id); }}
+        style={{ ...LINE_HIT, pointerEvents: 'auto', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+      >
+        <div style={LINE_DRAWN(done ? 'rgba(61,220,151,.45)' : '#4B6275')}>
+          <img
+            src={done ? QUEST_ART.check : '/icons/ui/panel-quests.webp'}
+            alt={say(SAY, done ? 'questCard.markReady' : 'questCard.markQuest')}
+            draggable={false}
+            data-quest-hud-mark={done ? 'ready' : 'quest'}
+            className={done ? 'bt-quest-hud-ready' : undefined}
+            style={lineMark}
+          />
+          <span style={{ ...LINE_TEXT, color: tone }} data-quest-hud-line="1" data-quest-hud-count={w.count || undefined}
+            title={charHudQuestLine(w, null)}>
+            {charHudQuestLine(w, null)}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

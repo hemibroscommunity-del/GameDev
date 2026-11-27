@@ -83,5 +83,7 @@ export function packStripNumbers(dec, fw, fh, n) {
   } else {
     copy(0, 0, n * fw, fh, 0, 0);
   }
-  return { w, h, idx, pal: pal.slice(0, count), cells: L ? cells : null, n };
+  /* v2.3.6209: + `feet`, each frame's row under its art (trimCellOf's `by`), packed or not: the
+     frame's own ground, for a dying monster's shadow (src/game/frameFoot.js) */
+  return { w, h, idx, pal: pal.slice(0, count), cells: L ? cells : null, n, feet: whole ? null : cells.map((c) => c.by) };
 }
