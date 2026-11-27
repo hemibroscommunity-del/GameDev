@@ -68,8 +68,14 @@ export function coachClear(box, pg, style) {
     : typeof style.bottom === 'number' ? box.h - style.bottom - h : null;
   if (top == null) return style;
   const lo = (pg.wx || 0) + 8, hi = (pg.wx || 0) + (pg.pw || box.w) - 8;
+  /* the ceiling: the top bar's foot, or under the top-left HUD and its quest
+     line (the coach's own reading, pg.qh: charHudSpan's one box) where the
+     card's span crosses it: clearing the controller never puts it there */
+  let ceil = COACH_CEIL;
+  const q = pg.qh;
+  if (q && q.width > 0 && style.left < q.right - box.x && style.left + w > q.left - box.x) ceil = Math.max(ceil, q.bottom - box.y + 8);
   const got = tutorTop(box, pg.sheet || 0, { left: style.left, top, width: w, height: h },
-    { slide: COACH_SLIDE, minL: lo, maxR: hi, ceil: COACH_CEIL });
+    { slide: COACH_SLIDE, minL: lo, maxR: hi, ceil });
   if (!got.moved) return style;
   const out = Object.assign({}, style, { left: got.left, top: got.top, bottom: undefined });
   if (got.cut > 0) { out.maxHeight = Math.max(24, h - got.cut); out.overflowY = 'auto'; }
