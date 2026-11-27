@@ -380,12 +380,40 @@ Screens: hud-pvp, nml-popup, hud-outlaw
 - The player frame, top-left under the bar: your level, an HP bar with its number and an energy bar, a thin mana bar too while a staff is in hand. The owner asked for it on 2026-11-02 ("Yes, always on: compact: your face, level, an HP bar and an energy bar at the top-left; the quest card moves just under it. Tap it to open your Bro page.") after the desktop playtest's "player status not showing". An earlier identity strip was cut as "way too busy" (v2.3.1848–1857) because it carried the name, XP and gold too; this one is kept to the level and the bars. **Since v2.3.4093 there is no picture in it** (the owner, 2026-11-03: "Remove the character pfp in the top left corner if you haven't already"): the face (64 px on a phone, 96 on a computer, v2.3.3974) is gone on every layout, the level is a round gold badge beside the bars, the frame is as tall as the bars need (40 px on a phone), and the whole frame still opens the Bro page. Your portrait still shows on the dashboard's Character button. The quest card and the status chips start under the frame (`--bt-hud-top`). The bar over your own head stays.
 
 **Please don't suggest:**
-- The player frame back on the game screen (the owner took it away, v2.3.4163), or the name, XP or gold in any such frame (the "way too busy" strip).
+- Health or energy back on the game screen's top left, or the gold in anything there (the owner took the player frame away, v2.3.4163; their later word, 2026-11-26, brought back the face, the name, the combat level and one weapon's XP bar as the character HUD, and no more: see "The character HUD (top left)", v2.3.6781).
 - The gold or the achievement points back on the top bar (the owner moved them to the Gear tab and the Bro card, v2.3.4183).
 - A banner, a chat line or a sound on crossing into No man's land.
 - The place's name or a safety chip back in the top bar's centre (the owner moved them to the minimap's plate, v2.3.4113).
 
 Sources: src/ui/mobile/NmlBadge.jsx, src/ui/mobile/placeName.js, src/game/placeSafety.js, src/ui/PlayerFrame.jsx, server/src/nomansland.js, docs/specs/no-mans-land.md
+
+## The character HUD (top left)
+Screens: charhud, charhud-side, charhud-desk
+
+**What it is for:** Who you are and how you are progressing, always, whatever menu is open: the owner, 2026-11-26 (docs/design/UI_FEEDBACK_2026-11-26.md part 1): "I strongly agree with moving the character portrait into the top-left corner. It gives players a persistent sense of identity and progression, regardless of which menu they have open." "Portrait: Always visible and tappable. Name and combat level: Immediately adjacent to the portrait. XP bar: Persistent gold progression bar. Quest: Smaller, single-line tracker underneath." "Since combat level is determined by the highest weapon level, I would display the XP progress of whichever weapon is closest to increasing the overall combat level. Label the XP bar with that weapon so players understand the relationship." "Tapping the portrait should immediately open the character dashboard." And: "the upper HUD tells you who you are and how you're progressing, while the bottom dashboard lets you manage your character. Those two areas shouldn't unnecessarily repeat each other's information."
+
+**Decisions, and why:**
+- Top left under the top bar, opposite the minimap (v2.3.6781, card UI3 PR 2; src/ui/hud/CharacterHud.jsx, its rules src/game/charHud.js). The face is the portrait the dashboard already bakes (no second bake, no new picture in memory); beside it the name (13 px, one line) and "Lv N" in gold, the combat level; under them the weapon's small picture, its word and a gold bar with "45 / 120" in it. 184 x 52 upright and on a computer; sideways 176 x 48, the face drawn 40 in a 44 px tap box.
+- Which weapon: the one whose next level raises the combat level soonest. With one level (the level is your best weapon's) only a weapon AT the top level can raise it, so it is the one of those with the largest share of its next level; a weapon below the top is never shown, however close it is to its own next level (a Sword at 90% of level 10 beside a Bow at 10% of level 12 shows the Bow). At the last level the bar is full and says "Max". Before the worker's record comes, the face and the name only, never a guessed "Lv 1".
+- The weapon's XP moves in the HUD's bar now, so the top bar's passing XP slot is quiet while the HUD is up (it only ever showed weapon XP): never both. A gain on another weapon shows only its "+N XP" with its small picture over the bar's end; the bar stays on its weapon. A kill's "+N XP" flies to the HUD's number.
+- The whole HUD is one button: a tap (a click on a computer, which never swings) opens Bro, the Menu's Bro page.
+- The tracked quest is ONE line under it, "title · count · objective" (the owner's own "[Into the Wild · 3/5 · Defeat 5 monsters]"), never wrapping; between quests "Next: <quest> · Talk to <giver>" and "+n more". Its tap opens that quest. The fold of v2.3.4207 gives way to it: the one line is the folded form.
+- The status chips (the snowflake, the flame, the buffs) and the party chip move down under the stack by the HUD's height. Sideways the room above the controller is short (about 140 px at 667 x 375), so there the status chips sit just under the quest line and the party chip stands BESIDE the HUD, under the top bar; nothing crosses at 375 x 667 or 667 x 375 (on the test box).
+- `?hud=0` (remembered on the device; `?hud=1` forgets) gives back the old top left exactly: the full quest card with its fold, the top bar's XP, the chips where they were.
+
+**Tried before, and changed:**
+- An identity strip with the name, XP and gold, cut as "way too busy" (v2.3.1848–1857).
+- The player frame, asked for 2026-11-02 ("Yes, always on: compact: your face, level, an HP bar and an energy bar at the top-left", v2.3.3974).
+- Its face out, 2026-11-03 ("Remove the character pfp in the top left corner if you haven't already", v2.3.4093).
+- The frame out, 2026-11-03 ("No remove them from the game screen: they're already seeing it on the dashboard and whenever they enter combat or have any resource depletion it appears above their character head anyway", v2.3.4163).
+- The reversal, 2026-11-26: the face, the name, the level and one weapon's XP bar back as this HUD, by the owner's later word (v2.3.6781). Health and energy stay off.
+
+**Please don't suggest:**
+- Health, energy or mana in the HUD (the owner's later word lists the face, the name, the level, the XP bar and the quest line, no more).
+- The online player count on the HUD (it left in v2.3.1227; the owner suggests the Social menu or a small mark in the top bar, a later step's).
+- A second XP bar for weapon XP in the top bar while the HUD is up.
+
+Sources: docs/design/UI_FEEDBACK_2026-11-26.md, docs/plan/cards/UI3-hud.md (on claude/plan-orc), src/ui/hud/CharacterHud.jsx, src/ui/hud/charHud.css, src/ui/hud/hudColumn.js, src/game/charHud.js, src/ui/QuestCard.jsx, src/ui/mobile/ZoneHeader.jsx, src/ui/panels/PartyHUD.jsx, src/ui/mobile/QuestCoach.jsx, src/styles/game.css, tools/guards/char-hud.test.mjs, tools/qa/mp/mp-charhud.mjs
 
 ## Townsfolk, quest badges and the keepers
 Screens: near-mayor

@@ -156,6 +156,7 @@ const FORMS = {
   'hemiface': '1',
   'herecells': '0',
   'holdauto': '0',
+  'hud': '0',
   'hudbars': '0',
   'iconretry': '0',
   'jumpbtn': '0',

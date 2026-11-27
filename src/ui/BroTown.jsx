@@ -629,6 +629,7 @@ import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "ta
 import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
 import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.4040: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
+import CharacterHud from '@/ui/hud/CharacterHud.jsx'; import { hudColumnStyle } from '@/ui/hud/hudColumn.js';   /* v2.3.6781: the character HUD above it, and the status column's place */
 import { fineInput, computerFrame } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { act } from '@/game/actions.js';   /* v2.3.5192: the page's requests leave through the action door (card K PR 7, the last of the family) */
 
@@ -14343,15 +14344,7 @@ export var BroTown = function BroTown(_ref0) {
       WebkitTapHighlightColor: 'transparent'
     }
   }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 'calc(var(--bt-hud-top, 56px) - 12px)', /* v2.3.4163: as before the player frame (44 under a 1x bar), following the bar as it grows (v2.3.3974-v2.3.4093 put them under the frame) */
-      left: 8,
-      zIndex: 18,
-      fontSize: 11,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.6)'
-    }
+    style: hudColumnStyle() /* v2.3.6781: the status column's place, under the HUD's stack (src/ui/hud/hudColumn.js; v2.3.4163's place its fallback) */
   }, React.createElement(ElemStatusChips, { stateRef: stateRef }) /* v2.3.2996: the snowflake, the flame, the slime */,
   /* v2.3.3120: pet trapping -- the TRAP pop-up over a targeted monster and the
      card for a new pet (each on its own clock; game/trapping.js) */
@@ -14523,7 +14516,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 800,
       animation: 'pulse-dot 1s ease-in-out infinite'
     }
-  }, "\u2694\uFE0F DUEL")), /* v2.3.3918: the pinned quest card (src/ui/QuestCard.jsx) */ React.createElement(QuestCard, { rpgState: rpgState, live: stateRef.current }), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
+  }, "\u2694\uFE0F DUEL")), /* v2.3.3918: the pinned quest card (src/ui/QuestCard.jsx) */ React.createElement(CharacterHud, { rpgState: rpgState, live: stateRef.current }) /* v2.3.6781: the character HUD, top left (src/ui/hud/) */, React.createElement(QuestCard, { rpgState: rpgState, live: stateRef.current }), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
     if (!dd || dd.length === 0) return null;
     var active = dd.filter(function (d) {

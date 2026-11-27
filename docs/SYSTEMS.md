@@ -383,6 +383,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: compare, equipProject, workspace
 - **Files**: `src/game/`: gearShowcase
 - **Files**: `src/game/`: menuTile, gearGeometry
+- **Files**: `src/game/`: charHud
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet
