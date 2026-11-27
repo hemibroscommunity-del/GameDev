@@ -222,26 +222,15 @@ export function rimPast(share, was, full) {
   return was ? share >= off - 1e-9 : share >= at - 1e-9;
 }
 
-/** The band's height on this page, CSS px: the `--sheet-h` stamp (the zones
- *  end there: TouchControls), else `--dash-h`; 0 off a page.  The root's own
- *  inline style, a string the page wrote: no layout is read. */
-export function bandPx() {
-  try {
-    const st = typeof document !== 'undefined' && document.documentElement && document.documentElement.style;
-    if (!st) return 0;
-    return parseFloat(st.getPropertyValue('--sheet-h')) || parseFloat(st.getPropertyValue('--dash-h')) || 0;
-  } catch (e) { return 0; }
-}
-
 /** Where the thumb landed, and the glass it moves on: { x, y, l, t, r, b },
  *  CSS px, the window's box (`vw` wide; sideways the play column is centred
  *  in it, and a held thumb goes on past the column onto the glass) down to
- *  the band's top (`vh` less `band`, else bandPx(): the zones end there,
- *  `position: fixed` in the window).  Made once a touch (BroTown's
+ *  the band's top (`vh` less `band`: sheetStamp.js sheetPx, the --sheet-h
+ *  the zones end at, `position: fixed` in the window; 0 when none).  Made once a touch (BroTown's
  *  touchstart), read by stickReach. */
 export function stickFrom(x, y, vw, vh, band) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !(vw > 0) || !(vh > 0)) return null;
-  const b = typeof band === 'number' && band >= 0 ? band : bandPx();
+  const b = typeof band === 'number' && band >= 0 ? band : 0;
   return { x, y, l: 0, t: 0, r: vw, b: vh - b };
 }
 

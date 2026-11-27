@@ -98,7 +98,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';
 import { rimPast, rimSprintOn, rimSprintLive, rimSprinting, rimSprint } from '../../src/game/stickZones.js';   /* v2.3.6545: the rim's sprint (card CT item 6) */
-import { fullPushOn, stickFrom, stickRoom, stickReach, bandPx } from '../../src/game/stickZones.js';   /* v2.3.6647: the full push, reachable from anywhere (card PAD part 12) */
+import { fullPushOn, stickFrom, stickRoom, stickReach } from '../../src/game/stickZones.js';   /* v2.3.6647: the full push, reachable from anywhere (card PAD part 12) */
 import { updateSprint, isSprinting, sprintStepFlag, stopSprint, startSprint } from '../../src/game/sprint.js';   /* v2.3.6542: + the stick's one writer in every mode */
 import { findIn, readSystem, systemNames } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6541 (sitting 57's mend): the call read off the syntax tree */
@@ -1016,19 +1016,11 @@ if (_fpLoc) Object.defineProperty(globalThis, 'location', _fpLoc); else delete g
   Q.rpg.stamina = 2; pushes(Q, 3);
   check(`12f. rested, a sprint, the bar empty again: three more pushes say them once more (${says.length})`, ran && says.length === 2 && !on(Q));
 
-  /* 12g. the landing box: the band read off the page's own stamp, BroTown's touchstart makes it */
-  const hadDoc = globalThis.document;
-  try {
-    globalThis.document = { documentElement: { style: { getPropertyValue: (k) => (k === '--sheet-h' ? '212px' : k === '--dash-h' ? '180px' : '') } } };
-    const f = stickFrom(10, 20, 390, 844);
-    check('12g. the band\'s height off --sheet-h (212): the box down to the band\'s top', bandPx() === 212 && f && f.b === 632 && f.r === 390 && f.l === 0 && f.t === 0 && f.x === 10 && f.y === 20, f);
-    globalThis.document = { documentElement: { style: { getPropertyValue: (k) => (k === '--dash-h' ? '180px' : '') } } };
-    check('12g. ...no --sheet-h: --dash-h (180)', bandPx() === 180);
-  } finally {
-    if (hadDoc === undefined) delete globalThis.document; else globalThis.document = hadDoc;
-  }
-  check('12g. off a page: no band; no box without a landing point or a width', bandPx() === 0 && stickFrom(NaN, 1, 390, 844, 0) === null && stickFrom(1, 1, 0, 844, 0) === null);
-  check('12g. BroTown\'s touchstart keeps where the thumb landed on the glass (stickFrom, the window\'s kept size: sideways the column is centred in it)', findIn('ui', /lts\.from = stickFrom\(t\.clientX, t\.clientY, winVw\(\), winVh\(\)\);/).length === 1);
+  /* 12g. the landing box: the band's height the page last stamped (sheetStamp.js sheetPx, a kept size), BroTown's touchstart makes it */
+  const f = stickFrom(10, 20, 390, 844, 212);
+  check('12g. the band\'s height (212): the box down to the band\'s top, the window\'s width', f && f.b === 632 && f.r === 390 && f.l === 0 && f.t === 0 && f.x === 10 && f.y === 20, f);
+  check('12g. no band handed: the window\'s height; no box without a landing point or a width', stickFrom(1, 1, 390, 844).b === 844 && stickFrom(NaN, 1, 390, 844, 0) === null && stickFrom(1, 1, 0, 844, 0) === null);
+  check('12g. BroTown\'s touchstart keeps where the thumb landed on the glass (stickFrom, the window\'s kept size: sideways the column is centred in it)', findIn('ui', /lts\.from = stickFrom\(t\.clientX, t\.clientY, winVw\(\), winVh\(\), sheetPx\(\)\);/).length === 1);
 
   /* 12h. the two buttons (`?manual=5`, stickDrive): the same rule */
   const R5 = 41.6, from5 = stickFrom(40, B - 120, VW, VH, BAND);

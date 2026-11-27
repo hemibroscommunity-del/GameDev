@@ -604,7 +604,7 @@ import { ctlLandscape } from './mobile/bandSideways.js'; /* v2.3.4152: the contr
 import { playIsLandscape, winVw, winVh } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
-import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
+import { stampSheetH, sheetPx } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
@@ -11153,7 +11153,7 @@ export var BroTown = function BroTown(_ref0) {
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
-      lts.from = stickFrom(t.clientX, t.clientY, winVw(), winVh());   /* v2.3.6647: where it landed on the glass (the window: sideways the play column is centred in it), the full push's reach (stickZones.js stickReach; card PAD part 12) */
+      lts.from = stickFrom(t.clientX, t.clientY, winVw(), winVh(), sheetPx());   /* v2.3.6647: where it landed on the glass (the window: sideways the play column is centred in it), the full push's reach (stickZones.js stickReach; card PAD part 12) */
       lts.moved = false;
       /* No cycle fire on touchstart -- v2.3.98 moved the trigger to
          touchend so a quick re-press to start moving after a single
