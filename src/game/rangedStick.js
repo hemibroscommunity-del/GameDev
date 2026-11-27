@@ -48,6 +48,7 @@
  * Where it is called (BroTown.jsx gains calls, not logic): the step `input`'s
  * frame (discFrame, in latchFrame's place), the disc's press, drag and lift
  * (discPress, discMove, discLift: each before or after today's own line,
+ * and discLiftMissed before the lift's lookup: v2.3.6649),
  * which a sword still runs whole), the disc's look (discLook, in latchLook's
  * place).  Node tests it: tools/guards/ranged-stick.test.mjs.
  */
@@ -178,6 +179,32 @@ export function discLift(S, now, tap, cancel) {
   if (cancel === true) return null;
   if (typeof tap === 'function') tap(S, now);
   return 'tap';
+}
+
+/** v2.3.6649: A LIFT THE PAGE MISSED (sitting 73's reviewer, reading #2425
+ *  after it landed): BroTown's bE returned at its `if (!t) return;` (the
+ *  lift's touch not in e.changedTouches) BEFORE the stick's release at its
+ *  end, so a bow or a staff whose lift the phone missed KEPT AIMING and the
+ *  bow KEPT SHOOTING after the thumb was off, until the next press -- the
+ *  hole tag 6548 had closed for the latch (twoButtonRelease above the
+ *  lookup: "a 150 ms tap's lift missed it there") and 6648's stick did not
+ *  follow.  The owner's rule for the bow (16:35): "keeps shooting as long as
+ *  held down" -- so it stops when the thumb lifts, always.
+ *
+ *  Asked on EVERY touchend and touchcancel bE hears, before that return.
+ *  `gone` Attack's finger is not in e.touches (off the screen), `found` the
+ *  event's own changedTouches held it, `release` BroTown's knob-home
+ *  (handleRBtnRelease('b')).  A stick's press whose finger is gone and whose
+ *  lift was missed: released here, once, and let go as a CANCEL (no tap's
+ *  shot: when it lifted is not known) -- 'missed'.  A lift whose touch IS
+ *  found: nothing here (bE's own line at its end releases it, once), null;
+ *  so too a finger still down, a sword's press (twoButtonRelease's, today's)
+ *  and a press already spent. */
+export function discLiftMissed(S, gone, found, release) {
+  if (found === true || gone !== true || _press.kind !== 'stick') return null;
+  if (typeof release === 'function') release();
+  discLift(S, 0, null, true);
+  return 'missed';
 }
 
 /** v2.3.6648 (the owner, 2026-11-27, 16:35: "Make it so bow keeps shooting

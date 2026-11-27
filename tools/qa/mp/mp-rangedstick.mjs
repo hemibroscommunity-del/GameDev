@@ -19,6 +19,8 @@
  *      and the monster is hit (a monster_damage claim naming it);
  *   4. A TAP, the body turned away from the monster: one arrow, the way the
  *      bro faces, never toward the monster;
+ *   4b. (upright; v2.3.6649) the bow held and shooting, its lift MISSED by
+ *      the page (eaten), another finger's lift: the shots stop;
  *   5. THE STAFF (upright): the same as 2 and 3, its bolts the thumb's way;
  *   6. THE SWORD (upright): the disc is a latch, and a press with the monster
  *      in sight locks it, as today;
@@ -222,6 +224,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
           got.shots.length === 1 && face.tap != null && off(got.shots[0].ang, face.tap) < 2 * DEG && off(face.tap, away) < 30 * DEG && (!s4b.mon || off(got.shots[0].ang, s4b.mon.a) > 90 * DEG) && s4b.latch === 'idle' && s4b.lock == null,
           { shots: got.shots, face, away, s4b });
       } else rec.skip(`4. ${label}: a tap`, 'the monster is gone', s4);
+
+      /* ── 4b ── v2.3.6649: A LIFT THE PAGE MISSED (sitting 73's reviewer: bE
+         returned at its touch lookup before the stick's release, so a missed
+         lift kept the bow shooting after the thumb was off).  The bow held and
+         shooting; its real lift swallowed before the page hears it (a capture
+         listener, once); then another finger's lift reaches bE, Attack's
+         finger gone from e.touches and not in its changedTouches: the shots
+         stop.  Finger 5, never 2: the stale press is the next press's to let
+         go (bS's v2.3.3496 rule), and a press with the same id would be taken
+         for it. */
+      if (full) {
+        const s4c = await NOW(P, mon.id);
+        const a = s4c.mon ? s4c.mon.a + Math.PI : 0;
+        await frames(P, 6); await P.page.waitForTimeout(1200);
+        const end = { x: RD.x + DRAG * Math.cos(a), y: RD.y + DRAG * Math.sin(a), id: 5 };
+        const m0 = await MARK(P);
+        await touch('touchStart', [{ x: RD.x, y: RD.y, id: 5 }]); await frames(P, 1);
+        await touch('touchMove', [{ x: RD.x + 14 * Math.cos(a), y: RD.y + 14 * Math.sin(a), id: 5 }]); await touch('touchMove', [end]);
+        await P.page.waitForFunction((m) => window.__rsShots.length >= m + 2, m0.shots, { timeout: 30000, polling: 50 }).catch(() => null);
+        const held = await NOW(P, mon.id);
+        await P.page.evaluate(() => { const eat = (e) => { e.stopImmediatePropagation(); window.removeEventListener('touchend', eat, true); window.__rsAte = (window.__rsAte || 0) + 1; }; window.addEventListener('touchend', eat, true); });
+        await touch('touchEnd', [end]);
+        await frames(P, 2);
+        const ate = await P.page.evaluate(() => window.__rsAte || 0);
+        await P.page.evaluate(() => {   /* another finger's lift: Attack's not on the screen, not in the list */
+          const ev = new Event('touchend', { cancelable: true });
+          Object.defineProperty(ev, 'touches', { value: [] });
+          Object.defineProperty(ev, 'changedTouches', { value: [{ identifier: 99, clientX: 10, clientY: 10 }] });
+          window.dispatchEvent(ev);
+        });
+        await frames(P, 4);
+        const m1 = await MARK(P);
+        await frames(P, 40);
+        const after = await NOW(P, mon.id);
+        const late = (await SINCE(P, m1)).shots.filter((x) => !x.tap);
+        rec.ok(`4b. ${label}: the bow held and shooting (${m1.shots - m0.shots} shots), its lift MISSED (eaten: ${ate}), another finger lifts: the aim and the held attack end, no arrow in the next 40 frames`,
+          held.aiming && held.auto && m1.shots - m0.shots >= 2 && ate === 1 && !after.aiming && !after.auto && late.length === 0,
+          { held: { aiming: held.aiming, auto: held.auto }, ate, after: { aiming: after.aiming, auto: after.auto }, late: late.slice(0, 3) });
+      }
 
       if (full) {
         /* ── 6 ── the sword keeps its latch */

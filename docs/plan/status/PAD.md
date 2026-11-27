@@ -1,6 +1,6 @@
 card: PAD
-branch: claude/plan-pad-12-fullpush (part 12, from main)
-prs: #2354, #2363, part 6, #2387 part 8, #2393 part 9 (merged); #2402 part 10 (6645); part 11 (6646, draft); part 12 (6647, draft)
+branch: claude/plan-pad-14-misslift (part 14, from main)
+prs: #2354, #2363, part 6, #2387 part 8, #2393 part 9 (merged); #2402 part 10 (6645); part 11 (6646, draft); part 12 (6647, draft); #2425 part 13 (6648, merged); part 14 (6649, draft)
 state: ready
 
 ## Done
@@ -12,18 +12,15 @@ state: ready
 - 6644 part 9 ("remove sprint button"): the stick past its rim sprints.
 - 6645 part 10 ("I don't like the gold"): every public/ui/pad picture cut
   off the owner's steel sheet; padSkin CUT_R 420, TIER_BAND 75: DEPLOYS.
-- 6646 part 11 ("Turn steel"): padSkin.js PAD_STEEL (the sheet's Attack
-  face); the ready glow DEEBF6 (on the rim 4.58, gold 3.12/4.02); the
-  tier's rings a CSS steel ring; the energy strip a steel twin
-  (tools/art/steel-strip.mjs: full/empty 9.37, gold 7.58); `?padgold=1`.
-  Guard pad-steel.test (26; 13 plants red); mp-padskin 8g, 9.
-- 6647 part 12 (the owner's bug, card PAD-fullpush; branch
-  claude/plan-pad-12-fullpush): a FULL push sprints (1.0 of the reach on,
-  0.8 off), the reach the drawn radius or the room to the glass's edge less
-  16 px (the band's top going south), never under 18 (stickZones.js
-  stickReach); out of energy the bro walks on, no flicker; the words once
-  an emptying; `?fullpush=0` yesterday's 1.25.  Only server/test changes
-  under server/: deploys nothing.
+- 6646 part 11 ("Turn steel"): padSkin.js PAD_STEEL; `?padgold=1`.
+- 6647 part 12 (card PAD-fullpush): a FULL push sprints (stickZones.js
+  stickReach); `?fullpush=0` yesterday's 1.25.
+- 6648 part 13 (#2425): the two buttons' Attack a stick for a bow or staff.
+- 6649 part 14 (sitting 73's reviewer, on #2425): a bow's or a staff's
+  stick lets go on EVERY lift of Attack, its touch found or missed
+  (rangedStick.js discLiftMissed, before bE's `if (!t) return;`): a missed
+  lift no longer keeps the bow shooting.  Guard ranged-stick-lift.test;
+  mp-rangedstick 4b.
 
 ## Found
 - The energy blocks show only briefly after a spend: no in-game picture
