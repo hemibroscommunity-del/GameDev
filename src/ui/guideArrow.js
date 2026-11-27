@@ -513,7 +513,8 @@ let _sheetPx = -1;
 function tick(getS) {
   _sheetPx = -1;
   if (tutorKeep().length) {
-    try { _sheetPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h')) || 0; } catch (e) { _sheetPx = -1; }
+    /* the shell's own edge: --sheet-h, else --dash-h (PadHousings.jsx `bottom`) */
+    try { const cs = getComputedStyle(document.documentElement); const v = parseFloat(cs.getPropertyValue('--sheet-h')); _sheetPx = v >= 0 ? v : (parseFloat(cs.getPropertyValue('--dash-h')) || 0); } catch (e) { _sheetPx = -1; }
   }
   const now = Date.now();
   const dt = _lastTick ? Math.min(1000, now - _lastTick) : 0;

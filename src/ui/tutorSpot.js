@@ -17,6 +17,10 @@ import { installHintBus } from '@/ui/mobile/installHintBus.js';
 /** the housings now, px up from the band's top, x from the shell's left
  *  (the window's: the shell is `left: 0`, fixed) */
 export function tutorKeep() {
+  /* sideways with the band's page open the controller steps aside (game.css
+     html.bt-band-side-open: hidden, not touchable): nothing to keep clear of.
+     A class asked, never the page's layout */
+  try { if (document.documentElement.classList.contains('bt-band-side-open')) return []; } catch (e) { /* no page */ }
   const L = padNow(playIsLandscape());
   if (!L) return [];
   const T = specialLayout(L, padTierBus.get());
@@ -77,7 +81,9 @@ export function coachClear(box, pg, style) {
   const got = tutorTop(box, pg.sheet || 0, { left: style.left, top, width: w, height: h },
     { slide: COACH_SLIDE, minL: lo, maxR: hi, ceil });
   if (!got.moved) return style;
-  const out = Object.assign({}, style, { left: got.left, top: got.top, bottom: undefined });
+  /* hung by its BOTTOM where the rule put it: the card's height is last paint's,
+     and a card a line taller grows up, never down onto the housing */
+  const out = Object.assign({}, style, { left: got.left, top: undefined, bottom: box.h - got.top - (h - (got.cut || 0)) });
   if (got.cut > 0) { out.maxHeight = Math.max(24, h - got.cut); out.overflowY = 'auto'; }
   return out;
 }

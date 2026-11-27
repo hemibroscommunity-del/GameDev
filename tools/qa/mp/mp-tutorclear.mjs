@@ -59,7 +59,9 @@ const sample = (P, args) => P.page.evaluate(({ WORDS, TOP, REFH }) => {
   const out = { hous: [], hits: [], sweep: [], high: [], shown: [] };
   const shell = document.querySelector('[data-padhousing="shell"]');
   const pad = window.__btPad;
-  if (shell && pad && pad.layout) {
+  /* a shell stepped aside (the sideways band's page open: visibility hidden) holds nothing */
+  const shellShown = shell && getComputedStyle(shell).visibility !== 'hidden' && getComputedStyle(shell).display !== 'none';
+  if (shellShown && pad && pad.layout) {
     const r = shell.getBoundingClientRect();
     const L = pad.layout, k = r.height / REFH;
     const rise = pad.tier && pad.tier.rise > 0 ? pad.tier.rise : 0;
