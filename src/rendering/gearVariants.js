@@ -15,6 +15,7 @@
  * cross-product costs nothing.
  */
 import { materialTint, metalIconPath } from './traits/materialTints.js';
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 export const GEAR_VARIANTS = {
   copperplate: { slot: 'chest', art: 'steelplate', material: 'copper', name: 'Copper Plate' },
@@ -128,16 +129,17 @@ export function armorIconFor(slot, material) {
   /* v2.3.1760: the per-metal filename is a RULE (metalIconPath), shared with
      the generator that writes those files, so a new metal needs no entry
      here. */
-  return metalIconPath(ICON_DEFAULT[slot] || null, material);
+  /* v2.3.6743: a request's address, with its file's version (card KEEP PR 3b) */
+  return assetUrl(metalIconPath(ICON_DEFAULT[slot] || null, material));
 }
 
 /** The icon for a gear id (the cosmetic layer's own id, not a stat piece). */
 export function gearIdIcon(id) {
   for (const slot of ['chest', 'legs']) {
-    if (id === ART_DEFAULT[slot]) return ICON_DEFAULT[slot];
+    if (id === ART_DEFAULT[slot]) return assetUrl(ICON_DEFAULT[slot]);
     const byMat = ART_BY_MATERIAL[slot];
     for (const mat of Object.keys(byMat || {})) {
-      if (byMat[mat] === id) return metalIconPath(ICON_DEFAULT[slot], mat);
+      if (byMat[mat] === id) return assetUrl(metalIconPath(ICON_DEFAULT[slot], mat));
     }
   }
   return null;

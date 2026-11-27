@@ -61,7 +61,14 @@ function backWord(to, titleOf) {
   return say(SAY, 'dashFrame.menu');
 }
 
-export function DashHeader({ nav, titleOf, menuMark }) {
+/* v2.3.6697 (card UI2-grip): the band's pull handle is gone (the owner,
+   2026-11-26: "It has an open button making pull handle redundant"), so the
+   fold's hook [data-dash-fold] -- how the harness, the coach, the guide arrow
+   and the rewards' flight find the fold -- is worn here, by the two controls
+   that ARE dashNav's 'fold': Gear when the band is folded ('min'), Close when
+   it is shown ('open').  `foldHook` false (`?bandgrip=1`: the handle wears it;
+   or sideways) wears none. */
+export function DashHeader({ nav, titleOf, menuMark, foldHook = false }) {
   const v = dashNavView(nav);
   const kind = !v.shown ? 'closed' : v.top ? 'page' : v.ws === 'gear' ? 'gear-root' : 'menu-root';
   const wrap = (child) => (
@@ -75,7 +82,7 @@ export function DashHeader({ nav, titleOf, menuMark }) {
     return wrap(
       <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
         <Ui2Tile size="primary" label={say(SAY, 'dashFrame.gear')} aria-label={say(SAY, 'dashFrame.gearAria')}
-          data-dash-ctl="gear" data-nav="dashboard" data-key={NAV_KEYS.dashboard}
+          data-dash-ctl="gear" data-nav="dashboard" data-key={NAV_KEYS.dashboard} data-dash-fold={foldHook ? 'min' : undefined}
           style={{ flex: '1 1 0', height: 44 }} {...frameTap(go({ type: 'gear' }))} />
         <Ui2Tile size="primary" label={say(SAY, 'dashFrame.menu')} aria-label={say(SAY, 'dashFrame.menuAria')}
           data-dash-ctl="menu" data-nav="hero" data-key={NAV_KEYS.more}
@@ -85,7 +92,7 @@ export function DashHeader({ nav, titleOf, menuMark }) {
     );
   }
 
-  const closeCtl = { 'data-dash-ctl': 'close', ...frameTap(go({ type: 'close' })) };
+  const closeCtl = { 'data-dash-ctl': 'close', 'data-dash-fold': foldHook ? 'open' : undefined, ...frameTap(go({ type: 'close' })) };
   if (kind === 'gear-root') {
     return wrap(
       <Ui2Header title={say(SAY, 'dashFrame.gear')} closeStart menuNext menuMark={menuMark}

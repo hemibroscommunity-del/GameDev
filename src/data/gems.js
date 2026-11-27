@@ -19,6 +19,7 @@
  * gems.js's set, and the keys its keys.  Imports only elements.js (itself
  * import-free), so the audit reads it in plain node. */
 import { ELEMENTS } from './elements.js';
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* every element a gem can be: the amulets' nine and the weapons' eight --
    Flora is a weapon's, Dark and Light an amulet's (gems.js GEM_ELEMENTS) */
@@ -67,7 +68,7 @@ export function gemColor(e) {
  *  element's own icon -- already drawn in the gem's shape -- for both. */
 export function gemIcon(key) {
   const g = parseGemKey(key);
-  return g ? '/icons/ui/elem-' + g.element + '.webp' : null;
+  return g ? assetUrl('/icons/ui/elem-' + g.element + '.webp') : null;   /* v2.3.6743: its file's version */
 }
 
 /** How many gems of `element` (raw or cut) this character holds: the bag, and

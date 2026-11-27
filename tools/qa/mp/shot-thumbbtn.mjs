@@ -42,6 +42,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+export const lane = 'full';   /* v2.3.6644 (card PAD part 9): run.mjs plays no scenario that names no lane, and this one named none (so it ran nowhere) */
 
 /* v2.3.3799: + the smallest phone and one sideways (the owner's "positioned
    orbiting southwest of the large contextual button", upright and sideways) */
@@ -260,7 +261,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tightAll = [];
   for (const ph of PHONES) {
     const tag = `${ph.width}x${ph.height}`;
-    const P = await H.newPlayer(browser, { name: 'Thumb' + ph.width, wsPort, webPort, viewport: { width: ph.width, height: ph.height }, touch: true, dpr: 2, world: 'wheel' });
+    const P = await H.newPlayer(browser, { name: 'Thumb' + ph.width, wsPort, webPort, viewport: { width: ph.width, height: ph.height }, touch: true, dpr: 2, world: 'wheel', query: 'rimsprint=0' });   /* v2.3.6644 (card PAD part 9): the sprint button's place is one of the boxes measured; drawn only with `?rimsprint=0` now */
     try {
       await H.enterWorld(P);
       const inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),

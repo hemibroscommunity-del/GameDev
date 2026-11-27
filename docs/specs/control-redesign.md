@@ -634,6 +634,7 @@ hold)" makes the attack the event and the drop its consequence, so the attack
 > Owner, after playing §8:
 > - "there should be a subtle visual perimeter around each monster that shows you when your contextual attack button can engage"
 > - "Change the auto targeting system to always be nearest enemy. Only way to pick target and lock it on is to tap on the monster"
+> - v2.3.6820 (card LOCK), 2026-11-26: "I'm often running into an issue where it will lock on the wrong target. I think it should go towards the nearest enemy or at least let you switch to nearest enemy." Inside the sword's reach the nearest always has the lock after a 120 ms dwell (no 12% step); a stick pushed toward one of two near-ties (within 25%) in front of it picks it at once; outside reach the 12% step stays. `src/game/lockPick.js`, `docs/specs/lock-pick.md`; `?locknear=0` is the old rule.
 > - "The attack button isn't lit up when it becomes available (font hard to see)"
 > - "tutorial might need to change with the new attack system and lack of right joystick"
 
@@ -730,7 +731,7 @@ proposal in a real browser before it shipped.
 |---|---|---|
 | 9.1 | Does target-relative movement follow the AUTO target? | **No** — only `engagedStance`. Otherwise walking past a monster puts you in a backwards jog. |
 | 9.2 | Does tapping the same monster clear the target, or release it to auto? | **Release to auto.** With acquisition automatic, `null` means "resume", and the next frame re-acquires. |
-| 9.3 | How much nearer must a rival be before auto switches? | **12%** (`AUTO_SWITCH_MARGIN`). Pure nearest-every-frame flip-flops between two monsters at equal distance. |
+| 9.3 | How much nearer must a rival be before auto switches? | **12%** (`AUTO_SWITCH_MARGIN`). Pure nearest-every-frame flip-flops between two monsters at equal distance. **v2.3.6820**: only outside the sword's reach now (`LOCK_PICK.FAR_STEP`); inside it a 120 ms dwell (`LOCK_PICK.DWELL_MS`, `docs/specs/lock-pick.md`). |
 | 9.4 | Does the target keep the perimeter ring, or only the caret? | Ring **and** reticle; the caret goes to the others. |
 | 9.5 | Is "3 seconds" the pile or the whole burrow? | **The pile** (total move 4200ms), the same reading v2.3.2225 used. `PILE_MAX_MS 1800` makes the whole move 3s. |
 | 9.6 | Is "20 seconds" start-to-start or end-to-start? | **Both** — stamped at the start as the re-entry guard and re-stamped at the end, so 20s is a floor on downtime. Start-stamp alone gives 15.8s. |
