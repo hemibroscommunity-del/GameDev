@@ -580,11 +580,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }, (v) => Array.isArray(v) && v.length >= 1, { timeout: 8000, label: 'the minimap\'s pins' }).catch(() => null);
         rec.ok('...on the minimap too: the quest pin of every one the box shows, in the owner\'s picture',
           Array.isArray(mini) && mini.length >= 1 && mini.every((q) => q.state === 'offer' && TOWN.includes(q.name) && q.art), mini);
-        const more = await H.readState(P, () => {
-          const c = document.querySelector('[data-quest-hud-more]');
-          return c ? { n: Number(c.getAttribute('data-quest-hud-more')), text: (c.innerText || '').trim() } : null;
-        });
-        rec.ok('...and the quest card says how many more have work: 5, on the map', !!more && more.n === 5 && /5 more/.test(more.text), more);
+        /* v2.3.6790 (card UI3 PR 10): the owner, 2026-11-27, "Maybe just keep
+           quests in quest area for now. Leave only character hud in top left
+           corner": with the character HUD up no quest card is drawn in the
+           world, so its "5 more" is gone with it (?questline=1 brings the line
+           back: mp-charhud 4); the six are on the minimap and the world map */
+        const more = await H.readState(P, () => ({ hud: !!document.querySelector('[data-charhud-box]'), card: !!document.querySelector('[data-quest-hud]') }));
+        rec.ok('...and the character HUD alone in the top left: no quest card drawn in the world', !!more && more.hud && !more.card, more);
         await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(true); });
         const big = await H.waitFor(P, () => {
           const m = window.__btWorldMap;
@@ -596,12 +598,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.evaluate(() => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); });
         await P.page.waitForTimeout(600);
       }
+      /* v2.3.6790: the road and the minimap lead on; no quest card in the
+         world to say "Next" (the HUD alone in the top left) */
       const road = await H.waitFor(P, () => {
-        const m = window.__btMinimap, c = document.querySelector('[data-quest-hud-next]');
-        return { npc: m && m.quest ? m.quest.npc : null, card: c ? c.getAttribute('data-quest-hud-next') : null,
-          text: c ? (c.innerText || '').replace(/\s+/g, ' ').trim() : '' };
-      }, (v) => v && v.npc === NAME_OF[nextStep.npc] && v.card === nextId, { timeout: 12000, label: 'the road to ' + nextStep.npc }).catch(() => null);
-      rec.ok(`${step.id}: handed on -- the road leads to ${NAME_OF[nextStep.npc]} and the quest card says "Next: ${nextStep.title || nextId}"`,
+        const m = window.__btMinimap, c = document.querySelector('[data-quest-hud]');
+        return { npc: m && m.quest ? m.quest.npc : null, card: !!c };
+      }, (v) => v && v.npc === NAME_OF[nextStep.npc] && !v.card, { timeout: 12000, label: 'the road to ' + nextStep.npc }).catch(() => null);
+      rec.ok(`${step.id}: handed on -- the road leads to ${NAME_OF[nextStep.npc]} (next: ${nextStep.title || nextId}), and no quest card drawn in the world`,
         !!road, road);
       continue;
     }

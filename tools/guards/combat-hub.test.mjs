@@ -26,6 +26,26 @@
  *   C10 the Points window and the pages reading the pools by two rules
  *   C11 two vocabularies (Melee or Magic on the new screens)
  *   C12 a weapon's page missing from the frame (no header, no Back to the hub)
+ * v2.3.6783 (card UI3-combat; the owner, 2026-11-26: "Eliminate the left-side
+ * Attributes column, consolidate the combat statistics into one summary
+ * strip, and give the six attributes a full-width three-by-two grid ... with
+ * Bow and Staff following the identical template"; "only show available
+ * points prominently when there are points to spend"):
+ *   C13 the left Attributes column kept (the old column's class, a fixed
+ *       width or flex-basis on the line, the line beside the grid), under a
+ *       media query included
+ *   C14 "0 points" drawn on the hub, or a door drawn gold or glowing at 0
+ *   C15 DPS (or Max HP) left raised
+ *   C16 Damage, Attack speed, Crit chance, Range each in a box of its own, or
+ *       not the children of ONE facts container
+ *   C17 Bow or Staff on a different template (a branch on `cat` that draws),
+ *       or a page not drawing from sheet/attrTemplate.jsx
+ *   C18 the six not all in view at 390 x 844 (the fold's rule, and the four
+ *       bands' sum in the style sheet, over 172)
+ *   C19 an attribute's tap no longer opening its preview
+ *   C20 the "+" (or the line's gold) drawn with no points
+ * The style sheet is read by a small rule reader (the server's packages, all
+ * CI installs, hold no CSS parser; ui3-weights.test reads its sheets so too).
  * The reads of a file are off its syntax tree (@babel/parser), an ALLOW list:
  * what may appear, never a pattern that must not.
  *
@@ -37,6 +57,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
   COMBAT_DOORS, COMBAT_PAGES, combatHubDoors, combatPools, combatLevel, pointsWords, spendPool, weaponAttributes, weaponOfPage,
+  pointsTone, attrPlus, weaponPageFold, WEAPON_PAGE_BANDS, WEAPON_PAGE_ROOM, hubArtSize,
 } from '../../src/game/combatHub.js';
 import {
   PROG3, prog3PoolFor, prog3PoolShared, setProg3XEnabled, setProg3ElemEnabled, setProg3SharedEnabled,
@@ -109,11 +130,16 @@ const FILES = {
   say: 'src/data/say/combatHub.js',
   popup: 'src/ui/mobile/InfoPopup.jsx',
   hero: 'src/ui/mobile/sheet/HeroExpanded.jsx',
+  /* v2.3.6783: the Shared page, the one template, the pages' style sheet and the kit's (its tokens) */
+  shared: 'src/ui/mobile/sheet/SharedPage.jsx',
+  tmpl: 'src/ui/mobile/sheet/attrTemplate.jsx',
+  css: 'src/ui/mobile/sheet/combatPage.css',
+  kitcss: 'src/ui/kit/ui2.css',
 };
 const SRC = {};
 for (const [k, f] of Object.entries(FILES)) SRC[k] = read(f);
 
-const REAL = { combatHubDoors, combatPools, combatLevel, pointsWords, spendPool, SRC, SUPPORT: null };
+const REAL = { combatHubDoors, combatPools, combatLevel, pointsWords, spendPool, pointsTone, attrPlus, weaponPageFold, SRC, SUPPORT: null };
 
 /* the page's supporting stats, off its tree: the array WEAPON_SUPPORT is declared with */
 function supportOf(src) {
@@ -121,6 +147,44 @@ function supportOf(src) {
   walk(src, { VariableDeclarator(p) { if (p.node.id.name === 'WEAPON_SUPPORT') { const a = p.node.init && p.node.init.arguments ? p.node.init.arguments[0] : p.node.init; arr = a && a.elements ? a.elements.map((e) => e.value) : null; } } });
   return arr;
 }
+
+/* ── v2.3.6783: the style sheet's rules (a small reader: comments out, @media blocks walked, each
+   rule its selector, its at-rule and its declarations) and the JSX's names and classes ── */
+function cssRules(text) {
+  const src = text.replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [];
+  let i = 0;
+  const block = (at) => {
+    while (i < src.length) {
+      let j = i;
+      while (j < src.length && src[j] !== '{' && src[j] !== '}') j++;
+      if (j >= src.length) { i = j; return; }
+      if (src[j] === '}') { i = j + 1; return; }
+      const sel = src.slice(i, j).trim();
+      i = j + 1;
+      if (/^@(media|supports|container|layer)/.test(sel)) { block(sel); continue; }
+      let k = i;
+      while (k < src.length && src[k] !== '}') k++;
+      const body = src.slice(i, k);
+      i = k + 1;
+      const decls = body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => { const x = d.indexOf(':'); return { prop: d.slice(0, x).trim().toLowerCase(), value: d.slice(x + 1).trim() }; });
+      rules.push({ sel, at: at || '', decls });
+    }
+  };
+  block('');
+  return rules;
+}
+const lastOf = (sel) => sel.split(',').map((x) => x.trim().split(/\s*[\s>+~]\s*/).pop() || '');
+const ruleOn = (rules, cls) => rules.filter((r) => lastOf(r.sel).some((c) => new RegExp('\\.' + cls.replace(/-/g, '\\-') + '(?![\\w-])').test(c)));
+const declOf = (r, prop) => { const d = r ? r.decls.filter((x) => x.prop === prop).pop() : null; return d ? d.value : null; };
+const jsxName = (el) => (el && el.openingElement && el.openingElement.name && el.openingElement.name.name) || '';
+const attrOf = (el, name) => (el.openingElement.attributes || []).find((a) => a.type === 'JSXAttribute' && a.name && a.name.name === name) || null;
+const classOf = (el) => {
+  const a = attrOf(el, 'className');
+  if (!a || !a.value) return '';
+  return a.value.type === 'StringLiteral' ? a.value.value : gen(a.value.expression);
+};
+const kidsOf = (el) => el.children.filter((c) => c.type !== 'JSXText' || c.value.trim());
 
 /* ── the checks: each a function of what it holds, so a plant is played through the same lines ── */
 const CHECKS = {
@@ -195,10 +259,12 @@ const CHECKS = {
      the game's data, and no name of a pool's field or a points-per-level number */
   C9: (X) => {
     const ALLOW = {
-      hub: new Set(['@/game/combatHub.js:combatHubDoors', '@/game/combatHub.js:combatPools', '@/game/combatHub.js:combatLevel']),
+      hub: new Set(['@/game/combatHub.js:combatHubDoors', '@/game/combatHub.js:combatPools', '@/game/combatHub.js:combatLevel', '@/game/combatHub.js:hubArtSize']),
       page: new Set(['@/game/combatHub.js:combatPools', '@/game/combatHub.js:pointsWords', '@/game/combatHub.js:spendPool', '@/game/combatHub.js:weaponAttributes', '../../../data/prog3.js:prog3AtkMeta',
         /* v2.3.6686: DPS opens the stat tree's layer 0 (a page id and its entry's words, no count) */
-        '@/game/combatHub.js:TREE_PAGES', '@/game/combatHub.js:treeSel']),
+        '@/game/combatHub.js:TREE_PAGES', '@/game/combatHub.js:treeSel',
+        /* v2.3.6783: the one template's rules (a tone, the "+", the fold), none a count */
+        '@/game/combatHub.js:pointsTone', '@/game/combatHub.js:attrPlus', '@/game/combatHub.js:weaponPageFold']),
     };
     const FORBID = ['POINTS_PER_LEVEL', 'SHARED_POINTS_PER_LEVEL', 'poolBy', 'shared_', 'prog3Pool', 'prog3PoolBy', 'prog3PoolAny', 'prog3PoolFor', 'prog3PoolShared', 'prog3Shared', 'unspentPointsTotal', 'buildSkillUnspent', 'prog3CharLevel', 'prog3SkillLevel'];
     for (const k of ['hub', 'page']) {
@@ -226,6 +292,206 @@ const CHECKS = {
     return Object.prototype.hasOwnProperty.call(FRAME_PAGES, page) && isBroHubPage(page) && BRO_HUB_PAGES[page] === c && weaponOfPage(page) === c
       && COMBAT_DOORS.find((d) => d.id === c).opens === 'page:' + page;
   }) && weaponOfPage('__proto__') === null && weaponOfPage('broCombat') === null,
+  /* ═══ v2.3.6783 (card UI3-combat): the one template ═══ */
+  /* the left column gone: no rule on its old class (a media query's included), the line no fixed
+     width or flex-basis, the attributes one column (the line OVER the grid), in the template too */
+  C13: (X) => {
+    const rules = cssRules(X.SRC.css);
+    if (rules.length < 20) return false;
+    if (rules.some((r) => /\.u2-wp-attrhead(?![\w-])/.test(r.sel))) return false;
+    for (const r of ruleOn(rules, 'u2-at-line')) {
+      const f = declOf(r, 'flex');
+      if (f && /^\S+\s+\S+\s+\d+(\.\d+)?px$/.test(f.trim())) return false;
+      for (const p of ['flex-basis', 'width', 'min-width', 'max-width']) if (/\b\d+(\.\d+)?px\b/.test(declOf(r, p) || '')) return false;
+    }
+    const attrs = ruleOn(rules, 'u2-at-attrs');
+    if (!attrs.some((r) => !r.at && declOf(r, 'flex-direction') === 'column' && declOf(r, 'display') === 'flex')) return false;
+    if (attrs.some((r) => (declOf(r, 'flex-direction') && declOf(r, 'flex-direction') !== 'column') || /grid/.test(declOf(r, 'display') || ''))) return false;
+    let ok = false;
+    walk(X.SRC.tmpl, {
+      JSXElement(p) {
+        if (classOf(p.node) !== 'u2-at-attrs') return;
+        const k = kidsOf(p.node);
+        ok = k.length === 2 && /^\{line \?/.test(gen(k[0])) && k[1].type === 'JSXElement' && /u2-at-grid/.test(classOf(k[1]));
+      },
+    });
+    return ok;
+  },
+  /* the hub: a count drawn only while > 0 (pointsShown), gold and glowing only then */
+  C14: (X) => {
+    const Rz = { prog3: { sk: R.prog3.sk, pool: 6, poolBy: { sword: 4, bow: 2, staff: 0 }, shared: 0, alloc: {}, atk: R.prog3.atk } };
+    const by = Object.create(null);
+    for (const d of X.combatHubDoors(Rz, true, null)) by[d.id] = d;
+    if (!(by.staff.points === 0 && by.shared.points === 0 && by.staff.pointsShown === false && by.shared.pointsShown === false
+      && !by.staff.glow && !by.shared.glow && by.sword.pointsShown === true && by.sword.glow === true)) return false;
+    if (X.combatHubDoors(R, true, { id: 'p_x' }).some((d) => d.pointsShown)) return false;
+    let n = 0; let ok = true;
+    walk(X.SRC.hub, {
+      JSXElement(p) {
+        if (!/u2-cb-pts/.test(classOf(p.node))) return;
+        n++;
+        const par = p.parentPath.node;
+        ok = ok && par.type === 'ConditionalExpression' && gen(par.test) === 'd.pointsShown' && par.consequent === p.node && par.alternate.type === 'NullLiteral';
+      },
+    });
+    return ok && n === 1 && gen(parse(X.SRC.hub).program).includes("(d.glow ? ' is-glow' : '')");
+  },
+  /* DPS and Max HP the kit's sunk stat: nothing carrying their marks (or a Ui2Stat) is raised; the
+     template's stat its own class only, its marks spread from the page's `data`; no page class on it */
+  C15: (X) => {
+    for (const k of ['page', 'shared', 'tmpl']) {
+      let bad = false;
+      walk(X.SRC[k], {
+        JSXElement(p) {
+          const marks = (p.node.openingElement.attributes || []).some((a) => a.type === 'JSXAttribute' && /^data-(weapon-dps|shared-hp)$/.test(a.name.name));
+          if ((marks || jsxName(p.node) === 'Ui2Stat') && /u2-raised/.test(classOf(p.node))) bad = true;
+        },
+      });
+      if (bad) return false;
+    }
+    let stat = null;
+    walk(X.SRC.tmpl, { JSXElement(p) { if (jsxName(p.node) === 'Ui2Stat') stat = p.node; } });
+    if (!stat || classOf(stat) !== 'u2-at-stat') return false;
+    const spreads = stat.openingElement.attributes.filter((a) => a.type === 'JSXSpreadAttribute').map((a) => gen(a.argument));
+    if (spreads.join(',') !== 'stat.data || {}') return false;
+    for (const [k, mark] of [['page', 'data-weapon-dps'], ['shared', 'data-shared-hp']]) {
+      let st = null;
+      walk(X.SRC[k], { JSXElement(p) { if (jsxName(p.node) === 'SummaryStrip') { const a = attrOf(p.node, 'stat'); st = a && a.value.expression; } } });
+      if (!st || st.type !== 'ObjectExpression') return false;
+      if (st.properties.some((q) => q.key && (q.key.name || q.key.value) === 'className')) return false;
+      const data = st.properties.find((q) => q.key && q.key.name === 'data');
+      if (!data || !data.value.properties || !data.value.properties.some((q) => (q.key.value || q.key.name) === mark)) return false;
+    }
+    return true;
+  },
+  /* the four in ONE facts container: the template's one Ui2Facts, its one child the map drawing a
+     plain Ui2Fact; the page hands rows of data (never JSX, never its own boxes); no face on a fact */
+  C16: (X) => {
+    const facts = []; const fact = [];
+    walk(X.SRC.tmpl, { JSXElement(p) { if (jsxName(p.node) === 'Ui2Facts') facts.push(p); if (jsxName(p.node) === 'Ui2Fact') fact.push(p); } });
+    if (facts.length !== 1 || fact.length !== 1) return false;
+    const near = fact[0].findParent((q) => q.isJSXElement());
+    if (!near || near.node !== facts[0].node) return false;
+    const k = kidsOf(facts[0].node);
+    if (k.length !== 1 || !/^\{facts\.map\(/.test(gen(k[0]))) return false;
+    if (attrOf(fact[0].node, 'className') || /u2-group|u2-raised|border/.test(classOf(facts[0].node))) return false;
+    let st = null; let drawn = false;
+    walk(X.SRC.page, {
+      JSXElement(p) {
+        if (jsxName(p.node) === 'SummaryStrip') { const a = attrOf(p.node, 'facts'); st = a && a.value.expression; }
+        if (attrOf(p.node, 'data-weapon-stat') || /^Ui2(Fact|Facts|Group)$/.test(jsxName(p.node))) drawn = true;
+      },
+    });
+    if (!st || drawn) return false;
+    const g = gen(st);
+    if (/</.test(g) || !/WEAPON_SUPPORT\.map\(/.test(g)) return false;
+    for (const r of ruleOn(cssRules(X.SRC.css), 'u2-fact')) {
+      for (const d of r.decls) if (/^(border|background|box-shadow)/.test(d.prop) && !/^(none|0|transparent)$/.test(d.value)) return false;
+    }
+    return true;
+  },
+  /* one template: both pages draw the strip and the grid from attrTemplate.jsx, once each, and no
+     tile or facts box of their own; WeaponPage has no branch on `cat` that draws */
+  C17: (X) => {
+    for (const k of ['page', 'shared']) {
+      const im = imports(X.SRC[k]).filter(([m]) => m === './attrTemplate.jsx').map(([, n]) => n);
+      if (!im.includes('SummaryStrip') || !im.includes('AttrGrid')) return false;
+      const used = Object.create(null);
+      let own = false;
+      walk(X.SRC[k], {
+        JSXElement(p) {
+          const n = jsxName(p.node);
+          used[n] = (used[n] || 0) + 1;
+          if (/u2-wp-attr|u2-at-grid|u2-facts|u2-at-strip/.test(classOf(p.node))) own = true;
+        },
+      });
+      if (used.SummaryStrip !== 1 || used.AttrGrid !== 1 || own) return false;
+    }
+    let branch = false;
+    walk(X.SRC.page, {
+      'ConditionalExpression|LogicalExpression|IfStatement|SwitchStatement'(p) {
+        const t = p.node.test || p.node.left || p.node.discriminant;
+        if (!t || !/\bcat\b/.test(gen(t))) return;
+        let j = false;
+        p.traverse({ JSXElement() { j = true; }, JSXFragment() { j = true; } });
+        if (j) branch = true;
+      },
+    });
+    return !branch;
+  },
+  /* 390 x 844 holds the four bands: the fold's rule, and the style sheet's own numbers, are the bands
+     (the level 18, the strip 44, the line 14, two rows of 44 and a gap, three gaps of 2: 172) */
+  C18: (X) => {
+    if (!(X.weaponPageFold(172) === false && X.weaponPageFold(300) === false && X.weaponPageFold(171) === true
+      && X.weaponPageFold(168) === true && X.weaponPageFold(0) === false && X.weaponPageFold(NaN) === false)) return false;
+    const B = WEAPON_PAGE_BANDS;
+    if (B.level + B.strip + B.line + B.grid + B.gaps !== 172 || WEAPON_PAGE_ROOM !== 172) return false;
+    const tok = Object.create(null);
+    for (const m of X.SRC.kitcss.matchAll(/--(ui2-[\w-]+):\s*(\d+)px/g)) tok[m[1]] = +m[2];
+    const px = (v) => {
+      const t = String(v == null ? '' : v).trim();
+      const m = t.match(/^var\(--(ui2-[\w-]+)\)$/);
+      if (m) return tok[m[1]];
+      const q = t.match(/^(\d+(?:\.\d+)?)px$/);
+      return q ? +q[1] : NaN;
+    };
+    const rules = cssRules(X.SRC.css).filter((r) => !r.at);
+    const at = (sel) => rules.filter((r) => r.sel === sel).pop() || null;
+    const basis = (sel) => px((declOf(at(sel), 'flex') || '').trim().split(/\s+/)[2]);
+    const level = basis('.ui2 .u2-wp-level');
+    const strip = basis('.ui2 .u2-at-strip');
+    const line = px(declOf(at('.ui2 .u2-at-line'), 'line-height'));
+    const rows = (declOf(at('.ui2 .u2-at-grid'), 'grid-template-rows') || '').match(/^repeat\((\d+),\s*minmax\((.+?),\s*1fr\)\)$/);
+    const grid = rows ? (+rows[1]) * px(rows[2]) + (+rows[1] - 1) * px(declOf(at('.ui2 .u2-at-grid'), 'gap')) : NaN;
+    const gaps = 2 * px(declOf(at('.ui2.u2-wp'), 'gap')) + px(declOf(at('.ui2 .u2-at-attrs'), 'gap'));
+    return level === B.level && strip === B.strip && line === B.line && grid === B.grid && gaps === B.gaps && level + strip + line + grid + gaps <= 172;
+  },
+  /* an attribute's tap opens its preview: the template's one tile is a button calling onOpen(a.key);
+     each page hands openAttr, which opens the preview (win.openStatInfo) */
+  C19: (X) => {
+    const tiles = [];
+    walk(X.SRC.tmpl, { JSXElement(p) { if (/u2-wp-attr(?![\w-])/.test(classOf(p.node))) tiles.push(p.node); } });
+    if (tiles.length !== 1 || jsxName(tiles[0]) !== 'button') return false;
+    const oc = attrOf(tiles[0], 'onClick');
+    if (!oc || gen(oc.value.expression) !== '() => onOpen(a.key)') return false;
+    for (const k of ['page', 'shared']) {
+      let on = null; let body = null;
+      walk(X.SRC[k], {
+        JSXElement(p) { if (jsxName(p.node) === 'AttrGrid') { const a = attrOf(p.node, 'onOpen'); on = a && gen(a.value.expression); } },
+        VariableDeclarator(p) { if (p.node.id.name === 'openAttr') body = gen(p.node.init); },
+      });
+      if (on !== 'openAttr' || !body || !/win\.openStatInfo\(st, lane, /.test(body)) return false;
+    }
+    return true;
+  },
+  /* the "+" and the line's gold only while there are points: the rules, the template's one "+" under
+     `plus`, the line's gold under tone 'gold', and the pages asking the rules with their own pool */
+  C20: (X) => {
+    if (!(X.attrPlus(0, true) === false && X.attrPlus(3, true) === true && X.attrPlus(3, false) === false && X.attrPlus(3, null) === false
+      && X.attrPlus(-2, true) === false && X.attrPlus(NaN, true) === false && X.attrPlus(null, true) === false && X.attrPlus(0.5, true) === false)) return false;
+    if (!(X.pointsTone(0) === 'quiet' && X.pointsTone(null) === 'quiet' && X.pointsTone(4) === 'gold' && X.pointsTone(1) === 'gold')) return false;
+    let all = 0; let ok = 0;
+    walk(X.SRC.tmpl, {
+      JSXText(p) {
+        if (p.node.value.trim() !== '+') return;
+        all++;
+        const el = p.parentPath;
+        const par = el.parentPath && el.parentPath.node;
+        if (par && par.type === 'ConditionalExpression' && gen(par.test) === 'plus' && par.consequent === el.node && par.alternate.type === 'NullLiteral') ok++;
+      },
+    });
+    if (all !== 1 || ok !== 1) return false;
+    if (!gen(parse(X.SRC.tmpl).program).includes("(tone === 'gold' ? ' is-gold' : ' is-quiet')")) return false;
+    for (const k of ['page', 'shared']) {
+      let plus = null; let tone = null;
+      walk(X.SRC[k], {
+        JSXElement(p) { if (jsxName(p.node) === 'AttrGrid') { const a = attrOf(p.node, 'plus'); plus = a && gen(a.value.expression); } },
+        ObjectProperty(p) { if (p.node.key && p.node.key.name === 'tone') tone = gen(p.node.value); },
+      });
+      if (plus !== 'attrPlus(avail, self)' || tone !== 'pointsTone(avail)') return false;
+    }
+    return true;
+  },
 };
 
 console.log('combat-hub: part 1, the rules and the files');
@@ -245,6 +511,12 @@ check('attributes. the six a weapon, their points read from that weapon only', (
   return a.map((x) => x.key).join(',') === 'range,dmg,aspd,luck,special,elem' && a.find((x) => x.key === 'dmg').pts === 2
     && b.find((x) => x.key === 'dmg').pts === 0 && b.find((x) => x.key === 'luck').pts === 1 && a.every((x) => x.cap >= 1);
 })());
+
+/* v2.3.6783: the hub's picture from its own height (the card's reading 2): 48 at 390 x 844, 44 at 375 x 667,
+   about 44 sideways (40 at 667 x 375); unmeasured, today's sizes */
+check('art. the hub\'s picture fills its room (48 / 44 upright, 45 / 40 sideways, 32 / 26 unmeasured)',
+  hubArtSize(172, false) === 48 && hubArtSize(168, false) === 44 && hubArtSize(63, true) === 45 && hubArtSize(58, true) === 40
+  && hubArtSize(0, false) === 32 && hubArtSize(0, true) === 26 && hubArtSize(2000, false) === 64);
 
 /* ── part 2: the plants ── */
 const sumLv = (r) => ['sword', 'bow', 'staff'].reduce((n, c) => n + (r.prog3.sk[c].level - 1), 0);
@@ -274,6 +546,37 @@ const PLANTS = [
   ['C9', { ...REAL, SRC: { ...SRC, hub: SRC.hub.replace("import { ui2RootClass }", "import { PROG3 } from '../../../data/prog3.js';\nimport { ui2RootClass }") } }],
   ['C9', { ...REAL, SRC: { ...SRC, page: SRC.page.replace('const avail = self ? pools[cat] : null;', 'const avail = self ? R.prog3.poolBy[cat] : null;') } }],
   ['C10', { ...REAL, SRC: { ...SRC, hero: SRC.hero.replace('const sharedAvail = pools.shared;', 'const sharedAvail = sharedCaps ? prog3PoolShared(R) : totalUnspent;') } }],
+  /* v2.3.6783 (card UI3-combat): the one template's dodges, written the ways a tired programmer writes them */
+  ['C13', { ...REAL, SRC: { ...SRC, css: SRC.css + '\n@media (max-width: 400px) { .u2-wp-attrhead { flex: 0 0 76px } }\n' } }],
+  ['C13', { ...REAL, SRC: { ...SRC, css: SRC.css + '\n@media (max-width: 400px) { .ui2 .u2-at-line { flex: 0 0 76px; flex-direction: column } }\n' } }],
+  ['C13', { ...REAL, SRC: { ...SRC, css: SRC.css + '\n.ui2.u2-wp .u2-at-attrs { flex-direction: row; }\n' } }],
+  ['C13', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace('{line ? <AttrLine {...line} /> : null}', '') } }],
+  ['C14', { ...REAL, SRC: { ...SRC, hub: SRC.hub.replace('{d.pointsShown ? <span className="u2-cb-pts is-on">{pts}</span> : null}', '{pts ? <span className="u2-cb-pts is-on">{pts}</span> : null}') } }],
+  ['C14', { ...REAL, combatHubDoors: (r, ch, who) => combatHubDoors(r, ch, who).map((d) => ({ ...d, pointsShown: d.points != null })) }],
+  ['C14', { ...REAL, combatHubDoors: (r, ch, who) => combatHubDoors(r, ch, who).map((d) => ({ ...d, glow: d.points != null })) }],
+  ['C14', { ...REAL, SRC: { ...SRC, hub: SRC.hub.replace("(d.glow ? ' is-glow' : '')", "(d.points != null ? ' is-glow' : '')") } }],
+  ['C15', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace('className="u2-at-stat"', "className={'u2-raised u2-stat ' + 'u2-at-stat'}") } }],
+  ['C15', { ...REAL, SRC: { ...SRC, page: SRC.page.replace("stat={{ v: val('dps'),", "stat={{ className: 'u2-raised u2-stat u2-wp-dps', v: val('dps'),") } }],
+  ['C15', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace("data: { 'data-shared-hp': head.hp },", "data: { 'data-shared-hp': head.hp, className: 'u2-raised' },").replace('{strip}{grid}</div> :', '{strip}<div className="u2-raised u2-stat" data-shared-hp={head.hp} />{grid}</div> :') } }],
+  ['C16', { ...REAL, SRC: { ...SRC, page: SRC.page.replace("WEAPON_SUPPORT.map((k) => ({ id: k, k: SUPPORT_WORD[k](), v: val(k), data: { 'data-weapon-stat': k } }))", 'WEAPON_SUPPORT.map((k) => <Ui2Group key={k} k={SUPPORT_WORD[k]()} data-weapon-stat={k}>{val(k)}</Ui2Group>)') } }],
+  ['C16', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace('<Ui2Fact key={f.id}', '<Ui2Fact className="u2-group" key={f.id}') } }],
+  ['C16', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace('{facts.map((f) => <Ui2Fact key={f.id} k={f.k} v={f.v} {...(f.data || {})} />)}', '{facts.map((f) => <Ui2Facts key={f.id}><Ui2Fact k={f.k} v={f.v} {...(f.data || {})} /></Ui2Facts>)}') } }],
+  ['C16', { ...REAL, SRC: { ...SRC, css: SRC.css + '\n.ui2 .u2-at-facts .u2-fact { border: 1px solid var(--ui2-edge); }\n' } }],
+  ['C17', { ...REAL, SRC: { ...SRC, page: SRC.page.replace('{short ? <div className="u2-wp-row is-one">{level}{strip}{grid}</div> : <>{level}{strip}{grid}</>}', "{cat === 'staff' ? <OldPage /> : short ? <div className=\"u2-wp-row is-one\">{level}{strip}{grid}</div> : <>{level}{strip}{grid}</>}") } }],
+  ['C17', { ...REAL, SRC: { ...SRC, page: SRC.page.replace('  return (\n    <div ref={ref}', "  if (cat === 'bow') return <div className=\"u2-wp-old\" />;\n  return (\n    <div ref={ref}") } }],
+  ['C17', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace("import { SummaryStrip, AttrGrid } from './attrTemplate.jsx';", "import { SummaryStrip, AttrGrid } from './oldTemplate.jsx';") } }],
+  ['C17', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace('{strip}{grid}</>', '{strip}<span className="u2-at-grid is-seven">{attrsOf.map((a) => <button key={a.key} type="button" className="u2-raised u2-wp-attr" onClick={() => openAttr(a.key)}>{a.label}</button>)}</span></>') } }],
+  ['C18', { ...REAL, weaponPageFold: (h) => h > 0 && h < 160 }],
+  ['C18', { ...REAL, SRC: { ...SRC, css: SRC.css.replace('.ui2 .u2-wp-level { flex: 0 0 18px;', '.ui2 .u2-wp-level { flex: 0 0 28px;') } }],
+  ['C18', { ...REAL, SRC: { ...SRC, css: SRC.css.replace('grid-template-rows: repeat(2, minmax(var(--ui2-size-touch), 1fr)); gap: var(--ui2-space-xs); }', 'grid-template-rows: repeat(2, minmax(var(--ui2-size-touch), 1fr)); gap: var(--ui2-space-m); }') } }],
+  ['C19', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace('onClick={() => onOpen(a.key)}', 'onClick={() => {}}') } }],
+  ['C19', { ...REAL, SRC: { ...SRC, page: SRC.page.replace('onOpen={openAttr}', 'onOpen={() => {}}') } }],
+  ['C19', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace('onOpen={openAttr}', 'onOpen={undefined}') } }],
+  ['C20', { ...REAL, attrPlus: (n) => Number(n) >= 0 }],
+  ['C20', { ...REAL, pointsTone: (n) => (Number(n) >= 0 ? 'gold' : 'quiet') }],
+  ['C20', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace('{plus ? <span className="u2-at-plus" aria-hidden="true">+</span> : null}', '{a.pts < a.cap && <span className="u2-wp-plus">+</span>}') } }],
+  ['C20', { ...REAL, SRC: { ...SRC, page: SRC.page.replace('plus={attrPlus(avail, self)}', 'plus={true}') } }],
+  ['C20', { ...REAL, SRC: { ...SRC, tmpl: SRC.tmpl.replace("(tone === 'gold' ? ' is-gold' : ' is-quiet')", "(tone ? ' is-gold' : ' is-quiet')") } }],
 ];
 console.log('combat-hub: part 2, each plant seen red');
 for (const [id, planted] of PLANTS) check('plant ' + id + ' turns its check red', !safe(() => CHECKS[id](planted)));

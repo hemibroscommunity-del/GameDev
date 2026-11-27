@@ -7,6 +7,7 @@ import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.
 import { getShieldStats, getAmuletBonus } from '../../../data/items.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { getCape, CAPE_CATALOG } from '@/rendering/traits/capeCatalog.js'; /* v2.3.2105 */
+import { assetUrl } from '@/game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* v2.3.1285: the six equipped positions in the nav-system spec's FIXED
    order — Weapon, Shield, Chest, Legs, Cape, Amulet.  Resolution
@@ -41,11 +42,9 @@ export const GHOST_SRC = {
    set — one consistent style with the stash and inventory tiles.
    Weapon art keys off wpn.type (greatsword vs sword are distinct drop
    types that shared one icon since v2.3.173). */
-/* v2.3.1710: bumped so a browser holding the cached bag drops the emoji-vest
-   render and fetches the real chest-plate torso art (owner: "it's an emoji
-   vest").  Lives in THREE files — keep them in lockstep or one surface serves
-   stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.4222'; /* v2.3.1774: pine shield icon */
+/* v2.3.6743: the hand key ITEMS_V ('?v=2.3.4222') is gone (card KEEP PR 3b):
+   a written-out icon is stamped with its file's version by the build, one
+   built from parts asks assetUrl (InventoryPanel.jsx says more). */
 /* v2.3.1845: THE ICON IS THE WEAPON'S, NOT THE SLOT'S.
    Owner: "when you only have sword (no bow or staff) it still shows bow icon
    when you double tap to switch weapons on the character's weapon slot."
@@ -76,9 +75,9 @@ export const wpnIconSrc = (R, wpn) => {
      owner, "I only wanted it to replace the menu art for the bow" -- v2.3.3526
      had written it over the bag's bow.webp, which is the pine bow again. */
   return wpn.type === 'bow' ? '/icons/ui/equip-bow.webp?v=2.3.3571'
-    : wpn.type === 'staff' ? `/icons/items/staff.webp${ITEMS_V}`
-    : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
-      : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
+    : wpn.type === 'staff' ? '/icons/items/staff.webp'
+    : wpn.type === 'greatsword' ? assetUrl(metalIconPath('/icons/items/great-sword.webp', metal))
+      : assetUrl(metalIconPath('/icons/items/sword.webp', metal));
 };
 
 /* ═══ v2.3.1845: ONE NAME FOR A WEAPON ═══
@@ -137,8 +136,8 @@ export function weaponDisplayName(w) {
    cannot drift from the metal it renders in.  The shirt keeps its own line —
    it is not a metal and has no material variants. */
 const gearIconSrc = (id) =>
-  id === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
-    : gearIdIcon(id) ? `${gearIdIcon(id)}${ITEMS_V}` : null;
+  id === 'tshirt' ? '/icons/items/cloth-shirt.webp'
+    : gearIdIcon(id) ? gearIdIcon(id) : null;
 
 export function getEquippedSlots(R) {
   /* v2.3.1766: displayWeapon here too, so the weapon CELL and the DPS cell
@@ -164,12 +163,12 @@ export function getEquippedSlots(R) {
      This branch is the bare-cosmetics case that path does not cover. */
   const chestIcon = gearChestId !== 'none' ? gearIconSrc(gearChestId)
     : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
-    : R && R.armor ? `${armorIconFor('chest', R.armor.mat)}${ITEMS_V}` : null; /* v2.3.1758 */
+    : R && R.armor ? armorIconFor('chest', R.armor.mat) : null; /* v2.3.1758 */
   return [
     { slot: 'weapon', label: 'Weapon', item: wpn, iconSrc: wpnIconSrc(R, wpn),
       ghost: !wpn, quality: wpn && wpn.quality, pickerSlot: 'weapon' },
     { slot: 'shield', label: 'Shield', item: R.shield,
-      iconSrc: R.shield ? `/icons/items/shield.webp${ITEMS_V}` : null,
+      iconSrc: R.shield ? '/icons/items/shield.webp' : null,
       ghost: !R.shield, pickerSlot: 'shield' },
     { slot: 'chest', label: 'Chest', item: chestEquipped ? { gearChestId, gearShirtId } : null,
       iconSrc: chestIcon, ghost: !chestEquipped, pickerSlot: 'chest' },
@@ -180,7 +179,7 @@ export function getEquippedSlots(R) {
     { slot: 'legs', label: 'Legs',
       item: (gearLegsId !== 'none' || R.legsArmor) ? { gearLegsId, legsArmor: R.legsArmor } : null,
       iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId)
-        : R.legsArmor ? `${armorIconFor('legs', R.legsArmor.mat)}${ITEMS_V}` : null, /* v2.3.1758 */
+        : R.legsArmor ? armorIconFor('legs', R.legsArmor.mat) : null, /* v2.3.1758 */
       ghost: gearLegsId === 'none' && !R.legsArmor, pickerSlot: 'legs' },
     /* ═══ v2.3.2105: THE CAPE SHOWS IN THE CAPE SLOT ═══
        Owner: "make the cape go into the cape slot after being equipped on
@@ -214,7 +213,7 @@ export function getEquippedSlots(R) {
         slot: 'cape',
         label: 'Cape',
         item: worn ? { capeId, name: (entry && entry.name) || 'Cape' } : null,
-        iconSrc: worn ? `/icons/items/cape-${capeId}.webp${ITEMS_V}` : null,
+        iconSrc: worn ? assetUrl(`/icons/items/cape-${capeId}.webp`) : null,
         ghost: !worn,
         pickerSlot: null,
         /* v2.3.2143: the slot card grows its own REMOVE button when a cape is
@@ -231,7 +230,7 @@ export function getEquippedSlots(R) {
     /* v2.3.1325: an equipped amulet finally shows real art instead of
        staying on the ghost pictogram. */
     { slot: 'amulet', label: 'Amulet', item: R.amulet || null,
-      iconSrc: R.amulet ? `/icons/items/amulet.webp${ITEMS_V}` : null,
+      iconSrc: R.amulet ? '/icons/items/amulet.webp' : null,
       ghost: !R.amulet, pickerSlot: null },
   ];
 }
@@ -277,18 +276,18 @@ export function peerEquippedSlots(o) {
   const amulet = rd && typeof rd.amulet === 'string' && rd.amulet ? rd.amulet : null;
   const chestIcon = chestId ? gearIconSrc(chestId)
     : shirtId ? gearIconSrc(shirtId)
-    : statTorso ? `${armorIconFor('chest')}${ITEMS_V}` : null;
+    : statTorso ? armorIconFor('chest') : null;
   return [
     { slot: 'weapon', label: 'Weapon', iconSrc: wpnIconSrc(null, wpn), ghost: !wpn,
       name: wpn && rd && typeof rd.weapon === 'string' ? rd.weapon : null },
-    { slot: 'shield', label: 'Shield', iconSrc: shield ? `/icons/items/shield.webp${ITEMS_V}` : null,
+    { slot: 'shield', label: 'Shield', iconSrc: shield ? '/icons/items/shield.webp' : null,
       ghost: !shield, name: shield },
     { slot: 'chest', label: 'Chest', iconSrc: chestIcon, ghost: !chestIcon,
       name: statTorso ? rd.armor : null },
     { slot: 'legs', label: 'Legs', iconSrc: legsIcon, ghost: !legsIcon, name: null },
-    { slot: 'cape', label: 'Cape', iconSrc: capeId ? `/icons/items/cape-${capeId}.webp${ITEMS_V}` : null,
+    { slot: 'cape', label: 'Cape', iconSrc: capeId ? assetUrl(`/icons/items/cape-${capeId}.webp`) : null,
       ghost: !capeId, name: null },
-    { slot: 'amulet', label: 'Amulet', iconSrc: amulet ? `/icons/items/amulet.webp${ITEMS_V}` : null,
+    { slot: 'amulet', label: 'Amulet', iconSrc: amulet ? '/icons/items/amulet.webp' : null,
       ghost: !amulet, name: amulet },
   ];
 }

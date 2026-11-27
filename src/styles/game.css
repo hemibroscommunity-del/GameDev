@@ -2561,16 +2561,24 @@ html{--bt-hud-base:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,
    party chip under the status column's two rows (its fallback, 92 px, and
    the column's, are today's, so ?hud=0 moves nothing).  The numbers are
    src/game/charHud.js CHAR_HUD's (stack 56, sideways 52; the line's hit 44). */
+/* v2.3.6790 (card UI3, PR 10): the owner, 2026-11-27, "Leave only character
+   hud in top left corner": the quest line is gone from the world unless
+   ?questline=1 (QuestCard.jsx writes html[data-questline="1"] while it draws
+   it), so the status column stands right under the HUD's gap, and the party
+   chip under the column's two rows.  The numbers are src/game/hudCorner.js
+   hudCorner()'s (tools/guards/hud-corner.test.mjs holds them equal). */
 html[data-charhud="1"]{--bt-charhud-h:56px;
-  --bt-status-top:calc(var(--bt-hud-top) + 44px);
+  --bt-status-top:var(--bt-hud-top);
   --bt-party-top:calc(var(--bt-status-top) + 48px)}
+html[data-charhud="1"][data-questline="1"]{--bt-status-top:calc(var(--bt-hud-top) + 44px)}
 /* sideways (a short screen) the room above the controller is about 140 px:
-   the status column sits 4 px under the line as drawn (30 px), and the party
-   chip moves up BESIDE the HUD (right of its 176 px, under the bar), clear of
-   the stick and the minimap (mp-charhud 5, 667 x 375) */
+   the status column sits under the HUD (with ?questline=1, 4 px under the
+   line as drawn, 30 px), and the party chip moves up BESIDE the HUD (right of
+   its 176 px, under the bar), clear of the stick and the minimap (mp-charhud
+   5, 667 x 375) */
 @media (max-height:480px){html[data-charhud="1"]{--bt-charhud-h:52px;
-  --bt-status-top:calc(var(--bt-hud-top) + 34px);
-  --bt-party-top:var(--bt-hud-base);--bt-party-left:192px}}
+  --bt-party-top:var(--bt-hud-base);--bt-party-left:192px}
+  html[data-charhud="1"][data-questline="1"]{--bt-status-top:calc(var(--bt-hud-top) + 34px)}}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
@@ -7820,6 +7828,18 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* A cooldown that ends says so once (useReadyFlash) */
 @keyframes bt-skin-flash{0%{opacity:0}28%{opacity:1}100%{opacity:0}}
 .bt-skin[data-flash="1"] .bt-skin-glow{animation:bt-skin-flash 700ms ease-out 1}
+/* v2.3.6646 (card PAD part 11; the owner, 2026-11-26: "Turn steel"): an
+   older button in the controller's tier (Whirlwind, Shield Bash:
+   controlSkin.jsx tierMetal) wears the steel sheet's rim, never the gold:
+   the ring its measured gradient (padSkin.js PAD_STEEL), pressed a step
+   darker, the edges cool, the flash of a cooldown's end the steel's cold
+   light.  Cooldown, Disabled and Quiet keep their greys and their arcs: the
+   states read as before.  `?padgold=1` drops the attribute. */
+.bt-skin[data-metal="steel"][data-state="normal"] .bt-skin-ringc,.bt-skin[data-metal="steel"][data-state="ready"] .bt-skin-ringc,.bt-skin[data-metal="steel"][data-state="on"] .bt-skin-ringc{stroke:url(#btSkinSteel) #526B81}
+[data-pressed="1"] .bt-skin[data-metal="steel"][data-state] .bt-skin-ringc{stroke:url(#btSkinSteelPress) #354E66}
+.bt-skin[data-metal="steel"] .bt-skin-edge{stroke:rgba(4,9,14,.92)}
+.bt-skin[data-metal="steel"][data-state="normal"] .bt-skin-bevel-hi{stroke:rgba(222,235,246,.62)}
+.bt-skin[data-metal="steel"] .bt-skin-glow{background:radial-gradient(closest-side,rgba(222,235,246,0) 0,rgba(222,235,246,0) var(--glow-in),rgba(222,235,246,.78) calc(var(--glow-in) + 3%),rgba(166,189,213,.40) calc(var(--glow-in) + 16%),rgba(82,107,129,0) 100%)}
 @media (prefers-reduced-motion: reduce){
   .bt-skin,.bt-skin-face::after{transition:none}
   .bt-skin[data-flash="1"] .bt-skin-glow{animation:none}

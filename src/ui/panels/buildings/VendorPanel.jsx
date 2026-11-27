@@ -3,6 +3,7 @@ import React from 'react';
 import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { SAY } from '@/data/say/vendor.js';   /* v2.3.6348: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 /* v2.3.2618: BT_AUDIO, _objectSpread and pushDmgPopup went with the
    shopkeeper's shelf -- they were the purchase handler's, and nothing else
    in this panel used them. */
@@ -43,7 +44,7 @@ function lsHeader(icon, emoji, title, subtitle) {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
   }, /* v2.3.1224 pattern: UI Bible icon with emoji fallback */
   React.createElement("img", {
-    src: '/icons/ui/bldg-' + icon + '.webp', alt: '', draggable: false,
+    src: assetUrl('/icons/ui/bldg-' + icon + '.webp'), alt: '', draggable: false,
     style: { width: 26, height: 26, objectFit: 'contain', flexShrink: 0 },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
   }), React.createElement("div", { style: { minWidth: 0 } },

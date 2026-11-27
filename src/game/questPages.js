@@ -221,3 +221,165 @@ export function pickChoices(list) {
   if (!list) return 0;
   return (list.active ? list.active.length : 0) + (list.available ? list.available.length : 0);
 }
+
+/* ═══ v2.3.6691: QUESTS UNDER THE NEW DASHBOARD (card UI2-quests, the build's step 6) ═══
+ * The owner's master specification, 2026-11-25, part 6: "Landing page shows
+ * active quests first, as direct selectable rows/destinations. No tiny
+ * dropdown or three-dot pagination. Daily quests and Completed quests are
+ * secondary destinations."; "Individual quest shows journey first, with
+ * completed steps and the current objective visually dominant ... Future
+ * journey is open-ended: do not reveal future steps, total step count, or
+ * whole-quest completion percentage. A neutral indication that the adventure
+ * continues is sufficient for an ongoing quest. Completed quests show actual
+ * completed history. Story and Rewards are separate accessible destinations."
+ * The rules of the frame's Quests pages (dash/QuestsLanding.jsx,
+ * dash/QuestPage.jsx) are the four below; the pages above (the tabs, the
+ * marks, the picker) stay what `?ui2=0` draws, unchanged.  Story is left
+ * out: the game has no story text for a quest (the audit's part 5). */
+
+/** The frame's own Quests pages beside the quest's page (`questDetail`,
+ *  BottomDashboard's PANELS): src/game/dashDests.js FRAME_PAGES rows. */
+export const QUEST_FRAME_PAGES = Object.freeze(['questRewards', 'questsDaily', 'questsDone', 'questsOffers']);
+
+/** The landing's doors, in their order, each with the page it pushes. */
+export const LANDING_DOORS = Object.freeze({ daily: 'questsDaily', done: 'questsDone', offers: 'questsOffers' });
+
+const countOf = (c) => (c && Number(c.n) > 0 && Number.isFinite(Number(c.have)) ? { have: Math.max(0, Math.min(Number(c.have), Number(c.n))), n: Number(c.n) } : null);
+
+/** THE LANDING: your quests in hand as rows, and under them the doors.
+ *  `L` the journal's list (questJournalModel.js questJournalList: active,
+ *  available, done); `ctx`:
+ *    known    the worker's answer is in (the room's state_sync): false is
+ *             'loading', never an empty list (the spec's Q84);
+ *    dailyOn  the game shows its daily rewards card today;
+ *    tracked  the tracked quest's id;
+ *    counts   { [id]: { have, n } } a row's count where its quest counts.
+ *  -> { kind: 'loading' | 'rows' | 'empty', rows, doors }
+ *    rows   [{ id, title, npc, ready, tracked, count }] the tracked quest
+ *           first, then the ones ready to hand in, then the rest, each group
+ *           in the journal's order (questJournal.js activeOrder's reading);
+ *    doors  [{ id, page, n }]: Daily (only when the game shows it), Completed
+ *           (n), On offer (n) when the journal lists offers. */
+export function questLanding(L, ctx) {
+  const c = ctx || {};
+  if (!c.known || !L) return { kind: 'loading', rows: [], doors: [] };
+  const tracked = typeof c.tracked === 'string' && c.tracked ? c.tracked : null;
+  const counts = c.counts || null;
+  const active = Array.isArray(L.active) ? L.active : [];
+  const rows = active.filter((r) => r && typeof r.id === 'string').map((r, i) => ({
+    i,
+    row: {
+      id: r.id, title: typeof r.title === 'string' ? r.title : '', npc: r.npc || '', ready: !!r.ready, tracked: r.id === tracked,
+      count: counts && Object.prototype.hasOwnProperty.call(counts, r.id) ? countOf(counts[r.id]) : null,
+    },
+  }));
+  const rank = (r) => (r.tracked ? 0 : r.ready ? 1 : 2);
+  rows.sort((a, b) => rank(a.row) - rank(b.row) || a.i - b.i);
+  const doors = [];
+  if (c.dailyOn) doors.push({ id: 'daily', page: LANDING_DOORS.daily, n: null });
+  doors.push({ id: 'done', page: LANDING_DOORS.done, n: Array.isArray(L.done) ? L.done.length : 0 });
+  const offers = Array.isArray(L.available) ? L.available.length : 0;
+  if (offers > 0) doors.push({ id: 'offers', page: LANDING_DOORS.offers, n: offers });
+  return { kind: rows.length ? 'rows' : 'empty', rows: rows.map((x) => x.row), doors };
+}
+
+/** A QUEST'S JOURNEY UP TO NOW, from its journal page and its objective
+ *  `desc` (journeySteps' steps, cut at what to do now):
+ *  -> { done, now, continues, next, history }
+ *    done       the steps behind you, in order (a tick and their words, what
+ *               the giver handed over);
+ *    now        what to do NOW, or null: { kind, text, count, where, map }
+ *               (the journal's own words: page.now, page.where);
+ *    continues  true for a quest in hand: one quiet "The adventure
+ *               continues" (no step to come, no count of steps, no percent);
+ *    next       a done quest's "Next: ..." (what to do now after it), else null;
+ *    history    true for a done quest: every step done, the hand-in too.
+ *  A quest in hand never shows its hand-in until it is ready (then the hand-in
+ *  IS the now), nor a step still to come, nor its "Then: ..." line.  An offer:
+ *  NOW is the talk to its giver, nothing past it. */
+export function journeyToNow(page, desc) {
+  const out = { done: [], now: null, continues: false, next: null, history: false };
+  if (!page) return out;
+  const steps = journeySteps(page, desc);
+  const st = page.status;
+  if (st === 'done') {
+    out.done = steps.filter((s) => s.state === 'done');
+    out.history = true;
+    out.next = page.next && typeof page.next.text === 'string' && page.next.text ? page.next.text : null;
+    return out;
+  }
+  const inHand = st === 'active' || st === 'ready';
+  if (!inHand && st !== 'available') return out;
+  /* NOW: the step in hand; a quest in hand with no step marked takes the first
+     one not done and not the hand-in (the journal's own objective) */
+  let at = steps.findIndex((s) => s.state === 'current');
+  if (at < 0 && st === 'active') at = steps.findIndex((s) => s.state === 'todo' && s.kind !== 'handin');   /* never the hand-in of a quest not yet ready */
+  if (at < 0) return out;
+  const s = steps[at];
+  out.done = steps.slice(0, at).filter((x) => x.state === 'done');
+  const now = page.now || {};
+  const c = countOf(now.count);
+  out.now = {
+    kind: s.kind,
+    text: typeof now.text === 'string' && now.text ? now.text : (s.text || ''),
+    count: c ? { have: c.have, n: c.n, text: now.count && typeof now.count.text === 'string' ? now.count.text : '' } : null,
+    where: page.where && typeof page.where.text === 'string' ? page.where.text : null,
+    map: !!(page.where && page.where.map),
+  };
+  out.continues = inHand;
+  return out;
+}
+
+/** A QUEST'S ACTIONS AND DOORS, each present or absent by the game's own
+ *  fields (a quest the game cannot map has no Show on map, never a disabled
+ *  one): -> { actions: [{ id, slot, pressed? }], doors: [{ id }] }
+ *    track    a quest in hand only (immediate, the phone's own: no
+ *             confirmation, no pending mark);
+ *    map      "Show on map" only when page.where.map;
+ *    rewards  a door (raised, not an action) when the quest names a reward.
+ *  No Story (the game has no story text). */
+export function questActions(page, tracked) {
+  const out = { actions: [], doors: [] };
+  if (!page) return out;
+  const inHand = page.status === 'active' || page.status === 'ready';
+  const open = inHand || page.status === 'available';
+  if (inHand) out.actions.push({ id: 'track', slot: 0, pressed: typeof tracked === 'string' && tracked === page.id });
+  if (open && page.where && page.where.map === true) out.actions.push({ id: 'map', slot: 1 });
+  if (rewardTiles(page.reward).length) out.doors.push({ id: 'rewards' });
+  return out;
+}
+
+/** WHAT A TAP OPENS: the frame's transition (src/game/dashNav.js
+ *  dashNavStep) for a row or a door, with the quest's id on the entry's `sel`
+ *  so Back finds it again.  A push over the page up, never in its place: Back
+ *  from Rewards returns to the quest.  `tap`:
+ *    { kind: 'row', id }      a quest's row (in hand, done, on offer): its page;
+ *    { kind: 'door', door }   the landing's Daily, Completed, On offer;
+ *    { kind: 'rewards', id }  the quest page's Rewards door.
+ *  Anything else: null. */
+export function questOpens(tap) {
+  if (!tap) return null;
+  if (tap.kind === 'row' && typeof tap.id === 'string' && tap.id) return { type: 'push', id: 'questDetail', sel: tap.id };
+  if (tap.kind === 'door' && Object.prototype.hasOwnProperty.call(LANDING_DOORS, String(tap.door))) return { type: 'push', id: LANDING_DOORS[tap.door] };
+  if (tap.kind === 'rewards' && typeof tap.id === 'string' && tap.id) return { type: 'push', id: 'questRewards', sel: tap.id };
+  return null;
+}
+
+/**
+ * v2.3.6691 (the mend of sitting 71): which quest a quest's page shows, and the page's own key.
+ * The bug: with quest A's page open, a tap on quest B's pinned card still showed A -- the page
+ * read its quest once (QuestPage.jsx `useState(selOf)`) and React kept that page for the new
+ * entry.  The page is drawn once per ENTRY (`questPageKey`: QuestDetailPanel.jsx keys QuestPage
+ * on it), and an entry's own selection wins over the bus (Back to a page finds ITS quest again);
+ * an entry with none (the pinned card's road carries none) takes the bus's, and keeps it.
+ *   entry   the dashboard's top entry ({ key, sel }) or null
+ *   busQid  questDetailBus.selected()
+ *   -> { qid, key, kept }   kept: the entry holds it already (nothing to keep)
+ */
+export function questPageSel(entry, busQid) {
+  const key = entry && entry.key != null ? entry.key : null;
+  if (entry && typeof entry.sel === 'string' && entry.sel) return { qid: entry.sel, key, kept: true };
+  return { qid: typeof busQid === 'string' && busQid ? busQid : null, key, kept: false };
+}
+/** the key a quest's page is drawn under: one page per entry, so a new entry draws its own quest */
+export function questPageKey(entry) { return entry && entry.key != null ? 'qp-' + entry.key : 'qp-none'; }

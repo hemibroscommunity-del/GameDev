@@ -143,7 +143,7 @@ Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 - **Files**: `src/rendering/tables/`: combat
 - **Files**: `server/src/`: combat, hits, abilities, accuracy, burst, freeswing, fightlock, killroll, threat, telegraph, elemental, oneformula, statcap, arrowblast, swordconvert, shieldwear, shieldgem, weapongem, amulet, pvpbalance, pvpextras, pvplunge
-- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
+- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, lockPick, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
 - **Doors**: `_monsterHit` in `server/src/hits.js` (MONSTER_HITS: every monster hit on a player)
 - **Switches**: [its rows in the switch table](SWITCHES.md#combat)
 - **Words**: `combat`, `hit`, `ability`, `abilit`, `bow`, `arrow`, `sword`, `staff`, `shield`, `weapon`, `pvp`, `damage`, `whirl`, `dodge`, `elemental`, `accuracy`
@@ -273,8 +273,8 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin
-- **Files**: `src/ui/`: tapDismiss, swallowTapClick
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin, tutorClear
+- **Files**: `src/ui/`: tapDismiss, swallowTapClick, tutorSpot
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
 - **Words**: `touch`, `control`, `tap`, `thumb`, `swallow`
@@ -331,6 +331,7 @@ What loads behind the loading screen, and what loads later on purpose.
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
 - **Files**: `src/game/`: assetUrl, assetTable
+- **Files**: `src/rendering/`: sheetPage
 - **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen); `assetUrl` in `src/game/assetUrl.js` (an address BUILT from parts gets its file's version, so its folder can be kept a year (v2.3.6742, card KEEP))
 - **Switches**: [its rows in the switch table](SWITCHES.md#preload)
 - **Words**: `preload`, `loading`, `lazy`, `warm`
@@ -365,7 +366,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
 - **Files**: `src/rendering/tables/`: render
-- **Files**: `src/game/`: poseHides, cameraFollow
+- **Files**: `src/game/`: poseHides, cameraFollow, frameFoot
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)
@@ -380,7 +381,11 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
 - **Files**: `src/game/`: itemInspect
 - **Files**: `src/game/`: compare, equipProject, workspace
+- **Files**: `src/game/`: equipLook
+- **Files**: `src/game/`: gearShowcase
+- **Files**: `src/game/`: menuTile, gearGeometry
 - **Files**: `src/game/`: charHud
+- **Files**: `src/game/`: hudCorner
 - **Files**: `src/game/`: topGold
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`

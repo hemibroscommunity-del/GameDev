@@ -388,9 +388,105 @@ check('9f PartyHUD\'s chip and list stand at --bt-party-top (92 as before under 
   const css = read('src/styles/game.css');
   check('9g game.css: the base, the top built on it, and the stack variables set only while the HUD is up',
     /html\{--bt-hud-base:calc\(56px \+ var\(--bt-bar-grow,0px\) \+ env\(safe-area-inset-top,0px\)\);\s*--bt-hud-top:calc\(var\(--bt-hud-base\) \+ var\(--bt-charhud-h,0px\)\)\}/.test(css)
-      && /html\[data-charhud="1"\]\{--bt-charhud-h:56px;\s*--bt-status-top:calc\(var\(--bt-hud-top\) \+ 44px\);\s*--bt-party-top:calc\(var\(--bt-status-top\) \+ 48px\)\}/.test(css)
-      && /@media \(max-height:480px\)\{html\[data-charhud="1"\]\{--bt-charhud-h:52px;\s*--bt-status-top:calc\(var\(--bt-hud-top\) \+ 34px\);\s*--bt-party-top:var\(--bt-hud-base\);--bt-party-left:192px\}\}/.test(css));
+      /* v2.3.6790: the stack's numbers (the status column and the party chip
+         under the HUD, with and without ?questline=1) are hudCorner()'s, held
+         by tools/guards/hud-corner.test.mjs; here only the HUD's own height */
+      && /html\[data-charhud="1"\]\{--bt-charhud-h:56px;/.test(css)
+      && /@media \(max-height:480px\)\{html\[data-charhud="1"\]\{--bt-charhud-h:52px;/.test(css));
 }
+
+/* v2.3.6781 (the mend of sitting 71): the gatekeeper planted `if (!on || !rpg)`
+   -> `if (!rpg)` (the HUD drawn under ?hud=0) and "Lv 1" at the component (the
+   Lv span without `model.ready`, `model.level || 1`): both were green, the
+   rules being tested only in the module.  The component's own tree is read
+   now, as an ALLOW list (rule 2 of docs/plan/finish.md part 5):
+     9h the switch: `const on = charHudOn()` (the module's import, nothing
+        more, never written again) in the component's own body, and a
+        statement of that body before every return that draws, of the one
+        form `if (!on) return null;` or `if (!on || ...) return null;`;
+     9i the record: every use of `model` is `model.<field>` or the model handed
+        whole to charHudBar / publish; every `model.level` and the one Lv span
+        (`data-charhud-lv`) stand on the true side of a test that is exactly
+        `model.ready` (`model.ready ? x : y`, or `model.ready && ...`). */
+const flat = (p, op) => (p.isLogicalExpression({ operator: op }) ? [...flat(p.get('left'), op), ...flat(p.get('right'), op)] : [p]);
+function hudComp(ast) {
+  let comp = null;
+  B.traverse(ast, { ExportDefaultDeclaration(p) { const d = p.get('declaration'); if (d.isFunctionDeclaration()) comp = d; } });
+  return comp;
+}
+function hudSwitchGate(src) {
+  const bad = [];
+  const ast = parse(src);
+  const comp = hudComp(ast);
+  if (!comp) return ['no default-exported function component'];
+  const imp = ast.program.body.some((n) => n.type === 'ImportDeclaration' && n.source.value === '@/game/charHud.js'
+    && n.specifiers.some((s) => s.type === 'ImportSpecifier' && s.imported.name === 'charHudOn' && s.local.name === 'charHudOn'));
+  if (!imp) bad.push('charHudOn is not imported from @/game/charHud.js');
+  const fnB = comp.scope.getBinding('charHudOn');
+  if (!fnB || fnB.kind !== 'module') bad.push('charHudOn in the component is not the import');
+  const onB = comp.scope.getBinding('on');
+  const init = onB && onB.path.isVariableDeclarator() ? onB.path.node.init : null;
+  const decl = onB && onB.path.parentPath;
+  if (!onB || onB.kind !== 'const' || !init || init.type !== 'CallExpression' || init.callee.type !== 'Identifier'
+    || init.callee.name !== 'charHudOn' || init.arguments.length !== 0 || onB.constantViolations.length !== 0
+    || !decl || !decl.parentPath || decl.parentPath.node !== comp.node.body) bad.push('`on` is not `const on = charHudOn()` in the component\'s own body');
+  const body = comp.get('body.body');
+  const isNull = (r) => r.isReturnStatement() && r.node.argument && r.node.argument.type === 'NullLiteral';
+  const notOn = (p) => p.isUnaryExpression({ operator: '!' }) && p.get('argument').isIdentifier({ name: 'on' }) && !!onB && p.scope.getBinding('on') === onB;
+  let g = -1;
+  body.forEach((st, i) => {
+    if (g >= 0 || !st.isIfStatement() || st.node.alternate) return;
+    const c = st.get('consequent');
+    const ret = c.isBlockStatement() ? (c.node.body.length === 1 ? c.get('body.0') : null) : c;
+    if (!ret || !isNull(ret)) return;
+    if (flat(st.get('test'), '||').some(notOn)) g = i;
+  });
+  if (g < 0) bad.push('no `if (!on ...) return null;` in the component\'s own body');
+  comp.traverse({
+    ReturnStatement(r) {
+      if (r.getFunctionParent() !== comp || isNull(r) || !r.node.argument) return;
+      const top = r.find((q) => q.parentPath && q.parentPath.node === comp.node.body);
+      const at = top ? body.findIndex((s) => s.node === top.node) : -1;
+      if (g < 0 || at <= g) bad.push('a return that draws at line ' + r.node.loc.start.line + ' before the switch\'s `return null`');
+    },
+  });
+  return bad;
+}
+function hudRecordGate(src) {
+  const bad = [];
+  const comp = hudComp(parse(src));
+  if (!comp) return ['no default-exported function component'];
+  const mB = comp.scope.getBinding('model');
+  const mi = mB && mB.path.isVariableDeclarator() ? mB.path.node.init : null;
+  if (!mB || mB.kind !== 'const' || !mi || mi.type !== 'CallExpression' || mi.callee.name !== 'charHudModel') return ['`model` is not `const model = charHudModel(...)`'];
+  const isReady = (p) => p.isMemberExpression() && !p.node.computed && p.get('object').isIdentifier({ name: 'model' })
+    && p.scope.getBinding('model') === mB && p.node.property.name === 'ready';
+  const inside = (p, c) => !!p.find((x) => x.node === c.node);
+  const gated = (p) => !!p.findParent((q) => {
+    if (q.isConditionalExpression()) return isReady(q.get('test')) && inside(p, q.get('consequent'));
+    if (q.isLogicalExpression({ operator: '&&' })) return flat(q.get('left'), '&&').some(isReady) && inside(p, q.get('right'));
+    return false;
+  });
+  for (const ref of mB.referencePaths) {
+    const par = ref.parentPath;
+    if (par.isMemberExpression() && par.node.object === ref.node && !par.node.computed) {
+      if (par.node.property.name === 'level' && !gated(par)) bad.push('model.level at line ' + par.node.loc.start.line + ' not under model.ready');
+      continue;
+    }
+    if (par.isCallExpression() && par.node.arguments[0] === ref.node && par.get('callee').isIdentifier()
+      && (par.node.callee.name === 'charHudBar' || par.node.callee.name === 'publish')) continue;
+    bad.push('`model` used at line ' + ref.node.loc.start.line + ' other than model.<field> or charHudBar/publish');
+  }
+  const spans = [];
+  comp.traverse({ JSXOpeningElement(p) { if (p.node.attributes.some((a) => a.name && a.name.name === 'data-charhud-lv')) spans.push(p); } });
+  if (spans.length !== 1) bad.push('Lv spans: ' + spans.length + ' (one)');
+  for (const s of spans) if (!gated(s)) bad.push('the Lv span at line ' + s.node.loc.start.line + ' not under model.ready');
+  return bad;
+}
+check('9h the HUD draws nothing under ?hud=0: `const on = charHudOn()` and `if (!on ...) return null;` before every return that draws (its tree)',
+  hudSwitchGate(hudSrc).length === 0, hudSwitchGate(hudSrc).join('; '));
+check('9i no "Lv" before the record: every model.level and the Lv span under `model.ready` (its tree)',
+  hudRecordGate(hudSrc).length === 0, hudRecordGate(hudSrc).join('; '));
 
 /* ── 10. the dodges: each planted, each red ── */
 async function plantModule(name, from, to, why) {
@@ -430,6 +526,28 @@ plantSrc('a face that does not stop the press (a click on a computer swings)', h
   (s) => { const p = hudPress(s); return p.click && p.hero && p.stopDown && p.stopMouse && p.up.length === 0; });
 plantSrc('a face that opens something deeper than Bro', hudSrc, "dashboardPanelBus.open('hero')", "dashboardPanelBus.open('broCombat')",
   (s) => { const p = hudPress(s); return p.click && p.hero; });
+/* v2.3.6781 (the mend of sitting 71): the switch and the record at the component */
+const plantSrcN = (name, src, pairs, test) => {
+  const miss = pairs.find(([from]) => src.indexOf(from) < 0);
+  if (miss) { check('10 plant "' + name + '" finds its text', false, miss[0]); return; }
+  check('10 plant red: ' + name, !test(pairs.reduce((s, [from, to]) => s.split(from).join(to), src)));
+};
+const swOk = (s) => hudSwitchGate(s).length === 0, recOk = (s) => hudRecordGate(s).length === 0;
+const GATE = '  if (!on || !rpg) return null;\n';
+plantSrc('the HUD drawn under ?hud=0 (the gatekeeper\'s: `if (!rpg)`)', hudSrc, GATE, '  if (!rpg) return null;\n', swOk);
+plantSrc('the switch\'s return moved into a function of its own', hudSrc, GATE, '  if (!rpg) return null;\n  const hidden = () => { if (!on) return null; return true; };\n', swOk);
+plantSrc('the switch\'s return moved into a block', hudSrc, GATE, '  if (!rpg) return null;\n  if (S) { if (!on) return null; }\n', swOk);
+plantSrcN('the switch\'s return moved below the drawing', hudSrc, [[GATE, '  if (!rpg) return null;\n'], ['    </div>\n  );\n}', '    </div>\n  );\n  if (!on) return null;\n}']], swOk);
+plantSrc('the switch read but unused', hudSrc, GATE, '  void on;\n  if (!rpg) return null;\n', swOk);
+plantSrc('the switch read and made to say nothing', hudSrc, GATE, '  if ((!on && false) || !rpg) return null;\n', swOk);
+plantSrc('the switch forced on', hudSrc, '  const on = charHudOn();\n', '  const on = charHudOn() || true;\n', swOk);
+plantSrcN('"Lv 1" before the record at the component (the gatekeeper\'s)', hudSrc, [
+  ['{model.ready ? <span className="bt-charhud__lv" data-charhud-lv="1">{lv}</span> : null}', '<span className="bt-charhud__lv" data-charhud-lv="1">{lv}</span>'],
+  ["const lv = model.ready ? say(SAY, 'charHud.level', { n: model.level }) : '';", "const lv = say(SAY, 'charHud.level', { n: model.level || 1 });"]], recOk);
+plantSrc('the Lv span drawn before the record', hudSrc, '{model.ready ? <span className="bt-charhud__lv" data-charhud-lv="1">{lv}</span> : null}', '<span className="bt-charhud__lv" data-charhud-lv="1">{lv}</span>', recOk);
+plantSrc('the level read through an alias', hudSrc, "const lv = model.ready ? say(SAY, 'charHud.level', { n: model.level }) : '';",
+  "const m = model; const lv = say(SAY, 'charHud.level', { n: m.level || 1 });", recOk);
+plantSrc('the Lv span under a test that is always true', hudSrc, '{model.ready ? <span className="bt-charhud__lv"', '{(model.ready || true) ? <span className="bt-charhud__lv"', recOk);
 
 /* ── 11. every mutant of the module ── */
 /* the survivors, each with why it changes nothing a player sees (a key: line:column operator) */

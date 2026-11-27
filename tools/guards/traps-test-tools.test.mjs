@@ -166,9 +166,8 @@ const qa = codeOf(['tools']);   /* every .js/.mjs under tools/, comments dropped
     return false;
   };
   /* folders with no rule of their own, each with why; one stepped in */
-  const NO_RULE = {
-    objects: 'addressed with no ?v= (wheelObjects.js BASE + the manifest\'s sheet; farmWorld.js ?farm=1): the default caching',
-  };
+  /* v2.3.6744: objects came off (card KEEP PR 3c: every request at its file's version, kept a year) */
+  const NO_RULE = {};
   const KNOWN = { arena: 'arenaArt.js addresses it at ?v=2.3.3730, and _headers has no /world/arena/ rule (stepped in)' };
   const rows = folders.map((d) => ({ d, rule: headers.some((h) => h.startsWith('/world/' + d + '/')), atV: addressedAtV(d) }));
   const bad = rows.filter((r) => !r.rule && !Object.hasOwn(NO_RULE, r.d) && !Object.hasOwn(KNOWN, r.d)).map((r) => r.d);
