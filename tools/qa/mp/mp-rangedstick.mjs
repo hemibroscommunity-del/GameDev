@@ -62,14 +62,21 @@ const PICK = (S, o) => {
 const TOOLS = () => {
   /* a shot is known by its own stamp (_shotTs), never by its object: the game reuses an arrow's object */
   const S0 = window._gameState.current, seen = new Set();
-  const key = (a) => (a._shotTs || 0) + ':' + a.ang;
+  const key = (a) => (a._shotTs || 0) + ':' + (a._sn != null ? a._sn : '');   /* never its angle: that changes in flight */
   for (const a of (S0.arrows || [])) if (a) seen.add(key(a));
   window.__rsShots = [];
   window.__rsOut = [];
   cancelAnimationFrame(window.__rsR);
+  /* each shot recorded AS IT IS PUSHED (its launch angle: an arrow's angle
+     changes in flight, and this box draws a few frames a second); the
+     frame's scan only catches one pushed into a list made since (late) */
+  const rec = (a, late) => { const S = window._gameState.current; seen.add(key(a)); window.__rsShots.push({ ang: a.ang, staff: !!a.isStaff, f: S._frameCount || 0, tap: S._tapAtk ? S._tapAtk.ang : null, late: !!late }); };
+  const hook = (arr) => { if (!arr || arr.__rs) return; const o = arr.push; arr.push = function (...xs) { for (const a of xs) if (a && !seen.has(key(a))) rec(a, false); return o.apply(this, xs); }; arr.__rs = true; };
+  hook(S0.arrows);
   const f = () => {
     const S = window._gameState.current;
-    for (const a of (S.arrows || [])) if (a && a._shotTs && !seen.has(key(a))) { seen.add(key(a)); window.__rsShots.push({ ang: a.ang, staff: !!a.isStaff, f: S._frameCount || 0, tap: S._tapAtk ? S._tapAtk.ang : null }); }
+    hook(S.arrows);
+    for (const a of (S.arrows || [])) if (a && a._shotTs && !seen.has(key(a))) rec(a, true);
     window.__rsR = requestAnimationFrame(f);
   };
   window.__rsR = requestAnimationFrame(f);
@@ -181,7 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const away = s0.mon.a + Math.PI;
         const A = await hold(away, 120, 3, SHOTS && slot === 'ranged' && full ? `rangedstick-${label}-bow-dragged.png` : null);
         const aimOk = A.during.length > 0 && A.during.every((s) => s.aiming && s.aim != null && off(s.aim, away) < 1 * DEG && s.latch === 'idle' && s.lid == null && s.lock == null && s.sight === 'none' && s.auto);
-        const awayShots = A.got.shots.filter((x) => !x.tap);
+        const awayShots = A.got.shots.filter((x) => !x.tap && !x.late);
         rec.ok(`2${slot === 'staff' ? 's' : ''}. ${label}, ${W}: dragged AWAY from the monster and held: aimed the thumb's way, nothing locked or sighted, auto-attack on; ${awayShots.length} shot(s) at empty ground, kept leaving (the owner: "no matter if there's a monster in front or not"), each the thumb's way; no claim on it`,
           aimOk && awayShots.every((x) => off(x.ang, away) < 2 * DEG) && awayShots.length >= 2 && !A.got.out.some((o) => o.mid === mon.id),
           { away, during: A.during.slice(0, 3), shots: awayShots.slice(0, 4), out: A.got.out.slice(0, 4) });
@@ -190,7 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const s1 = await NOW(P, mon.id);
         if (!s1.mon || !s1.mon.alive) { rec.skip(`3. ${label} ${W}`, 'the monster is gone', s1); continue; }
         const T = await hold(s1.mon.a, 120, 3, null);
-        const tShots = T.got.shots.filter((x) => !x.tap);
+        const tShots = T.got.shots.filter((x) => !x.tap && !x.late);
         rec.ok(`3${slot === 'staff' ? 's' : ''}. ${label}, ${W}: dragged TOWARD it: ${tShots.length} shot(s) the thumb's way, the monster hit (a claim on it, or its health down: a staff's bolt is the worker's to judge), still nothing locked`,
           tShots.length > 0 && tShots.every((x) => off(x.ang, s1.mon.a) < 2 * DEG) && (T.got.out.some((o) => o.mid === mon.id) || !T.after.mon || !T.after.mon.alive || T.after.mon.hp < s1.mon.hp) && T.during.every((s) => s.latch === 'idle' && s.lock == null),
           { a: s1.mon.a, shots: tShots.slice(0, 4), out: T.got.out.slice(0, 4), during: T.during.slice(0, 2) });
@@ -207,7 +214,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const m0 = await MARK(P);
         await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]); await P.page.waitForTimeout(60); await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
         await frames(P, 8);
-        const got = await SINCE(P, m0);
+        const got0 = await SINCE(P, m0);
+        const got = { shots: got0.shots.filter((x) => !x.late), out: got0.out };
         const s4b = await NOW(P, mon.id);
         const face = await H.readState(P, (S) => ({ tap: S._tapAtk ? S._tapAtk.ang : null, how: S._tapAtk ? S._tapAtk.how : null }));
         rec.ok(`4. ${label}: a tap with the bow, the body turned away: one arrow the way the bro faces (${face.tap != null ? Math.round(face.tap / DEG) : '?'} deg; the monster at ${Math.round(s4b.mon ? s4b.mon.a / DEG : 0)}), nothing locked`,
