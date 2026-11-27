@@ -187,7 +187,7 @@ doubling.
 |---|---|---|
 | client → server (`join.data`) | `rpgArmorStash`, `rpgLegsStash`, `rpgShieldStash`, `rpgGearStash` | sent every join; **ingest-only**; a key is **omitted entirely when its list is empty** (v2.3.2527) |
 | client → server (`join.data`) | `rpgAmuletStash` | **refused** — excluded from `cleanJoinData` and read by nothing (v2.3.2527) |
-| server → client (`player_state`) | `armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash` | echo; no client reads them yet |
+| server → client (`player_state`) | `armorStash`, `legsStash`, `shieldStash`, `gearStash`, `amuletStash` | echo; the client ADOPTS them by id, adding and never taking: `shieldStash` since v2.3.6800 (`src/game/shieldAdopt.js`, behind `caps.shieldshop`), the other four since v2.3.6801 (`src/game/gearAdopt.js`, `?gearadopt=0` off) |
 
 No new message type, so nothing to add to `PRIVILEGED_EVENTS`.
 
@@ -329,6 +329,19 @@ writer for equip/unequip first.
 >   problem above and remains open. v2.3.2532 splices a listed piece out
 >   of the client's own list (`gearSellLocal.js`) so the bag stops showing
 >   what was sold — the smaller fix, not the real one.
+>   **v2.3.6801 (card SHOP-gearbag): CLOSED.** The client reads the echo:
+>   every `player_state`'s armour, legs, cosmetic and amulet lists are
+>   adopted into its bag (`src/game/gearAdopt.js`): a piece the server holds
+>   with an id (`gid`) that the client holds nowhere, worn or bagged, is
+>   ADDED; nothing is ever taken (a piece leaves the bag only by its own
+>   roads); an old copy with no id and the same look answers for one piece;
+>   a list stops at the server's cap; an unrevealed piece stays a "?". Every
+>   reply that brings a piece (loot, chest, forge, quest, mail) goes in by the
+>   same one way, which refuses a second copy of an id, so a lost reply is
+>   cured by the next state and the two never double. The shield's list was
+>   mended the same way in v2.3.6800 (`src/game/shieldAdopt.js`). The suite is
+>   `server/test/gear-adopt.test.mjs`; `?gearadopt=0` turns the adopt off on
+>   one phone.
 >
 > **v2.3.2551 — BOTH of the above are now CLOSED, and not by this file.**
 > The store no longer asks whether a piece is in a stash list. It asks the

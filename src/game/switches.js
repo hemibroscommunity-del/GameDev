@@ -135,6 +135,7 @@ const FORMS = {
   'fxmade': '0',
   'fxsheets': '0',
   'garmentspecks': '0',
+  'gearadopt': '0',
   'gearlook': '0',
   'gearpackgentle': '0|off|false',
   'gearretry': '0',

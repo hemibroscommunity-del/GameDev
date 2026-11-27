@@ -62,6 +62,7 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { poolsLand } from '@/game/guardBreak.js'; /* v2.3.6554: the pools land, and the worker's guard break takes the phone's shield down (card CT part 20) */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { adoptStateShields } from '@/game/shieldAdopt.js'; /* v2.3.6800: the worker's shields, added to the phone's bag by id (sitting 71's hold) */
+import { adoptStateGear, gearBagPut } from '@/game/gearAdopt.js'; /* v2.3.6801: the worker's armour, legs, cosmetic and amulet lists adopted by id; every piece in by one way (card SHOP-gearbag) */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
 import { setClientOff } from '@/game/clientOff.js'; /* v2.3.3755: each memory saver off from the Test panel */
@@ -3183,6 +3184,13 @@ export function setupWebSocket(ctx) {
               if (_armorChanged) recalcDerived(S.rpg);
               if (_shieldGemChanged && !_armorChanged) recalcDerived(S.rpg); /* v2.3.3187: the shield's bonus follows its gem */
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
+              /* v2.3.6801 (card SHOP-gearbag): the worker's copy of the other
+                 four lists (armour, legs, cosmetic, amulet), read here AFTER
+                 the worn slots above: a piece it holds that this copy holds
+                 nowhere is added by id, never taken (src/game/gearAdopt.js).
+                 A chest's or a forge's piece whose answer was lost is in the
+                 bag on the next state.  `?gearadopt=0`: as before. */
+              adoptStateGear(S, msg.payload, getEquip, sw('gearadopt'));
               /* Quest state mirror (slice 17).  Worker is authoritative
                  for chain progression + reward grants.  Quest completion
                  criteria (kill counts / item drops / NPC dialog) still
@@ -3827,44 +3835,20 @@ export function setupWebSocket(ctx) {
               var _qrs = msg.payload.item;
               var _qrsLegs = _qrs.slot === 'legsArmor';
               var _qrsName = String(_qrs.name || 'Quest Armor');
-              var _qrsTm = Number(_qrs.tierMult) || 1;
-              var _qrsKey = _qrsLegs ? 'legsStash' : 'armorStash';
-              if (!Array.isArray(S.rpg[_qrsKey])) S.rpg[_qrsKey] = [];
-              var _qrsWorn = _qrsLegs ? S.rpg.legsArmor : S.rpg.armor;
               /* v2.3.3142: a piece with the worker's id is the same piece only
                  if it has the same id -- a replay carries the one it had.  By
                  name alone, a second Iron Torso the worker really minted (the
                  admin kit's Godly armor after its Elite) was taken for a
                  replay and never reached the bag, though the ledger held it.
-                 A piece with no id keeps the old by-value guard. */
-              var _qrsGid = (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : null;
-              var _qrsHeld = _qrsGid
-                ? ((_qrsWorn && _qrsWorn.gid === _qrsGid)
-                  || S.rpg[_qrsKey].some(function (a) { return a && a.gid === _qrsGid; }))
-                : ((_qrsWorn && _qrsWorn.name === _qrsName)
-                  || S.rpg[_qrsKey].some(function (a) {
-                    return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
-                  }));
-              if (!_qrsHeld) {
-                /* v2.3.1758: the METAL rides with the piece into the bag.  It
-                   is what gearVariants resolves the art and the icon from, so
-                   dropping it here would put a copper-named piece on the
-                   character in steel — the same class of bug as v2.3.1701
-                   dropping `slot`. */
-                S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm,
-                  slot: _qrsLegs ? 'legsArmor' : 'armor',
-                  /* v2.3.2544: the server's id travels with a quest piece
-                     too -- same reason as the loot_credit site above, and
-                     the same optional shape against an old worker. */
-                  gid: (typeof _qrs.gid === 'string' && _qrs.gid) ? _qrs.gid : undefined,
-                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined,
-                  /* v2.3.3142: and its grade, when it has one (only the admin
-                     kit's graded armour does -- devtools.js `quality`), with
-                     the worker's own mark that it minted it, so the bag and
-                     the worn look show it before the next join re-reads the
-                     ledger */
-                  quality: (_qrs.quality === 'rare' || _qrs.quality === 'elite' || _qrs.quality === 'godly') ? _qrs.quality : undefined,
-                  prov: _qrs.prov === 'minted' ? 'minted' : undefined });
+                 A piece with no id keeps the old by-value guard.
+                 v2.3.1758: the METAL rides with the piece into the bag (what
+                 gearVariants resolves the art and the icon from); v2.3.2544:
+                 its id; v2.3.3142: its grade and the worker's `prov` mark.
+                 v2.3.6801 (card SHOP-gearbag): all of it now the bag's one
+                 way in (src/game/gearAdopt.js gearBagPut 'reply'), which the
+                 state's adopt and every other reply share, so the piece is
+                 there once whichever came first. */
+              if (gearBagPut(S.rpg, null, _qrs, 'reply', { name: _qrsName })) {
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══
@@ -4406,12 +4390,7 @@ export function setupWebSocket(ctx) {
           for (var _ai = 0; _ai < payload.armor.length; _ai++) {
             var _pc = payload.armor[_ai];
             if (!_pc) continue;
-            var _pcLegs = _pc.slot === 'legsArmor';
             var _pcName = String(_pc.name || 'Armor');
-            var _pcTm = Number(_pc.tierMult) || 1;
-            var _pcKey = _pcLegs ? 'legsStash' : 'armorStash';
-            if (!Array.isArray(R[_pcKey])) R[_pcKey] = [];
-            var _pcWorn = _pcLegs ? R.legsArmor : R.armor;
             /* ═══ v2.3.2544: THE SERVER'S ID TRAVELS WITH THE PIECE ═══
                The worker mints every piece of gear with a `gid` now
                (gearprov.js) and sends it here -- and this handler used to
@@ -4424,46 +4403,18 @@ export function setupWebSocket(ctx) {
                for `.gid` and found exactly one site -- the line that READS
                one, and nothing that writes one.
                Kept OPTIONAL: an old worker sends no id and the piece is
-               stored exactly as before (deploy-order safety, rule 19). */
-            var _pcGid = (typeof _pc.gid === 'string' && _pc.gid) ? _pc.gid : undefined;
-            /* ...and the already-held guard prefers the ID when both sides
+               stored exactly as before (deploy-order safety, rule 19).
+               ...and the already-held guard prefers the ID when both sides
                have one.  Name + tierMult cannot tell two genuinely different
                pieces of the same kind apart, so without this a second Iron
                Torso would be swallowed as a duplicate of the first. */
-            var _pcHeld = _pcGid
-              ? ((_pcWorn && _pcWorn.gid === _pcGid)
-                 || R[_pcKey].some(function (a) { return a && a.gid === _pcGid; }))
-              : ((_pcWorn && _pcWorn.name === _pcName && (Number(_pcWorn.tierMult) || 1) === _pcTm)
-                 || R[_pcKey].some(function (a) {
-                   return a && a.name === _pcName && (Number(a.tierMult) || 1) === _pcTm;
-                 }));
-            if (_pcHeld) continue;
-            R[_pcKey].push({ name: _pcName, tierMult: _pcTm,
-              slot: _pcLegs ? 'legsArmor' : 'armor',
-              gid: _pcGid,
-              mat: _pc.mat ? String(_pc.mat).slice(0, 16) : undefined,
-              /* v2.3.1925: the GRADE travels with the piece.  It is what
-                 getArmorPieceDr multiplies the tier by, so a piece that
-                 arrives without it is a rare breastplate wearing normal
-                 stats — the same class of bug as v2.3.1758 dropping `mat`
-                 and rendering iron as steel. */
-              quality: typeof _pc.quality === 'string' ? _pc.quality : undefined,
-              /* v2.3.4012: ...or, a rare-or-better piece waiting in the bag,
-                 no grade and the worker's mark that it is still a "?"
-                 (game/revealBag.js): Reveal on its card opens it */
-              unrevealed: _pc.unrevealed ? true : undefined,
-              /* ═══ v2.3.3545: AND THE WORKER'S MARK THAT IT MINTED IT ═══
-                 Rebuilt from a list of fields, the piece lost `prov`, so the
-                 bag's card read a Copper Torso forged a second ago as
-                 "Earned before the game kept receipts -- it still works, but
-                 it cannot be sold" (gearSellReason.js asks prov === 'minted')
-                 until the next join re-read the ledger: no Sell button, and
-                 a sentence that was not true.  The quest's armour has carried
-                 it since v2.3.3142 (quest_reward_stashed); the forge's, a
-                 pile's and the chest's come this way.  Only 'minted', never
-                 a client's word: the worker settles every sale against its
-                 own ledger. */
-              prov: _pc.prov === 'minted' ? 'minted' : undefined });
+            /* v2.3.6801 (card SHOP-gearbag): the piece goes in by the bag's
+               one way (src/game/gearAdopt.js gearBagPut 'reply'): the shape
+               above, refused when its id is already worn or in the bag (the
+               state's adopt may have brought it first), and with no id the
+               old guard by name and tierMult. */
+            var _pcIn = gearBagPut(R, null, _pc, 'reply', { name: _pcName });
+            if (!_pcIn) continue;
             _gotArmor++;
             /* v2.3.4012: a "?" says so, in the rare blue it promises */
             pushDmgPopup(S, S.player.x, S.player.y - 46 - _ai * 14, 'BAG: ' + _pcName + (_pc.unrevealed ? ' ?' : ''), _pc.unrevealed ? '#5B99DE' : '#f5c542', { ts: Date.now() + 2 + _ai });
