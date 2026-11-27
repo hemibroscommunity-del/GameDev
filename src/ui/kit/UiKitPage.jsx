@@ -128,7 +128,7 @@ function InfoPlate({ room }) {
 function WorkspacePlate({ room }) {
   const art = '/icons/items/';
   const pics = ['sword-blacksteel.webp', 'bow.webp', 'staff.webp', 'chest-plate-iron.webp'];
-  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: art + pics[i], label: g }));
+  const cells = UI2_GRADES.map((g, i) => ({ key: 'k' + i, grade: g, art: assetUrl(art + pics[i]) /* v2.3.6743: its file's version (the mend) */, label: g }));
   /* v2.3.6688 (the mends; mp-uikit 1b, 1c): the fixture holds what its panel shows without a scroll, so the kit's
      audit reads every cell (a storage grid scrolls by intent in the game, which the audit would count as cut):
      upright two rows of three; sideways (a 46 px panel) ONE row of 44 px cells, and the summary's one stat

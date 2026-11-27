@@ -133,7 +133,7 @@ export const SYSTEMS = Object.freeze({
     what: 'hitting and being hit: weapons, abilities, the bow, shields, damage, PvP',
     files: [f('src/rendering/tables', 'combat') /* v2.3.5345: its hand-tuned tables (card M) */,
       f('server/src', 'combat|hits|abilities|accuracy|burst|freeswing|fightlock|killroll|threat|telegraph|elemental|oneformula|statcap|arrowblast|swordconvert|shieldwear|shieldgem|weapongem|amulet|pvpbalance|pvpextras|pvplunge'),
-      f('src/game', 'abilities|accuracy|combatHelpers|manualCombat|targeting|projectiles|bowDraw|bowFeel|bowVolley|swordFeel|staffFeel|weaponFeel|deathBlow|dodge|elemHits|elemWindup|killRoll|killXp|pvpSwing|shieldCopies|shieldGem|shieldToggle|guardDoor|shieldWear|arrowEdge|whirlCatch|deskShield|weaponGem|weaponSlots|amuletGem|apChip|peerShots|shotGround|shockSpark|stormSparks|waterAttack'),
+      f('src/game', 'abilities|accuracy|combatHelpers|manualCombat|targeting|lockPick|projectiles|bowDraw|bowFeel|bowVolley|swordFeel|staffFeel|weaponFeel|deathBlow|dodge|elemHits|elemWindup|killRoll|killXp|pvpSwing|shieldCopies|shieldGem|shieldToggle|guardDoor|shieldWear|arrowEdge|whirlCatch|deskShield|weaponGem|weaponSlots|amuletGem|apChip|peerShots|shotGround|shockSpark|stormSparks|waterAttack'),
     ],
     words: ['combat', 'hit', 'ability', 'abilit', 'bow', 'arrow', 'sword', 'staff', 'shield', 'weapon', 'pvp', 'damage', 'whirl', 'dodge', 'elemental', 'accuracy'],
     traps: ['combat'],

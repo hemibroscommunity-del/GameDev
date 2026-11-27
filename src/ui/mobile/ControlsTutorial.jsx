@@ -8,7 +8,7 @@ import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -
 import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
 import { twoButtonsLive, holdAutoOn } from '@/game/latch.js';   /* v2.3.6544: the two buttons' one gate (a touch screen's; card CT PR 5) */
-import { rimSprintOn } from '@/game/stickZones.js';   /* v2.3.6545: the stick's rim sprints (card CT item 6) */
+import { rimSprintOn, rimSprintLive } from '@/game/stickZones.js';   /* v2.3.6545: the stick's rim sprints (card CT item 6); v2.3.6644: in the usual controls too (card PAD part 9) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -37,7 +37,7 @@ import { rimSprintOn } from '@/game/stickZones.js';   /* v2.3.6545: the stick's 
    10q reads them from this file). */
 const STEPS = [
   { key: 'move', shape: 'circle', sels: ['.bt-joystick-zone'],
-    get label() { return say(SAY, 'controlsTutorial.moveLabel'); }, get body() { return say(SAY, 'controlsTutorial.moveBody'); },
+    get label() { return say(SAY, 'controlsTutorial.moveLabel'); }, get body() { return say(SAY, rimSprintLive() ? 'controlsTutorial.moveBodyEdge' : 'controlsTutorial.moveBody'); },   /* v2.3.6644: the usual controls' edge sprint, a touch screen's (card PAD part 9) */
     get bodyTwo() { return say(SAY, rimSprintOn() ? 'controlsTutorial.moveBodyRim' : 'controlsTutorial.moveBodyTwo'); } },   /* v2.3.6544: the two buttons' turn and walk; v2.3.6545: and the rim's sprint */
   /* v2.3.1667: this said "hold for special", and it was WRONG — there is
      no hold gesture.  The special fires on a FLICK: BroTown.jsx's right-

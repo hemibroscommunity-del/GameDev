@@ -107,7 +107,6 @@ export function setupDesktopControls(S, deps) {
     _desktopShieldOff = deps._desktopShieldOff,
     _desktopCycleWeapon = deps._desktopCycleWeapon,
     _desktopSelectSlot = deps._desktopSelectSlot,
-    _desktopSpecialAttack = deps._desktopSpecialAttack,
     _desktopShieldToggle = deps._desktopShieldToggle,   /* v2.3.4323: Q */
     _desktopElementBurst = deps._desktopElementBurst,   /* v2.3.1734 */
     _desktopCloseAll = deps._desktopCloseAll,
@@ -182,7 +181,6 @@ export function setupDesktopControls(S, deps) {
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
     S._isDesktop = fineInput();   /* v2.3.4804: the device profile */
     var onKeyDown = function onKeyDown(e) {
-      var _document$activeEleme;
       var _ae = document.activeElement, _aeTag = _ae && _ae.tagName;
       if (_aeTag === 'INPUT' || _aeTag === 'TEXTAREA') return; /* typing in a field (chat bar etc.) -- don't drive the game */
       S.keys[e.key] = true;
