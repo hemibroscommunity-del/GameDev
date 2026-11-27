@@ -98,7 +98,7 @@ export function codexView(opts) {
   let empty = null;
   if (!cards.length) {
     empty = shelf === 'pets'
-      ? Object.freeze({ title: say(SAY, 'codexPages.emptyTitle'), why: say(SAY, 'codexPages.emptyPets'), door: Object.freeze({ page: 'pets', word: say(SAY, 'codexPages.petJournal') }) })
+      ? Object.freeze({ title: say(SAY, 'codexPages.emptyTitle'), why: say(SAY, 'codexPages.emptyPets'), door: Object.freeze({ page: 'petsAll', word: say(SAY, 'codexPages.petJournal') }) })   /* v2.3.6696: the pets' own collection (card UI2-pets) */
       : Object.freeze({ title: say(SAY, 'codexPages.emptyTitle'), why: say(SAY, 'codexPages.emptyWhy'), door: null });
   }
   return Object.freeze({

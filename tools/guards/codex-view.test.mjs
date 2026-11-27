@@ -12,7 +12,7 @@
  *   V4  every kind keeps its place (Monsters, Items, Resources, Townsfolk,
  *       Lands, Pets, in that order; Monsters chosen when none is), and each
  *       one with nothing says so; Mechanics and Furnishings are not invented;
- *   V5  a door only where something is behind it: Pets' to page `pets`, none
+ *   V5  a door only where something is behind it: Pets' to page `petsAll` (v2.3.6696: the pet journal), none
  *       on the others;
  *   V6  a met card is the game's: its name, its element (word and icon), its
  *       land, its kills; NEW only while its page has something unread;
@@ -69,7 +69,7 @@ function verdict(M) {
     && SHELVES.slice(1).every((s) => { const v = M.codexView({ shelf: s }); return v.shelf === s && v.empty && /Not in the Codex yet/.test(v.empty.title) && v.empty.why; })
     && !M.CODEX_SHELVES.some((s) => /mechanic|furnish/i.test(s.id + s.word)));
   /* V5 */
-  say('V5', SHELVES.slice(1).every((s) => { const e = M.codexView({ shelf: s }).empty; return !!e && (s === 'pets' ? !!(e.door && e.door.page === 'pets' && e.door.word) : e.door === null); })
+  say('V5', SHELVES.slice(1).every((s) => { const e = M.codexView({ shelf: s }).empty; return !!e && (s === 'pets' ? !!(e.door && e.door.page === 'petsAll' && e.door.word) : e.door === null); })
     && all.empty === null);
   /* V6 */
   say('V6', all.cards.every((c) => {

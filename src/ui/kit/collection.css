@@ -78,3 +78,9 @@
 .ui2 .u2-show.is-short .u2-show-figure { grid-row: auto; }
 .ui2 .u2-show.is-short .u2-show-doors { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .ui2 .u2-show.is-short .u2-show-facts.u2-facts.is-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* v2.3.6696 (card UI2-pets): a showcase with its `head` (the entry's own words above its doors) */
+.ui2 .u2-show.has-head { grid-template-rows: auto minmax(0, auto) auto; }
+.ui2 .u2-show.has-head .u2-show-figure { grid-row: 1 / span 3; }
+.ui2 .u2-show-head { min-width: 0; }
+.ui2 .u2-show.is-short.has-head { grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.1fr); grid-template-rows: auto; }
+.ui2 .u2-show.is-short.has-head .u2-show-figure { grid-row: auto; }

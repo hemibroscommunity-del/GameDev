@@ -180,7 +180,7 @@ export const SYSTEMS = Object.freeze({
       f('server/src', 'skillpoints'),   /* v2.3.5283 (card R): the skill points' door */
       f('server/src', 'xp'),   /* v2.3.5289 (card R): experience and levels' door */
       f('server/src', 'queststate'),   /* v2.3.5284 (card R): quest state's door */
-      f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPages|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
+      f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPages|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petPages|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
     ],
     words: ['quest', 'achievement', 'codex', 'pet', 'points', 'tour', 'xp', 'level'],
     traps: ['quests'],

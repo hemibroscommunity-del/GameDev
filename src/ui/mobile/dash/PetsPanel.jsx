@@ -7,11 +7,13 @@ import { storePetsEnabled, storeListPet } from '@/ui/storeApi.js';   /* v2.3.312
 import { claimSell, releaseSell } from '@/game/storeAnswer.js';   /* v2.3.5882: a pet's listing, one tap at a time (TRAPS §265) */
 import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelease, pethouseOn, sendPetHouseBuy } from '@/game/petBook.js';
 import { trapLevel, petlevelsOn, petwardsOn } from '@/game/trapping.js';
-import { ZONES } from '@/data/zones.js';
 import { landLook } from '@/data/wheelLands.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the Pet House row's picture */
 import { SAY } from '@/data/say/pets.js';   /* v2.3.6330: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say, sayPieces } from '@/game/say.js';   /* v2.3.6330: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
+import { ui2FrameOn } from '../ui2Frame.js';
+import { PetsPage, PetsSubPage } from './PetsPage.jsx';   /* v2.3.6696 (card UI2-pets): the pages under the new dashboard */
+import { petsJournal, PET_STAGES } from '@/game/petPages.js';
 
 /* ═══ v2.3.3120: THE PETS PAGE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- "Name, set active and release from a
@@ -34,7 +36,6 @@ import { say, sayPieces } from '@/game/say.js';   /* v2.3.6330: a plain row goes
  * your catches, golden ones and your biggest -- a kind you have not caught is
  * its shape alone.  All of it from the record's `journal`. */
 const POLL_MS = 400;
-const STAGES = [1, 2];
 const STAGE_WORDS = { 1: say(SAY, 'pets.stageLow'), 2: say(SAY, 'pets.stageHigh') };   /* v2.3.6330: no "tap" in them, so read once at load */
 
 function XpBar({ view }) {
@@ -49,28 +50,25 @@ function XpBar({ view }) {
   );
 }
 
-function JournalCell({ kind, stage, j }) {
-  const caught = !!(j && j.n > 0);
-  const tried = !!(j && j.tries > 0);
-  const home = PET_KINDS[kind].home;
-  const look = landLook(home);
-  const land = (ZONES[home] && ZONES[home].name) || '';
+/* v2.3.6696: a cell of the journal as src/game/petPages.js petsJournal reads it (the one reading) */
+function JournalCell({ c }) {
+  const look = landLook(PET_KINDS[c.kind].home);
   return (
-    <div data-journal-cell={kind + '.' + stage} data-journal-caught={caught ? 1 : 0}
-      style={{ background: caught ? COL.slot : COL.well, border: '1px solid ' + COL.border, borderTop: '3px solid ' + ((look && look.color) || COL.border),
-        borderRadius: 10, padding: '6px 5px 6px', textAlign: 'center', minWidth: 0, opacity: tried || caught ? 1 : 0.72 }}>
+    <div data-journal-cell={c.kind + '.' + c.stage} data-journal-caught={c.caught ? 1 : 0}
+      style={{ background: c.caught ? COL.slot : COL.well, border: '1px solid ' + COL.border, borderTop: '3px solid ' + ((look && look.color) || COL.border),
+        borderRadius: 10, padding: '6px 5px 6px', textAlign: 'center', minWidth: 0, opacity: c.tried || c.caught ? 1 : 0.72 }}>
       <div style={{ display: 'grid', placeItems: 'center', height: 40 }}>
-        <PetPortrait pet={{ kind, stage }} size={40} shadow={!caught} />
+        <PetPortrait pet={{ kind: c.kind, stage: c.stage }} size={40} shadow={!c.caught} />
       </div>
-      <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.15, marginTop: 2, color: caught ? COL.text : COL.text2,
-        minHeight: 26, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{petKindName(kind, stage)}</div>
-      <div style={{ fontSize: 9.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{land}</div>
-      <div style={{ fontSize: 10.5, fontWeight: 800, marginTop: 3, color: caught ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-        {caught ? say(SAY, 'pets.cellCaught', { count: j.n }) : say(SAY, tried ? 'pets.cellNotCaught' : 'pets.cellNotTried')}
+      <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.15, marginTop: 2, color: c.caught ? COL.text : COL.text2,
+        minHeight: 26, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.name}</div>
+      <div style={{ fontSize: 9.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.land}</div>
+      <div style={{ fontSize: 10.5, fontWeight: 800, marginTop: 3, color: c.caught ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+        {c.caught ? say(SAY, 'pets.cellCaught', { count: c.n }) : say(SAY, c.tried ? 'pets.cellNotCaught' : 'pets.cellNotTried')}
       </div>
-      <div style={{ fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'pets.cellTries', { tries: (j && j.tries) || 0 })}</div>
-      {j && j.gold > 0 ? <div style={{ fontSize: 10, fontWeight: 800, color: '#EAC675' }}>{say(SAY, 'pets.cellGolden', { gold: j.gold })}</div> : null}
-      {caught && j.big > 0 ? <div data-journal-big={j.big} style={{ fontSize: 10, color: COL.text2 }}>{say(SAY, 'pets.cellBiggest', { pct: Math.round(j.big * 100) })}</div> : null}
+      <div style={{ fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'pets.cellTries', { tries: c.tries })}</div>
+      {c.gold > 0 ? <div style={{ fontSize: 10, fontWeight: 800, color: '#EAC675' }}>{say(SAY, 'pets.cellGolden', { gold: c.gold })}</div> : null}
+      {c.big > 0 ? <div data-journal-big={c.big / 100} style={{ fontSize: 10, color: COL.text2 }}>{say(SAY, 'pets.cellBiggest', { pct: c.big })}</div> : null}
     </div>
   );
 }
@@ -91,7 +89,17 @@ function Btn({ on, onClick, children, primary, danger, ...rest }) {
   );
 }
 
-export const PetsPanel = () => {
+/* v2.3.6696 (card UI2-pets): the choice on the frame's own switch (as GearTabChoice): dash/PetsPage.jsx, or
+   today's page below (`?ui2=0`), its state handed down; tools/guards/pets-mount.test.mjs follows the tree */
+const PetsChoice = () => {
+  const frameOn = (() => { try { return ui2FrameOn(); } catch (e) { return false; } })();
+  if (frameOn) return <PetsPage getS={getState} />;
+  return <PetsWas getS={getState} />;
+};
+export { PetsChoice as PetsPanel };
+export const PetsFramePage = () => <PetsSubPage getS={getState} />;
+
+const PetsWas = ({ getS }) => {
   const [, force] = useState(0);
   const [open, setOpen] = useState(null);       /* the pet whose actions show */
   const [renaming, setRenaming] = useState('');
@@ -106,14 +114,14 @@ export const PetsPanel = () => {
   useEffect(() => {
     let lastRev = -1;
     const id = setInterval(() => {
-      const S = getState();
+      const S = getS();
       /* v2.3.3123: + your gold, so More room lights up the moment you can pay */
       const rev = S ? ((S._petBookRev || 0) * 7 + ((S._trap && S._trap.rev) || 0)) + '|' + Math.floor(Number(S.rpg && S.rpg.coins) || 0) : '';
       if (rev !== lastRev) { lastRev = rev; force((v) => (v + 1) % 1e9); }
     }, POLL_MS);
     return () => clearInterval(id);
   }, []);
-  const S = getState();
+  const S = getS();
   const live = petbookOn(S);
   const book = S && S._petBook;
   const list = petList(S);
@@ -123,11 +131,7 @@ export const PetsPanel = () => {
   const unavailable = !!(book && book.unavailable);
   const levels = petlevelsOn(S);
   const wards = petwardsOn(S);   /* v2.3.3123 */
-  const journal = (book && book.journal && typeof book.journal === 'object') ? book.journal : {};
-  const jOf = (kind, stage) => (Object.prototype.hasOwnProperty.call(journal, kind + '.' + stage) ? journal[kind + '.' + stage] : null);
-  const kinds = Object.keys(PET_KINDS);
-  let kindsCaught = 0;
-  for (const k of kinds) for (const st of STAGES) { const j = jOf(k, st); if (j && j.n > 0) kindsCaught++; }
+  const J = petsJournal(book);   /* v2.3.6696: the journal, read in one place (src/game/petPages.js) */
 
   return (
     <div data-pets-panel="1" style={{ ...panelStyle, padding: '8px 10px 12px', color: COL.text, fontFamily: "'Source Sans 3',sans-serif" }}>
@@ -329,16 +333,16 @@ export const PetsPanel = () => {
       )}
       {/* v2.3.3121: THE JOURNAL -- every kind at both stages */}
       {live && book && !unavailable && (
-        <div data-pets-journal={kindsCaught} style={{ marginTop: 12 }}>
+        <div data-pets-journal={J.caught} style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>{say(SAY, 'pets.journalTitle')}</div>
-            <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'pets.journalCount', { caught: kindsCaught, total: kinds.length * STAGES.length })}</div>
+            <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{J.words}</div>
           </div>
-          {STAGES.map((st) => (
+          {PET_STAGES.map((st) => (
             <div key={st} style={{ marginBottom: 8 }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: COL.text2, margin: '2px 2px 4px' }}>{STAGE_WORDS[st]}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 5 }}>
-                {kinds.map((k) => <JournalCell key={k + st} kind={k} stage={st} j={jOf(k, st)} />)}
+                {J.cells[st].map((c) => <JournalCell key={c.kind + st} c={c} />)}
               </div>
             </div>
           ))}
@@ -349,4 +353,4 @@ export const PetsPanel = () => {
   );
 };
 
-export default PetsPanel;
+export default PetsChoice;

@@ -173,9 +173,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`2. an empty kind says so: "${v2.empty}"`, v2.shelf === 'items' && /Not in the Codex yet/.test(v2.empty) && v2.cards.length === 0, v2);
     await tap(P, '[data-u2-shelf="pets"]', 500);
     const v2b = await L(P);
-    await tap(P, '[data-codex-door="pets"]', 900);
+    await tap(P, '[data-codex-door="petsAll"]', 900);   /* v2.3.6696: the pets' journal, All (card UI2-pets) */
     const petsUp = await P.page.evaluate(() => { const b = window.__broDashPanelBus; const n = b.nav(); const t = n[n.ws][n[n.ws].length - 1]; return t ? t.id : null; });
-    rec.ok(`2b. Pets: "${v2b.empty}", its door opens the pets page (${petsUp})`, /pet journal/i.test(v2b.empty) && petsUp === 'pets', { v2b, petsUp });
+    rec.ok(`2b. Pets: "${v2b.empty}", its door opens the pet journal (${petsUp})`, /pet journal/i.test(v2b.empty) && petsUp === 'petsAll', { v2b, petsUp });
     await back(P);
     await tap(P, '[data-u2-shelf="monsters"]', 500);
 

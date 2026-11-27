@@ -2503,6 +2503,31 @@ Screens: ui2-bro-equipment
 
 Sources: src/game/gearShowcase.js, src/data/say/gearShowcase.js, src/ui/mobile/sheet/GearShowcase.jsx, BroCard.jsx (door 'equip'), src/game/broHub.js (broEquip), src/game/dashDests.js, src/ui/mobile/dash/GearPanels.jsx (EquippedBody, WornCell's `tap`), itemPageOpen.js (the showcase, profile and peer sources), src/ui/panels/PlayerProfilePanel.jsx, InspectPlayerPanel.jsx; tools/guards/gear-showcase.test.mjs; tools/qa/mp/mp-ui2gear.mjs.
 
+## Pets (v2.3.6696, card UI2-pets)
+Screens: dash-pets-companion, dash-pets-owned, dash-pets-one, dash-pets-release, dash-pets-all
+
+**The owner's words** (the master specification, 2026-11-25, part 4.6): *"Active companion dominates the overview, with actual appearance, identity and relevant supported stats. Secondary destinations: Owned Pets and All Pets. All Pets should reuse the Codex pet collection when available, not duplicate encyclopedia data. No active companion produces an informative empty state. Owner management and other-player inspection use the same underlying components with permissions. Pet leveling/XP, sample species and stats shown in prior wireframes were examples, not confirmed mechanics."* And their standing rule: *"Yeah my game content over the mockup stuff"*.
+
+**What it is for:** seeing the pet out with you and what it really does for you, and reaching the pets you own and every kind there is to catch. Bro's Pets door (and Beastmaster Bro's tap, the farm's Pet House and its key) opens it.
+
+**Decisions, and why:**
+- **The landing is the companion** (`pets`, titled Pets): the kit's showcase, the pet out with you large on the left (its portrait, the pet sheet the loading screen fetched: no new art), and a tap on it opens its page. Over its doors its name, then its kind and stage when it has a name of its own, Golden and Big; its XP bar under its name. Two doors, **Owned** ("2 of 30") and **All** ("2 of 18 caught"), each saying what is behind it. Under them, flat: the level it works at (held at your Trapping level: "Lv 30 (35)", the held sentence under it), its XP, its ward ("Softens chills 34%"). One action, **Put away**.
+- **No stat is added to a pet.** The game has no pet rarity, attack, health or ability, and the wireframes' were examples (the owner's own words): so the page shows the GAME's, its kind and stage, Golden and Big, its level, XP, ward and land. The specification's Q73 "species and rarity" is read as the kind and stage and the two badges.
+- **The empty states keep the doors**: no pets, today's words on how to catch one; pets but none out, "No pet out with you" with "Open Owned and take one out with you"; the record not loaded, today's "not ready" words; the record not here yet, the kit's loading rows (never "No pets yet" as the truth).
+- **Owned** (`petsOwned`): the kit's collection with no kinds row (the kit draws none when there are none), the Pet House's More room at its top with its price (asked once, the kit's confirmation: it spends gold; at 120 "as many as it can"), then a card a pet, "With you" on the one out. A card opens the pet's page.
+- **A pet's page** (`petsOne`, titled its name): the same showcase without doors, and the row of actions: Take out or Put away and Rename go at once (routine), Release asks once (for good, as today asked twice), Sell only where the store sells pets, off on the pet out and before its hold ends with the trade rule's own words beside it. Each press shows its pending mark until the worker's record moves (every answer of the worker's, yes or no, is a pets_state), and a second press never goes out while the first is out.
+- **Release asks first** (screen `dash-pets-release`; the mend of sitting 72, tag 6696): Release gives the row of actions over to the kit's own question in the actions' zone, "Release <name> for good?", Release in red (Enter) and Keep (Esc), as today's page (the kit's Confirm takes its no button's label, `no`); only the second Release sends, through the one pending state as every press. `pet-pages.test` reads the drawing's tree (W1, W2; E1 to E8 planted at the page, each red), so a send with no ask, or a Take out past `press()`, fails there and not only in petPages.js.
+- **All** (`petsAll`): the journal, the pets' own collection, in the kit's collection: its two stages are its kinds (Levels 1-20, Levels 21-40), nine cards each, a caught one in colour with its catches and biggest (golden on its picture), an uncaught one its shape with "Not tried" or "Not caught". The Codex's Pets door opens this page, and a card here opens its monster's page in the Codex: neither copies the other.
+- **Another player's** (built, tested by the suite, opened by nothing until the player card's step): only the pet out with them reaches the phone, with no name, so their page is that pet's kind, read-only, "Only the pet out with them is shared": no Owned, no actions.
+
+**What the real size could not hold:** sideways (about 63 px of page) the XP bar and the held sentence are left out (the XP fact and the level's "(35)" still say it); a journal card's biggest may be cut short on an upright phone (its whole line is in the card's spoken label).
+
+**Tried before:** today's one scrolling page (v2.3.3120 to v2.3.6695), kept under `?ui2=0`.
+
+**Flagged for the owner:** pets on the farm (the specification's planned Homestead mechanic) and comparing two pets wait for gameplay; another player's whole list of pets never leaves the worker.
+
+Sources: src/game/petPages.js, src/data/say/pets.js, src/ui/mobile/dash/PetsPage.jsx, petsPageOpen.js, petsUi2.css, PetsPanel.jsx (the choice), src/ui/kit/Collection.jsx and Showcase.jsx (a collection with no kinds; a showcase's head; a fact's marks), src/game/codexView.js (the Codex's Pets door).
+
 ## Ranks under the new dashboard (v2.3.6692, card UI2-ranks, the build's step 6)
 Screens: ui2-ranks-landing, ui2-ranks-group, ui2-ranks-board, ui2-ranks-spin, ui2-ranks-points
 
