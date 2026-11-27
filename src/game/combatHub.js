@@ -124,8 +124,56 @@ export function combatHubDoors(rpg, chan, who) {
       points: pts,
       pointsWords: self ? pointsWords(pts) : null,
       glow: self && pts > 0,
+      /* v2.3.6783 (card UI3-combat; the owner, 2026-11-26: "only show available points prominently when
+         there are points to spend"): the count is DRAWN only while there are some; at 0 nothing is drawn
+         (the count stays in the door's data and its words for a screen reader) */
+      pointsShown: self && pts > 0,
     });
   });
+}
+
+/* ═══ v2.3.6783: THE ONE TEMPLATE'S RULES (card UI3-combat) ═══
+ * The owner, 2026-11-26: "Eliminate the left-side Attributes column, consolidate the combat statistics
+ * into one summary strip, and give the six attributes a full-width three-by-two grid ... When points
+ * become available, the attributes can receive a small gold plus indicator and the available points
+ * counter can become gold."  The pages (sheet/WeaponPage.jsx, SharedPage.jsx, through
+ * sheet/attrTemplate.jsx) ask these; they work nothing out themselves. */
+
+/** A count's tone: 'gold' while there are points to spend, 'quiet' (muted) at none. */
+export function pointsTone(n) {
+  const v = Number(n);
+  return Number.isFinite(v) && v >= 1 ? 'gold' : 'quiet';
+}
+
+/** Whether an attribute's tile wears the small gold "+": only on your own page, only while its pool
+    has a point to spend (never on another player's page, never at 0). */
+export function attrPlus(n, self) {
+  return self === true && pointsTone(n) === 'gold';
+}
+
+/* A weapon's page upright, its four bands with 44 px presses (combatPage.css holds the same numbers):
+   the level 18, the strip 44, the Attributes line 14, the six 44 + 2 + 44, three gaps of 2. */
+export const WEAPON_PAGE_BANDS = Object.freeze({ level: 18, strip: 44, line: 14, grid: 90, gaps: 6 });
+export const WEAPON_PAGE_ROOM = WEAPON_PAGE_BANDS.level + WEAPON_PAGE_BANDS.strip + WEAPON_PAGE_BANDS.line + WEAPON_PAGE_BANDS.grid + WEAPON_PAGE_BANDS.gaps;
+
+/** Whether a weapon's page folds its Attributes line onto the level row: under the four bands' room
+    (172 px: 390 x 844 holds it; 375 x 667's 168 does not).  `h` the page's own height (useRoom, a
+    ResizeObserver); 0 (not measured yet) does not fold. */
+export function weaponPageFold(h) {
+  const v = Number(h);
+  return Number.isFinite(v) && v > 0 && v < WEAPON_PAGE_ROOM;
+}
+
+/** The hub's picture size, px, from the hub's own height (the card's arithmetic, reading 2):
+    upright the weapons' row is what Shared's 44 px and a 6 px gap leave, less the words, the 24 px
+    level, the bar and the count's room (74): 48 at 390 x 844, 44 at 375 x 667, the same with or
+    without points.  Sideways (under 110 px) the picture sits beside the words: the row less 18.
+    Unmeasured (0): today's sizes. */
+export function hubArtSize(h, short) {
+  const v = Number(h);
+  if (!(Number.isFinite(v) && v > 0)) return short ? 26 : 32;
+  const px = short ? v - 18 : v - 44 - 6 - 74;
+  return Math.max(short ? 26 : 32, Math.min(short ? 48 : 64, Math.round(px)));
 }
 
 /**

@@ -23,19 +23,24 @@
  * Another player's page (`who`, step 9): no count of theirs, the preview
  * reads only.
  *
+ * v2.3.6783 (card UI3-combat): the weapon page's ONE template
+ * (sheet/attrTemplate.jsx): Max HP the strip's sunk stat, Defense a fact in
+ * its container (no box of its own), the full-width line over the seven.
+ *
  * THE ROOM (the master notes' part 3): 172 px of content at 390 x 844: the
- * headline 44 px, the seven two rows of 44 (four and three), the words over
- * them.  Sideways (63; 58): one row, the headline and the seven beside it. */
+ * strip 44 px, the line 14, the seven two rows of 44 (four and three).
+ * Sideways (63; 58): one row, the strip and the line over the seven. */
 import React, { useEffect, useRef } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
 import { broStartWeapon, broWeaponStats } from './broStats.js';
 import { statWindow } from './statWindow.jsx';
-import { combatPools, pointsWords, spendPool, sharedAttributes } from '@/game/combatHub.js';
+import { combatPools, pointsWords, spendPool, sharedAttributes, pointsTone, attrPlus } from '@/game/combatHub.js';
 import { prog3BodyMeta } from '../../../data/prog3.js';
 import { toDisplayHp } from '../../../data/gameSystems.js';
-import { Ui2Stat, ui2RootClass } from '@/ui/kit/index.js';
+import { ui2RootClass } from '@/ui/kit/index.js';
+import { SummaryStrip, AttrGrid } from './attrTemplate.jsx';
 import { SAY } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
 import './combatPage.css';
@@ -112,47 +117,34 @@ export function SharedPage({ S, who, live }) {
   useEffect(() => () => { try { window.__btSharedPage = null; } catch (e) { /* no window */ } }, []);
 
   const short = room.short;
-  const hp = (
-    <Ui2Stat v={head.hp} k={say(SAY, 'combatHub.maxHp')} className="u2-raised u2-stat u2-sp-hp" data-shared-hp={head.hp}
-      aria-label={say(SAY, 'combatHub.maxHpAria', { v: head.hp })} onClick={() => explain(metaOf.hp ? metaOf.hp.label : '', head.hp)} />
-  );
-  const def = (
-    <div className="u2-group u2-sp-def" data-shared-def={head.def}>
-      <span className="u2-group-v">{head.def}</span>
-      <span className="u2-group-k">{say(SAY, 'combatHub.defense')}</span>
-    </div>
-  );
+  /* v2.3.6783 (card UI3-combat): the weapon page's ONE template (sheet/attrTemplate.jsx): the strip
+     (Max HP the stat, Defense a fact in its one container), the full-width line, the seven */
   const pw = avail == null ? null : pointsWords(avail);
-  const words = (
-    <span className="u2-wp-attrhead" data-shared-pool={avail == null ? '' : avail}>
-      <span className="u2-wp-attrk">{say(SAY, 'combatHub.attributes')}</span>
-      {pw ? <b className={avail > 0 ? 'is-on' : ''}>{say(SAY, pw.key === 'combatHub.point' ? 'combatHub.sharedPoint' : 'combatHub.sharedPoints', { n: pw.n })}</b> : null}
-    </span>
+  const line = {
+    k: say(SAY, 'combatHub.attributes'),
+    words: pw ? say(SAY, pw.key === 'combatHub.point' ? 'combatHub.sharedPoint' : 'combatHub.sharedPoints', { n: pw.n }) : null,
+    tone: pointsTone(avail), data: { 'data-shared-pool': avail == null ? '' : avail },
+  };
+  const strip = (
+    <SummaryStrip
+      stat={{ v: head.hp, k: say(SAY, 'combatHub.maxHp'), aria: say(SAY, 'combatHub.maxHpAria', { v: head.hp }), data: { 'data-shared-hp': head.hp },
+        onClick: () => explain(metaOf.hp ? metaOf.hp.label : '', head.hp) }}
+      facts={[{ id: 'def', k: say(SAY, 'combatHub.defense'), v: head.def, data: { 'data-shared-def': head.def } }]} />
   );
-  const tiles = attrs.map((a) => {
+  const attrsOf = attrs.map((a) => {
     const label = TILE_WORD[a.key] ? TILE_WORD[a.key]() : a.label;
-    return (
-      <button key={a.key} type="button" className="u2-raised u2-wp-attr" data-shared-attr={a.key} data-shared-attr-pts={a.pts}
-        aria-label={a.cap == null ? say(SAY, 'combatHub.attrAriaFree', { stat: label, pts: a.pts }) : say(SAY, 'combatHub.attrAria', { stat: label, pts: a.pts, cap: a.cap })} onClick={() => openAttr(a.key)}>
-        <img className="u2-wp-attr-art" src={a.art} alt="" draggable={false} />
-        <span className="u2-wp-attr-words"><span className="u2-wp-attr-k">{label}</span><span className="u2-wp-attr-v">{a.cap == null ? say(SAY, 'combatHub.attrPts', { n: a.pts }) : a.pts + ' / ' + a.cap}</span></span>
-      </button>
-    );
+    return {
+      key: a.key, label, art: a.art, pts: a.pts,
+      value: a.cap == null ? say(SAY, 'combatHub.attrPts', { n: a.pts }) : a.pts + ' / ' + a.cap,
+      aria: a.cap == null ? say(SAY, 'combatHub.attrAriaFree', { stat: label, pts: a.pts }) : say(SAY, 'combatHub.attrAria', { stat: label, pts: a.pts, cap: a.cap }),
+    };
   });
+  const noart = !short && room.w > 0 && room.w < 520;   /* upright under 520 px of page the pictures go, never the words */
+  const grid = <AttrGrid line={line} attrs={attrsOf} mark="shared" plus={attrPlus(avail, self)} onOpen={openAttr} grid={'is-seven' + (short ? ' is-one' : '') + (noart ? ' is-noart' : '')} />;
 
   return (
     <div ref={ref} className={ui2RootClass() + ' u2-wp u2-sp' + (short ? ' is-short' : '')} data-shared-page="" data-shared-whose={self ? 'self' : 'other'}>
-      {short ? (
-        <div className="u2-wp-row is-one">
-          {hp}{def}
-          <span className="u2-wp-side">{words}<span className="u2-wp-tiles is-one is-seven">{tiles}</span></span>
-        </div>
-      ) : (
-        <>
-          <div className="u2-wp-row is-sum">{hp}{def}</div>
-          <div className="u2-wp-row is-attrs is-stack">{words}<span className={'u2-wp-tiles is-seven' + (room.w > 0 && room.w < 520 ? ' is-noart' : '')}>{tiles}</span></div>
-        </>
-      )}
+      {short ? <div className="u2-wp-row is-one">{strip}{grid}</div> : <>{strip}{grid}</>}
     </div>
   );
 }
