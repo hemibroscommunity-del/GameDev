@@ -273,7 +273,7 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin, tutorClear
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, rangedStick, aimMarks, padSkin, tutorClear
 - **Files**: `src/ui/`: tapDismiss, swallowTapClick, tutorSpot
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
@@ -389,6 +389,8 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: charHud
 - **Files**: `src/game/`: hudCorner
 - **Files**: `src/game/`: topGold
+- **Files**: `src/game/`: lifeProfile
+- **Files**: `src/game/`: feats
 - **Files**: `src/game/`: codexView, entityInspect, lootRows
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`

@@ -65,8 +65,9 @@ import { DashAchievementsPanel as AchievementsPanel, DashAchievementsHead as Ach
   DashLeaderboardPanel as LeaderboardPanel, DashClanPanel as ClanPanel, DashFeedbackPanel as FeedbackPanel, DashSettingsPanel as SettingsPanel } from '../lazyPanels.js'; /* v2.3.3527: achievements */
 import { DashCodexDoorPage as CodexDoorPage } from '../lazyPanels.js';   /* v2.3.6693: the Codex's frame pages (card UI2-codex) */
 import { codexPageTitle } from './dash/codexPageOpen.js';
+import { DashFeatsPages } from '../lazyPanels.js';   /* v2.3.6695 (card UI2-feats): Feats' deeper pages, in the Achievements script */
 import { StatsPanel }        from './dash/StatsPanel.jsx';
-import { SkillsPanel }       from './dash/SkillsPanel.jsx';
+import { LifeSkillsDoor }    from './dash/SkillsPanel.jsx';   /* v2.3.6694 (card UI2-life) */
 import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
@@ -88,6 +89,8 @@ import { MenuGrid, HomesteadPage, doorWord, openDoor, farmPlots, hubWordFor } fr
 import { MENU_DESTS, DASH_HUBS, FRAME_PAGES, frameMarks } from '@/game/dashDests.js';
 import { isBroHubPage } from '@/game/broHub.js';   /* v2.3.6683 (card UI2-bro): Bro's own frame pages */
 import { BroDoorPage } from './sheet/BroCard.jsx';
+import { featsWord } from '@/game/feats.js';
+import { ranksTitle } from './dash/rankWords.js';   /* v2.3.6692 (card UI2-ranks): a Ranks group's or board's name in the header */
 import { dashScrollBox, useDashScrollBack } from './dash/dashScroll.js';
 import { DashGrowBox } from './dash/DashGrowBox.jsx';   /* v2.3.6682: the page grows out of the tile tapped (card UI2-frame PR 2) */
 import { ui2RootClass } from '@/ui/kit/index.js';
@@ -486,7 +489,7 @@ const PANELS = {
      these from Hero's combat attributes; the toolbar label stays
      Skills.  v2.3.1312: the skillDetail drill is retired — the
      per-skill detail renders IN-PANEL inside SkillsPanel now. */
-  skills:       { title: say(SAY, 'bottomDashboard.titleSkills'), Component: SkillsPanel },
+  skills:       { title: say(SAY, 'bottomDashboard.titleSkills'), Component: LifeSkillsDoor },   /* v2.3.6694 (card UI2-life): the new landing under the frame, today's under ?ui2=0 */
   encyclopedia: { title: say(SAY, 'bottomDashboard.titleCodex'),       Component: EncyclopediaPanel },
   guild:        { title: say(SAY, 'bottomDashboard.titleGuild'),       Component: GuildPanel },
   /* v2.3.3481: the 2026-10-19 UI review -- headed 'Ranks', the More tile's
@@ -498,6 +501,11 @@ const PANELS = {
      breaks "Leader-boards" where six across has no room, as Achievements'
      did) -- one name for the tile and the page, v2.3.2038's rule */
   leaderboard:  { title: 'Leaderboards', Component: LeaderboardPanel },
+  /* v2.3.6692 (card UI2-ranks): under the frame, Ranks' own pages (dash/RanksLanding.jsx reads which from the
+     entry, its `sel` the group or the board; the header's word is dash/rankWords.js ranksTitle's) */
+  ranksGroup:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
+  ranksPoints:  { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
+  ranksBoard:   { title: say(SAY, 'bottomDashboard.titleRanksPage'), Component: LeaderboardPanel },
   /* v2.3.3526: headed as its More tile is labelled -- Party once clans are
      parties (caps.clanparty), Clan under the kill switch (MorePanel
      `labelFor`; v2.3.2038's rule: what you tap and what opens carry one name) */
@@ -558,6 +566,18 @@ const PANELS = {
       vwBasis: desk ? DESK_SHEET_W : Math.min(playVw(), playVh()),
     }));
   } },
+  /* v2.3.6695 (card UI2-feats): Feats' pages past its landing (the landing is `achievements`, a frame page:
+     dashDests.js FRAME_PAGES), each drawn from its frame entry by sheet/FeatsPage.jsx FeatsPages, in the lazy Achievements script */
+  featsMedals:    { title: featsWord('featsMedals'), Component: DashFeatsPages },
+  featsCommon:    { title: featsWord('featsCommon'), Component: DashFeatsPages },
+  featsRare:      { title: featsWord('featsRare'), Component: DashFeatsPages },
+  featsArena:     { title: featsWord('featsArena'), Component: DashFeatsPages },
+  featsSuperrare: { title: featsWord('featsSuperrare'), Component: DashFeatsPages },
+  featsMedal:     { title: featsWord('featsMedal'), Component: DashFeatsPages },
+  featsAp0:       { title: featsWord('featsAp0'), Component: DashFeatsPages },
+  featsAp1:       { title: featsWord('featsAp1'), Component: DashFeatsPages },
+  featsAp2:       { title: featsWord('featsAp2'), Component: DashFeatsPages },
+  featsQuests:    { title: featsWord('featsQuests'), Component: DashFeatsPages },
 };
 
 /* v2.3.1283: the six toolbar destinations (nav-system spec).  Chat left
@@ -716,7 +736,7 @@ const FRAME_ACTIVE = Object.freeze({ title: '', Component: null });
 let _capsNow = null;
 const CAP_PAGES = Object.freeze({ pets: 'petbook', achievements: 'achievements' });
 dashboardPanelBus.setOffers((id) => !!(PANELS[id] || FRAME_PAGES[id]) && (!CAP_PAGES[id] || !_capsNow || !!_capsNow[CAP_PAGES[id]]));
-const titleOf = (id) => (id === 'menu' ? doorWord('dashFrame.menu') : FRAME_PAGES[id] ? doorWord(FRAME_PAGES[id]) : (PANELS[id] && PANELS[id].title) || doorWord('dashFrame.page'));
+const titleOf = (id) => (id === 'menu' ? doorWord('dashFrame.menu') : FRAME_PAGES[id] ? doorWord(FRAME_PAGES[id]) : ranksTitle(id, dashboardPanelBus.nav()) || (PANELS[id] && PANELS[id].title) || doorWord('dashFrame.page'));
 
 export const BottomDashboard = () => {
   /* v2.3.3049: OPEN, then the sword and the shield (then the bow and the

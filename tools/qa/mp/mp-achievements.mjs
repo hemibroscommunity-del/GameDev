@@ -234,7 +234,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.6600 (card BRO), the mend: the Bro tab is three pages by default (mp-bropages opens Achievements
      from them); this reads the card's rows (.bt-bro2-rowt), so it plays the card `?bropages=0` gives back.
      Before: the default card; after: the same card behind its switch, every check as before. */
-  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'bropages=0', init: '(' + WATCH.toString() + ')();' });
+  /* v2.3.6695 (card UI2-feats): under the new dashboard the page id `achievements` is Feats (mp-ui2feats plays it:
+     the count, the worker's AP, a medal, the title); this one's purpose is today's page and the worker's checks, so
+     it plays them where today's page is drawn, `?ui2=0` (its worker checks unchanged) */
+  const A = await H.newPlayer(browser, { name: 'Achiever', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'bropages=0&ui2=0', init: '(' + WATCH.toString() + ')();' });
   A.page.on('pageerror', (e) => errs.push('A: ' + String(e && e.message || e).slice(0, 200)));
   let B = null, stopA = () => {}, stopB = () => {};
   try {
@@ -416,7 +419,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.closeDest(A).catch(() => {});
 
     /* ── 7 ── */
-    B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, viewport: DESK, world: 'wheel' });
+    /* v2.3.6695 (card UI2-feats): its step 9 reads today's page on a computer, so `?ui2=0` too (Feats on a computer: mp-ui2feats 1c) */
+    B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, viewport: DESK, world: 'wheel', query: 'bropages=0&ui2=0' });
     B.page.on('pageerror', (e) => errs.push('B: ' + String(e && e.message || e).slice(0, 200)));
     await H.enterWorld(B);
     const okB = await inWheel(B);
@@ -470,6 +474,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!pb && pb.rows === 33 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
         && pb.summaryAt === 'head@head' && pb.inView >= 2, { pb, col });
     await B.page.screenshot({ path: join(OUT, 'achievements-5-computer.png') });
+    /* v2.3.6695 (card UI2-feats): the page put away first, so the world (where the banner shows) is in view: under ?ui2=0 the page now opens on B (9a) */
+    await H.closeDest(B).catch(() => {});
     await H.devOp(wsPort, 'achv', bId, { id: 'golden_giant' }).catch(() => {});
     const bb = await B.page.waitForSelector('[data-achv-banner="golden_giant"]', { timeout: 15000 }).then(() => bannerLook(B)).catch(() => null);
     if (bb) await B.page.screenshot({ path: join(OUT, 'achievements-6-computer-banner.png') });

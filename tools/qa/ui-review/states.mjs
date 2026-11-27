@@ -30,6 +30,14 @@ const bus = (P, method, id) => evalIn(P, ([m, i]) => {
   b[m](i);
   return null;
 }, [method, id]);
+/* v2.3.6695 (card UI2-feats): a push with its entry's `sel` (a medal's id, a tree layer's path), as the pages do */
+const busGo = (P, a) => evalIn(P, (x) => {
+  const b = window.__broDashPanelBus;
+  if (!b || typeof b.go !== 'function') return 'no dashboard bus';
+  b.open('hero');
+  b.go(x);
+  return null;
+}, a);
 /* A real press where a player's finger (a phone) or mouse (a computer) would
    go: the game's tabs, rows and bag tiles answer pointer events, not a
    synthetic click.  P.view is set by the runner. */
@@ -330,15 +338,19 @@ async function armForFight(P, wsPort, myId) {
   }
 }
 
-/* v2.3.5503: a board on the Ranks page: its tab, the picker, the board in the list */
-async function pickBoard(P, tab, id) {
-  const e = await tapSel(P, '[data-lb-tab="' + tab + '"]');
+/* v2.3.6692 (card UI2-ranks): Ranks under the new dashboard, to a group and (optionally) one of its boards */
+async function rankTo(P, group, board) {
+  const e = await bus(P, 'open', 'leaderboard');
   if (e) return e;
-  await wait(P, 300);
-  const e2 = await tapSel(P, '[data-lb-picker]');
-  if (e2) return e2;
-  await wait(P, 300);
-  return tapSel(P, '[data-lb-menu] [data-lb-cat="' + id + '"]');
+  await wait(P, 500);
+  const e1 = await tapSel(P, '[data-ranks-ui2="landing"] [data-rank-tile="' + group + '"]');
+  if (e1) return 'no ' + group + ' door (' + e1 + ')';
+  await wait(P, 500);
+  if (!board) return null;
+  const e2 = await tapSel(P, '[data-rank-tile="' + board + '"]');
+  if (e2) return 'no ' + board + ' board (' + e2 + ')';
+  await wait(P, 900);
+  return null;
 }
 
 export const STATES = [
@@ -837,7 +849,7 @@ export const STATES = [
   Object.assign(dash('skills', 'Bro: Life Skills', 'The Life Skills page, under Bro (the card\'s Life Skills row opens it; back returns to the card): your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
     id: 'dash-bro-skill-detail', group: 'Dashboard', title: 'Bro: a life skill in detail',
-    about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
+    about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.  Under the new frame (v2.3.6694) these lines are the skill\'s How it works page (Mining): each hit and the next level\'s, full and less XP, the benefit, where it is found, how it is earned, as facts in one container.',
     /* v2.3.3481: the 2026-10-19 UI review -- the laptop's picture was the
        ten-skill list, not the detail: the press went in while the band was
        still unfolding (the last view of a run on a box drawing a few frames a
@@ -847,6 +859,13 @@ export const STATES = [
     run: async ({ P }) => {
       await bus(P, 'open', 'skills');
       await wait(P, 600);
+      /* v2.3.6694 (card UI2-life): under the new frame the detail's lines are a skill's "How it works"
+         (sheet/SkillHow.jsx); the in-panel detail below is today's page, under ?ui2=0 */
+      if (await has(P, '[data-life-page]')) {
+        for (const sel of ['[data-life-door="mining"]', '[data-life-how-door]']) { const e = await tapSel(P, sel); if (e) return e; await wait(P, 600); }
+        if (!(await has(P, '[data-life-how="mining"]'))) return 'How it works did not open';
+        return;
+      }
       const backSel = DASH.split(',').map((s) => s.trim() + ' button').join(', ');
       for (let k = 0; k < 2; k++) {
         const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
@@ -938,41 +957,53 @@ export const STATES = [
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
      "RANKS" between laurels, the pills on the sheet's bars, the podium, the
      table */
-  dash('leaderboard', 'Leaderboards', 'The Ranks page (v2.3.5503, the owner\'s 2026-11-25 mockup): four tabs across the top, each its picture and word, the open one gold (Power, Stats, Records, Skills); under them one row -- the picker naming the open board (Overall first), "RANKS" between two laurels, the tag "All-time leaderboard"; the heads #, Player, a "?" on Overall (what the Power rating means), Lv and Power; the rows, the only part that scrolls: 1-3 on the gold, silver and bronze bars with the laurel medals and a crown by the leader, 4 on the plain number, each a face, the name, an Lv chip and the value in big numerals; your own row pinned at the foot, framed in gold ("Rank #N", or "Rank #\u2014" off the board). ?rankstyle=0 gives back the list-and-podium page.'),
+  /* v2.3.6692 (card UI2-ranks): under the new dashboard Ranks is three group doors, a group's boards and a
+     board's standings (dash/RanksLanding.jsx, RankStandings.jsx); today's Ranks page (its tabs, its picker)
+     only under ?ui2=0, which mp-ranksstyle, mp-boards and mp-boardslook play, so the four states that showed
+     it are the new pages' */
   {
-    id: 'leaderboard-skill', group: 'Dashboard', title: 'Leaderboards: a skill',
-    about: 'The Ranks page, the Skills tab, Fishing (picked in the picker\'s list): #, Player, Lv and the skill\'s level under its name (one "Lv" a row), your row pinned at the foot; or, with nobody on it, one line saying so.',
+    id: 'ui2-ranks-landing', group: 'Dashboard', title: 'Ranks: Combat, Life Skills, Feats',
+    about: 'The Menu\'s Ranks tile (v2.3.6692, card UI2-ranks; the owner\'s specification part 7, "Mirror character inspection categories"): under the one header (‹ Menu, Leaderboards, Close) three equal doors, Combat, Life Skills and Feats, each with the picture of Bro\'s door of that name. No Equipment (the game keeps no gear board). Sideways one row.',
     run: async ({ P }) => {
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
-      await wait(P, 500);
-      const e2 = await pickBoard(P, 'skills', 'fishing');
-      if (e2) return 'no Fishing board (' + e2 + ')';
-      await wait(P, 900);
+      await wait(P, 600);
+      if (!(await has(P, '[data-ranks-ui2="landing"]'))) return 'the landing did not open';
     },
   },
   {
-    id: 'leaderboard-picker', group: 'Dashboard', title: 'Leaderboards: the picker open',
-    about: 'The Ranks page with its picker open (v2.3.5503): the list of the open tab\'s boards over the table, each a 44 px row on the sheet\'s pill bar with its picture, the open one gold, a \u2715 (Escape on a computer) at its head.',
+    id: 'ui2-ranks-group', group: 'Dashboard', title: 'Ranks: Combat\'s boards',
+    about: 'Ranks, Combat (header "Combat", ‹ Leaderboards): its boards as doors, each the board\'s picture and word -- Overall, Sword, Bow, Staff, Combat level -- and one door, Points placed, to the eight stat boards. Upright five across; sideways one row.',
     run: async ({ P }) => {
-      const e = await bus(P, 'open', 'leaderboard');
+      const e = await rankTo(P, 'combat');
       if (e) return e;
-      await wait(P, 500);
-      const e2 = await tapSel(P, '[data-lb-picker]');
-      if (e2) return 'no picker (' + e2 + ')';
-      await wait(P, 500);
     },
   },
   {
-    id: 'leaderboard-spin', group: 'Dashboard', title: 'Leaderboards: Daily spin',
-    about: 'The Ranks page, the Records tab, Daily spin: Biggest wins / Biggest losses on the board\'s first line, then the ten biggest pots taken from the daily spin (or lost to double or nothing), one row a player: face, name, the level pill, how many doubles, the gold; your row pinned at the foot. A deleted character\'s record stays as a grey row with DELETED across its face.',
+    id: 'ui2-ranks-board', group: 'Dashboard', title: 'Ranks: Woodcutting, your row',
+    about: 'Life Skills, Woodcutting (header "Woodcutting", ‹ Life Skills): the heads Rank, Player, Level; one row a player, at least 44 px each, every row the same surface -- 1, 2 and 3 told by the game\'s gold, silver and bronze medal only, no bars, no gradients, no laurels -- the face, the name and the one value; no level beside the name (part 7: "No unrelated combat level"). Your own row edged in brass with "You" by the name wherever it stands, and pinned at the foot only while the real one is out of view. Off the board: "Not ranked on this board" at the foot. Each row opens that player.',
     run: async ({ P }) => {
-      const e = await bus(P, 'open', 'leaderboard');
+      const e = await rankTo(P, 'life', 'woodcutting');
       if (e) return e;
-      await wait(P, 500);
-      const e2 = await pickBoard(P, 'records', 'spin');
-      if (e2) return 'no Daily spin board (' + e2 + ')';
-      await wait(P, 900);
+    },
+  },
+  {
+    id: 'ui2-ranks-spin', group: 'Dashboard', title: 'Ranks: Daily spin',
+    about: 'Feats, Daily spin: Biggest wins and Biggest losses on the board\'s top line (the choice kept on Back), then the biggest pots taken from the daily spin, one row a player: the medal or place, the face, the name, the gold. A deleted character\'s row is flat and quiet, "Deleted character", and opens nothing.',
+    run: async ({ P }) => {
+      const e = await rankTo(P, 'feats', 'spin');
+      if (e) return e;
+    },
+  },
+  {
+    id: 'ui2-ranks-points', group: 'Dashboard', title: 'Ranks: Points placed',
+    about: 'Combat, Points placed (header "Points placed", ‹ Combat): the eight stat boards as doors (Defense ... Damage), each its stat\'s own picture and word, as many as the worker ranks. Under ?ui2=0 today\'s Ranks page keeps its picker (mp-ranksstyle plays it).',
+    run: async ({ P }) => {
+      const e = await rankTo(P, 'combat');
+      if (e) return e;
+      const e2 = await tapSel(P, '[data-rank-tile="points"]');
+      if (e2) return 'no Points placed door (' + e2 + ')';
+      await wait(P, 600);
     },
   },
   /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
@@ -1009,21 +1040,70 @@ export const STATES = [
      locked rows */
   /* v2.3.4172: a page under Bro (moved from More; the card's Achievements
      row and AP open it, and the bus puts 'achievements' there) */
-  Object.assign(more('achievements', 'Bro: Achievements', 'The Achievements page, under Bro (the card\'s Achievements row and its AP open it): all 33 (v2.3.4036: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
-    id: 'dash-bro-achievements', group: 'Dashboard',
+  /* v2.3.6695 (card UI2-feats): under the new dashboard the page id `achievements` is FEATS (sheet/FeatsPage.jsx;
+     the owner 2026-11-25: "Feats is the approved replacement for Accomplishments"); today's Achievements page
+     only under ?ui2=0, which mp-achievements plays, so this state shows Feats, as Ranks' did (v2.3.6692) */
+  {
+    id: 'dash-bro-achievements', group: 'Dashboard', title: 'Bro: Feats',
+    about: 'Bro\'s Feats tile (v2.3.6695, card UI2-feats): under the one header (\u2039 Bro, Feats, Close) your achievement points LARGE, the worker\'s total, sunk (the kit\'s stat), a door to where they came from; under it four equal raised doors two by two: Achievements ("2 of 33"), Titles (the title you wear), Quest History, Lifetime Records. Sideways one row, AP first. When the points cannot be split honestly (a row lit by the owner\'s test lever pays nothing) the line "Where these came from is not known" and no door. Under ?ui2=0 today\'s Achievements page.',
     run: async ({ P, wsPort, myId }) => {
       for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
       await wait(P, 600);
       const e = await bus(P, 'open', 'achievements');
       if (e) return e;
-      await P.page.waitForSelector('[data-achv-panel]', { timeout: 6000 }).catch(() => {});
-      const state = await evalIn(P, () => { const p = document.querySelector('[data-achv-panel]'); return p ? p.dataset.achvPanel : null; });
-      if (state !== '1') return 'the Achievements page is ' + (state ? '"' + state + '"' : 'not there');
-      await evalIn(P, () => { const b = document.querySelector('[data-achv-title-use="first_blood"]'); if (b) b.click(); });
-      /* the worker's answer names it; the picture goes either way */
-      await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
+      await P.page.waitForSelector('[data-feats-page]', { timeout: 8000 }).catch(() => {});
+      if (!(await has(P, '[data-feats-page]'))) return 'Feats did not open';
     },
-  }),
+  },
+  {
+    id: 'ui2-feats-tiers', group: 'Dashboard', title: 'Feats: the medals by tier',
+    about: 'Feats, Achievements (header "Medals", \u2039 Feats): the game\'s four tiers, each its own -- Common, Rare, Arena, Super-rare (never Gold, Silver, Bronze; the arena not under Rare) -- as raised tiles: the tier\'s latest earned badge ringed in its colour (grey, blue, orange, prismatic), or its first badge muted with a lock when none is earned; "n of N" and the points earned of the points possible, by each row\'s own points. Each opens its gallery.',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'achv', myId, { id: 'first_blood' }).catch(() => {});
+      await wait(P, 600);
+      const e = await busGo(P, { type: 'push', id: 'featsMedals' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-tiers]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-gallery', group: 'Dashboard', title: 'Feats: a tier\'s badges',
+    about: 'A tier\'s gallery (here Common, header "Common", \u2039 Medals): its badges in the table\'s order, two rows upright and one sideways, each a raised tile 44 px or more; earned ones full, the rest muted with a lock mark and "Not earned" for a screen reader. Each opens its medal\'s page.',
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'achv', myId, { id: 'first_blood' }).catch(() => {});
+      await wait(P, 600);
+      const e = await busGo(P, { type: 'push', id: 'featsCommon' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-gallery]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-medal', group: 'Dashboard', title: 'Feats: one medal',
+    about: 'A medal\'s page (here Veteran, not earned; header "Achievement"): the badge large (muted, "Not earned") and its name beside the kit\'s facts in one flat container: its tier, its AP, "Not earned yet" or the day it was earned, its requirement word for word, how far along you are where the game has a hint ("Your best: Lv 12") and nothing where it has none; an earned one of yours adds "Title: <name>", a door to Titles.',
+    run: async ({ P }) => {
+      const e = await busGo(P, { type: 'push', id: 'featsMedal', sel: 'combat_50' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-medal]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-ap', group: 'Dashboard', title: 'Feats: where your AP came from',
+    about: 'AP\'s tree, one layer at a time (the stat tree\'s own page, header "Achievement points"): your total, the line that says how its rows add up, and its rows: From achievements (a door to its tiers, then each tier\'s medals, each a door to its page) and From quests, guild rungs and the arena (one row: the game keeps those three as one total).',
+    run: async ({ P }) => {
+      const e = await busGo(P, { type: 'push', id: 'featsAp0', sel: { path: [] } });
+      if (e) return e;
+      await P.page.waitForSelector('[data-ap-tree]', { timeout: 8000 }).catch(() => {});
+    },
+  },
+  {
+    id: 'ui2-feats-quests', group: 'Dashboard', title: 'Feats: Quest History',
+    about: 'Feats, Quest History: the Quests pages\' own Completed list, called as it is -- the AP your hand-ins paid, added, then each quest handed in with its +5; a row opens that quest\'s page. None yet: "No quests handed in yet" and how to.',
+    run: async ({ P }) => {
+      const e = await busGo(P, { type: 'push', id: 'featsQuests' });
+      if (e) return e;
+      await P.page.waitForSelector('[data-feats-quests]', { timeout: 8000 }).catch(() => {});
+    },
+  },
   /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
   more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
   /* v2.3.4172: Account -- Log out / Switch character, then the Login Key */
@@ -1198,11 +1278,10 @@ export const STATES = [
       const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
       await wait(P, 500);
-      const e2 = await pickBoard(P, 'records', 'fish');   /* v2.3.5503: the Ranks page's Records tab */
+      const e2 = await rankTo(P, 'feats', 'fish');   /* v2.3.6692: Ranks under the new dashboard, Feats */
       if (e2) return 'no Biggest fish board (' + e2 + ')';
-      await wait(P, 500);
-      await tapSel(P, '[data-fish-board-sp="trout"]');
-      await P.page.waitForSelector('[data-fish-board-row]', { timeout: 6000 }).catch(() => {});
+      await tapSel(P, '[data-rank-fish="trout"]');
+      await P.page.waitForSelector('[data-rank-board="fish"] [data-rank-row]', { timeout: 6000 }).catch(() => {});
     },
   },
 
@@ -2075,6 +2154,43 @@ export const STATES = [
       await wait(P, 900);
       return tapSel(P, '[data-codex-loot] [data-cx-drop="irongreatsword"]');
     } },
+  /* v2.3.6694 (card UI2-life): Life Skills under the new frame -- the landing (PANELS skills, every road
+     in), a skill's page, its All unlocks (dash-bro-skill-detail is its How it works); today's page only
+     under ?ui2=0 (mp-ui2life plays it) */
+  {
+    id: 'ui2-life-landing', group: 'Dashboard', title: 'Life Skills: the total and the ten',
+    about: 'Bro\'s Life Skills door (v2.3.6694, card UI2-life; the owner 2026-11-26: "Enlarge the icons and cards to occupy the unused vertical space. Put level indicators inside the cards instead of having badges protrude from them. Match the rest of the game\'s typography"): under the one header (\u2039 Bro, Life Skills, Menu, Close) "Total level", the sum of the ten levels, sunk with its number large; under it the ten as raised doors filling the rest of the page, five by two (one row of eleven sideways, the total the first cell), the gather row over the craft row: each its picture, its name (on two lines at its joint where a fifth of the phone is too narrow), "Lv N" and a thin XP bar inside the face, and the brass dot inside its edge on a level-up not yet looked at. No label of what kind of player you are, no radar. Under ?ui2=0 today\'s page.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      if (!(await has(P, '[data-life-page]'))) return 'the landing did not open';
+    },
+  },
+  {
+    id: 'ui2-life-skill', group: 'Dashboard', title: 'Life Skills: a skill\'s page (Fishing)',
+    about: 'The landing\'s Fishing door (header "Fishing", \u2039 Life Skills): its level and XP bar (now / the worker\'s need, and what is left to the next level), then one flat container of facts -- the next unlock ("Lv 5: Clownfish"), the latest one, and its guild\'s line (Angler\'s Circle: your rank), a door with its chevron to Guilds -- beside two raised doors, All unlocks (n) and How it works. Sideways one row; the latest unlock is All unlocks\' there.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      const t = await tapSel(P, '[data-life-door="fishing"]');
+      if (t) return t;
+      await wait(P, 600);
+      if (!(await has(P, '[data-life-skill="fishing"]'))) return 'Fishing\'s page did not open';
+    },
+  },
+  {
+    id: 'ui2-life-unlocks', group: 'Dashboard', title: 'Life Skills: All unlocks (Fishing)',
+    about: 'Fishing\'s All unlocks door (header "All unlocks", \u2039 Fishing): every rung of its real ladder, one row each -- its level, its name, and Got, Next or Later by a word and a mark (never colour alone) -- the one Life Skills page that scrolls, opened with the next rung in view. Trapping and Enchanting unlock nothing by level: the kit\'s empty state with how the skill is earned.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      for (const sel of ['[data-life-door="fishing"]', '[data-life-all]']) { const t = await tapSel(P, sel); if (t) return t; await wait(P, 600); }
+      if (!(await has(P, '[data-life-unlocks="fishing"]'))) return 'All unlocks did not open';
+    },
+  },
   /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
   {

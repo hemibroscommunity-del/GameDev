@@ -23,6 +23,7 @@
  * specialAttack.  server/test/bow-special.test.mjs. */
 import { latchLocked, latchPress, holdAutoOn, sightNow, twoButtonsLive } from './latch.js';
 import { readerFor, sw } from './switches.js';
+import { discKind } from './rangedStick.js';   /* v2.3.6648 */
 
 /** `?specialnow=0` gives back the queue (a press with the line on empty
  *  ground readies the special, even with a monster to take).  `search` is
@@ -60,6 +61,7 @@ function findMon(mons, id) {
  *  (getActiveWeapon).  Reads, writes nothing. */
 export function bowSpecialMon(S, wpn) {
   if (!S || !S.rpg) return null;
+  if (discKind(S) === 'stick') return null;   /* v2.3.6648: with the Attack disc a stick nothing picks a monster for the bow: the special goes along the aim, today's queue (game/rangedStick.js; card PAD part 13) */
   const live = twoButtonsLive();
   const lockId = latchLocked(S) ? S._latchId : null;
   const pk = sightNow(S);   /* Attack's pick now (one scan a press) */
