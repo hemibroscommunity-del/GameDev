@@ -1,7 +1,7 @@
 card: UI3-tutor
 branch: claude/plan-ui3-11-tutor
-prs: (opening: draft, base main)
-state: working
+prs: the draft PR of this branch, base main (ready)
+state: ready
 
 ## Done
 - Tag 6791. FIND first (mp-tutorclear on main's build, red): sideways the coach's TALK TO MAYOR BRO card (hung below him) on the right lobe (10 px); the big arrow's words on the stick's lobe and the rail (sideways "Tap to open" 56 px, upright "Tap to equip" 10 px); the controls tour's card sideways on the right lobe; the "Next: ..." toast and the Add to Home Screen card 12 to 14 px over the band, inside the shell (by their CSS; main has no cue to show them in a test). Upright the coach's cards and the welcome plate were clear.
@@ -10,7 +10,7 @@ state: working
 - UI-DESIGN-NOTES (Arriving in BroTown; The controller) and docs/specs/control-redesign.md: the rule in one paragraph.
 
 ## Next
-- The phone run on the final code; pictures in docs/shots/; the draft PR; one message to the orchestrator.
+- Done: mp-tutorclear 103 of 103 on the final code (main 5b30c929 merged: the HUD #2406 and PAD part 11 #2409); precheck green. Waiting for the orchestrator.
 
 ## Found (outside the card, not mended)
 - The welcome tour's step banners and its "Start tour" prompt (BroTown.jsx) are dormant since v2.3.1593 (`_tourPromptInit = false`): never shown, so not moved (TRAPS 305).
