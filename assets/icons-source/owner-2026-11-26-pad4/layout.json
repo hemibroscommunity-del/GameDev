@@ -1,0 +1,25 @@
+{
+  "sheet": "sheet.png",
+  "size": [1774, 887],
+  "about": "v2.3.6645 (card PAD part 10): each piece's box on the owner's steel sheet of 2026-11-26, [x, y, w, h] in the sheet's px, read off its own alpha (tools/art/cut-pad.mjs cuts them). round: the piece is a disc, cut by a circle in its box (the stick's base and the shield touch on the sheet). from: a piece not on the sheet, made from one that is (glyph: the weapon lifted off its red face, for the weapon wells; dim: the face greyed, as the owner's pad3 disabled Attack was).",
+  "pieces": {
+    "housing": { "box": [166, 16, 1445, 369] },
+    "stick-base": { "box": [121, 394, 279, 279], "round": true },
+    "stick-thumb": { "box": [415, 467, 172, 175] },
+    "jump": { "box": [615, 403, 258, 260], "round": true },
+    "attack-sword": { "box": [876, 403, 251, 258], "round": true },
+    "attack-bow": { "box": [1130, 404, 251, 257], "round": true },
+    "attack-staff": { "box": [1382, 402, 257, 261], "round": true },
+    "shield": { "box": [120, 666, 210, 209], "round": true },
+    "special": { "box": [338, 666, 212, 211], "round": true },
+    "skate": { "box": [555, 665, 215, 211], "round": true },
+    "charge": { "box": [777, 665, 212, 211], "round": true },
+    "socket": { "box": [997, 667, 212, 210], "round": true },
+    "slot": { "box": [1216, 667, 211, 210], "round": true },
+    "slot-on": { "box": [1438, 668, 208, 208] },
+    "icon-sword": { "from": "attack-sword", "make": "glyph" },
+    "icon-bow": { "from": "attack-bow", "make": "glyph" },
+    "icon-staff": { "from": "attack-staff", "make": "glyph" },
+    "attack-off": { "from": "attack-sword", "make": "dim" }
+  }
+}
