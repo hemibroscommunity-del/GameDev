@@ -41,6 +41,7 @@ import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page 
 import { drawAvatar, drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): another player's avatar and colour only in the game's own forms */
 import { SAY } from '@/data/say/inspectPlayer.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 import { profileItemSource } from '@/game/gearShowcase.js';   /* v2.3.6689 (card UI2-gear PR 3): the equipment row's road */
 import { openItemPage } from '../mobile/dash/itemPageOpen.js';   /* v2.3.6689: the one item page */
 
@@ -115,7 +116,7 @@ var PVP_OPEN = false;
 function socIcon(name, glyph) {
   return /*#__PURE__*/React.createElement("img", {
     className: "bt-pcard-ic",
-    src: '/icons/ui/soc-' + name + '.webp',
+    src: assetUrl('/icons/ui/soc-' + name + '.webp'),
     alt: "",
     draggable: false,
     onError: function onError(e) {

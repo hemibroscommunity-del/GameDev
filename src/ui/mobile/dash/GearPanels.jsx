@@ -41,6 +41,7 @@ import { GearFilterMenu } from './GearFilterMenu.jsx';
 import { cellContent } from './gearCells.js';
 import { openItemPage, itemPageInput } from './itemPageOpen.js';
 import { runItemAction } from './itemActions.js';
+import { assetUrl } from '@/game/assetUrl.js';   /* v2.3.6743: the empty slot's ghost gets its file's version, not a hand ?v= (card KEEP PR 3b, the mend) */
 import { itemDetailBus } from './itemDetailBus.js';
 import { shopBus } from '../shopBus.js';
 import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
@@ -144,7 +145,7 @@ function WornCell({ c, R, slots, ws, size, w, hand, tap }) {
         onPointerUp={(e) => { e.stopPropagation(); press(); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(); } }}>
         <span className={'u2-slot' + (has ? '' : ' is-empty') + (inHand ? ' is-hand' : '')} data-grade={ct.quality || 'normal'}>
-          {!has ? <img className="u2-gp-ghost" src={`/icons/bag/equip-${c.id}.webp?v=2.3.4199`} alt="" draggable={false} />
+          {!has ? <img className="u2-gp-ghost" src={assetUrl(`/icons/bag/equip-${c.id}.webp`)} alt="" draggable={false} />
             : c.id === 'gem' ? (
               <span className="u2-gp-gems">{els.map((el, i) => <img key={el + i} src={gemIcon(gemCutKey(el))} alt="" draggable={false} />)}</span>
             ) : <img className="u2-slot-art" src={pic} alt="" draggable={false} />}

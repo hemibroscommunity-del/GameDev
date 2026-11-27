@@ -25,7 +25,7 @@
  *    original worry — "align every frame on the BAR or the banner will swell" —
  *    is answered by construction rather than by a registration pass.
  *
- * The contact sheets stay in docs/triage-2026-09-17/assets/ as the reference
+ * The contact sheets stay in docs/archive/triage-2026-09-17/assets/ as the reference
  * for what the assembled thing is supposed to look like.
  *
  * ═══ THE NUMBERS BELOW ARE MEASURED, NOT TYPED ═══

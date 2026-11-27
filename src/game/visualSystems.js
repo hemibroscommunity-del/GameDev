@@ -7,7 +7,6 @@
    footstep timer/stats, other-player interpolation, and remote-projectile
    simulation. Only capture is BT_AUDIO (footsteps); S is stateRef.current
    and the block reads S.player directly. */
-import { BT_AUDIO } from '@/data/index.js';
 import { zoneLeavesPrints, printsAt } from '@/rendering/footprintSprites.js'; /* v2.3.2654; v2.3.3000: + where the ground takes them */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3000: prints are where the boots are */
 import { jumpActive } from '@/game/jump.js';   /* v2.3.3017: no prints in the air */

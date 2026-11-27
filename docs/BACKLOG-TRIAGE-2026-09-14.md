@@ -8,7 +8,7 @@ sessions. **Nothing here is implemented.** Every claim is marked **KNOWN**
 reading the surrounding code most directly supports; the alternative is
 named). Line numbers drift — grep the quoted identifier.
 
-The line-cited research behind each cluster is in `docs/triage-2026-09-14/`
+The line-cited research behind each cluster is in `docs/archive/triage-2026-09-14/`
 (raw checkpoint logs from seven read-only research passes). Keep them: they
 are what stops the next session from paying for the same research twice.
 
@@ -225,7 +225,7 @@ runs, `CLAUDE.md` is read, and server work reads
 to read; that file's citations are the starting point, not a suggestion.
 
 **L1 — loot magnet.** Read `docs/BACKLOG-TRIAGE-2026-09-14.md` §2.3 and
-`docs/triage-2026-09-14/loot-persist-audio.md`. Fix, in `src/game/groundLoot.js`:
+`docs/archive/triage-2026-09-14/loot-persist-audio.md`. Fix, in `src/game/groundLoot.js`:
 the magnet pull must never push a pile away and the visual pile must never
 be farther from its server anchor than the server's pickup radius; drop a
 pile locally on a permanent rejection (`no-pile`, `already-claimed`,
@@ -823,7 +823,7 @@ named functions, the order of steps, and the harness that proves each step.
 
 ### 5.2 The nameplate design (D4, D5 answered)
 
-Mockup: `docs/triage-2026-09-14/assets/nameplate-design.png` (Frost Ridge,
+Mockup: `docs/archive/triage-2026-09-14/assets/nameplate-design.png` (Frost Ridge,
 portrait). What it specifies, read off the image:
 
 - **Monster plate** = a rounded dark-navy pill, bold white name, and the
@@ -851,7 +851,7 @@ portrait). What it specifies, read off the image:
 
 ### 5.3 The Points accordion (S2's UI, answered)
 
-Mockup: `docs/triage-2026-09-14/assets/points-accordion.png`. The Points
+Mockup: `docs/archive/triage-2026-09-14/assets/points-accordion.png`. The Points
 tab becomes an accordion: one collapsible section per combat skill
 (MELEE, BOW, STAFF) with the skill's icon, its point total and a chevron in
 the header; inside, one tile per channel (icon, channel name, current
@@ -888,7 +888,7 @@ idea as `tools/fill_gear_gaps.py`), verified at 20× on all eight facings.
 
 ### 5.6 New lane T — the tattoo editor zone picker
 
-Mockup `docs/triage-2026-09-14/assets/tattoo-editor-mock.png`; UI art
+Mockup `docs/archive/triage-2026-09-14/assets/tattoo-editor-mock.png`; UI art
 `tools/gear/src-art/creator/tattoo-zone-ui.png` (a contact sheet: top row
 four square zone frames — two sizes, each in a plain and a glowing
 "selected" state; middle row a flip button, a previous and a next chevron

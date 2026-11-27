@@ -7,12 +7,11 @@
  * (`node tools/guards/ui3-weights.test.mjs --write` lowers a count that fell;
  * it never raises one, and the suite holds the total under its ceiling).
  *
- *   WeaponPage.jsx, SharedPage.jsx: the DPS and Max HP stats keep `u2-raised`
- *     through their className (card UI3-combat's page rebuilds them);
+ *   (WeaponPage.jsx, SharedPage.jsx: the DPS and Max HP stats kept `u2-raised`
+ *     through their className; card UI3-combat's one template made them the
+ *     kit's sunk stat, and their rows fell, tag 6783);
  *   (ItemPage.jsx's doors, `<Ui2Stat k="">` with a handler, became the kit's
  *   compact tile in tag 6784, card UI3-menus: its row fell.)
  */
 export const RAISED_KNOWN = Object.freeze({
-  'src/ui/mobile/sheet/SharedPage.jsx': 1,
-  'src/ui/mobile/sheet/WeaponPage.jsx': 1,
 });

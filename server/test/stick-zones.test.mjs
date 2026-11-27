@@ -643,6 +643,7 @@ function writesOutside(prop, doorFile, doorFn) {
   }
 }
 
+const MQ = { matches: false };   /* v2.3.6644: the one `(pointer:fine)` list handed to deviceProfile (it keeps the first): 10i and 11f */
 /* ── 10. v2.3.6545: sprint from the rim (card CT item 6) ── */
 {
   const R = 37.5;
@@ -750,14 +751,17 @@ function writesOutside(prop, doorFile, doorFn) {
     globalThis.location.search = '';
     check('10i. no address: on, and live in mode 5 on a touch screen', rimSprintOn() === true && rimSprintLive() === true);
     if (typeof globalThis.window === 'undefined') globalThis.window = {};
-    const mq = { matches: true };   /* deviceProfile keeps the list it is given (live): latch.test H1's way */
+    const mq = MQ; mq.matches = true;   /* deviceProfile keeps the list it is given (live): latch.test H1's way; v2.3.6644: one list for 10i and 11f (the first one handed is kept) */
     globalThis.window.matchMedia = () => mq;
-    check('10i. mode 5 with a mouse: not live (the one gate, twoButtonsLive)', rimSprintLive() === false);
+    check('10i. mode 5 with a mouse: not live (a touch screen\'s main pointer only)', rimSprintLive() === false);
     mq.matches = false;
     check('10i. ...the touch pointer again: live', rimSprintLive() === true);
     delete globalThis.window.matchMedia;
     setManualCombat(4);
-    check('10i. mode 4: not live (the button as today)', rimSprintLive() === false);
+    check('10i. mode 4 on a touch screen: live (v2.3.6644, card PAD part 9: the usual controls sprint by the rim, the button gone)', rimSprintLive() === true);
+    globalThis.location.search = '?rimsprint=0';
+    check('10i. mode 4 with ?rimsprint=0: not live (the button back)', rimSprintLive() === false);
+    globalThis.location.search = '';
     check('10i. the switch read off an address', rimSprintOn('?rimsprint=0') === false && rimSprintOn('?rimsprint=1') === true && rimSprintOn('') === true);
   } finally {
     if (hadLoc) Object.defineProperty(globalThis, 'location', hadLoc); else delete globalThis.location;
@@ -767,12 +771,83 @@ function writesOutside(prop, doorFile, doorFn) {
   /* 10j. the share is the thumb's own, unclamped: three radii out sprints */
   const J = mk(); r = stickDrive(J, 0, -3 * R, R, null, null, null, say);
   check('10j. a thumb three radii out (the walk clamped to 1): the share is unclamped, it sprints', r.rim === 'start' && near(r.share, 3) && near(Math.hypot(J.stickX, J.stickY), 1));
-  /* 10k. mode 4 untouched: its analog read and lift make no rim state */
+  /* 10k. the analog read handed no drawn radius (its old call): no rim state */
   const M = mk(); stickAnalog(M, 200, 0, 17.5); stickLift(M);
-  check('10k. mode 4: the analog read far past its travel, then the lift: no sprint, no state', !('_rimSprint' in M) && !(M._sprint && M._sprint.on));
+  check('10k. the analog read with no radius far past its travel, then the lift: no sprint, no state', !('_rimSprint' in M) && !(M._sprint && M._sprint.on));
+  const M0 = mk(); stickAnalog(M0, 200, 0, 17.5, 0, say);
+  check('10k. ...nor a radius of 0', !('_rimSprint' in M0) && !(M0._sprint && M0._sprint.on));
   /* 10l. BroTown hands the button's words to the one call (off the source:
      the handler's only stickDrive call, the 8th argument sprintTiredSay) */
   check('10l. BroTown\'s one stickDrive call hands it sprintTiredSay', findIn('ui', /stickDrive\(stateRef\.current, rawDx, rawDy, rect\.width \/ 2, knobRef\.current, lStickRef\.current, base\.style\.opacity, sprintTiredSay\); return; \}/).length === 1);
+}
+
+/* ── 11. v2.3.6644: the USUAL controls sprint by the rim (card PAD part 9) ──
+ * The owner, 2026-11-26, told "no button; push the stick to its edge": "Yeah
+ * do that and remove sprint button".  Mode 4 on a touch screen: BroTown's
+ * analog read (stickAnalog) hands the disc's drawn radius and the button's
+ * words, and the thumb past the rim sprints by rimSprint's own rules (10's);
+ * `?rimsprint=0` and a mouse do nothing; no radius (10k) nothing. */
+{
+  const R = 37.5, maxR = R - 20;   /* the usual stick upright: its travel 20 px inside the drawn rim */
+  const mk = (st) => ({ _serverCaps: { sprint: true }, rpg: { stamina: st == null ? 100 : st, maxStamina: 100, hp: 50 }, player: { x: 0, y: 0 } });
+  const says = [];
+  const say = (S, now) => says.push(now);
+  const thumb = (S, share) => stickAnalog(S, share * R, 0, maxR, R, say);
+  const on = (S) => !!(S._sprint && S._sprint.on && S._sprint.how === 'rim');
+  setManualCombat(4);
+  check('11. mode 4 (the usual controls), no address, a touch screen: live', manualMode() === 4 && rimSprintLive() === true);
+  /* 11a. at the rim: full walk, nothing; past SPRINT_AT: the sprint, a hold */
+  let U = mk();
+  thumb(U, 1.0);
+  check('11a. the thumb at the drawn rim: full walking speed, no sprint, no state', near(U.stickX, 1) && !on(U) && !('_rimSprint' in U));
+  const t0 = Date.now();
+  thumb(U, 1.3);
+  check('11a. past the rim (1.3): the sprint starts, how \'rim\', on the sprint\'s own clock; the walk still full', on(U) && U._sprint.at >= t0 && U._sprint.at <= Date.now() && near(U.stickX, 1) && says.length === 0);
+  thumb(U, 1.1);
+  check('11a. eased back inside SPRINT_AT but not SPRINT_OFF (1.1): still sprinting (the band)', on(U));
+  thumb(U, 1.0);
+  check('11a. back inside SPRINT_OFF (1.0): stopped', !on(U) && U._rimSprint.out === false && U._rimSprint.ready === true);
+  /* 11b. the share is the thumb over the DRAWN radius, not the travel */
+  const B = mk(); thumb(B, 1.2);
+  check('11b. 1.2 of the drawn radius (far past the 17.5 px travel): no sprint', !on(B));
+  /* 11c. the lift and the dead zone end it (the rim is read in the dead zone too) */
+  const L = mk(); thumb(L, 1.5); const wasL = on(L); stickLift(L);
+  check('11c. a lifted thumb lets go of the usual stick\'s sprint', wasL && !on(L) && L.stickX === 0);
+  const D = mk(); thumb(D, 1.5); const wasD = on(D); stickAnalog(D, 0, 0, maxR, R, say);
+  check('11c. the thumb back on its landing (inside the dead zone): the sprint stops, the walk 0', wasD && !on(D) && D.stickX === 0 && D.stickY === 0);
+  /* 11d. refused for stamina: the words once a push */
+  says.length = 0;
+  const T = mk(0); thumb(T, 1.5); thumb(T, 1.6); thumb(T, 1.4);
+  check('11d. tired: one push past the rim held three frames says the words once, no sprint', says.length === 1 && !on(T) && T._sprint.why === 'tired');
+  thumb(T, 0.5); thumb(T, 1.5);
+  check('11d. ...eased back in and out again: a second push says them once more', says.length === 2 && !on(T));
+  /* 11e. Shift's sprint stays Shift's */
+  const K = mk(); startSprint(K, Date.now(), 'key'); thumb(K, 1.5); thumb(K, 0.5);
+  check('11e. a Shift sprint: the usual stick past and back neither ends nor takes it', K._sprint.on && K._sprint.how === 'key');
+  /* 11f. off: ?rimsprint=0, and a touch screen whose main pointer is a mouse */
+  const hadLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const hadWin = globalThis.window;
+  try {
+    Object.defineProperty(globalThis, 'location', { value: { search: '?rimsprint=0' }, configurable: true, writable: true });
+    const Z = mk(); thumb(Z, 2);
+    check('11f. ?rimsprint=0: past the rim full walking speed, no sprint, no state', near(Z.stickX, 1) && !on(Z) && !('_rimSprint' in Z) && rimSprintLive() === false);
+    globalThis.location.search = '';
+    if (typeof globalThis.window === 'undefined') globalThis.window = {};
+    const mq = MQ; mq.matches = true;
+    globalThis.window.matchMedia = () => mq;
+    const F = mk(); thumb(F, 2);
+    check('11f. a mouse the main pointer (a computer with a touch screen): no sprint, no state (the button and Shift as today)', !on(F) && !('_rimSprint' in F) && rimSprintLive() === false);
+    mq.matches = false;
+    const G = mk(); thumb(G, 2);
+    check('11f. ...the touch pointer again: it sprints', on(G));
+    delete globalThis.window.matchMedia;
+  } finally {
+    if (hadLoc) Object.defineProperty(globalThis, 'location', hadLoc); else delete globalThis.location;
+    if (hadWin === undefined) delete globalThis.window; else globalThis.window = hadWin;
+    setManualCombat(4);
+  }
+  /* 11g. BroTown's one analog call hands the drawn radius and the words */
+  check('11g. BroTown\'s one stickAnalog call hands it the drawn radius and sprintTiredSay', findIn('ui', /stickAnalog\(S, dist, angle, maxR, rect\.width \/ 2, sprintTiredSay\);/).length === 1);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
