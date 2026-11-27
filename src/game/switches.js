@@ -171,6 +171,7 @@ const FORMS = {
   'legslook': '0|off|false',
   'legsync': '0',
   'lightfx': '*',
+  'locknear': '0',
   'login': '1',
   'loginspin': '*',
   'lookatlas': '0',
