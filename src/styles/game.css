@@ -7768,6 +7768,18 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* A cooldown that ends says so once (useReadyFlash) */
 @keyframes bt-skin-flash{0%{opacity:0}28%{opacity:1}100%{opacity:0}}
 .bt-skin[data-flash="1"] .bt-skin-glow{animation:bt-skin-flash 700ms ease-out 1}
+/* v2.3.6646 (card PAD part 11; the owner, 2026-11-26: "Turn steel"): an
+   older button in the controller's tier (Whirlwind, Shield Bash:
+   controlSkin.jsx tierMetal) wears the steel sheet's rim, never the gold:
+   the ring its measured gradient (padSkin.js PAD_STEEL), pressed a step
+   darker, the edges cool, the flash of a cooldown's end the steel's cold
+   light.  Cooldown, Disabled and Quiet keep their greys and their arcs: the
+   states read as before.  `?padgold=1` drops the attribute. */
+.bt-skin[data-metal="steel"][data-state="normal"] .bt-skin-ringc,.bt-skin[data-metal="steel"][data-state="ready"] .bt-skin-ringc,.bt-skin[data-metal="steel"][data-state="on"] .bt-skin-ringc{stroke:url(#btSkinSteel) #526B81}
+[data-pressed="1"] .bt-skin[data-metal="steel"][data-state] .bt-skin-ringc{stroke:url(#btSkinSteelPress) #354E66}
+.bt-skin[data-metal="steel"] .bt-skin-edge{stroke:rgba(4,9,14,.92)}
+.bt-skin[data-metal="steel"][data-state="normal"] .bt-skin-bevel-hi{stroke:rgba(222,235,246,.62)}
+.bt-skin[data-metal="steel"] .bt-skin-glow{background:radial-gradient(closest-side,rgba(222,235,246,0) 0,rgba(222,235,246,0) var(--glow-in),rgba(222,235,246,.78) calc(var(--glow-in) + 3%),rgba(166,189,213,.40) calc(var(--glow-in) + 16%),rgba(82,107,129,0) 100%)}
 @media (prefers-reduced-motion: reduce){
   .bt-skin,.bt-skin-face::after{transition:none}
   .bt-skin[data-flash="1"] .bt-skin-glow{animation:none}

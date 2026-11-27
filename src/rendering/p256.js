@@ -164,7 +164,7 @@ const PLAYER_DEATH_ON = !NO_TWINS && !/[?&]deathstrip=0(&|$)/.test(_q);
    badge (PlayerProfilePanel.jsx) is an <img> of the picture, unchanged, as
    the mana blocks would be in VitalBar.jsx (its `block`, which no screen
    asks for).  `?uploadicons=0` keeps them pictures. */
-const UPLOAD_ICONS = /^\/icons\/ui\/(?:blocks-(?:mp|stam)|verified-bro-small)\.webp$/;
+const UPLOAD_ICONS = /^\/icons\/ui\/(?:blocks-(?:mp|stam|stam-steel)|verified-bro-small)\.webp$/;   /* v2.3.6646: + the steel energy blocks (card PAD part 11) */
 const UPLOAD_ICONS_ON = !NO_TWINS && !/[?&]uploadicons=0(&|$)/.test(_q);
 /* v2.3.6222 (card FX PR 3), `projectile-sheets`: the staff's bolt, the
    staff's special and the sword's slash (effectsRenderer.js, four frames
