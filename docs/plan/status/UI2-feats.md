@@ -8,6 +8,7 @@ state: ready
 - Rules src/game/feats.js; tools/guards/feats.test.mjs (F1-F17 and S1-S12; 26 plants red; mutation run 72 mutants, 70 killed, 2 equivalent); tools/guards/feats-mount.test.mjs (M1-M4, P1-P6 red); bro-hub.test B5 reads the Feats door; mp-ui2feats; moved: mp-ui2bro (strip four, Titles through Feats), mp-achievements (?ui2=0), mp-lazyfail (Feats' mark); states dash-bro-achievements (Feats now), ui2-feats-*; UI-DESIGN-NOTES "Feats".
 
 ## Next
+- THE MEND OF SITTING 72's line (Feats not held; nothing of its own changed): the mended Life head 70410b40 merged in (it carries the mended Ranks d2502a3d and main 5ab943fe). Conflicts, both sides kept: broHub.js BRO_HUB_PAGES, dashDests.js FRAME_PAGES, BroCard.jsx's door calls, harness.mjs FEATS_OF and LIFE_OF, systems.mjs (both entries; SYSTEMS.md made again), UI-DESIGN-NOTES and the decision log; the ui2-bro pictures this branch's (drawn before Life came in). On the final code (the test box): precheck 0 FAIL; ui2feats 25/25 (two pictures redrawn).
 - Nothing: the PR waits for the gatekeeper.  On its final code 779e30b8 (main 8f00c3c4 and Ranks' mended head e08554a2 merged; the test box): precheck OK; ui2feats 25/25, membudget 12/12 (no line raised), questline 187/187, lazyfail 7/7, ui2bro 25/26 (9, another player's face: not this card's).  Before the last merges: ui2combat 51/51, apchip 4/4, achievements 32/33 (9b, below).
 
 ## Found
