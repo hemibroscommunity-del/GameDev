@@ -110,6 +110,7 @@ const FORMS = {
   'dungeondoor': '0',
   'dyingdoor': '0',
   'elemicons': '0',
+  'equiplook': '0',
   'equipredraw': '0',
   'figround': '1',
   'fill': '0',
