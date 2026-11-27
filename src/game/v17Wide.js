@@ -55,6 +55,17 @@ export function v17WideWanted(search, store) {
   try { return !(ls && ls.getItem(V17_WIDE_KEY) === '0'); } catch (e) { return true; }
 }
 
+/* the room the keys list beside the block takes on a computer, a side (the block is centred): the list's
+   ~232 px, its 16 px gap and the band's 12 px edge.  game.css's band-keys block writes the same numbers
+   (520 = 2 x 260, and 480 its floor); tools/guards/v17-wide.test.mjs holds the two equal. */
+export const KEYS_SIDE = 260;
+
+/** A computer's block where the keys list stands beside it (pointer:fine, a window 1000 wide or more):
+ *  the switch's width, yielding to the list but never under 480 and never past the band. */
+export function deskBlockW(bandW, blockW) {
+  return Math.min(blockW, Math.max(BAND_NARROW_W, bandW - 2 * KEYS_SIDE), bandW);
+}
+
 /** The block's width for this answer: 840 on, 480 off. */
 export function bandBlockW(on) {
   return on ? V17_WIDE_W : BAND_NARROW_W;

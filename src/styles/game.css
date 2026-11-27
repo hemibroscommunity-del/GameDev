@@ -8463,6 +8463,16 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
    there, its heading unsized; there the column keeps its strip
    (KeyboardHintsPanel's bandKeysActive asks the same). */
 .bt-band-keys{display:none}
+/* v2.3.6842 (card UI4, PR 3): V17's 840 block (?v17wide, game/v17Wide.js) YIELDS to the keys list beside it.
+   The list stands right of the block (left: half the block + 16) and needs about 232 px, so on a computer's band
+   the block is at most the band less 520 (260 a side: it is centred): 840 at 1440 x 900 (V17's row), 706 on a
+   1280 x 800 laptop's 1226 px band, 504 at 1024.  Never under 480 (the max): `?v17wide=0`'s block (480,
+   BAND_NARROW_W) is the same at every size, and a band too short for the list was so before. */
+@media (pointer:fine) and (min-width:1000px){
+  html.bt-desk-wide.bt-one-band:not(.bt-band-side) [data-band-box]{
+    max-width:min(var(--band-max-w,840px), max(480px, calc(100% - 520px)), 100%);
+  }
+}
 @media (pointer:fine) and (min-width:1000px){
   html.bt-desk-wide.bt-one-band:not(.bt-band-side) .bt-band-keys{
     display:flex;flex-direction:column;gap:3px;position:absolute;z-index:2;

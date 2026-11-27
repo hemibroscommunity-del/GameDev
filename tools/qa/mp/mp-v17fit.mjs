@@ -308,6 +308,17 @@ async function sweep(P, rec, size, form, suffix = '') {
     rec.ok(`${tag}: every control 44 x 44 or more`, m.small.length === 0, m.small);
     rec.ok(`${tag}: no word cut or over another`, m.cut.length === 0 && m.overlapWords.length === 0, { cut: m.cut, over: m.overlapWords });
     rec.ok(`${tag}: the main action in view, whole, on top, unscrolled (${m.mains})`, m.mains > 0 && m.hidden.length === 0 && !m.scrolled, m.hidden);
+    if (form === 'computer' && sc.id === 'bro') {
+      /* the keys list beside the block (the shell's own: v2.3.4263): its room kept, never over the block */
+      const k = await P.page.evaluate(() => {
+        const e = document.querySelector('.bt-band-keys'), pg = document.querySelector('[data-band-box="page"]');
+        if (!e || !pg || getComputedStyle(e).display === 'none') return null;
+        const a = e.getBoundingClientRect(), b = pg.getBoundingClientRect();
+        return { w: Math.round(a.width), gap: Math.round(a.left - b.right) };
+      });
+      row.keys = k;
+      rec.ok(`${tag}: the keys list beside the block keeps its room (220 px or more) and stands clear of it`, !k || (k.w >= 220 && k.gap >= 8), k);
+    }
     if (REF.has(size) && !suffix) await BAND_SHOT(P, `v17fit-${sc.id}-${size}.png`);
     if (suffix === '-480' && size === '1440x900') await BAND_SHOT(P, `v17fit-${sc.id}-${size}-480.png`);
   }
