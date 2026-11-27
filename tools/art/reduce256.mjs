@@ -101,7 +101,7 @@ SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
    273 px each) and the verified Bro badge over a name (entityRenderer.js
    BRO_BADGE_URL), 2.5k-28k colours, cut to 256.  The stamina strip is 1638
    px wide: its twin is padded to 1640 (`pad4`), past its last frame. */
-SCOPE.push({ dir: 'icons/ui', only: /^(blocks-(mp|stam)|verified-bro-small)\.webp$/, always: true, pad4: true });
+SCOPE.push({ dir: 'icons/ui', only: /^(blocks-(mp|stam|stam-steel)|verified-bro-small)\.webp$/, always: true, pad4: true });
 /* v2.3.6222 (card FX PR 3, projectile-sheets): the staff's bolt, the staff's
    special and the sword's slash (effectsRenderer.js, four frames each, loaded
    whole and framed), 20k-63k colours, cut to 256.  Widths 868, 888 and 408:

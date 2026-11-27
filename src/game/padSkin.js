@@ -81,11 +81,61 @@ export const PAD = Object.freeze({
   GAP_PX: 45,
 });
 
-/* each action's accent: its ready glow and active ring */
+/* ═══ v2.3.6646: THE GOLD BESIDE THE CONTROLLER TURNS STEEL (card PAD part 11) ═══
+ * The owner, 2026-11-26, asked which gold was left round the steel
+ * controller (the rings on Whirlwind and Shield Bash, the ready glow on
+ * Attack and Special, the five energy blocks): "Turn steel".  These are the
+ * steel sheet's own colours (assets/icons-source/owner-2026-11-26-pad4/
+ * sheet.png), measured on the Attack face (its box 876,403 251x258 in
+ * layout.json) along rays from its centre, a few px inside the rim's edge:
+ * never a new hue.  The kept gold (the lit slot's ring, the stick's arrows,
+ * Special's star, the board, the charge streaks) is the owner's own sheet's
+ * and is not here.  `?padgold=1` gives the gold back (PAD_GOLD; padAccent).
+ *   rimLight  the rim at the face's top, 5 sheet px in (A7BDD5 at 2, D0E1F0 at 8)
+ *   rimMid    the rim's left side, 11 px in (4D647B to 526C83 from 8 to 14)
+ *   rimDeep   the rim at the top, 14 px in: its inner shade
+ *   rimDark   the rim at the face's bottom, 2 px in (475F76 at 5)
+ *   light     the cold light: the rim's inner bevel at the bottom, 14 px in
+ *             (the brightest blue on the face; the top bevel's is FBFBFA)
+ * The ready glow in `light` against the steel round a socket, WCAG contrast
+ * (the gold before it): on rimMid 4.58 (Attack FFB347 3.12, Special FFD84A
+ * 4.02); on rimDark 9.34 (6.36, 8.19).  Brighter than either gold was. */
+export const PAD_STEEL = Object.freeze({
+  rimLight: '#C6D7E7', rimMid: '#526B81', rimDeep: '#354E66', rimDark: '#2B3C4C',
+  light: '#DEEBF6',
+});
+
+/* v2.3.6646: the ring of an older button in the tier (controlSkin.jsx's
+   gradients btSkinSteel, btSkinSteelPress), top to bottom: the rim's light
+   to its dark, A7BDD5 the rim's top 2 px in; pressed a step darker */
+export const PAD_STEEL_RING = Object.freeze({
+  ring: [['0', PAD_STEEL.rimLight], ['.3', '#A7BDD5'], ['.56', PAD_STEEL.rimMid], ['.8', PAD_STEEL.rimDeep], ['1', PAD_STEEL.rimDark]],
+  press: [['0', '#A7BDD5'], ['.44', PAD_STEEL.rimMid], ['1', PAD_STEEL.rimDark]],
+});
+
+/* each action's accent: its ready glow and active ring.  v2.3.6646: Attack's
+   and Special's the steel's cold light (they were FFB347 and FFD84A: PAD_GOLD) */
 export const PAD_ACCENT = Object.freeze({
-  attack: '#FFB347', jump: '#8CFF5A', block: '#46CFFF', special: '#FFD84A',
+  attack: PAD_STEEL.light, jump: '#8CFF5A', block: '#46CFFF', special: PAD_STEEL.light,
   skate: '#E58CFF', charge: '#E58CFF',
 });
+
+/* v2.3.6646: the gold of 2026-11-25, worn again under `?padgold=1` (one phone) */
+export const PAD_GOLD = Object.freeze({ attack: '#FFB347', special: '#FFD84A' });
+
+/** v2.3.6646: an action's accent, the gold's when `gold` (`?padgold=1`) */
+export function padAccent(name, gold) {
+  if (gold && PAD_GOLD[name]) return PAD_GOLD[name];
+  return PAD_ACCENT[name] || PAD_ACCENT.special;
+}
+
+/** v2.3.6646: the metal of an older button's ring (controlSkin.jsx Skin's
+ *  `metal`): 'steel' for one in the controller's tier (`inTier`: Whirlwind,
+ *  Shield Bash, padSkin's specialSpot) unless `gold` (`?padgold=1`); else
+ *  null, the gold ring every button wore before (`?padskin=0` keeps it) */
+export function padMetal(inTier, gold) {
+  return inTier && !gold ? 'steel' : null;
+}
 
 export const WELLS = Object.freeze(['stick', 'w1', 'w2', 'w3', 'mobility', 'mid', 'special', 'big', 'attack']);
 

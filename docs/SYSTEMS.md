@@ -381,8 +381,10 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: windowDoor, guardBreak, broPages, ui2Tokens, dashNav, dashDests, dashGrow, broHub, screenZones, pending, combatHub, progression, metricTree
 - **Files**: `src/game/`: itemInspect
 - **Files**: `src/game/`: compare, equipProject, workspace
+- **Files**: `src/game/`: equipLook
 - **Files**: `src/game/`: gearShowcase
 - **Files**: `src/game/`: menuTile, gearGeometry
+- **Files**: `src/game/`: charHud
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

@@ -506,6 +506,19 @@ export const STATES = [
     about: 'The resting game screen in the town square: top bar (only the log-out door since v2.3.4183: the coins are in the Gear tab\'s header and the achievement points on the Bro card, a gain said as a "+12 gold" / "+5 AP" word under the bar; since v2.3.4113 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the quest card just under the top bar (since v2.3.4163 no player frame: your HP and energy show over your bro\'s head and on the dashboard), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
+  /* v2.3.6781 (card UI3, PR 2): the character HUD, top left -- the face, the
+     name, "Lv N" and the gold bar of the weapon whose next level raises it;
+     the tracked quest as one line under it.  Its own row a layout: upright,
+     sideways (compact, 176 x 48) and a computer. */
+  { id: 'charhud', group: 'The world (HUD)', title: 'The character HUD, top left (upright)', views: ['portrait'],
+    about: 'Top left under the top bar, opposite the minimap: your face (the dashboard\'s own portrait), your name and "Lv N" (the combat level) beside it, and under them a gold XP bar labelled with the weapon whose next level raises your combat level (its picture and its word, "45 / 120" in the bar). Under it the tracked quest as ONE line, "title \u00b7 count \u00b7 objective", a tap opening that quest. A tap anywhere on the HUD opens Bro. 184 x 52. No health or energy (the owner took those off the game screen, v2.3.4163). ?hud=0 gives back the old top left.',
+    run: async ({ P }) => { await wait(P, 600); } },
+  { id: 'charhud-side', group: 'The world (HUD)', title: 'The character HUD, top left (sideways)', views: ['landscape'],
+    about: 'The same HUD on a phone held sideways: compact, 176 x 48, the face drawn 40 in its 44 px tap box; the one-line quest, the status chips and the party chip under it, clear of the minimap.',
+    run: async ({ P }) => { await wait(P, 600); } },
+  { id: 'charhud-desk', group: 'The world (HUD)', title: 'The character HUD, top left (a computer)', views: ['desktop'],
+    about: 'The same HUD on a computer playing wide (184 x 52): a click on it opens Bro and never swings; its tooltip says "Click to open Bro".',
+    run: async ({ P }) => { await wait(P, 600); } },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
      told), its window, and (until v2.3.4163) the player frame top-left.  v2.3.4113: the chip
@@ -889,7 +902,7 @@ export const STATES = [
       return tapSel(P, '[data-gear-summary] [data-gear-details]');
     } },
   /* v2.3.6688: Gear's two panels (card UI2-gear PR 2): management, a look from the bag, a look from the worn cells */
-  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars. v2.3.6784 (card UI3-menus): the label rows 24 px (their words 11 px caps), the gold a recessed pill, the bag\'s squares the kit\'s socket (the worn cells\'), the bag in WHOLE rows (three wherever 44 px squares allow; the scroll snaps to a row: src/game/gearGeometry.js).',
+  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars. v2.3.6784 (card UI3-menus): the label rows 24 px (their words 11 px caps), the gold a recessed pill, the bag\'s squares the kit\'s socket (the worn cells\'), the bag in WHOLE rows (three wherever 44 px squares allow; the scroll snaps to a row: src/game/gearGeometry.js). Tag 6698 (card UI2-equipgreen): the Equipped panel on a pale green ground (gearPanels.css --u2-gp-equip-ground), its label in the kit\'s dark ink, a worn picture 94% of its slot as a bag square\'s; ?equiplook=0 the dark well and 72%.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); }); } },
   { id: 'dash-gear-look-bag', group: 'Dashboard', title: 'Gear: a look from the bag', about: 'A bag square tapped: the Inventory stays left, the square pushed in; the Equipped panel\'s place is its summary (a piece you could wear: your DPS or Damage cut now and if equipped, the change, Details and Equip).',
     run: async ({ P }) => {
@@ -904,7 +917,7 @@ export const STATES = [
       return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
     } },
   /* v2.3.6689: Bro's Equipment door, a showcase (card UI2-gear PR 3) */
-  { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line.',
+  { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line. Tag 6698: a worn picture 94% of its slot (as Gear\'s); its own ground, not Gear\'s green.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broEquip' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
