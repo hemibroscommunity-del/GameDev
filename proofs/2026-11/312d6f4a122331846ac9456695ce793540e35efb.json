@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "312d6f4a122331846ac9456695ce793540e35efb",
+  "tree": "8b34075216c3817509dc269fe1c863cd7e0270e1",
+  "committedAt": "2026-11-26T18:01:54-08:00",
+  "subject": "Merge pull request #2397 from hemibroscommunity-del/claude/plan-lock-1-nearest",
+  "files": 8907,
+  "bytes": 999837721,
+  "listingSha256": "6f4b68718fb19cd1c1ded84c79a8ee0570ca93dee2a329f9e4bdf74282bc5b6a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
