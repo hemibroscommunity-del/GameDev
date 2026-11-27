@@ -137,7 +137,7 @@
   --ui2-space-m: 6px;
   --ui2-space-l: 8px;
   --ui2-space-xl: 12px;
-  --ui2-font: 'Merriweather', Georgia, 'Times New Roman', serif;
+  --ui2-font: 'Source Sans 3', sans-serif;
   --ui2-fs-badge: 10px;
   --ui2-fs-small: 11px;
   --ui2-fs-body: 12px;
@@ -602,7 +602,7 @@
   letter-spacing: -0.08em;
   color: var(--ui2-brass-highlight);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 1), 0 0 2px rgba(0, 0, 0, 1);
-  font-family: Georgia, serif;
+  font-family: var(--ui2-font);   /* v2.3.6785: the stars too (was a bare Georgia) */
 }
 /* a slot that is the chosen one: pushed in, its outline kept */
 .ui2 .u2-slot.is-sel { box-shadow: inset 0 4px 7px rgba(0, 0, 0, 0.75), 0 0 0 2px var(--ui2-sunk-top); }
