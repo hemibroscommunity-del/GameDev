@@ -32,7 +32,19 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['server/**']
+    # v2.3.6700: NOT FOR A TEST FILE ALONE.  The filter was `server/**`, so a
+    # merge that only added or changed a suite under server/test/ (most of
+    # them test the phone's rules) deployed the worker: every player
+    # disconnected and the room's memory wiped, for no change to what runs
+    # (TRAPS §277).  Of the 35 merges that set this workflow off between
+    # 2026-11-18 and 11-25, 29 changed nothing under server/ but test files.
+    # A `!` pattern after a match takes a path back out, and it must stay in
+    # THIS list: GitHub refuses `paths` and `paths-ignore` on one event.  So
+    # a push runs this only when a file under server/ outside test/ and
+    # README.md changed: src/, wrangler.toml, package.json and its lock.
+    # The owner asked for it in the session, 2026-11-26 ("Ok fix in your
+    # recommended order", the deploy filter first).
+    paths: ['server/**', '!server/test/**', '!server/README.md']
 # v2.3.3176: ONE DEPLOY AT A TIME, THE NEWEST LAST.  Each run deploys the
 # commit that started it, and whichever `wrangler deploy` finishes LAST is
 # what players get.  Two server merges a minute apart used to run side by

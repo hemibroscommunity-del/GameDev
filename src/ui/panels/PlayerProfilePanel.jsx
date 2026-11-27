@@ -105,8 +105,11 @@ const dash = (v) => (v == null ? '–' : v);
  * onClose     close everything
  * onOpen      (panelId) open a dashboard destination -- 'leaderboard', 'encyclopedia'
  * dock        { party: {state:'invite'|'member', onClick} | null, trade, duel } | null
+ * onItem      v2.3.6689 (card UI2-gear PR 3): (profile, slot) a worn slot pressed: the one item
+ *             page (InspectPlayerPanel hands it over: src/game/gearShowcase.js profileItemSource);
+ *             an empty slot presses nothing
  */
-export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOpen, dock }) {
+export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOpen, dock, onItem }) {
   const [, setTick] = React.useState(0);
   React.useEffect(() => {
     const id = setInterval(() => setTick((n) => (n + 1) % 1e6), 1000);
@@ -237,6 +240,10 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
           {p.equipment.map((s) => (
             <div key={s.slot} role="listitem" data-slot={s.slot}
               className={'bt-pin-slot' + (s.ghost ? ' is-empty' : '')}
+              /* v2.3.6689: a worn slot opens the one item page (yours with its actions, another's to look at) */
+              {...(!s.ghost && onItem ? { tabIndex: 0, 'data-pin-item': '', style: { cursor: 'pointer', touchAction: 'manipulation' },
+                onClick: (e) => { e.stopPropagation(); onItem(p, s); },
+                onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onItem(p, s); } } } : null)}
               title={s.ghost ? say(SAY, 'playerProfile.slotEmpty', { slot: s.label.toLowerCase() }) : (s.name || s.label)}
               aria-label={s.ghost ? say(SAY, 'playerProfile.slotEmpty', { slot: s.label.toLowerCase() }) : (s.name || s.label)}>
               <img src={s.ghost ? GHOST_SRC[s.slot] : s.iconSrc} alt="" draggable={false} />

@@ -107,12 +107,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 3. the Bro page reads the points ──
      v2.3.6686 (card UI2-bro, tests part): the AP is a counter on the Character passport (data-char-door="ap",
-     under the frame: Menu, Bro, Character) and it shows the compact count of the worker's number */
-  await H.dashOpen(P, 'broCharacter');
+     under the frame: Menu, Bro, Character) and it shows the compact count of the worker's number.
+     v2.3.6782 (card UI3-bro): Bro is ONE page for yourself; the AP is the first entry of its strip */
+  await H.dashOpen(P, 'hero');
   let card = null;
   for (let i = 0; i < 30; i++) {
     card = await P.page.evaluate(() => {
-      const e = document.querySelector('[data-char-page] [data-char-door="ap"], [data-char-page] [data-char-ap]');
+      const e = document.querySelector('[data-bro-strip] [data-bro-fact="ap"]');
       if (!e) return null;
       const m = (e.textContent || '').match(/\d[\d,.]*/);
       return m ? Number(m[0].replace(/,/g, '')) : null;
@@ -121,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(200);
   }
   await shot('bro-card');
-  rec.ok(`3: the Character passport reads the same ${card} AP`, card === 10, { card });
+  rec.ok(`3: the Bro page's strip reads the same ${card} AP`, card === 10, { card });
 
   rec.ok(`5: no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   await P.ctx.close().catch(() => {});

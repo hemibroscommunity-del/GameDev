@@ -51,7 +51,7 @@
  *
  * Relative imports, every one import-free, so node can read this file
  * (server/test/achievements-client.test.mjs). */
-import { ACHIEVEMENTS, ACHV_TIERS, ACHV_TOTAL_AP, achvById, achvAp, achvBig } from '../data/achievements.js';
+import { ACHIEVEMENTS, ACHV_TOTAL_AP, achvById, achvAp, achvBig } from '../data/achievements.js';
 import { worldReady } from '../ui/loadingGate.js';   /* v2.3.4136: the loading gate (no imports of its own: node runs this) */
 import { chatLogBus } from '../ui/mobile/chatLogBus.js';
 import { CODEX_KINDS } from '../data/monsterCodex.js';   /* Know Thy Enemy's nine, for its row's progress */

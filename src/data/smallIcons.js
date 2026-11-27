@@ -20,8 +20,9 @@
  *
  * No imports: node-tested (server/test/small-icons.test.mjs).
  */
-const V = '?v=2.3.3279';
-const ui = (name) => '/icons/ui/' + name + '.webp' + V;
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
+/* v2.3.6743: the hand key V ('?v=2.3.3279') is gone: the file's own version (assetUrl, card KEEP PR 3b) */
+const ui = (name) => assetUrl('/icons/ui/' + name + '.webp');
 
 export const SMALL_ICON = Object.freeze({
   partyMember: ui('party-member'),
@@ -63,7 +64,7 @@ export const BUFF_ICON = Object.freeze({
 /* v2.3.3906: the ten elements' 64 px plate icons */
 export const PLATE_ELEMENTS = Object.freeze(['flame', 'frost', 'water', 'venom', 'flora', 'stone', 'storm', 'wind', 'dark', 'light']);
 const ELEM_SMALL_TEX = Object.freeze(Object.fromEntries(PLATE_ELEMENTS.map((e) =>
-  ['elem-' + e, '/icons/ui/elem-' + e + '-64.webp?v=2.3.3906'])));
+  ['elem-' + e, assetUrl('/icons/ui/elem-' + e + '-64.webp')])));   /* v2.3.6743: its file's version, not ?v=2.3.3906 */
 /* the SMALL_TEX key a monster's element draws with, or null (no element, or
    one without an icon: the plate then shows none) */
 export function elemSmallKey(element) {

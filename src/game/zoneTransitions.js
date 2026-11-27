@@ -1138,6 +1138,10 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           var czZone = ZONES[S.currentZone];
           var czPtx = Math.floor(P.x / TILE),
             czPty = Math.floor(P.y / TILE);
+          /* v2.3.6702: czMX is read by nothing, but reading czZone.w throws
+             when the zone is not in ZONES, and deleting it would stop that
+             throw: kept until the owner says (card TD PR 3, Needs). */
+          // eslint-disable-next-line no-unused-vars -- reading czZone.w throws for a zone not in ZONES; deleting it would change what runs
           var czMX = Math.floor(czZone.w / 2);
           var RETURN_R = 2;
           var _czNearReturn = false;

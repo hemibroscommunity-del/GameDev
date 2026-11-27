@@ -132,3 +132,14 @@
 # version, and the census's count for this folder, which must be 0).
 /sfx/*
   Cache-Control: public, max-age=31536000, immutable
+
+# v2.3.6744: the world's object sheets (public/world/objects/), card KEEP PR
+# 3c.  Every request the game makes here carries its file's version (?v=, the
+# first 10 characters of the SHA-256 of its bytes): each sheet and its page
+# through src/game/assetUrl.js (src/rendering/wheelObjects.js, the farm's copy
+# in farmWorld.js at `&farm=1`), the page at its OWN version, never the
+# sheet's copied on (sheetPage.js, png8Worker.js); the manifest at the version
+# the page posts the ground worker.  So a changed sheet is a new address and a
+# year of immutable is safe.  Held by tools/guards/keep-sfx.test.mjs.
+/world/objects/*
+  Cache-Control: public, max-age=31536000, immutable

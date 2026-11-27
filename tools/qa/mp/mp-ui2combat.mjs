@@ -37,6 +37,22 @@
  *      deepest returns layer by layer to the Sword page; each layer in the
  *      room at every size;
  *   4. `?ui2=0`: today's Bro, its pages; no hub.
+ * v2.3.6783 (card UI3-combat; the owner, 2026-11-26: "Make the weapons
+ * visually dominant, enlarge the level numbers and only show available points
+ * prominently when there are points to spend"; "Eliminate the left-side
+ * Attributes column, consolidate the combat statistics into one summary
+ * strip, and give the six attributes a full-width three-by-two grid ... with
+ * Bow and Staff following the identical template"): REWRITTEN where the one
+ * template changed what is drawn -- 1b a count drawn only while > 0 (the
+ * dealt Staff is 0: no count); 1e the hub's picture 44 px or more upright
+ * (40 sideways) and its level 24 px; 2a DPS the kit's sunk stat and the four
+ * facts in ONE container; 2b the full-width line ABOVE the six, gold, a "+"
+ * on each; 2e Bow's page the same template, mark for mark; 2f Staff's page
+ * at 0 points (the deal gives it none, and a weapon's points cannot all be
+ * Spent: each attribute has its cap), the line muted, no "+"; 4a1 the
+ * pictures at every size; 4b1-4b2 the fold by the page's own height (and at
+ * the 168 px the master notes measured, the page held to it); 4f Bow's page
+ * at 375 x 667 with its points.
  * Pictures (deviceScaleFactor 2): docs/shots/ui2-combat-*.png.
  */
 import path from 'node:path';
@@ -103,7 +119,42 @@ const pools = (P) => H.readState(P, (S) => {
   return { sword: (by.sword || 0) + free, bow: (by.bow || 0) + free, staff: (by.staff || 0) + free, shared: (p.shared || 0) + free, free,
     dmg: (atk.sword && atk.sword.dmg) || 0, hp: (p.alloc && p.alloc.hp) || 0, lv: p.sk ? [p.sk.sword.level, p.sk.bow.level, p.sk.staff.level] : null };
 });
-const hubDoors = (P) => P.page.evaluate(() => Array.from(document.querySelectorAll('[data-combat-door]')).map((e) => ({ id: e.getAttribute('data-combat-door'), pts: e.getAttribute('data-combat-points'), lv: e.getAttribute('data-combat-lv'), text: e.textContent.trim() })));
+const hubDoors = (P) => P.page.evaluate(() => Array.from(document.querySelectorAll('[data-combat-door]')).map((e) => {
+  const c = e.querySelector('.u2-cb-pts');
+  const img = e.querySelector('.u2-cb-art');
+  const lv = e.querySelector('.u2-cb-lv');
+  return { id: e.getAttribute('data-combat-door'), pts: e.getAttribute('data-combat-points'), lv: e.getAttribute('data-combat-lv'), text: e.textContent.trim(),
+    /* v2.3.6783: the count as drawn (none at 0), its gold, the glow, the picture's size, the level's text size */
+    drawn: c ? c.textContent.trim() : null, gold: !!(c && c.classList.contains('is-on')), glow: e.classList.contains('is-glow'),
+    art: img ? Math.round(img.getBoundingClientRect().width) : 0, lvPx: lv ? parseFloat(getComputedStyle(lv).fontSize) : 0 };
+}));
+/* v2.3.6783: a weapon's (or Shared's) page as the one template draws it */
+const pageMarks = (P) => P.page.evaluate(() => {
+  const e = document.querySelector('[data-weapon-page], [data-shared-page]');
+  if (!e) return null;
+  const st = e.querySelector('[data-weapon-dps], [data-shared-hp]');
+  const facts = Array.from(e.querySelectorAll('[data-weapon-stat], [data-shared-def]'));
+  const boxes = new Set(facts.map((f) => f.closest('.u2-facts')));
+  const line = e.querySelector('[data-weapon-pool], [data-shared-pool]');
+  const grid = e.querySelector('.u2-at-grid');
+  const lr = line ? line.getBoundingClientRect() : null;
+  const gr = grid ? grid.getBoundingClientRect() : null;
+  const v = line ? line.querySelector('.u2-at-line-v') : null;
+  const lvRow = e.querySelector('[data-weapon-level]');
+  const tiles = Array.from(e.querySelectorAll('[data-weapon-attr], [data-shared-attr]'));
+  /* the template's shape: each element's classes in order (the numbers and words left out) */
+  const sig = Array.from(e.querySelectorAll('*')).filter((x) => !x.classList.contains('u2-at-plus'))
+    .map((x) => x.tagName + '.' + Array.from(x.classList).filter((c) => !/^is-(glow|gold|quiet)$/.test(c)).sort().join('.')).join(' ');
+  return {
+    statSunk: !!st && st.classList.contains('u2-stat') && !st.classList.contains('u2-raised'), statChev: !!(st && st.querySelector('.u2-chev')), statBtn: !!st && st.tagName === 'BUTTON',
+    facts: facts.map((f) => f.getAttribute('data-weapon-stat') || 'def'), oneBox: boxes.size === 1 && !boxes.has(null), factFaces: facts.filter((f) => /u2-group|u2-raised/.test(f.className)).length,
+    lineText: line ? line.textContent.trim() : '', lineGold: !!(v && v.classList.contains('is-gold')), lineQuiet: !!(v && v.classList.contains('is-quiet')),
+    lineAbove: !!(lr && gr && lr.bottom <= gr.top + 0.5), lineFull: !!(lr && gr && lr.width >= gr.width - 2 && lr.left <= gr.left + 4),
+    folded: e.getAttribute('data-weapon-fold') === '1', lineInLevel: !!(lvRow && line && lvRow.contains(line)),
+    plus: tiles.filter((t) => t.querySelector('.u2-at-plus')).length, tiles: tiles.length, sig, h: Math.round(e.getBoundingClientRect().height),
+  };
+});
+
 /* a finger on a phone, a click on a computer (its page has no touch) */
 const tap = async (P, sel, ms = 700) => {
   const el = P.page.locator(sel).first();
@@ -167,11 +218,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const by = Object.fromEntries(D.map((d) => [d.id, d]));
     rec.ok('1a. Combat is four doors: Sword, Bow, Staff, then Shared Attributes', D.map((d) => d.id).join(',') === 'sword,bow,staff,shared'
       && /^Sword/.test(by.sword.text) && /^Bow/.test(by.bow.text) && /^Staff/.test(by.staff.text) && /^Shared Attributes/.test(by.shared.text), D);
-    rec.ok('1b. each count is the worker\'s pool ("n points"), each weapon its level', +by.sword.pts === W0.sword && +by.bow.pts === W0.bow && +by.staff.pts === W0.staff && +by.shared.pts === W0.shared
-      && by.sword.lv === '12' && by.bow.lv === '5' && by.staff.lv === '1' && by.sword.text.includes(W0.sword + ' points') && by.shared.text.includes(W0.shared + ' points'), { D, W0 });
+    /* v2.3.6783: a count DRAWN only while > 0, in gold; at 0 nothing drawn (the dealt Staff: no points of its own, none free) */
+    const shownOk = (d, n) => (n > 0 ? d.drawn === n + ' points' && d.gold && d.glow : d.drawn === null && !d.glow && !/\bpoints?\b/.test(d.text));
+    rec.ok('1b. each count is the worker\'s pool, drawn ("n points", gold) only while > 0; each weapon its level', +by.sword.pts === W0.sword && +by.bow.pts === W0.bow && +by.staff.pts === W0.staff && +by.shared.pts === W0.shared
+      && by.sword.lv === '12' && by.bow.lv === '5' && by.staff.lv === '1' && W0.sword > 0 && W0.bow > 0 && W0.shared > 0
+      && ['sword', 'bow', 'staff', 'shared'].every((c) => shownOk(by[c], W0[c])), { D, W0 });
+    rec.ok('1b0. the dealt Staff has no points: its door draws no count, its data says 0', W0.staff === 0 && by.staff.pts === '0' && by.staff.drawn === null, by.staff);
     const Hb = await readRoom(P, HUB);
     rec.ok('1c. 390 x 844: every door 44 x 44 or more, inside the band, nothing clipped, no scroll, no text under 11 px', Hb && Hb.title === 'broCombat' && roomOk(Hb, 4), roomBrief(Hb));
     rec.ok('1d. no effective-health number on the hub', !!Hb && !/effective health|\bEHP\b/i.test(Hb.text), Hb && Hb.text.slice(0, 120));
+    rec.ok('1e. 390 x 844: each weapon\'s picture 44 px or more (32 before), its level 24 px', ['sword', 'bow', 'staff'].every((c) => by[c].art >= 44 && by[c].lvPx === 24), D.map((d) => `${d.id}:${d.art}px lv ${d.lvPx}px`));
     await bandShot(P, 'ui2-combat-hub.png');
 
     /* 2. Sword's page */
@@ -193,11 +249,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('2a. Sword\'s page (its header "Sword"): level 12 and its XP (now / needed), DPS the headline, Damage, Attack speed, Crit chance, Range (no Element), the six attributes',
       !!S1 && S1.cat === 'sword' && S1.head.trim() === 'Sword' && S1.lv === '12' && /^\d+\/\d+$/.test(S1.xp || '') && (S1.xpText || '').includes(S1.xp.replace('/', ' / ') + ' XP')
       && /^\d+(\.\d+)?$/.test(S1.dps || '') && S1.support.join(',') === 'damage,aspd,crit,range' && S1.attrs.join(',') === 'range,dmg,aspd,luck,special,elem', S1);
-    rec.ok('2b. "Attributes" names the Sword pool, the worker\'s count', !!S1 && +S1.pool === W0.sword && S1.poolText.includes(W0.sword + ' Sword points to spend'), S1 && { pool: S1.pool, text: S1.poolText, want: W0.sword });
+    const M1 = await pageMarks(P);
+    rec.ok('2a1. DPS the kit\'s stat (sunk, not raised; a button with its chevron); Damage, Attack speed, Crit chance, Range facts in ONE container, none a box of its own',
+      !!M1 && M1.statSunk && M1.statBtn && M1.statChev && M1.facts.join(',') === 'damage,aspd,crit,range' && M1.oneBox && M1.factFaces === 0, M1 && { ...M1, sig: undefined });
+    rec.ok('2b. the full-width line ABOVE the six: "Attributes", the worker\'s count "N Sword points to spend" in gold; each of the six with its "+"',
+      !!S1 && +S1.pool === W0.sword && S1.poolText.includes(W0.sword + ' Sword points to spend') && !!M1 && M1.lineAbove && M1.lineFull && M1.lineGold && /^Attributes/.test(M1.lineText)
+      && M1.tiles === 6 && M1.plus === 6 && !M1.folded, S1 && { pool: S1.pool, text: S1.poolText, want: W0.sword, line: M1 && { above: M1.lineAbove, full: M1.lineFull, gold: M1.lineGold, plus: M1.plus } });
     const Wp = await readRoom(P, PAGE);
-    rec.ok('2c. 390 x 844: level, DPS and the six in view; every press 44 x 44 or more, inside the band, nothing clipped, no scroll, no text under 11 px', Wp && Wp.title === 'broSword' && roomOk(Wp, 7), roomBrief(Wp));
+    rec.ok('2c. 390 x 844: level, DPS and the six in view; every press 44 x 44 or more, inside the band, nothing clipped, no scroll, no text under 11 px', Wp && Wp.title === 'broSword' && roomOk(Wp, 7), { ...roomBrief(Wp), h: M1 && M1.h });
     rec.ok('2d. no effective-health number on the page, and no storage bound (999) shown as a cap', !!Wp && !/effective health|\bEHP\b/i.test(Wp.text) && !/\/ ?999/.test(Wp.text));
     await bandShot(P, 'ui2-combat-sword.png');
+    /* 2e. (v2.3.6783) Bow's page: the one template, mark for mark */
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 900);
+    await tap(P, '[data-combat-door="bow"]', 900);
+    const Mb = await pageMarks(P);
+    const Bt = await P.page.evaluate(() => (document.querySelector('[data-dash-title]') || { getAttribute: () => null }).getAttribute('data-dash-title'));
+    rec.ok('2e. Bow\'s page is the same template: the same marks in the same order, its line gold with "N Bow points to spend", its six each a "+"',
+      Bt === 'broBow' && !!Mb && Mb.sig === M1.sig && Mb.lineGold && Mb.lineText.includes(W0.bow + ' Bow points to spend') && Mb.plus === 6, Mb && { title: Bt, same: Mb.sig === M1.sig, line: Mb.lineText, plus: Mb.plus });
+    await bandShot(P, 'ui2-combat-bow.png');
+    /* 2f. the dealt Staff has no points (none of its own, none free): the same template, the line muted, no "+" */
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 900);
+    await tap(P, '[data-combat-door="staff"]', 900);
+    const Mt = await pageMarks(P);
+    rec.ok('2f. Staff\'s page at 0 points: the same template, its line "0 Staff points to spend" muted, no attribute wears a "+"',
+      W0.staff === 0 && !!Mt && Mt.sig === M1.sig && Mt.lineQuiet && !Mt.lineGold && Mt.lineText.includes('0 Staff points to spend') && Mt.plus === 0 && Mt.tiles === 6,
+      Mt && { same: Mt.sig === M1.sig, line: Mt.lineText, quiet: Mt.lineQuiet, plus: Mt.plus });
+    await bandShot(P, 'ui2-combat-staff-nopoints.png');
+    await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 900);
+    await tap(P, '[data-combat-door="sword"]', 900);
 
     /* 3. the acceptance task: a weapon point, tentatively; cancel; confirm; pool isolation */
     await tap(P, '[data-weapon-attr="dmg"]', 900);
@@ -270,7 +349,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const Sh = await P.page.evaluate(() => {
       const e = document.querySelector('[data-shared-page]');
       const t = document.querySelector('[data-dash-title]');
-      const sum = e && e.querySelector('.u2-wp-row.is-sum, .u2-wp-row.is-one');
+      const sum = e && e.querySelector('.u2-at-strip');
       return e && {
         title: t ? t.getAttribute('data-dash-title') : null, head: t ? t.textContent.trim() : '',
         first: sum && sum.firstElementChild ? (sum.firstElementChild.hasAttribute('data-shared-hp') ? 'hp' : 'other') : null,
@@ -286,6 +365,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && Sh.attrs.join(',') === 'hp,def,mana,stam,dodge,move,eres' && Sh.text.includes(W2.shared + ' shared points to spend') && !/effective health|\bEHP\b/i.test(Sh.text), Sh);
     const Rs = await readRoom(P, SHARED);
     rec.ok('3h1. 390 x 844: the Shared page in the room: Max HP and the seven, 44 x 44 or more, nothing clipped, no scroll, no text under 11 px', Rs && roomOk(Rs, 8), roomBrief(Rs));
+    const Ms = await pageMarks(P);
+    rec.ok('3h2. Shared in the same form: Max HP the sunk stat, Defense a fact in its container, the line above the seven in gold, each with its "+"',
+      !!Ms && Ms.statSunk && Ms.statChev && Ms.facts.join(',') === 'def' && Ms.oneBox && Ms.factFaces === 0 && Ms.lineAbove && Ms.lineFull && Ms.lineGold && Ms.tiles === 7 && Ms.plus === 7, Ms && { ...Ms, sig: undefined });
     await bandShot(P, 'ui2-combat-shared.png');
     await tap(P, '[data-shared-attr="hp"]', 900);
     const Q3 = await popup(P);
@@ -306,11 +388,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(900);
       const Hs = await readRoom(P, HUB);
       rec.ok(`4a. ${s.tag}: the hub's four doors, each 44 x 44 or more, inside the band, nothing clipped, no scroll, no text under 11 px`, Hs && roomOk(Hs, 4), roomBrief(Hs));
+      const Ds = await hubDoors(P);
+      const want = s.h > s.w ? 44 : 40;
+      rec.ok(`4a1. ${s.tag}: each weapon's picture ${want} px or more`, Ds.filter((d) => d.id !== 'shared').every((d) => d.art >= want), Ds.map((d) => `${d.id}:${d.art}px lv ${d.lvPx}px`));
       await bandShot(P, `ui2-combat-hub-${s.tag}.png`);
       await tap(P, '[data-combat-door="sword"]', 900);
       const Ws = await readRoom(P, PAGE);
       rec.ok(`4b. ${s.tag}: Sword's page: level, DPS and the six in view, every press 44 x 44 or more, nothing clipped, no scroll, no text under 11 px`, Ws && Ws.title === 'broSword' && roomOk(Ws, 7), roomBrief(Ws));
       await bandShot(P, `ui2-combat-sword-${s.tag}.png`);
+      if (s.tag === '375x667') {
+        /* v2.3.6783: 375 x 667 (168 px) cannot hold the four bands: the line folds onto the level row */
+        const Mf = await pageMarks(P);
+        rec.ok('4b1. 375 x 667: the fold follows the page\'s own height (under 172 px the line folds onto the level row; at 172 or more the four bands)',
+          !!Mf && Mf.h > 0 && Mf.folded === (Mf.h < 172) && (Mf.folded ? Mf.lineInLevel : Mf.lineAbove && !Mf.lineInLevel) && Mf.lineText.includes('Sword points to spend'), Mf && { h: Mf.h, folded: Mf.folded, inLevel: Mf.lineInLevel, line: Mf.lineText });
+        /* the fold itself, at the 168 px the master notes measured for 375 x 667: the page held to that height */
+        /* the page fills its column (flex 1 1 auto): held by its basis and its largest height, not its height alone */
+        await P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); if (e) { e.style.flex = '0 0 168px'; e.style.height = '168px'; e.style.maxHeight = '168px'; } });
+        await P.page.waitForTimeout(900);
+        const Ff = await readRoom(P, PAGE);
+        const Mh = await pageMarks(P);
+        rec.ok('4b2. a page of 168 px (375 x 667 as the master notes measured it): the line on the level row\'s right end, its words whole, nothing clipped, no scroll, no text under 11 px',
+          !!Mh && Mh.h === 168 && Mh.folded && Mh.lineInLevel && Mh.lineText.includes('Sword points to spend') && Ff && roomOk(Ff, 7), { h: Mh && Mh.h, folded: Mh && Mh.folded, line: Mh && Mh.lineText, room: roomBrief(Ff) });
+        await bandShot(P, 'ui2-combat-sword-fold-168.png');
+        await P.page.evaluate(() => { const e = document.querySelector('[data-weapon-page]'); if (e) { e.style.flex = ''; e.style.height = ''; e.style.maxHeight = ''; } });
+        await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
+        await tap(P, '[data-combat-door="bow"]', 900);
+        const Wf = await readRoom(P, PAGE);
+        const Mg = await pageMarks(P);
+        rec.ok('4f. 375 x 667: Bow\'s page with its points: the line gold, the six each a "+", nothing clipped, no scroll, no text under 11 px',
+          Wf && Wf.title === 'broBow' && roomOk(Wf, 7) && !!Mg && Mg.lineGold && Mg.plus === 6, { room: roomBrief(Wf), h: Mg && Mg.h, line: Mg && Mg.lineText, plus: Mg && Mg.plus });
+        await bandShot(P, 'ui2-combat-bow-375x667.png');
+        await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 700);
+        await tap(P, '[data-combat-door="sword"]', 900);
+      }
       /* v2.3.6686: the tree's first and deepest layers, and the Shared page, at this size */
       await tap(P, '[data-weapon-dps]', 900);
       const T0 = await readRoom(P, TREE);

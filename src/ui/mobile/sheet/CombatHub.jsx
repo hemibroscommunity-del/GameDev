@@ -13,14 +13,15 @@
  * level and XP from src/game/progression.js); this file draws it from the
  * kit (src/ui/kit/ui2.css: a raised face for what opens something).
  *
- * THE ROOM (the master notes' part 3): 172 px of content upright at 390 x
- * 844 (168 at 375 x 667): the weapons' row takes what the Shared row's 44 px
- * leaves.  Sideways (63 px; 58 at 667 x 375): one row of four, each its
- * picture, word and count (its XP bar under the word). */
+ * THE ROOM (the master notes' part 3; v2.3.6783, the owner's "Make the weapons
+ * visually dominant, enlarge the level numbers and only show available points
+ * prominently when there are points to spend"): upright the weapons' row
+ * takes what Shared's 44 px leaves, the picture all the words leave of it, the
+ * level 24 px; sideways one row of four, each its picture beside its words. */
 import React, { useEffect } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { useClock, useRoom } from './CharacterPage.jsx';
-import { combatHubDoors, combatPools, combatLevel } from '@/game/combatHub.js';
+import { combatHubDoors, combatPools, combatLevel, hubArtSize } from '@/game/combatHub.js';
 import { broHubOpen } from '@/game/broHub.js';
 import { ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/combatHub.js';
@@ -64,32 +65,29 @@ export function CombatHub({ S, who, live }) {
   const R = (S && S.rpg) || null;
   const doors = combatHubDoors(R, chanOf(S), who == null ? null : who);
   const short = room.short;
+  const art = hubArtSize(room.h, short);   /* v2.3.6783 (card UI3-combat): the picture as large as the room leaves */
   useEffect(() => {
     try { window.__btCombatHub = { doors: doors.map((d) => ({ id: d.id, lv: d.progress ? d.progress.level : null, points: d.points })) }; } catch (e) { /* no window */ }
   });
   useEffect(() => () => { try { window.__btCombatHub = null; } catch (e) { /* no window */ } }, []);
   /* v2.3.6686 (PR 2): every door opens a page of its own, Shared too (sheet/SharedPage.jsx) */
-  const open = (d) => {
-    const o = broHubOpen(d.opens);
-    if (o && o.kind === 'page') dashboardPanelBus.go({ type: 'push', id: o.page, who: who == null ? undefined : who });
-  };
+  const open = (d) => { const o = broHubOpen(d.opens); if (o && o.kind === 'page') dashboardPanelBus.go({ type: 'push', id: o.page, who: who == null ? undefined : who }); };
   const tile = (d) => {
     const w = word(d.word);
     const p = d.progress;
     const pts = poolText(d.pointsWords);
-    const aria = d.cat
-      ? say(SAY, 'combatHub.doorAria', { w, n: p ? p.level : 1, pts })
-      : say(SAY, 'combatHub.sharedAria', { pts });
+    const aria = d.cat ? say(SAY, 'combatHub.doorAria', { w, n: p ? p.level : 1, pts }) : say(SAY, 'combatHub.sharedAria', { pts });
+    const px = d.cat ? art : short ? 26 : 30;   /* Shared's picture keeps its size: its words are long */
     return (
       <button key={d.id} type="button" className={'u2-raised u2-cb-door' + (d.cat ? ' is-weapon' : ' is-shared') + (d.glow ? ' is-glow' : '')}
         data-combat-door={d.id} data-combat-points={d.points == null ? '' : d.points} data-combat-lv={p ? p.level : ''}
         aria-label={aria} onClick={() => open(d)}>
-        <img className="u2-cb-art" src={d.art} alt="" draggable={false} />
+        <img className="u2-cb-art" src={d.art} alt="" draggable={false} style={{ width: px + 'px', height: px + 'px' }} />
         <span className="u2-cb-words">
           <span className="u2-cb-name">{w}</span>
           {p ? <span className="u2-cb-lv" data-combat-xp={p.max ? 'max' : p.xpNow + '/' + p.xpNeed}>{say(SAY, 'combatHub.lv', { n: p.level })}</span> : null}
           {p ? <Bar p={p} /> : null}
-          {pts ? <span className={'u2-cb-pts' + (d.points > 0 ? ' is-on' : '')}>{pts}</span> : null}
+          {d.pointsShown ? <span className="u2-cb-pts is-on">{pts}</span> : null}
         </span>
       </button>
     );
