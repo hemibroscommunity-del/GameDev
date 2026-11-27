@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "238fa8161d3e3358f37ac464bd60c1eee0cf2dca",
+  "tree": "bd83a39b31055263368f47a967aff87975ab9b3c",
+  "committedAt": "2026-11-27T09:50:10-08:00",
+  "subject": "Merge pull request #2425 from hemibroscommunity-del/claude/plan-pad-13-rangedstick",
+  "files": 9136,
+  "bytes": 1051774573,
+  "listingSha256": "550f53b6d2fdff57012b71739e4dedc7ff9a2981be8f3bd8ec2be9cc5d34df98",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
