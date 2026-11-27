@@ -55,6 +55,7 @@ import { beforeDraw } from '@/game/framePacer.js';
 import { coinArtFor } from '@/game/coinArt.js';
 import { barNumber } from '@/game/barNumbers.js';
 import { gemCutKey, gemIcon } from '@/data/gems.js';
+import { equipLookOn } from '@/game/equipLook.js';   /* v2.3.6698: the Equipped panel's pale green and full pictures (?equiplook=0 the old) */
 import { SAY } from '@/data/say/gearPanels.js';
 import { say } from '@/game/say.js';
 import './gearPanels.css';
@@ -122,7 +123,9 @@ function InventoryHead({ fid, coins, menu }) {
 
 /* ── one worn cell, its picture as today's Gear draws it ──
    v2.3.6689: `tap` (Bro's Equipment showcase) is the cell's own press instead of the workspace's pick
-   (no workspace there: `ws` null, nothing picked); `look` then says whether the page has anything for it */
+   (no workspace there: `ws` null, nothing picked); `look` then says whether the page has anything for it
+   v2.3.6698 (card UI2-equipgreen): the worn picture marked `is-fill`, 94% of its slot as a bag cell's (gearPanels.css),
+   in Gear and in the showcase alike; `?equiplook=0` the kit's 72% */
 function WornCell({ c, R, slots, ws, size, w, hand, tap }) {
   const ct = safe(() => cellContent(R, c.id, slots), {});
   const filled = !!ct.item;
@@ -148,7 +151,7 @@ function WornCell({ c, R, slots, ws, size, w, hand, tap }) {
           {!has ? <img className="u2-gp-ghost" src={assetUrl(`/icons/bag/equip-${c.id}.webp`)} alt="" draggable={false} />
             : c.id === 'gem' ? (
               <span className="u2-gp-gems">{els.map((el, i) => <img key={el + i} src={gemIcon(gemCutKey(el))} alt="" draggable={false} />)}</span>
-            ) : <img className="u2-slot-art" src={pic} alt="" draggable={false} />}
+            ) : <img className={'u2-slot-art' + (equipLookOn() ? ' is-fill' : '')} src={pic} alt="" draggable={false} />}
         </span>
       </div>
     </Ui2ItemCell>
@@ -392,7 +395,7 @@ export function GearPanels({ R: Rin }) {
 
   return (
     <div ref={rootRef} className={ui2RootClass('u2-gp')} data-gear-ws="" data-ws-mode={ws.mode} data-ws-from={ws.from || undefined}
-      data-ws-keys={keys.length} data-gear-short={geo.short ? '1' : undefined}>
+      data-ws-keys={keys.length} data-gear-short={geo.short ? '1' : undefined} data-equip-look={equipLookOn() ? '1' : undefined}>
       {box.w > 0 ? <Ui2TwoPanel left={side('left')} right={side('right')} /> : null}
     </div>
   );
