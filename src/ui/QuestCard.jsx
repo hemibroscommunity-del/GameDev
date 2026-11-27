@@ -28,8 +28,17 @@
  * form).  Every data-quest-hud mark stays.  The HUD moves --bt-hud-top down
  * by its own height (game.css), so this card's top line is unchanged.  Under
  * `?hud=0` the card is exactly as before.
+ *
+ * ═══ v2.3.6790: AND THE LINE LEAVES THE WORLD (card UI3, PR 10) ═══
+ * The owner, 2026-11-27: "Maybe just keep quests in quest area for now.
+ * Leave only character hud in top left corner."  With the HUD up this card
+ * draws NOTHING (game/hudCorner.js cornerQuest 'none'): the tracked quest,
+ * its steps and its ready live on the Quests page, whose button keeps its
+ * ready dot.  `?questline=1` (remembered) brings the one line back, and
+ * while it is drawn html[data-questline="1"] (a write, never a read) moves
+ * the status column under it (game.css).  `?hud=0`: main's card, as before.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   QUEST_CHAINS, QUEST_STATUS, questObjectiveDone, questSteps,
 } from '@/data/gameSystems.js';
@@ -43,7 +52,8 @@ import { questDetailBus } from '@/ui/mobile/sheet/questDetailBus.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { SAY } from '@/data/say/questCard.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
-import { charHudOn, charHudQuestLine } from '@/game/charHud.js';   /* v2.3.6781: under the character HUD, one line */
+import { charHudQuestLine } from '@/game/charHud.js';   /* v2.3.6781: under the character HUD, one line */
+import { cornerQuest } from '@/game/hudCorner.js';   /* v2.3.6790: the corner holds the HUD alone (or the line, ?questline=1) */
 import { SAY as HUD_SAY } from '@/data/say/charHud.js';
 
 const GOLD = '#D8A94D';
@@ -103,7 +113,14 @@ export function openQuestPage(qid) {
 
 export default function QuestCard({ rpgState, live }) {
   const [folded, setFolded] = useState(readFold);
-  if (!rpgState) return null;
+  /* v2.3.6790: 'card' (no HUD), 'line' (?questline=1) or 'none' (the HUD alone) */
+  const corner = cornerQuest();
+  useEffect(() => {
+    if (corner !== 'line') return undefined;
+    try { document.documentElement.setAttribute('data-questline', '1'); } catch (e) { /* no page */ }
+    return () => { try { document.documentElement.removeAttribute('data-questline'); } catch (e) { /* no page */ } };
+  }, [corner]);
+  if (!rpgState || corner === 'none') return null;
   const liveRpg = (live && live.rpg) || rpgState;
   let active = Object.entries(rpgState._quests || {})
     .filter(([, status]) => status === QUEST_STATUS.active)
@@ -117,7 +134,7 @@ export default function QuestCard({ rpgState, live }) {
     try { to = tourOffer(liveRpg, live); } catch (e) { to = null; }
     if (!to) return null;
     const talk = 'Talk to ' + folkDisplayName(to.npc) + (TOUR_MEET[to.npc] ? ' ' + TOUR_MEET[to.npc] : '');
-    if (charHudOn()) {
+    if (corner === 'line') {
       /* v2.3.6781: one line under the HUD; takes no taps, as before */
       return (
         <div data-quest-hud="1" data-quest-hud-next={to.quest.id} data-quest-hud-oneline="1"
@@ -161,7 +178,7 @@ export default function QuestCard({ rpgState, live }) {
   try { steps = questSteps(q, rpgState, live); } catch (e) { steps = null; }
   const w = questCardWords(q, { done, steps, rpg: liveRpg });
 
-  if (charHudOn()) {
+  if (corner === 'line') {
     /* v2.3.6781: one line under the HUD -- the owner's "[Into the Wild · 3/5 ·
        Defeat 5 monsters]"; a tap opens the quest's page; no fold */
     const tone = done ? GREEN : '#EAC474';

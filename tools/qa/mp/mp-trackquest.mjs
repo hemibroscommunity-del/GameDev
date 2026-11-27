@@ -34,7 +34,9 @@ const PHONE = { width: 390, height: 844 };
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Tracker', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel' });
+  /* v2.3.6790 (card UI3 PR 10): the quest line left the world (the HUD alone in
+     the top left); the card this test reads is ?questline=1's now */
+  const P = await H.newPlayer(browser, { name: 'Tracker', wsPort, webPort, viewport: PHONE, touch: true, dpr: 2, world: 'wheel', query: 'questline=1' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 300)));
   const stopAlive = H.keepAlive(P);

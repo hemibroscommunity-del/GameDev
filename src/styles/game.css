@@ -2561,16 +2561,24 @@ html{--bt-hud-base:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,
    party chip under the status column's two rows (its fallback, 92 px, and
    the column's, are today's, so ?hud=0 moves nothing).  The numbers are
    src/game/charHud.js CHAR_HUD's (stack 56, sideways 52; the line's hit 44). */
+/* v2.3.6790 (card UI3, PR 10): the owner, 2026-11-27, "Leave only character
+   hud in top left corner": the quest line is gone from the world unless
+   ?questline=1 (QuestCard.jsx writes html[data-questline="1"] while it draws
+   it), so the status column stands right under the HUD's gap, and the party
+   chip under the column's two rows.  The numbers are src/game/hudCorner.js
+   hudCorner()'s (tools/guards/hud-corner.test.mjs holds them equal). */
 html[data-charhud="1"]{--bt-charhud-h:56px;
-  --bt-status-top:calc(var(--bt-hud-top) + 44px);
+  --bt-status-top:var(--bt-hud-top);
   --bt-party-top:calc(var(--bt-status-top) + 48px)}
+html[data-charhud="1"][data-questline="1"]{--bt-status-top:calc(var(--bt-hud-top) + 44px)}
 /* sideways (a short screen) the room above the controller is about 140 px:
-   the status column sits 4 px under the line as drawn (30 px), and the party
-   chip moves up BESIDE the HUD (right of its 176 px, under the bar), clear of
-   the stick and the minimap (mp-charhud 5, 667 x 375) */
+   the status column sits under the HUD (with ?questline=1, 4 px under the
+   line as drawn, 30 px), and the party chip moves up BESIDE the HUD (right of
+   its 176 px, under the bar), clear of the stick and the minimap (mp-charhud
+   5, 667 x 375) */
 @media (max-height:480px){html[data-charhud="1"]{--bt-charhud-h:52px;
-  --bt-status-top:calc(var(--bt-hud-top) + 34px);
-  --bt-party-top:var(--bt-hud-base);--bt-party-left:192px}}
+  --bt-party-top:var(--bt-hud-base);--bt-party-left:192px}
+  html[data-charhud="1"][data-questline="1"]{--bt-status-top:calc(var(--bt-hud-top) + 34px)}}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */

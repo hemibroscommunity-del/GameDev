@@ -397,8 +397,9 @@ Screens: charhud, charhud-side, charhud-desk
 - Which weapon: the one whose next level raises the combat level soonest. With one level (the level is your best weapon's) only a weapon AT the top level can raise it, so it is the one of those with the largest share of its next level; a weapon below the top is never shown, however close it is to its own next level (a Sword at 90% of level 10 beside a Bow at 10% of level 12 shows the Bow). At the last level the bar is full and says "Max". Before the worker's record comes, the face and the name only, never a guessed "Lv 1".
 - The weapon's XP moves in the HUD's bar now, so the top bar's passing XP slot is quiet while the HUD is up (it only ever showed weapon XP): never both. A gain on another weapon shows only its "+N XP" with its small picture over the bar's end; the bar stays on its weapon. A kill's "+N XP" flies to the HUD's number.
 - The whole HUD is one button: a tap (a click on a computer, which never swings) opens Bro, the Menu's Bro page.
-- The tracked quest is ONE line under it, "title · count · objective" (the owner's own "[Into the Wild · 3/5 · Defeat 5 monsters]"), never wrapping; between quests "Next: <quest> · Talk to <giver>" and "+n more". Its tap opens that quest. The fold of v2.3.4207 gives way to it: the one line is the folded form.
-- The status chips (the snowflake, the flame, the buffs) and the party chip move down under the stack by the HUD's height. Sideways the room above the controller is short (about 140 px at 667 x 375), so there the status chips sit just under the quest line and the party chip stands BESIDE the HUD, under the top bar; nothing crosses at 375 x 667 or 667 x 375 (on the test box).
+- **The corner holds the HUD and nothing else that is always there** (v2.3.6790, card UI3 PR 10; the owner, 2026-11-27: "Also move stuff out of the way. Maybe just keep quests in quest area for now. Leave only character hud in top left corner."). No quest tracker is drawn over the world: the tracked quest, its steps and its "ready" are on the Quests page, and a quest ready to hand in still lights the Quests door's dot and the Menu button's (they were there already, so no new mark was added). The world's quest marks, the minimap's, the gold road and the coach's lessons are unchanged. The rule is src/game/hudCorner.js (the coach keeps its cards off the HUD alone now).
+- `?questline=1` (remembered on the device; `?questline=0` forgets) brings back the one line of v2.3.6781 under the HUD: "title · count · objective" (the owner's own "[Into the Wild · 3/5 · Defeat 5 monsters]"), never wrapping; between quests "Next: <quest> · Talk to <giver>" and "+n more"; its tap opens that quest.
+- The things that show only at times take the line's place: the status chips (the snowflake, the flame, the buffs, the trap's button) right under the HUD, the same left edge, and the party chip under their two rows; sideways the party chip stands BESIDE the HUD, under the top bar, as before. With `?questline=1` they sit under the line as v2.3.6781 had them. Nothing crosses at 375 x 667 or 667 x 375 (on the test box). Where these sit is the owner's to change.
 - `?hud=0` (remembered on the device; `?hud=1` forgets) gives back the old top left exactly: the full quest card with its fold, the top bar's XP, the chips where they were.
 
 **Tried before, and changed:**
@@ -407,9 +408,11 @@ Screens: charhud, charhud-side, charhud-desk
 - Its face out, 2026-11-03 ("Remove the character pfp in the top left corner if you haven't already", v2.3.4093).
 - The frame out, 2026-11-03 ("No remove them from the game screen: they're already seeing it on the dashboard and whenever they enter combat or have any resource depletion it appears above their character head anyway", v2.3.4163).
 - The reversal, 2026-11-26: the face, the name, the level and one weapon's XP bar back as this HUD, by the owner's later word (v2.3.6781). Health and energy stay off.
+- The quest line under the HUD (v2.3.6781, the owner's "Quest: Smaller, single-line tracker underneath"), out of the world a day later by their next word (v2.3.6790), kept behind `?questline=1`.
 
 **Please don't suggest:**
 - Health, energy or mana in the HUD (the owner's later word lists the face, the name, the level, the XP bar and the quest line, no more).
+- A quest tracker back in the top left by default (the owner, 2026-11-27: "Leave only character hud in top left corner"; `?questline=1` is the way back for one device).
 - The online player count on the HUD (it left in v2.3.1227; the owner suggests the Social menu or a small mark in the top bar, a later step's).
 - A second XP bar for weapon XP in the top bar while the HUD is up.
 
