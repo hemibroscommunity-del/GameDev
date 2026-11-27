@@ -17,6 +17,7 @@ import { getEquip } from '../../../rendering/gearCatalog.js';
 import { playVw, panelVw } from '../playViewport.js';
 import { SAY } from '@/data/say/inventoryDash.js';   /* v2.3.6349: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { assetUrl } from '@/game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -94,63 +95,67 @@ export const classify = (key) => {
    one consistent style — everything now lives under /icons/items/.
    The old per-type dirs (icons/wood, icons/cook, ...) keep their files
    for any legacy surface still pointing at them. */
-/* v2.3.1710: bumped so a browser holding the cached bag drops the emoji-vest
-   render and fetches the real chest-plate torso art (owner: "it's an emoji
-   vest").  Lives in THREE files — keep them in lockstep or one surface serves
-   stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.4222'; /* v2.3.1774: pine shield icon */
-const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
-const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
-const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
-const SNOWMAN_REMNANTS_THUMB = `/icons/items/remnants-snowman.webp${ITEMS_V}`;
-const FIRE_GOBLIN_REMNANTS_THUMB = `/icons/items/remnants-fire-goblin.webp${ITEMS_V}`;
-const SKELETON_REMNANTS_THUMB = `/icons/items/remnants-skeleton.webp${ITEMS_V}`;
+/* v2.3.6743: the hand key ITEMS_V ('?v=2.3.4222', kept in lockstep in five
+   files since v2.3.1710) is gone (card KEEP PR 3b).  A written-out icon
+   below is stamped with its file's own version by the build
+   (tools/assets/keepVersions.mjs); one BUILT from parts asks assetUrl, so a
+   changed picture is a new address everywhere at once and the folder can be
+   kept a year.  It stays for two lines only, the bow's and a shard's, whose
+   TEXT server/test/owner-icons.test.mjs 8g and bag-icons.test.mjs 5c read (a
+   server file is not this card's: keep-sfx.test.mjs LEFT lists them). */
+const ITEMS_V = '?v=2.3.4222';
+const WOOD_THUMB = '/icons/items/wood-log.webp';
+const BURNT_DUST_THUMB = '/icons/items/burnt-dust.webp';
+const SLIME_REMNANTS_THUMB = '/icons/items/remnants-slime.webp';
+const SNOWMAN_REMNANTS_THUMB = '/icons/items/remnants-snowman.webp';
+const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/items/remnants-fire-goblin.webp';
+const SKELETON_REMNANTS_THUMB = '/icons/items/remnants-skeleton.webp';
 /* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
    match longer prefixes first so e.g. fish_clownfish doesn't fall
    through to the generic fish_ branch. Add an entry per tier; the
    generic 'fish' / 'cooked_fish' fallbacks catch unmapped tiers. */
 const FISH_THUMBS = {
-  fish_clownfish: `/icons/items/fish-clownfish.webp${ITEMS_V}`,
-  fish_trout: `/icons/items/fish-trout.webp${ITEMS_V}`, /* v2.3.1325: trout finally has its own art */
+  fish_clownfish: '/icons/items/fish-clownfish.webp',
+  fish_trout: '/icons/items/fish-trout.webp', /* v2.3.1325: trout finally has its own art */
   /* v2.3.3094: the Wheel's levels 21-40 (tools/make_tier_art.py past20) */
-  fish_salmon: `/icons/items/fish-salmon.webp${ITEMS_V}`,
-  fish_pike: `/icons/items/fish-pike.webp${ITEMS_V}`,
+  fish_salmon: '/icons/items/fish-salmon.webp',
+  fish_pike: '/icons/items/fish-pike.webp',
 };
 /* v2.3.3260: the cooked fish's table lives in data/foodIcons.js, which the
    loading screen reads too (the quick-eat button shows them mid-fight) */
 const COOKED_FISH_THUMBS = COOKED_FISH_ICONS;
-const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
+const FISH_THUMB_DEFAULT = '/icons/items/fish-minnow.webp';
 const COOKED_FISH_THUMB_DEFAULT = COOKED_FISH_ICON_DEFAULT;
 export const ORE_THUMBS = {  /* v2.3.2822: exported for the Smelting rows */
-  ore_copper_ore: `/icons/items/ore-copper.webp${ITEMS_V}`,
+  ore_copper_ore: '/icons/items/ore-copper.webp',
   /* v2.3.3012: the Wheel grows iron (levels 1-10) and black steel (11-20);
      each its own colours, gradient-mapped from the copper lump by
      tools/make_tier_art.py */
-  ore_iron_ore: `/icons/items/ore-iron.webp${ITEMS_V}`,
-  ore_black_steel_ore: `/icons/items/ore-black-steel.webp${ITEMS_V}`,
+  ore_iron_ore: '/icons/items/ore-iron.webp',
+  ore_black_steel_ore: '/icons/items/ore-black-steel.webp',
   /* v2.3.3094: and titanium (levels 21-30) and obsidian (31-40), the forge's
      next two metals */
-  ore_titanium_ore: `/icons/items/ore-titanium.webp${ITEMS_V}`,
-  ore_obsidian_ore: `/icons/items/ore-obsidian.webp${ITEMS_V}`,
+  ore_titanium_ore: '/icons/items/ore-titanium.webp',
+  ore_obsidian_ore: '/icons/items/ore-obsidian.webp',
 };
 /* v2.3.3012: and softwood and hardwood, the log recoloured the same way; the
    pine log (and any wood not listed) keeps the one log picture */
 const WOOD_THUMBS = {
-  wood_softwood: `/icons/items/wood-softwood.webp${ITEMS_V}`,
-  wood_hardwood: `/icons/items/wood-hardwood.webp${ITEMS_V}`,
-  wood_cedar_wood: `/icons/items/wood-cedar.webp${ITEMS_V}`,   /* v2.3.3094 */
-  wood_maple_wood: `/icons/items/wood-maple.webp${ITEMS_V}`,
+  wood_softwood: '/icons/items/wood-softwood.webp',
+  wood_hardwood: '/icons/items/wood-hardwood.webp',
+  wood_cedar_wood: '/icons/items/wood-cedar.webp',   /* v2.3.3094 */
+  wood_maple_wood: '/icons/items/wood-maple.webp',
 };
-const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
+const ORE_THUMB_DEFAULT = '/icons/items/ore-copper.webp';
 /* v2.3.2822: smelted bars (server smelting.js).  One painted grey ingot, the
    owner's, gradient-mapped per metal by tools/make_bar_icons.py -- a new metal
    is a line there and a line here. */
 export const BAR_THUMBS = {
-  bar_copper: `/icons/items/bar-copper.webp${ITEMS_V}`,
+  bar_copper: '/icons/items/bar-copper.webp',
   /* v2.3.3092: the armour forge's two other metals (the file names are the
      metal ids, as the armour's own icons are) */
-  bar_iron: `/icons/items/bar-iron.webp${ITEMS_V}`,
-  bar_black_steel: `/icons/items/bar-blacksteel.webp${ITEMS_V}`,
+  bar_iron: '/icons/items/bar-iron.webp',
+  bar_black_steel: '/icons/items/bar-blacksteel.webp',
 };
 /* v2.3.1696 (owner: "the fishing pole sprite has some of the background that
    failed to get keyed out in the holes between the fishing line and the
@@ -166,16 +171,16 @@ export const BAR_THUMBS = {
    line no longer points at a .png.  The old un-keyed fishing-pole.webp it
    replaces was still being served to the quest card in data/gameSystems.js,
    so that card gets the fixed art too. */
-const FISHING_POLE_THUMB = `/icons/items/fishing-pole.webp${ITEMS_V}`;
+const FISHING_POLE_THUMB = '/icons/items/fishing-pole.webp';
 /* v2.3.1689 (owner: "use these sprites for the woodcutting axe and the
    pickaxe ... You currently just have a log thumbnail for the woodcutting
    axe").  The owner's two-tool sheet, split into one square icon each,
    background keyed out and box-downscaled to 192px.  Shipped as PNG because
    there was no webp encoder in the build; v2.3.2068 converted both to
    LOSSLESS webp (identical pixels, ~43% fewer bytes) now that there is one. */
-const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.webp${ITEMS_V}`;
-const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.webp${ITEMS_V}`;
-const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 */
+const WOODCUTTING_AXE_THUMB = '/icons/items/woodcutting-axe.webp';
+const MINING_PICKAXE_THUMB  = '/icons/items/mining-pickaxe.webp';
+const RARE_GEM_THUMB        = '/icons/ui/cur-gem.webp'; /* v2.3.1924 */
 /* ═══ v2.3.2055: THE POTIONS, AS REAL ART ═══
  * Owner-supplied. Three of the five map onto consumables that actually exist
  * (SHOP_ITEMS in server/src/data.js), and those are the three wired here:
@@ -190,20 +195,20 @@ const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 *
  * The RED one stays staged and unused: there is no health potion, and
  * inventing a consumable to justify art is a design change nobody asked for. */
 const POTION_THUMBS = {
-  whetstone:    `/icons/items/potion-fury.webp${ITEMS_V}`,
+  whetstone:    '/icons/items/potion-fury.webp',
   /* v2.3.2062: the green bottle of the owner's set, unclaimed until now. */
-  swiftdraught: `/icons/items/potion-antidote.webp${ITEMS_V}`,
-  manashard:    `/icons/items/potion-mana.webp${ITEMS_V}`,
-  staminasalts: `/icons/items/potion-stamina.webp${ITEMS_V}`,
+  swiftdraught: '/icons/items/potion-antidote.webp',
+  manashard:    '/icons/items/potion-mana.webp',
+  staminasalts: '/icons/items/potion-stamina.webp',
   /* v2.3.3525: Zoom Juice, the stamina bottle in carrot orange
      (tools/make_tour_townsfolk.py) -- and so drinkable (isPotionKey) */
-  zoomjuice:    `/icons/items/potion-zoom.webp${ITEMS_V}`,
+  zoomjuice:    '/icons/items/potion-zoom.webp',
   /* v2.3.2063: not a potion, but it sits on the same shelf and it had no art
      at all -- Shopkeeper Bro's staples drew two bare '◇' diamonds next to
      three painted bottles, which reads as a loading failure rather than as an
      item. The minnow's own thumb already existed for the COOKED FISH key;
      this is the same picture under the SHOP's spelling of it. */
-  cookedminnow: `/icons/items/cooked-minnow.webp${ITEMS_V}`,
+  cookedminnow: '/icons/items/cooked-minnow.webp',
 };
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
@@ -220,7 +225,7 @@ export const thumbFor = (key) => {
   if (isChestKey(k)) return DAILY_CHEST_ICON;   /* v2.3.2820: the owner's chest art (chestPreload.js) */
   /* v2.3.2107: the owner's cape art, the same file the character sheet's cape
      slot uses -- one drawing of the garment, two places it appears. */
-  if (isCapeItemKey(k)) return `/icons/items/${k.replace('cape_', 'cape-')}.webp${ITEMS_V}`;
+  if (isCapeItemKey(k)) return assetUrl(`/icons/items/${k.replace('cape_', 'cape-')}.webp`);
   /* v2.3.2055: FIRST, and lowercased-exact. The keys are camelCase
      ('manaShard', 'staminaSalts'), so they are matched on the lowered form --
      and above every prefix rule below, because 'whetstone' contains 'stone'
@@ -238,7 +243,7 @@ export const thumbFor = (key) => {
   if (BAR_THUMBS[k])                return BAR_THUMBS[k];   /* v2.3.2822 */
   /* v2.3.3141: an essence (salvage.js) -- its grade's glowing orb with its
      metal's bar, tools/make_essence_icons.py */
-  if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k) + ITEMS_V;
+  if (k.startsWith('essence_') && essenceIcon(k)) return essenceIcon(k);
   if (isHardenedWoodKey(k))         return hardenedWoodIcon(k);   /* v2.3.3139; the owner's since v2.3.3281 */
   /* v2.3.3281: the owner's bag icons (tools/ui/cut-bag-icons.py): a seed its
      packet, a crop as harvested, compost its sack (data/farmCrops.js), and
@@ -253,7 +258,7 @@ export const thumbFor = (key) => {
      (the gem plan's Phase 3).  Exact keys (parseGemKey): 'gem_stone' must
      never fall to the ore rule's 'stone'. */
   const gemPic = gemIcon(k);
-  if (gemPic)                       return gemPic + ITEMS_V;
+  if (gemPic)                       return gemPic;
   /* v2.3.3861: a shard the game HAS (data/shards.js, one webp each), not any
      `shard_` key.  A Workshop kill minted `shard_dungeon:<run id>` until
      v2.3.3170 (docs/specs/dungeons.md) and older characters still carry it,
@@ -375,7 +380,7 @@ export const isTicketKey = (key) => String(key || '').startsWith(TICKET_KEY_PREF
    the 256 tile by tools/import_ticket_icon.py. v2.3.2103 shipped an emoji
    glyph because no file existed -- honest as a placeholder and wrong as a
    destination, for the prize of a public contest. */
-const GOLDEN_TICKET_THUMB = `/icons/items/golden-ticket.webp${ITEMS_V}`;
+const GOLDEN_TICKET_THUMB = '/icons/items/golden-ticket.webp';
 /* v2.3.2107: the cape the ticket opens into. Same prefix rule as the ticket
    and for the same reason -- the key is `cape_${capeId}` server-side, so a
    second cape must not need a second table entry to be visible. */
@@ -1424,8 +1429,8 @@ const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, se
      hard-coded the steel art per gearId/kind, which is exactly how a recoloured
      tier ends up looking like the tier it borrowed art from. */
   const thumb = kind === 'stashGear'
-    ? (obj && gearIdIcon(obj.gearId) ? `${gearIdIcon(obj.gearId)}${ITEMS_V}`
-      : obj && obj.gearId === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null)
+    ? (obj && gearIdIcon(obj.gearId) ? gearIdIcon(obj.gearId)
+      : obj && obj.gearId === 'tshirt' ? '/icons/items/cloth-shirt.webp' : null)
     /* v2.3.1710: owner playtest — "The iron torso inventory icon is wrong.
        It's an emoji vest. It needs to be the real torso armour (looks
        similar armor style to the leg inventory icon)."  The comment this
@@ -1439,16 +1444,16 @@ const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, se
        life_2 quest-reward preview at this same file since v2.3.1325, so the
        bag was the odd one out even against the quest that pays it. */
     : kind === 'stashArmor'
-    ? `${armorIconFor('chest', obj && obj.mat)}${ITEMS_V}`
+    ? armorIconFor('chest', obj && obj.mat)
     : kind === 'stashLegs'
-    ? `${armorIconFor('legs', obj && obj.mat)}${ITEMS_V}` /* v2.3.1701: legs have real art */
+    ? armorIconFor('legs', obj && obj.mat) /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
-    ? `/icons/items/shield.webp${ITEMS_V}`
+    ? '/icons/items/shield.webp'
     : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
-    : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
+    : obj && obj.type === 'staff'      ? '/icons/items/staff.webp'
     : obj && obj.type === 'greatsword'
-      ? `${metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}` /* v2.3.1760 */
-    : `${metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}`;
+      ? assetUrl(metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))) /* v2.3.1760 */
+    : assetUrl(metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase)));
   /* v2.3.1228: edge from the item's REAL quality (weapons carry
      server-rolled quality; shields/armor have none -> common grey).
      Godly gets the conic ring class instead of a border color. */

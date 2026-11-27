@@ -122,7 +122,8 @@ try {
   if (typeof Image !== 'undefined') for (const n of LB_PIECES) { const im = new Image(); im.decoding = 'async'; im.src = LB_ART(n); }
 } catch (_e) { /* each <img> loads its own */ }
 
-const U = '/icons/ui/';
+/* v2.3.6743: each icon a whole written-out address (U + 'x.webp' was built,
+   so the build could not give it its version; card KEEP PR 3b) */
 /* the boards the worker answers from `series` (leaderboard.js
    SERIES_CATEGORIES): the weapons' boards draw the power table */
 const BATTLE = [
@@ -132,7 +133,7 @@ const BATTLE = [
   { id: 'magic', label: say(SAY, 'leaderboard.magicBoard'), art: 'tile-staff', table: 'power', rank: 'magic' },
   /* 'combat' is the level on the name plate: the highest of the three
      weapons (leaderboard.js seriesValue, v2.3.3538's one level) */
-  { id: 'combat', label: say(SAY, 'leaderboard.levelBoard'), icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215], table: 'power', rank: 'lv' },
+  { id: 'combat', label: say(SAY, 'leaderboard.levelBoard'), icon: ['/icons/ui/hero/rec-xp.webp', 256, 30, 40, 226, 215], table: 'power', rank: 'lv' },
 ];
 /* v2.3.5502: THE STAT BOARDS (card PW, #1781: server/src/statboards.js
    STAT_BOARD_IDS, in its order), each the points a player put in one shared
@@ -146,23 +147,23 @@ const STAT_BOARDS = STAT_ORDER.map((k) => {
   const m = k === 'dmg' ? PROG3_ATK_META.find((r) => r.key === 'dmg') : PROG3_BODY_META.find((r) => r.key === k);
   return { id: 'pts_' + k, label: k === 'dmg' ? say(SAY, 'leaderboard.damageBoard') : (m && m.label) || k, full: say(SAY, 'leaderboard.statFull', { stat: k === 'dmg' ? say(SAY, 'leaderboard.damageBoard') : (m && m.label) || k }), icon: m && m.iconSrc, table: 'stat' };
 });
-const KILLS = { id: 'kills', label: say(SAY, 'leaderboard.killsBoard'), icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] };
+const KILLS = { id: 'kills', label: say(SAY, 'leaderboard.killsBoard'), icon: ['/icons/ui/hero/rec-kills.webp', 256, 0, 9, 256, 246] };
 const AP_CAT = { id: 'ap', label: say(SAY, 'leaderboard.apBoard'), full: say(SAY, 'leaderboard.apFull'), icon: ['/icons/achievements/achievements.webp', 150, 37, 21, 113, 129] };
 const SKILLS = [
-  { id: 'woodcutting',  label: say(SAY, 'leaderboard.woodcuttingBoard'), icon: [U + 'skill-woodcutting.webp?v=2.3.1224', 256, 52, 32, 204, 221] },
-  { id: 'fishing',      label: say(SAY, 'leaderboard.fishingBoard'), icon: [U + 'skill-fishing.webp?v=2.3.1224', 256, 55, 40, 200, 216] },
-  { id: 'mining',       label: say(SAY, 'leaderboard.miningBoard'), icon: [U + 'skill-mining.webp?v=2.3.1224', 256, 48, 52, 208, 223] },
-  { id: 'farming',      label: say(SAY, 'leaderboard.farmingBoard'), icon: [U + 'skill-farming.webp?v=2.3.1224', 256, 65, 73, 190, 223] },
-  { id: 'cooking',      label: say(SAY, 'leaderboard.cookingBoard'), icon: [U + 'skill-cooking.webp?v=2.3.1224', 256, 41, 39, 215, 215] },
-  { id: 'blacksmithing', label: say(SAY, 'leaderboard.smithingBoard'), full: say(SAY, 'leaderboard.smithingFull'), icon: [U + 'skill-blacksmithing.webp?v=2.3.1224', 256, 37, 33, 215, 221] },
-  { id: 'woodworking',  label: say(SAY, 'leaderboard.woodworkingBoard'), icon: [U + 'skill-woodworking.webp?v=2.3.1224', 256, 33, 66, 223, 222] },
-  { id: 'gemCutting',   label: say(SAY, 'leaderboard.gemCuttingBoard'), icon: [U + 'skill-gemcutting.webp?v=2.3.1224', 256, 48, 57, 207, 209] },
-  { id: 'enchanting',   label: say(SAY, 'leaderboard.enchantingBoard'), icon: [U + 'skill-enchanting.webp?v=2.3.1224', 256, 55, 42, 201, 204] },
-  { id: 'trapping',     label: say(SAY, 'leaderboard.trappingBoard'), icon: [U + 'skill-trapping.webp?v=2.3.3331', 256, 43, 64, 213, 215] },
+  { id: 'woodcutting',  label: say(SAY, 'leaderboard.woodcuttingBoard'), icon: ['/icons/ui/skill-woodcutting.webp?v=2.3.1224', 256, 52, 32, 204, 221] },
+  { id: 'fishing',      label: say(SAY, 'leaderboard.fishingBoard'), icon: ['/icons/ui/skill-fishing.webp?v=2.3.1224', 256, 55, 40, 200, 216] },
+  { id: 'mining',       label: say(SAY, 'leaderboard.miningBoard'), icon: ['/icons/ui/skill-mining.webp?v=2.3.1224', 256, 48, 52, 208, 223] },
+  { id: 'farming',      label: say(SAY, 'leaderboard.farmingBoard'), icon: ['/icons/ui/skill-farming.webp?v=2.3.1224', 256, 65, 73, 190, 223] },
+  { id: 'cooking',      label: say(SAY, 'leaderboard.cookingBoard'), icon: ['/icons/ui/skill-cooking.webp?v=2.3.1224', 256, 41, 39, 215, 215] },
+  { id: 'blacksmithing', label: say(SAY, 'leaderboard.smithingBoard'), full: say(SAY, 'leaderboard.smithingFull'), icon: ['/icons/ui/skill-blacksmithing.webp?v=2.3.1224', 256, 37, 33, 215, 221] },
+  { id: 'woodworking',  label: say(SAY, 'leaderboard.woodworkingBoard'), icon: ['/icons/ui/skill-woodworking.webp?v=2.3.1224', 256, 33, 66, 223, 222] },
+  { id: 'gemCutting',   label: say(SAY, 'leaderboard.gemCuttingBoard'), icon: ['/icons/ui/skill-gemcutting.webp?v=2.3.1224', 256, 48, 57, 207, 209] },
+  { id: 'enchanting',   label: say(SAY, 'leaderboard.enchantingBoard'), icon: ['/icons/ui/skill-enchanting.webp?v=2.3.1224', 256, 55, 42, 201, 204] },
+  { id: 'trapping',     label: say(SAY, 'leaderboard.trappingBoard'), icon: ['/icons/ui/skill-trapping.webp?v=2.3.3331', 256, 43, 64, 213, 215] },
 ];
 /* the records: each asked of the room, not this page's fetch */
-const SPIN_CAT = { id: 'spin', label: say(SAY, 'leaderboard.spinBoard'), kind: 'spin', icon: [U + 'prize-wheel.webp?v=2.3.3481', 102, 0, 0, 102, 110] };
-const FLIP_CAT = { id: 'flip', label: say(SAY, 'leaderboard.flipBoard'), kind: 'flip', icon: [U + 'cur-gold.webp', 256, 34, 32, 221, 223] };
+const SPIN_CAT = { id: 'spin', label: say(SAY, 'leaderboard.spinBoard'), kind: 'spin', icon: ['/icons/ui/prize-wheel.webp?v=2.3.3481', 102, 0, 0, 102, 110] };
+const FLIP_CAT = { id: 'flip', label: say(SAY, 'leaderboard.flipBoard'), kind: 'flip', icon: ['/icons/ui/cur-gold.webp', 256, 34, 32, 221, 223] };
 const FISH_CAT = { id: 'fish', label: say(SAY, 'leaderboard.fishBoard'), kind: 'fish', icon: ['/icons/items/fish-trout.webp', 128, 1, 25, 127, 102] };
 
 /** A board's picture in a `px` box: the file scaled so its opaque box fills
@@ -266,7 +267,7 @@ function powerCells(r, power) {
 }
 
 /* the table's columns: [key, head, width] -- the head a word or a weapon's icon */
-const WEAPON_ICON = { melee: U + 'hero/melee.webp?v=2.3.1311', bow: U + 'hero/bow.webp?v=2.3.1311', magic: U + 'hero/magic.webp?v=2.3.1311' };
+const WEAPON_ICON = { melee: '/icons/ui/hero/melee.webp?v=2.3.1311', bow: '/icons/ui/hero/bow.webp?v=2.3.1311', magic: '/icons/ui/hero/magic.webp?v=2.3.1311' };
 /* WHOLE NAMES ON AN UPRIGHT PHONE (the gatekeeper's sitting 10: "Bee...",
    "Chunk..." at 390 px, worse at 375).  A board narrower than WIDE_TABLE (an
    upright phone's, ~250-265 px beside the list) shows its Total (or Power)

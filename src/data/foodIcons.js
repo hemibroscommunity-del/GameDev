@@ -9,17 +9,16 @@
  * dishes have the owner's pictures now (their `icon`), and the ones eaten at
  * once -- the Garden Stew -- are quick-eat food. */
 import { DISHES } from './dishes.js';
-export const FOOD_ICON_V = '?v=2.3.4222';   /* the bag's ITEMS_V */
 
 export const COOKED_FISH_ICONS = Object.freeze({
-  cooked_fish_clownfish: '/icons/items/cooked-clownfish.webp' + FOOD_ICON_V,
-  cooked_fish_trout: '/icons/items/cooked-trout.webp' + FOOD_ICON_V,
-  cooked_fish_salmon: '/icons/items/cooked-salmon.webp' + FOOD_ICON_V,   /* v2.3.3094 */
-  cooked_fish_pike: '/icons/items/cooked-pike.webp' + FOOD_ICON_V,
+  cooked_fish_clownfish: '/icons/items/cooked-clownfish.webp',
+  cooked_fish_trout: '/icons/items/cooked-trout.webp',
+  cooked_fish_salmon: '/icons/items/cooked-salmon.webp',   /* v2.3.3094 */
+  cooked_fish_pike: '/icons/items/cooked-pike.webp',
 });
 /* the minnow, and any cooked fish the table does not name; the shop's old
    minnow bottle ('cookedMinnow') is the same picture */
-export const COOKED_FISH_ICON_DEFAULT = '/icons/items/cooked-minnow.webp' + FOOD_ICON_V;
+export const COOKED_FISH_ICON_DEFAULT = '/icons/items/cooked-minnow.webp';
 
 /* Every picture the quick-eat button can show: the cooked fish, and since
    v2.3.3281 every dish eaten at once (slot 'now', game/fightFood.js

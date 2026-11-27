@@ -6,6 +6,7 @@ import { say } from '@/game/say.js';   /* v2.3.6351: a plain row goes through de
 import { ui2FrameOn } from '../ui2Frame.js';   /* v2.3.6695: the new dashboard's record cards (careerRows) */
 import { careerRows } from '@/game/feats.js';
 import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy } from '@/game/accuracy.js';   /* v2.3.4545: how many of your shots hit */
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* ═══ v2.3.3773: JOURNEY IS ITS OWN PAGE, UNDER MORE ═══
    The owner: "I also think I want 'journey' to be put as its own icon in the
@@ -136,7 +137,7 @@ export const JourneyPanel = () => {
                  decoration and the word is the data. */
               display: 'flex', alignItems: 'center', gap: landPane ? 6 : 5,
             }}>
-              <img src={`/icons/ui/hero/${icon}.webp?v=2.3.1341`} alt="" draggable={false}
+              <img src={assetUrl(`/icons/ui/hero/${icon}.webp`) /* v2.3.6743: its file's version, not ?v=2.3.1341 */} alt="" draggable={false}
                 style={{ width: landPane ? 26 : 22, height: landPane ? 26 : 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
               {/* v2.3.2176: stacked (value over label) in the portrait grid,
                   where the cell is short and wide-ish; a single ROW sideways

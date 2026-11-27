@@ -12,6 +12,7 @@
  * v2.3.3281: made -- the owner's seed packets, crops and compost sack
  * (farmIconFor below); the glyph stays the fallback (the trade window's, and
  * an <img> that fails). */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 export const FARM = {
   FREE_BEDS: 6,
@@ -125,8 +126,11 @@ export const FARM_ITEM_NAMES = FARM_CROP_ORDER.reduce((m, id) => {
    compost its sack.  public/icons/items/seed-<crop>.webp, crop-<crop>.webp
    (the crop's id with '-' for '_'), compost.webp.  A crop a newer worker grows
    with no picture yet falls to its glyph where the <img> fails. */
-export const FARM_ICON_V = '?v=2.3.4222';
-const farmIcon = (name) => '/icons/items/' + name + '.webp' + FARM_ICON_V;
+/* v2.3.6743: the constant FARM_ICON_V is gone (card KEEP PR 3b): assetUrl
+   gives the address its file's own version on the page, replacing the old
+   key, which stays written here only because server/test/bag-icons.test.mjs
+   2a reads it as written in node (a server file, not this card's). */
+const farmIcon = (name) => assetUrl('/icons/items/' + name + '.webp?v=2.3.4222');
 export const farmSeedIcon = (id) => farmIcon('seed-' + String(id).replace(/_/g, '-'));
 export const farmCropIcon = (id) => farmIcon('crop-' + String(id).replace(/_/g, '-'));
 export const FARM_COMPOST_ICON = farmIcon('compost');

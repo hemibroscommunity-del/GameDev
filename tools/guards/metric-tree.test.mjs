@@ -251,8 +251,11 @@ const CHECKS = {
   T9: (X) => {
     /* the headline: Max HP first, Defense beside it, nothing else (an ALLOW list) */
     const ok = /export function sharedHeadline\(R\) \{[\s\S]*?return \{ hp, def \};\n\}/.test(X.SRC.shared)
-      && /<div className="u2-wp-row is-sum">\{hp\}\{def\}<\/div>/.test(X.SRC.shared)
-      && /\{short \? \([\s\S]*?\{hp\}\{def\}/.test(X.SRC.shared)
+      /* v2.3.6783 (card UI3-combat): the strip of the one template (sheet/attrTemplate.jsx): Max HP its
+         stat, Defense its one fact, in every shape (upright and sideways draw the same strip) */
+      && /<SummaryStrip\n\s*stat=\{\{ v: head\.hp, k: say\(SAY, 'combatHub\.maxHp'\)/.test(X.SRC.shared)
+      && /facts=\{\[\{ id: 'def', k: say\(SAY, 'combatHub\.defense'\), v: head\.def, /.test(X.SRC.shared)
+      && (X.SRC.shared.match(/<SummaryStrip\b/g) || []).length === 1
       && /hp = String\(toDisplayHp\(Number\(r\.maxHp\) \|\| 100\)\)/.test(X.SRC.shared)
       && /\.rows\.find\(\(x\) => x\.key === 'def'\)\.value/.test(X.SRC.shared)
       && HSAY['combatHub.maxHp'] === 'Max HP';
@@ -330,7 +333,7 @@ const PLANTS = [
   ['T9', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace('return { hp, def };', 'const ehp = hp; return { hp, def, ehp };') } }],
   ['T9', { ...REAL, SRC: { ...SRC, hsay: SRC.hsay.replace("'combatHub.maxHp': 'Max HP',", "'combatHub.maxHp': 'Max HP',\n  'combatHub.ehp': 'Effective health',") } }],
   /* Defense leading, Max HP after it */
-  ['T9', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace('<div className="u2-wp-row is-sum">{hp}{def}</div>', '<div className="u2-wp-row is-sum">{def}{hp}</div>') } }],
+  ['T9', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace("stat={{ v: head.hp, k: say(SAY, 'combatHub.maxHp')", "stat={{ v: head.def, k: say(SAY, 'combatHub.defense')").replace("facts={[{ id: 'def', k: say(SAY, 'combatHub.defense'), v: head.def, ", "facts={[{ id: 'def', k: say(SAY, 'combatHub.maxHp'), v: head.hp, ") } }],
   /* the shared count worked out on the page (3 a weapon level) */
   ['T10', { ...REAL, SRC: { ...SRC, shared: SRC.shared.replace('const avail = self ? pools.shared : null;', 'const avail = self ? (R.prog3 && R.prog3.sk ? 3 * 3 : 0) : null;') } }],
   /* the hub's Shared door opening the Points window again */
