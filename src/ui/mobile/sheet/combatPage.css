@@ -1,10 +1,16 @@
 /* ═══ v2.3.6685: COMBAT'S HUB AND A WEAPON'S PAGE (card UI2-combat, PR 1; CombatHub.jsx, WeaponPage.jsx) ═══
- * Built from the kit (src/ui/kit/ui2.css: its tokens, its raised and recessed
- * faces); only the two pages' own arrangement is here.  Raised: what opens
- * something (a door, the DPS headline, an attribute); recessed: a fact (the
- * level and its XP).  Every press is 44 px or more; no word under 11 px. */
+ * Built from the kit (src/ui/kit/ui2.css: its tokens, its three weights);
+ * only the pages' own arrangement is here.  Raised: what opens something (a
+ * door, an attribute, "All stats"); the stat: DPS and Max HP, recessed and
+ * large (v2.3.6783); facts: the supporting numbers, flat in one container.
+ * Every press is 44 px or more; no word under 11 px. */
 
 /* ── the hub ── */
+/* v2.3.6783 (card UI3-combat; the owner, 2026-11-26: "Make the weapons visually dominant, enlarge the
+   level numbers and only show available points prominently when there are points to spend"): the
+   picture's size is the hub's own height's (combatHub.js hubArtSize, inline), the level the kit's
+   large size, the bar 3 px, the count drawn only while > 0.  The words' column keeps its height with or
+   without the count (15 + 24 + 3 + 13 and three gaps of 2), so nothing in the row moves. */
 .ui2.u2-cb { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--ui2-space-m); }
 .ui2 .u2-cb-row { display: flex; gap: var(--ui2-space-m); min-width: 0; }
 .ui2 .u2-cb-row.is-weapons { flex: 1 1 auto; min-height: 0; }
@@ -16,46 +22,65 @@
   touch-action: manipulation;
 }
 .ui2 .u2-cb-door.is-weapon { flex-direction: column; justify-content: center; text-align: center; gap: var(--ui2-space-xs); }
-.ui2 .u2-cb-art { width: 32px; height: 32px; object-fit: contain; flex: 0 0 auto; }
-.ui2 .u2-cb-door.is-shared .u2-cb-art { width: 30px; height: 30px; }
+.ui2 .u2-cb-art { object-fit: contain; flex: 0 0 auto; }
 .ui2 .u2-cb-words { display: flex; flex-direction: column; align-items: inherit; gap: var(--ui2-space-xs); min-width: 0; width: 100%; line-height: 1.15; }
-.ui2 .u2-cb-door.is-weapon .u2-cb-words { align-items: center; }
+.ui2 .u2-cb-door.is-weapon .u2-cb-words { align-items: center; justify-content: flex-start; min-height: 61px; }
 .ui2 .u2-cb-door.is-shared .u2-cb-words { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--ui2-space-l); }
-.ui2 .u2-cb-name { font-size: var(--ui2-fs-label); font-weight: 700; white-space: nowrap; color: var(--ui2-text-ivory); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55); }
-.ui2 .u2-cb-lv { font-size: var(--ui2-fs-body); font-weight: 700; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ui2 .u2-cb-track { width: 100%; max-width: 96px; }
-.ui2 .u2-cb-pts { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ui2 .u2-cb-name { font-size: var(--ui2-fs-label); line-height: 15px; font-weight: 700; white-space: nowrap; color: var(--ui2-text-ivory); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55); }
+.ui2 .u2-cb-lv { font-size: var(--ui2-fs-big); line-height: 24px; font-weight: 700; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui2 .u2-cb-track { width: 100%; max-width: 96px; height: 3px; }
+.ui2 .u2-cb-pts { font-size: var(--ui2-fs-small); line-height: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ui2 .u2-cb-pts.is-on { color: var(--ui2-text-gold); font-weight: 700; }
-/* sideways: one row of four, each its picture beside its words */
-.ui2.u2-cb.is-short .u2-cb-door.is-weapon { flex-direction: row; text-align: left; gap: var(--ui2-space-s); }
-.ui2.u2-cb.is-short .u2-cb-door.is-weapon .u2-cb-words { align-items: flex-start; }
+/* sideways: one row of four, each its picture beside its words: the name and the count on one line,
+   the level under them, the bar under it (15 + 24 + 3 and two gaps: 46 of the row's 55) */
+.ui2.u2-cb.is-short .u2-cb-door { gap: var(--ui2-space-s); }
+.ui2.u2-cb.is-short .u2-cb-door.is-weapon { flex-direction: row; text-align: left; }
+.ui2.u2-cb.is-short .u2-cb-door.is-weapon .u2-cb-words {
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'name pts' 'lv lv' 'bar bar'; column-gap: var(--ui2-space-s); align-items: baseline; justify-items: start; min-height: 0;
+}
+.ui2.u2-cb.is-short .u2-cb-door.is-weapon .u2-cb-name { grid-area: name; }
+.ui2.u2-cb.is-short .u2-cb-door.is-weapon .u2-cb-pts { grid-area: pts; justify-self: end; }
+.ui2.u2-cb.is-short .u2-cb-door.is-weapon .u2-cb-lv { grid-area: lv; }
+.ui2.u2-cb.is-short .u2-cb-door.is-weapon .u2-cb-track { grid-area: bar; align-self: center; }
 .ui2.u2-cb.is-short .u2-cb-door.is-shared .u2-cb-words { flex-direction: column; align-items: flex-start; gap: var(--ui2-space-xs); }
-.ui2.u2-cb.is-short .u2-cb-art { width: 26px; height: 26px; }
 .ui2.u2-cb.is-short .u2-cb-track { max-width: 72px; }
 
-/* ── a weapon's page ── */
+/* ── a weapon's page, and Shared: ONE template (sheet/attrTemplate.jsx; v2.3.6783, card UI3-combat) ──
+   The owner, 2026-11-26: "Eliminate the left-side Attributes column, consolidate the combat statistics
+   into one summary strip, and give the six attributes a full-width three-by-two grid."  Upright, four
+   bands (combatHub.js WEAPON_PAGE_BANDS): the level 18, the strip 44, the line 14, the six 90, gaps of
+   2: 172 px, 390 x 844's room.  Under it (375 x 667) the line folds onto the level row (.is-fold). */
 .ui2.u2-wp { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--ui2-space-xs); }
 .ui2 .u2-wp-row { display: flex; gap: var(--ui2-space-s); min-width: 0; }
-.ui2 .u2-wp-row.is-sum { flex: 0 0 var(--ui2-size-touch); }
-.ui2 .u2-wp-row.is-attrs { flex: 1 1 auto; min-height: 0; }
-.ui2 .u2-wp-level { flex: 0 0 28px; display: flex; align-items: center; gap: var(--ui2-space-l); padding: 0 var(--ui2-space-l); min-width: 0; }
-.ui2 .u2-wp-lv { font-size: var(--ui2-fs-value); font-weight: 700; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ui2 .u2-wp-bar { flex: 1 1 auto; }
-.ui2 .u2-wp-bar .u2-bar-top { line-height: 13px; }
+/* row 1: the level, its XP over a thin bar */
+.ui2 .u2-wp-level { flex: 0 0 18px; display: flex; align-items: center; gap: var(--ui2-space-l); padding: 0 var(--ui2-space-l); min-width: 0; }
+.ui2 .u2-wp-lv { font-size: var(--ui2-fs-value); line-height: 16px; font-weight: 700; color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui2 .u2-wp-bar { flex: 1 1 auto; gap: 1px; }
+.ui2 .u2-wp-bar .u2-bar-top { line-height: 12px; }
 .ui2 .u2-wp-bar .u2-bar-top > span { overflow: hidden; text-overflow: ellipsis; }
-.ui2 .u2-wp-dps { flex: 0 0 auto; min-width: 104px; }
-.ui2 .u2-wp-dps .u2-stat-v { color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; }
-.ui2 .u2-wp-support { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; column-gap: var(--ui2-space-l); align-items: center; padding: 0 var(--ui2-space-s); }
-.ui2 .u2-wp-sup { display: flex; justify-content: space-between; gap: var(--ui2-space-s); min-width: 0; font-size: var(--ui2-fs-small); line-height: 15px; white-space: nowrap; }
-.ui2 .u2-wp-sup-k { color: var(--ui2-text-muted); overflow: hidden; text-overflow: ellipsis; }
-.ui2 .u2-wp-sup b { color: var(--ui2-text-ivory); font-weight: 700; font-variant-numeric: tabular-nums; }
-.ui2 .u2-wp-attrhead { flex: 0 0 76px; display: flex; flex-direction: column; justify-content: center; gap: var(--ui2-space-xs); min-width: 0; padding: 0 var(--ui2-space-xs); }
-.ui2 .u2-wp-attrk { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); }
-.ui2 .u2-wp-attrhead b { font-size: var(--ui2-fs-small); font-weight: 400; line-height: 1.25; color: var(--ui2-text-muted); }
-.ui2 .u2-wp-attrhead b.is-on { color: var(--ui2-text-gold); font-weight: 700; }
-.ui2 .u2-wp-tiles { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(var(--ui2-size-touch), 1fr)); gap: var(--ui2-space-xs); }
+.ui2 .u2-wp-bar .u2-track { height: 3px; }
+/* row 2: the strip -- the stat (one line: "120.5 DPS ›"), then the facts in their one container */
+.ui2 .u2-at-strip { flex: 0 0 var(--ui2-size-touch); display: flex; gap: var(--ui2-space-s); min-width: 0; }
+.ui2 .u2-stat.u2-at-stat { flex: 0 0 auto; min-width: 104px; }
+.ui2 .u2-stat.u2-at-stat .u2-stat-words { flex-direction: row; align-items: baseline; gap: var(--ui2-space-s); }
+.ui2 .u2-stat.u2-at-stat .u2-stat-v { font-variant-numeric: tabular-nums; }
+.ui2 .u2-facts.u2-at-facts { flex: 1 1 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: center; column-gap: var(--ui2-space-l); row-gap: 0; padding: var(--ui2-space-xs) var(--ui2-space-l); }
+.ui2 .u2-facts.u2-at-facts .u2-fact { min-height: 0; padding: 0; line-height: 18px; }
+.ui2 .u2-facts.u2-at-facts .u2-fact-v { font-variant-numeric: tabular-nums; }
+/* a page wide enough (a computer): the four in one row, each its label over its value */
+.ui2 .u2-facts.u2-at-facts.is-wide { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ui2 .u2-facts.u2-at-facts.is-wide .u2-fact { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; line-height: 15px; }
+.ui2 .u2-facts.u2-at-facts.is-wide .u2-fact-k { flex: 0 0 auto; max-width: 100%; }
+/* row 3: the full-width line over the attributes, the attributes full width */
+.ui2 .u2-at-attrs { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--ui2-space-xs); }
+.ui2 .u2-at-line { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: var(--ui2-space-l); min-width: 0; padding: 0 var(--ui2-space-s); line-height: 14px; white-space: nowrap; }
+.ui2 .u2-at-line-k { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); }
+.ui2 .u2-at-line-v { font-size: var(--ui2-fs-small); font-variant-numeric: tabular-nums; }
+.ui2 .u2-at-line-v.is-gold { color: var(--ui2-text-gold); font-weight: 700; }
+.ui2 .u2-at-line-v.is-quiet { color: var(--ui2-text-muted); font-weight: 400; }
+.ui2 .u2-at-grid { flex: 1 1 auto; min-height: 0; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(var(--ui2-size-touch), 1fr)); gap: var(--ui2-space-xs); }
 .ui2 .u2-wp-attr {
-  min-width: 0; min-height: var(--ui2-size-touch); display: flex; align-items: center; gap: var(--ui2-space-s);
+  position: relative; min-width: 0; min-height: var(--ui2-size-touch); display: flex; align-items: center; gap: var(--ui2-space-s);
   padding: var(--ui2-space-xs) var(--ui2-space-s); border-radius: var(--ui2-radius-button); font-family: inherit; text-align: left; cursor: pointer;
   touch-action: manipulation;
 }
@@ -63,22 +88,28 @@
 .ui2 .u2-wp-attr-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
 .ui2 .u2-wp-attr-k { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui2 .u2-wp-attr-v { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* "a small gold plus indicator" while the pool has points (combatHub.js attrPlus): text, no art */
+.ui2 .u2-at-plus { position: absolute; top: 2px; right: 5px; font-size: var(--ui2-fs-label); font-weight: 700; line-height: 1; color: var(--ui2-text-gold); pointer-events: none; }
 .ui2 .u2-wp-allstats { flex: 0 0 auto; min-width: var(--ui2-size-touch); min-height: var(--ui2-size-touch); padding: 0 var(--ui2-space-l); border-radius: var(--ui2-radius-button); font-family: inherit; font-size: var(--ui2-fs-body); font-weight: 700; color: var(--ui2-text-ivory); cursor: pointer; touch-action: manipulation; white-space: nowrap; }
-/* sideways: one row; the attributes' head over their row of six */
+/* 375 x 667: the line on the level row's right end, the same words and gold; the road line leaves */
+.ui2.u2-wp.is-fold .u2-wp-level .u2-at-line { flex: 0 1 auto; padding: 0; line-height: 16px; }
+/* sideways: one row -- the level, the strip, then the line over the six in a row */
 .ui2 .u2-wp-row.is-one { flex: 1 1 auto; min-height: 0; align-items: stretch; }
 .ui2.u2-wp.is-short .u2-wp-level { flex: 0 1 150px; min-width: 110px; flex-direction: column; align-items: stretch; justify-content: center; gap: var(--ui2-space-xs); padding: var(--ui2-space-xs) var(--ui2-space-l); }
 .ui2.u2-wp.is-short .u2-wp-lv { font-size: var(--ui2-fs-label); }
-.ui2.u2-wp.is-short .u2-wp-dps { min-width: 84px; }
-.ui2.u2-wp.is-short .u2-wp-support { flex: 0 1 230px; }
-.ui2 .u2-wp-side { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0; }
-.ui2.u2-wp.is-short .u2-wp-attrhead { flex: 0 0 auto; flex-direction: row; align-items: baseline; gap: var(--ui2-space-l); line-height: 13px; }
-.ui2.u2-wp.is-short .u2-wp-attrk { font-size: var(--ui2-fs-small); }
-.ui2 .u2-wp-tiles.is-one { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: minmax(var(--ui2-size-touch), 1fr); }
+.ui2.u2-wp.is-short .u2-at-strip { flex: 0 0 auto; }
+.ui2.u2-wp.is-short .u2-stat.u2-at-stat { min-width: 84px; }
+.ui2.u2-wp.is-short .u2-facts.u2-at-facts { flex: 0 1 230px; }
+.ui2.u2-wp.is-short .u2-at-attrs { gap: 0; }
+.ui2.u2-wp.is-short .u2-at-line { line-height: 13px; }
+.ui2.u2-wp.is-short .u2-at-line-k { font-size: var(--ui2-fs-small); }
+.ui2 .u2-at-grid.is-one { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: minmax(var(--ui2-size-touch), 1fr); }
 .ui2.u2-wp.is-short .u2-wp-attr { flex-direction: column; justify-content: center; gap: 0; padding: var(--ui2-space-xs); text-align: center; }
 .ui2.u2-wp.is-short .u2-wp-attr-art { display: none; }
 .ui2.u2-wp.is-short .u2-wp-attr-words { align-items: center; }
 .ui2.u2-wp.is-short .u2-wp-attr-k { font-size: var(--ui2-fs-small); }
 .ui2.u2-wp.is-short .u2-wp-attr-v { line-height: 13px; }
+.ui2.u2-wp.is-short .u2-at-plus { top: 1px; right: 3px; }
 
 /* ═══ v2.3.6686: the stat tree, one layer at a time (StatTree.jsx) ═══
    Upright: the headline row (44 px) and the rows, two rows of three 44 px
@@ -104,15 +135,14 @@
 .ui2.u2-st.is-short .u2-st-head { flex: 0 1 260px; min-width: 150px; height: auto; }
 .ui2.u2-st.is-short .u2-st-rows { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-auto-rows: auto; }
 
-/* ═══ v2.3.6686: the Shared page (SharedPage.jsx): the weapon page's shape, seven tiles ═══ */
-.ui2 .u2-wp-tiles.is-seven { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.ui2 .u2-wp-tiles.is-seven.is-one { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.ui2 .u2-sp-hp { flex: 0 0 auto; min-width: 104px; }
-.ui2 .u2-sp-hp .u2-stat-v { color: var(--ui2-text-gold); font-variant-numeric: tabular-nums; }
-.ui2 .u2-sp-def { flex: 0 0 auto; min-width: 96px; display: flex; flex-direction: column; justify-content: center; padding: 0 var(--ui2-space-l); }
-.ui2 .u2-wp-row.is-attrs.is-stack { flex-direction: column; gap: var(--ui2-space-xs); }
-.ui2 .u2-wp-row.is-stack .u2-wp-attrhead { flex: 0 0 auto; flex-direction: row; align-items: baseline; gap: var(--ui2-space-l); line-height: 14px; }
-.ui2 .u2-wp-row.is-stack .u2-wp-tiles { flex: 1 1 auto; min-height: 0; }
-.ui2 .u2-wp-tiles.is-noart .u2-wp-attr-art { display: none; }
-.ui2 .u2-wp-tiles.is-noart .u2-wp-attr { justify-content: center; text-align: center; }
-.ui2 .u2-wp-tiles.is-noart .u2-wp-attr-words { align-items: center; }
+/* ═══ v2.3.6686: the Shared page (SharedPage.jsx): the weapon page's template, seven tiles ═══
+   v2.3.6783: Max HP the strip's stat and Defense its one fact, each half the strip */
+.ui2 .u2-at-grid.is-seven { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ui2 .u2-at-grid.is-seven.is-one { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ui2.u2-sp .u2-stat.u2-at-stat { flex: 1 1 0; }
+.ui2.u2-sp .u2-facts.u2-at-facts { flex: 1 1 0; grid-template-columns: minmax(0, 1fr); }
+.ui2.u2-sp.is-short .u2-stat.u2-at-stat { flex: 0 0 auto; }
+.ui2.u2-sp.is-short .u2-facts.u2-at-facts { flex: 0 0 auto; min-width: 96px; }
+.ui2 .u2-at-grid.is-noart .u2-wp-attr-art { display: none; }
+.ui2 .u2-at-grid.is-noart .u2-wp-attr { justify-content: center; text-align: center; }
+.ui2 .u2-at-grid.is-noart .u2-wp-attr-words { align-items: center; }

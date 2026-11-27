@@ -273,6 +273,36 @@ for (const r of real) check(r.name, r.ok, r.detail);
     const oldHandOver = (id, st) => { const t = st && st.shown ? st[st.ws][st[st.ws].length - 1] : null; return t && t.id === 'questDetail' ? { type: 'push', id, replace: true } : dashNavOpen(id, st); };
     check('3h plant: the old hand-over (a page opened from the quest\'s page takes its place) turns 3h red', !road3h(oldHandOver).ok);
   }
+  {
+    /* v2.3.6691 (the mend of sitting 71): quest A's page open, a tap on quest B's pinned card (open('quests')
+       then push('questDetail') in one breath) takes quest A's page's place AND its way home: the road stacked
+       questDetail(A) > questDetail(B), so Back showed A again and leaving took two presses.  From the world
+       and from the landing's row.  The plant: the push in one breath without that (the line as it was), red. */
+    const road3i = (step) => {
+      const card = (q) => step(step(q, { type: 'arrive', id: 'quests' }), { type: 'push', id: 'questDetail', replace: true });
+      let w = card(dashNavInit(false));                                 /* A from the world */
+      w = step(w, { type: 'keep', key: w.menu[0].key, sel: 'A' });
+      const keyA = w.menu[0].key;
+      const w2 = card(w);                                               /* then B's card */
+      const fromWorld = ids(w2.menu) === 'questDetail' && w2.menu[0].key !== keyA && !w2.menu[0].sel && dashNavBackTo(w2).kind === 'world'
+        && step(w2, { type: 'back' }).shown === false;
+      let l = step(dashNavInit(false), { type: 'arrive', id: 'quests' });
+      l = step(l, { type: 'push', id: 'questDetail', sel: 'A' });          /* A from the landing's row */
+      const l2 = card(l);
+      const b = step(l2, { type: 'back' });
+      const fromLanding = ids(l2.menu) === 'quests,questDetail' && !l2.menu[1].sel && b.shown && ids(b.menu) === 'quests';
+      return { ok: fromWorld && fromLanding, why: ids(w2.menu) + ' | ' + ids(l2.menu) + ' | ' + ids(b.menu) };
+    };
+    const real3i = road3i(dashNavStep);
+    check('3i quest A\'s page open, B\'s pinned card: B\'s page takes A\'s place and its way home (Back leaves in one press)', real3i.ok, real3i.why);
+    const navText = fs.readFileSync(path.join(ROOT, 'src/game/dashNav.js'), 'utf8');
+    const from = '[...stack.slice(0, again ? -2 : -1), e]';
+    if (navText.split(from).length !== 2) check('3i plant: its line is found once in dashNav.js', false, 'the plant\'s line moved: update the plant');
+    else {
+      const P = await import('data:text/javascript;base64,' + Buffer.from(navText.replace(from, '[...stack.slice(0, -1), e]')).toString('base64'));
+      check('3i plant: the push in one breath that leaves the same page under it turns 3i red', !road3i(P.dashNavStep).ok);
+    }
+  }
   const frozen = Object.isFrozen(open) && Object.isFrozen(m.menu) && Object.isFrozen(m.menu[0]);
   check('3g the state is frozen (one transition writes it)', frozen);
 }

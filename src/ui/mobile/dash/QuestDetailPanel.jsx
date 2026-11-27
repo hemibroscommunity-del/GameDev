@@ -9,7 +9,7 @@ import { SAY } from '@/data/say/questDetail.js';   /* v2.3.6350: its words, in t
 import { say } from '@/game/say.js';
 import { QUEST_PAGES, openQuestOnPages } from './QuestPages.jsx';   /* v2.3.6620: the Quests tab in pages (card QP) */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { QuestPage } from './QuestPage.jsx';   /* v2.3.6691: the frame's quest page (card UI2-quests) */
+import { QuestPage, questPageAt } from './QuestPage.jsx';   /* v2.3.6691: the frame's quest page (card UI2-quests) */
 import { ui2FrameOn } from '../ui2Frame.js';
 
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed into
@@ -107,6 +107,7 @@ const QuestDetailToPages = () => {
 };
 
 /* v2.3.6691 (card UI2-quests): under the new dashboard the quest's own page (QuestPage.jsx: the journey up to
-   NOW), a real page, no hand-over; under `?ui2=0` as before.  Chosen at render, by the frame's ONE switch */
+   NOW), a real page, no hand-over; under `?ui2=0` as before.  Chosen at render, by the frame's ONE switch.
+   The mend of sitting 71: keyed on its ENTRY (questPageAt), so another quest's road draws its own page. */
 const TodaysQuestDetail = QUEST_PAGES ? QuestDetailToPages : OldQuestDetailPanel;   /* ?ui2=0: as before (v2.3.6620) */
-export const QuestDetailPanel = () => (ui2FrameOn() ? <QuestPage getS={getState} /> : <TodaysQuestDetail getS={getState} />);
+export const QuestDetailPanel = () => (ui2FrameOn() ? <QuestPage key={questPageAt()} getS={getState} /> : <TodaysQuestDetail getS={getState} />);

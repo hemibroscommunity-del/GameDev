@@ -31,7 +31,7 @@
  * its Details opens the ONE item page (openItemPage).  No figure and no
  * health, mana or energy bars here: they are on the world's own screen. */
 import React from 'react';
-import { Ui2TwoPanel, Ui2ItemGrid, Ui2ItemCell, Ui2Slot, Ui2Action, ui2RootClass } from '@/ui/kit/index.js';
+import { Ui2TwoPanel, Ui2ItemGrid, Ui2ItemCell, Ui2Slot, Ui2Action, Ui2Stat, ui2RootClass } from '@/ui/kit/index.js';
 import { getBagEntries } from './bagModel.js';
 import { groupSpare } from './gearBag.js';
 import { BagTile } from './InventoryPanel.jsx';
@@ -41,12 +41,14 @@ import { GearFilterMenu } from './GearFilterMenu.jsx';
 import { cellContent } from './gearCells.js';
 import { openItemPage, itemPageInput } from './itemPageOpen.js';
 import { runItemAction } from './itemActions.js';
+import { assetUrl } from '@/game/assetUrl.js';   /* v2.3.6743: the empty slot's ghost gets its file's version, not a hand ?v= (card KEEP PR 3b, the mend) */
 import { itemDetailBus } from './itemDetailBus.js';
 import { shopBus } from '../shopBus.js';
 import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
 import { inspectItem, itemSummary, reqWords } from '@/game/itemInspect.js';
 import { compareSet } from '@/game/compare.js';
 import { projectEquip } from '@/game/equipProject.js';
+import { gearPanelsGeometry, GEAR_GAP, GEAR_PAD, GEAR_HEAD, GEAR_G, GEAR_BODY_G, GEAR_SHORT_HEAD } from '@/game/gearGeometry.js';   /* v2.3.6784 */
 import { GEAR_BODY, GEAR_BODY_ROW } from '@/game/gearShowcase.js';   /* v2.3.6689: the body's shape, shared with the showcase */
 import { wsPanels, wsPicked, wsScroll } from '@/game/workspace.js';
 import { beforeDraw } from '@/game/framePacer.js';
@@ -57,17 +59,14 @@ import { SAY } from '@/data/say/gearPanels.js';
 import { say } from '@/game/say.js';
 import './gearPanels.css';
 
-const GAP = 4;        /* between the two panels */
-const PAD = 4;        /* inside a panel */
-const HEAD = 30;      /* the label row: its controls 30 px tall, their touch reaching 44 (.u2-hit) */
-const MIN = 44;       /* no cell under the finger's floor */
-const G = 3;          /* between the bag's squares: a packed, regular grid */
-const BODY_G = 6;     /* between the body's cells: wider, so the shape reads apart from the grid */
+/* v2.3.6784 (card UI3-menus): the geometry and its numbers are src/game/gearGeometry.js's (its suite:
+   tools/guards/gear-geometry.test.mjs); the label row 24 (was 30), the bag in whole rows */
+const PAD = GEAR_PAD, HEAD = GEAR_HEAD, G = GEAR_G, BODY_G = GEAR_BODY_G;
 const COMPARE_KINDS = Object.freeze({ sword: 1, bow: 1, staff: 1, chest: 1, legs: 1, shield: 1 });
 /* the body: [column, row] of each of the nine cells (v2.3.6689: ONE table, src/game/gearShowcase.js, which
    Bro's Equipment showcase lays its cells out by too) */
 const BODY = GEAR_BODY;
-const SHORT_HEAD = 52;   /* sideways: the filter and the coins stacked at the bag's left (no label row in a 63 px page) */
+const SHORT_HEAD = GEAR_SHORT_HEAD;   /* sideways: the filter and the coins stacked at the bag's left (no label row in a 63 px page) */
 const HAND_OF = Object.freeze({ sword: 'melee', bow: 'ranged', staff: 'staff' });
 
 const bagKeyOf = (e) => (e.kind === 'item' ? 'i-' + e.key : `${e.kind}-${e.index}`);
@@ -97,26 +96,8 @@ function useBox() {
   return [ref, box];
 }
 
-/** The geometry: the bag's squares and the body's cells, upright or in one sideways row. */
-export function gearPanelsGeometry(W, H) {
-  const short = H > 0 && H - HEAD - 2 * PAD < 2 * MIN + G;
-  if (short) {
-    /* sideways: the Equipped row is nine cells in three groups; the bag takes the rest */
-    const cell = Math.max(MIN, Math.min(56, H - 2 * PAD));
-    const eqW = 9 * cell + 6 * 2 + 2 * BODY_G * 2 + 2 * PAD;
-    const invW = Math.max(2 * cell + 2 * PAD, W - GAP - eqW);
-    const cols = Math.max(1, Math.floor((invW - 2 * PAD - (SHORT_HEAD + G) + G) / (cell + G)));
-    return { short, W, H, cell, bagCell: cell, cols, invW, eqW, bodyCell: cell, torsoW: cell };
-  }
-  const pw = Math.floor((W - GAP) / 2);
-  const inner = pw - 2 * PAD;
-  const below = H - HEAD - 2 * PAD;
-  const cols = Math.floor((inner + G) / (MIN + G)) >= 3 ? 3 : 2;
-  const bagCell = Math.max(MIN, Math.min(64, Math.floor((inner - (cols - 1) * G) / cols)));
-  const bodyCell = Math.max(MIN, Math.min(56, Math.floor((below - 2 * BODY_G) / 3), Math.floor((inner - 2 * BODY_G) / 3.25)));
-  const torsoW = Math.min(Math.floor(bodyCell * 1.25), inner - 2 * bodyCell - 2 * BODY_G);
-  return { short, W, H, invW: pw, eqW: pw, cols, bagCell, bodyCell, torsoW: Math.max(bodyCell, torsoW) };
-}
+/** The geometry (v2.3.6784: src/game/gearGeometry.js; exported here still, for whoever reads it from Gear). */
+export { gearPanelsGeometry };
 
 /* ── the label rows ── */
 function InventoryHead({ fid, coins, menu }) {
@@ -131,10 +112,10 @@ function InventoryHead({ fid, coins, menu }) {
         <button type="button" className="u2-gp-ctl u2-hit" data-gear-filter-clear="" aria-label={say(SAY, 'gearPanels.clearAria')}
           onClick={(e) => { e.stopPropagation(); gearTabBus.clearFilter(); }}>{say(SAY, 'gearPanels.clear')}</button>
       ) : null}
-      <span className="u2-gp-coins" data-gear-gold={coins} title={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} aria-label={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })}>
-        <img src={coinArtFor(coins)} alt="" draggable={false} />
-        <span>{barNumber(coins, true, 10000)}</span>
-      </span>
+      {/* v2.3.6784 (card UI3-menus, reading 6): the owner, 2026-11-26: "make the gold balance a compact pill":
+          the kit's stat at pill size, recessed, the number gold, NOT a button (it opens nothing) */}
+      <Ui2Stat size="pill" className="u2-gp-coins" art={coinArtFor(coins)} v={barNumber(coins, true, 10000)}
+        data-gear-gold={coins} title={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} aria-label={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} />
     </>
   );
 }
@@ -164,7 +145,7 @@ function WornCell({ c, R, slots, ws, size, w, hand, tap }) {
         onPointerUp={(e) => { e.stopPropagation(); press(); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(); } }}>
         <span className={'u2-slot' + (has ? '' : ' is-empty') + (inHand ? ' is-hand' : '')} data-grade={ct.quality || 'normal'}>
-          {!has ? <img className="u2-gp-ghost" src={`/icons/bag/equip-${c.id}.webp?v=2.3.4199`} alt="" draggable={false} />
+          {!has ? <img className="u2-gp-ghost" src={assetUrl(`/icons/bag/equip-${c.id}.webp`)} alt="" draggable={false} />
             : c.id === 'gem' ? (
               <span className="u2-gp-gems">{els.map((el, i) => <img key={el + i} src={gemIcon(gemCutKey(el))} alt="" draggable={false} />)}</span>
             ) : <img className="u2-slot-art" src={pic} alt="" draggable={false} />}
@@ -368,7 +349,7 @@ export function GearPanels({ R: Rin }) {
   const weaponsHeld = (R.weaponStash || []).filter(Boolean).length;
   const cells = entries.map((e) => ({ key: bagKeyOf(e), grade: (e.obj && e.obj.quality) || 'normal', e }));
   const selKey = ws.from === 'left' ? ws.pick : null;
-  const rowsIn = geo.short ? 1 : Math.max(1, Math.floor((box.h - HEAD - 2 * PAD + G) / (geo.bagCell + G)));
+  const rowsIn = geo.rows;   /* v2.3.6784: the geometry's whole rows (reading 7) */
   const fill = Math.max(Math.ceil((cells.length + 1) / geo.cols), rowsIn + 1) * geo.cols;
 
   const inventory = entries.length === 0 && fid !== 'all' ? (
@@ -377,11 +358,13 @@ export function GearPanels({ R: Rin }) {
       <Ui2Action c="silver" label={say(SAY, 'gearPanels.showAll')} onClick={() => gearTabBus.clearFilter()} data-gear-showall="" />
     </div>
   ) : (
-    <div data-gear-bag="" style={{ height: '100%' }}>
+    <div data-gear-bag="" data-bag-rows={geo.rows} style={{ height: '100%' }}>
+      {/* v2.3.6784 (reading 7): the scroller exactly its whole rows tall (geo.bagH), the rest of the body under it;
+          (reading 4) the bag's square wears the kit's socket (`kit`), the worn cell's */}
       <Ui2ItemGrid cells={cells} cols={geo.cols} size={geo.bagCell} gap={G} selectedKey={selKey} fill={fill}
-        scrollRef={bagRef} onScroll={onBagScroll}
+        scrollRef={bagRef} onScroll={onBagScroll} height={geo.bagH}
         render={(c) => (
-          <BagTile entry={c.e} selected={false} style={{ aspectRatio: 'auto', height: '100%' }}
+          <BagTile kit entry={c.e} selected={false} style={{ aspectRatio: 'auto', height: '100%' }}
             onSelect={() => gearTabBus.wsDo({ type: 'pick', side: 'left', key: c.key, look: true }, c.e.kind === 'item' ? null : c.e.obj)} />
         )} />
     </div>
