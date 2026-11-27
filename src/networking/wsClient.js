@@ -3848,7 +3848,7 @@ export function setupWebSocket(ctx) {
                  way in (src/game/gearAdopt.js gearBagPut 'reply'), which the
                  state's adopt and every other reply share, so the piece is
                  there once whichever came first. */
-              if (gearBagPut(S.rpg, null, _qrs, 'reply', { name: 'Quest Armor' })) {
+              if (gearBagPut(S.rpg, null, _qrs, 'reply', { name: _qrsName })) {
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══
@@ -4413,7 +4413,7 @@ export function setupWebSocket(ctx) {
                above, refused when its id is already worn or in the bag (the
                state's adopt may have brought it first), and with no id the
                old guard by name and tierMult. */
-            var _pcIn = gearBagPut(R, null, _pc, 'reply', { name: 'Armor' });
+            var _pcIn = gearBagPut(R, null, _pc, 'reply', { name: _pcName });
             if (!_pcIn) continue;
             _gotArmor++;
             /* v2.3.4012: a "?" says so, in the rare blue it promises */

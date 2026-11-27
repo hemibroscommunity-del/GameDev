@@ -31,10 +31,10 @@
 import { GameRoom } from '../src/index.js';
 import { ARMOR_FORGE } from '../src/armorforge.js';
 import { GEAR_STASH_CAP, GEAR_STASH_SEED_KEYS } from '../src/gearstash.js';
-import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readSystem } from '../../tools/guards/lib/filesOf.mjs';   /* the page's wire handlers, read by their system */
 
 const { GEAR_ADOPT, gearBagPut, adoptGearLists, adoptStateGear } = await import('../../src/game/gearAdopt.js');
 
@@ -397,13 +397,18 @@ for (const v of [1, 2]) {
   }
   check('7. the syntax tree can be read (@babel/parser)', !!babel);
   if (babel) {
-    const parse = (rel) => babel.parser.parse(readFileSync(join(root, rel), 'utf8'), { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    /* the wire system's two handler files: the one with the socket's message
+       switch (it handles player_state), and the one with the events' (it
+       handles inbox_delivered) */
+    const wire = readSystem('wire', { only: /^src\/networking\/.*\.js$/ });
+    const pick = (needle) => [...wire.entries()].filter(([, src]) => src.includes(needle)).map(([, src]) => src);
+    const parse = (src) => babel.parser.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
     const LISTS = new Set(['armorStash', 'legsStash', 'gearStash', 'amuletStash', 'shieldStash']);
     const caseOf = (path) => { const c = path.findParent((p) => p.isSwitchCase()); return c && c.node.test && c.node.test.value; };
     const fnOf = (path) => { const f = path.findParent((p) => p.isFunctionDeclaration()); return f && f.node.id && f.node.id.name; };
-    const scan = (rel) => {
+    const scan = (src) => {
       const calls = [], pushes = [];
-      babel.traverse(parse(rel), {
+      babel.traverse(parse(src), {
         CallExpression(path) {
           const c = path.node.callee;
           if (c.type === 'Identifier' && (c.name === 'gearBagPut' || c.name === 'adoptStateGear' || c.name === '_applyLootCredit')) calls.push({ name: c.name, kase: caseOf(path), fn: fnOf(path), args: path.node.arguments });
@@ -424,8 +429,10 @@ for (const v of [1, 2]) {
       });
       return { calls, pushes };
     };
-    const W = scan('src/networking/wsClient.js');
-    const G = scan('src/networking/gameEvents.js');
+    const sockets = pick("case 'player_state':"), events = pick("case 'inbox_delivered':");
+    check('7. the wire system holds one file with the socket\'s player_state case and one with the events\' inbox_delivered', sockets.length === 1 && events.length === 1, { sockets: sockets.length, events: events.length });
+    const W = scan(sockets[0] || '');
+    const G = scan(events[0] || '');
     const has = (S, name, where) => S.calls.some((c) => c.name === name && (c.kase === where || c.fn === where));
     check('7. wsClient\'s player_state case adopts the worker\'s lists (adoptStateGear, the switch passed)',
       W.calls.some((c) => c.name === 'adoptStateGear' && c.kase === 'player_state' && c.args.length === 4), W.calls.filter((c) => c.name === 'adoptStateGear'));
@@ -438,7 +445,7 @@ for (const v of [1, 2]) {
        shield the worker took off (the player_state case's `_svShield`) */
     const MOVES = new Set(['worn@_rescueDisplacedArmor', '_svShield@player_state']);
     const past = [...W.pushes, ...G.pushes].filter((p) => !MOVES.has(p.arg + '@' + (p.fn === '_rescueDisplacedArmor' ? p.fn : p.kase)));
-    check('7. (h) no handler in wsClient.js or gameEvents.js puts a piece in a bag list past the rule', past.length === 0, past);
+    check('7. (h) no handler in the page\'s two wire files puts a piece in a bag list past the rule', past.length === 0, past);
     check('7. ...and the two moves are still where the census says (it would go stale otherwise)', [...W.pushes, ...G.pushes].length === MOVES.size, [...W.pushes, ...G.pushes]);
   }
 }

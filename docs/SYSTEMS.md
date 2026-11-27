@@ -168,7 +168,7 @@ Gold, the bag, the bank, the market and shops, trades, drops, chests and daily r
 - **Files**: `src/rendering/tables/`: economy
 - **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, econcard, worldsum, valuepause, inbox, itemdrop, deathpile, gearstash, stash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
 - **Files**: `server/src/`: playerroads
-- **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, shieldAdopt, arenaStakes, econCard
+- **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, shieldAdopt, gearAdopt, arenaStakes, econCard
 - **Doors**: `_goldGive` in `server/src/gold.js` (GOLD_ROADS: every change to a player's gold (_goldGive, _goldTake, _goldSet)); `bagGive` in `server/src/bag.js` (BAG_ROADS: every change to a bag count (bagGive, bagTake, bagSet))
 - **Switches**: [its rows in the switch table](SWITCHES.md#economy)
 - **Words**: `gold`, `bag`, `bank`, `market`, `shop`, `store`, `trade`, `inbox`, `drop`, `loot`, `chest`, `salvage`, `gamble`, `dice`, `daily`, `auction`, `gear`, `coin`
