@@ -202,8 +202,8 @@ export function featsMedal(S, id, who, now) {
    each "Raise Melee, Bow or Magic to level N"), so the Titles page draws them as one connected row;
    every other title is a row of its own ("never fabricate a progression relation"). */
 export const TITLE_FAMILIES = Object.freeze([
-  Object.freeze({ id: 'combatLevel', ids: Object.freeze(['combat_10', 'combat_50', 'combat_100']),
-    why: 'the same climb: a weapon to level 10, 50 and 100 (one requirement, three levels)' }),
+  /* the same climb: a weapon to level 10, 50 and 100 (one requirement, three levels) */
+  Object.freeze({ id: 'combatLevel', ids: Object.freeze(['combat_10', 'combat_50', 'combat_100']) }),
 ]);
 
 /** A family's row of three: [{ id, name, art, state }], `state` 'got' | 'next' | 'locked' (the
