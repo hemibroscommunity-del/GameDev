@@ -628,7 +628,155 @@ stays with that PR until it lands, and is marked (held).
   '2.3.6641' with all 18 files changed (harmless while `/ui/*` is not
   immutable).
 
+## SHOP (72: #2400 listed at d782aed2, its mend)
+
+- Sitting 71's hold RED in every path (a lost `shop_result`, a re-sent
+  reqId, a rejoin): `shop.test` "A LOST ANSWER LOSES NOTHING" (v1 and v2);
+  the six card dodges RED again. Next jobs: nothing tests that the phone
+  calls the adoption on the quote and the refusal (`gameEvents.js`:460,
+  :487: drop either call, green); `shieldAdopt.js`: a gid not added to the
+  seen set, one old copy with no gid hiding every twin of its signature,
+  the cap check dropped in `adoptStateShields`: green; a shield that comes
+  in the mail (`gameEvents.js`:2120 `inbox_delivered`) is added without the
+  gid check: send it through `adoptHeldShields`.
+
+## LOAD (72: #2401 listed at f56dfa3b, its mend)
+
+- Sitting 71's plants RED (`maskedBakeWorker.js`:613, :609, :630, :579;
+  `bakeKeep.js`:341, :295), `bake-keep.test` 6-7 on the real worker in
+  node. Next jobs (`tools/guards/bake-keep.test.mjs`): 6b changes inputs
+  only between logins (a memo by sheet+cell in `lookPixels`, or the
+  `_numbers.delete` on `lookSheet` dropped: green; two jobs in one login
+  would catch both); 6b changes one fixed pixel (every other pixel keyed:
+  green); `keptBytes` (`bakeKeep.js`:245) leaving out `px` (green: 7 reads
+  the disk through the index's own `b`); `runJob` keeping a frame whose
+  belt is pending (green); `bakeWorkerRig.mjs` never detaches transferred
+  buffers (`show` kept without `.slice()`: green); `keyFirst` answering an
+  error for an unreadable kept value instead of baking again (green); the
+  key cut to `KEEP_V` with the version compared by its prefix (green each;
+  together an old tab across a deploy writes bakes the new tab is served);
+  `?bakekeep=0` ignored in the worker is held only by `mp-bakekeep`:244.
+  "Masks within 3 s" (95 s on the box) is LOAD part 3's (part 29).
+  f56dfa3b is a status-only push (docs/plan/README.md forbids it).
+
+## UI2 (72: #2408, #2413, #2412, #2415 held)
+
+- #2399 Quests (7c3c6b4a), listed: sitting 71's dodge RED in every
+  spelling (W2b); the pinned-card bug mended (dash-nav 3i). Next jobs:
+  `quests-ui2` W2b draws only `short: false` (`{short ? ' ' +
+  page.who.steps.length : ''}`, a count only when `tight`: green,
+  `questViews.jsx`:160, :215); a count in a `title=` or `aria-label`
+  (green); `quests-mount` to require QuestPage's `key={questPageAt()}`
+  (`QuestDetailPanel.jsx`:113 key dropped: green in the node guards, held
+  only by `mp-ui2quests` 5b). The owner's to judge: with A's Rewards open,
+  B's pinned card stacks on top, so Back goes to A's Rewards, not World.
+- HELD (#2408 Codex, 5acd2917): the card's dodges "at most one when each
+  rolls alone" (`MonsterShowcase.jsx`:161 `lootRollWords(true)`) and "the
+  same sword with different names" (:59 `nameOf: codexItemName` dropped)
+  GREEN. Next job: `itemPageOpen.js` `CODEX_GEAR.iron_torso.kind` 'chest'
+  -> 'torso' green (loot-rows L10 checks the sword's kind word only).
+- HELD (#2413 Pets, 85710851): the card's dodges "Release with no
+  confirmation" (`PetsPage.jsx`:~263 onPress sends `sendPetRelease`
+  directly), "a second press of Take out sent while the first is out" (sent
+  without `press()`) GREEN; also Sell's `check: () => null`, More room
+  bought with no confirm: green. `petPages.js`'s `cost` is read by nothing
+  that asks (Ui2Actions ignores `cell.confirm`). Part 31's "storeListPet
+  posts /list with no action row" is NOT real (`storeApi.js`:121 through
+  `act()`, `actions.js`:442); the note at `traps-economy-social.test.mjs`:728
+  is stale.
+- HELD (#2412 Ranks, e08554a2, its mend: the fish icon through KEEP's
+  helper RED): the card's dodge "'nobody' shown while loading" GREEN
+  (`RankStandings.jsx`:221 `loading={false}`), and LIVE: `useFlip`
+  (:106) returns `loading: false` and `aceFlipBus.board` starts
+  `{wins:[],losses:[]}` (`aceFlipBus.js`:47), so the Coin flip board says
+  "Nobody has won a flip against Ace yet." before the answer comes.
+- HELD (#2415 Life, 220e6140): the card's dodge "another player's XP shown"
+  GREEN (`LifeSkillPage.jsx`:47 `lifeSkillProgress(R, skill, null)`: your
+  XP on their page; the How it works door :87 and page :124 the same). Its
+  merge with Ranks' mend: systems.mjs (Ranks' list, `lifeProfile` added),
+  SYSTEMS.md made again, UI_ARCHITECTURE_V2.md both lines.
+- The class, all four: the suites test the rule module, and nothing checks
+  the page hands the rule's field to the kit (the roll words, `cost` -> the
+  ask, `press()`, `loading`, `who`): one shared jsxMount check would close
+  it.
+
+## UI3 (72: #2406 on main 17124fc8 by the owner's 04:49 rule; #2414, #2411 held)
+
+- #2406 HUD (5ecce925) merged ALONE at 04:51 UTC 11-27 by the owner's rule
+  of 04:49 (a screen-only change lands on its own green, read after): no bug
+  in behaviour found. Sitting 71's plants RED (char-hud 9h, 9i); its card's
+  dodges GREEN in new spellings, now its NEXT JOBS: "Lv 1 before the record" as
+  a waiting placeholder (`CharacterHud.jsx`:109 `: <span
+  className="bt-charhud__lv">Lv 1</span>`, or through `say(..., {n:1})`, or
+  a second span reading `rpg.level || 1`: 9i reads only `model.level` and
+  the one marked span; mend: render the component with ready false and
+  allow only the name); "a quest line that can wrap" (`QuestCard.jsx`:189
+  `{ ...LINE_TEXT, whiteSpace: 'normal' }`, :191 a `<br />`: 9e reads only
+  LINE_TEXT's declaration). Next jobs: 9c `(xpOn || xb)` in
+  `ZoneHeader.jsx`:286's class (green); 9d `export * from
+  '@/rendering/characterPortrait.js'` under src/ui/hud (green); 9a/9b
+  `rpg['h'+'p']`, `{...{ onPointerUp: open }}` (green).
+- HELD (#2414 HUD art, 91a7246c): the card's dodges GREEN at the drawing
+  (`hud-art.test` reads `hudArtModel` only): the pill showing the combat
+  level (`HudArt.jsx`:142 `art.level`), the badge reading the weapon's
+  level (:135 `art.weaponLevel`), "1" in the badge before the record (:135
+  `: 1`). Mend: read HudArt.jsx's tree (`[data-charhud-lv]` `art.ready ?
+  art.level : ''`, `[data-hudart-pill]` `art.ready ? art.weaponLevel :
+  ''`). Next job: `rpg["h"+"p"]` drawn (green).
+- HELD (#2411 Own plate, 6b99b2df), by the rehearsal: merged with main,
+  `four-lines` 1 and 1b are RED (`src/rendering/systems/entityRenderer.js`
+  8025 statements over its line 8008, 7997 code lines over 7984): the PR
+  adds 33 lines to the big file; mend: move them into `ownPlateFx.js`
+  (rule 5). Its HUD art sibling #2414 merged with main turns `char-hud` 9i
+  RED (the art form's Lv outside `model.ready`).
+- #2410 Purse (59b965bd) LANDS by review; #2411 by review too, but for the
+  red above. Next jobs: `top-gold.test` to read
+  `topGold.js`'s tree so the number is only `S.rpg.coins` (:68 `S._purseGuess
+  ?? c`: green; `topGoldOn` memo never re-read: green); `own-plate.test`:
+  the factory builds the pill only under `_ownPlateOn`
+  (`entityRenderer.js`:7071 unconditional: green), the Texts destroyed
+  (`pill.removeChildren()` before destroy: green). #2411's diff against
+  main has nothing under `.github/`.
+
+## PAD (72: #2409 on main 5b30c929 at 56287163, by the owner's 04:49 rule)
+
+- The card's dodges RED (`pad-steel.test` 1f, 1g, 2d, 2e, 3d, 4d). Next job:
+  a spread override after the literal line (`AbilityButtons.jsx`:339
+  `...(kind==='whirl'?{metal:undefined}:{})`) green: render Skin for an
+  in-tier Whirlwind and Bash and read `data-metal`. `mp-padskin` 6d is the
+  slow box by reading (wall-clock 600 ms waits, the held page delaying the
+  press past pressGate's window: `ShieldButton.jsx`:890-897).
+
 ## Found (no card's debt)
+
+- FOR THE OWNER (72), a bug on `main` today: the phone's gear bag
+  (`armorStash`, `legsStash`, `gearStash`) never reads the worker's echo.
+  The worker sends them in every `player_state` (`server/src/persistence.js`:831-834);
+  the phone's handler (`src/networking/wsClient.js`:2716) never reads them and
+  adds a piece only from the reply that brought it (chest :2172, forge :2430,
+  quest :3843, loot :4430, mail `gameEvents.js`:2089). `forge_armor_result` has
+  no reqId (`armorforge.js`:115); a re-sent chest open is answered only while
+  `_reqRecall` holds it (`dailychest.js`:116-119); a rejoin sends the phone's
+  own list and `state_sync` carries no stashes (`gearstash.js` "gearheld";
+  `docs/specs/gear-stash.md`:328 lists it open). Cost: a dropped line before
+  the reply leaves the piece paid for (5 bars, or the chest) and held by the
+  worker but never shown, even after a reload. No card owns it.
+- A bug on `main` (not reachable by the game's own phone): a join claiming
+  one minted shield gid N times keeps one minted shield plus N-1 usable
+  "legacy" copies (`gearstash.js` `mergeStashLists` merges claims by
+  signature; the shield-claim check should drop repeated gids). Plant: a
+  join claiming one minted gid twice (72).
+- The 42 px sideways button (72): on the Quests page it was the page's own
+  sheet (`questsUi2.css`:80, :82 `min-width:0`), not the kit (its tokens are
+  unchanged; `.u2-act` keeps 44 px, `ui2.css`:506-507); main's narrower font
+  (UI3-type) made "Map" 42 px; #2399 floors it (:100). Also under 44 px
+  sideways on main, by estimate: Gear's summary "Eat" about 32 px
+  (`gearPanels.css`:67 `min-width:0`, :70 `padding:0 6px`, :69 `flex:0 0
+  auto`; `itemActions.js`:61): card UI2-gear's files.
+- precheck's [version-tag] WARN "already carry v2.3.N" on a stacked branch
+  (72): `tools/dev/precheck.mjs`:437's `git log main..ref` reads the commits
+  the other branch shares with this one; :434 skips only an ancestor. Fix:
+  `git log ref --not baseRef HEAD`. A tool's debt.
 
 - precheck's [version-tag] reads every commit SUBJECT on main
   (`tools/dev/precheck.mjs` near :395), so a card that renumbers leaves its
