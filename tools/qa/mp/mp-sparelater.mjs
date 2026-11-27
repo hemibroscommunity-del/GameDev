@@ -5,8 +5,8 @@
  * up 42.5 s.  Asked if the spare sets (each piece in the bag put on over what
  * you wear) may finish after the screen lifts, THE OWNER: "Yes".  A character
  * in the copper torso and greaves, the iron torso and greaves in the bag (the
- * kit: three spare sets), each login in a FRESH browser (nothing kept on its
- * disk, card LOAD part 2's store), in the Wheel's BroTown:
+ * kit: three spare sets), each login the same browser (its bag is its own)
+ * with `?bakekeep=0` (nothing answered from the disk), in the Wheel's BroTown:
  *   1. the default: at the lift the spare pass has not begun; it begins only
  *      once the screen is gone and the bro's chain is done; it runs to its end
  *      after it (`bro-alt` noted after `bro-done` and the world), within a
@@ -65,22 +65,27 @@ const lt = (P) => P.page.evaluate(() => (window.__btLoadTimes ? window.__btLoadT
 const at = (L, key) => { const b = L && L.bro.find((x) => x.key === key); return b ? b.at : null; };
 const stepAt = (L, key) => { const b = L && L.steps.find((x) => x.key === key); return b ? b.at : null; };
 
-/* a fresh browser for the character (nothing kept on its disk) */
-async function login(browser, key, wsPort, webPort, query) {
-  const P = await H.newPlayer(browser, { name: 'Sparebro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, phrase: key.phrase, device: key.device, init: WATCH, query });
-  P.stop = H.keepAlive(P);
-  await H.enterWorld(P, 240000);
-  P.inWheel = await inWheel(P);
-  return P;
+/* the armour bag is the phone's own (wsClient _stashSeed; a fresh browser has
+   none, so no spare sets): every login is the setup browser again, with
+   `?bakekeep=0` so nothing is answered from the disk (card LOAD part 2's
+   store): for the bakes, a first login each time */
+async function login(A, query) {
+  const u = new URL(A.page.url());
+  for (const k of ['bakekeep', 'sparelater']) u.searchParams.delete(k);
+  u.searchParams.set('bakekeep', '0');
+  for (const [k, v] of new URLSearchParams(query)) u.searchParams.set(k, v);
+  await A.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+  await H.enterWorld(A, 240000);
+  A.inWheel = await inWheel(A);
+  return A;
 }
-const close = async (P) => { try { P.stop(); } catch (e) { /* gone */ } const bad = P.logs.filter((l) => l.startsWith('pageerror')); await P.ctx.close().catch(() => {}); return bad; };
+const close = async () => [];
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const errs = [];
   /* ── setup: the copper pair worn, the iron pair in the bag ── */
-  const A = await H.newPlayer(browser, { name: 'Sparebro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  const A = await H.newPlayer(browser, { name: 'Sparebro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, init: WATCH });
   const stopA = H.keepAlive(A);
-  let key = null;
   try {
     await H.enterWorld(A);
     rec.ok('setup: in the Wheel (guard)', await inWheel(A));
@@ -131,19 +136,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       else await A.page.waitForTimeout(500);
     }
     rec.ok('setup: the worker holds the iron torso and greaves in the bag (guard)', !!held, held);
-    key = await H.keyAndDevice(A);
-  } finally {
-    stopA();
-    errs.push(...A.logs.filter((l) => l.startsWith('pageerror')));
-    await A.ctx.close().catch(() => {});
-  }
-  rec.ok("setup: the character's Login Key is known (guard)", !!(key && key.phrase));
-  if (!(key && key.phrase)) return;
+  } catch (e) { errs.push('pageerror setup: ' + String(e && e.message || e).slice(0, 200)); }
 
   /* ── 1. the default, a first login ── */
   let screenNew = null;
   {
-    const B = await login(browser, key, wsPort, webPort, '');
+    const B = await login(A, '');
     try {
       rec.ok('setup: 1. in the Wheel, a first login (guard)', B.inWheel);
       const lift = await H.waitFor(B, () => window.__qaLift || null, (v) => !!v, { timeout: 240000, label: 'the lift' }).catch(() => null);
@@ -164,12 +162,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!end && end.spare.maxMs <= 12, end && end.spare);
       rec.ok('1e. the readout lists the spare sets last and says they were after the screen (spareLater)',
         !!L && L.spareLater === true && L.bro[L.bro.length - 1].key === 'bro-alt', L && L.bro);
-    } finally { errs.push(...await close(B)); }
+    } finally { errs.push(...await close()); }
   }
 
   /* ── 2. ?sparelater=0, a first login ── */
   {
-    const D = await login(browser, key, wsPort, webPort, 'sparelater=0');
+    const D = await login(A, 'sparelater=0');
     try {
       rec.ok('setup: 2. in the Wheel, a first login with ?sparelater=0 (guard)', D.inWheel);
       const done = await H.waitFor(D, () => window.__qaDone || null, (v) => !!v, { timeout: 900000, label: 'the bro done' }).catch(() => null);
@@ -180,12 +178,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!done && s.masks > 0 && s.alt >= s.masks && s.upload >= s.alt && s.done >= s.upload && done.spare && done.spare.on === false && done.spare.runs === 0, s);
       rec.ok('2b. ...and the readout in its old order', !!L && L.spareLater === false && L.bro.map((b) => b.key).join(',') === 'bro-loads,bro-masks,bro-alt,bro-upload,bro-gear,bro-done', L && L.bro);
       note(`THE OWNER'S NUMBERS (this box, a first login in copper with the iron pair in the bag): the loading screen up ${L && L.screen} s with ?sparelater=0, ${screenNew} s by default`);
-    } finally { errs.push(...await close(D)); }
+    } finally { errs.push(...await close()); }
   }
 
   /* ── 3. the iron torso put on the moment the bro's chain is done ── */
   {
-    const C = await login(browser, key, wsPort, webPort, '');
+    const C = await login(A, '');
     try {
       rec.ok('setup: 3. in the Wheel, a first login (guard)', C.inWheel);
       await H.waitFor(C, () => window.__qaDone || null, (v) => !!v, { timeout: 900000, label: 'the bro done' }).catch(() => null);
@@ -264,8 +262,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!r && !r.err && r.chestOff === 0 && bad.length === 0, r && r.layers);
       rec.ok(`3c. the new set's frames all ready ${r && r.fullAt ? ((r.fullAt.t - r.wornAt.t) / 1000).toFixed(1) + ' s (' + (r.fullAt.f - r.wornAt.f) + ' frames)' : 'NEVER'} after it went on; the body drawn plain under it meanwhile on ${r && r.plain} frames`,
         !!r && !!r.fullAt && !!r.wornAt, r && r.fullAt);
-    } finally { errs.push(...await close(C)); }
+    } finally { errs.push(...await close()); }
   }
+  stopA();
+  errs.push(...A.logs.filter((l) => l.startsWith('pageerror')));
+  await A.ctx.close().catch(() => {});
   rec.ok(`4. nothing went wrong on the pages (${errs.length} page errors)`, errs.length === 0, errs.slice(0, 5));
   try { mkdirSync('tools/qa/mp/out', { recursive: true }); writeFileSync(OUT, log.join('\n') + '\n'); } catch (e) { /* a note only */ }
 }

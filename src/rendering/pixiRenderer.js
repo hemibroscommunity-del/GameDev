@@ -17,7 +17,7 @@ import { isWheelTrialZone } from '../game/worldTrial.js';
 import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
 import { wheelObjectsOn, wheelRendererSaid } from '../game/wheelTrial.js';   /* v2.3.3709: + the renderer's word, which a ground worker started before it waits for */
 import { MonsterSilhouettes, warmSilhouettes, setSilhouettes, monsterBodyBox } from './monsterSilhouette.js'; /* v2.3.3707: a monster hidden behind a thing, seen as its silhouette */
-import { EntityRenderer, monsterDisplayMap, prewarmMaskedBodyFrames, prewarmAltWornSets, spareLaterOn, openSpareTime, whenSpareSetsBaked, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
+import { EntityRenderer, monsterDisplayMap, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, dmgFontNeedsRebuild, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { landAurasReady } from './landAuras.js';   /* v2.3.3402: for the lands' specks' probe */
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
@@ -81,7 +81,8 @@ import { PeerImpostors } from './peerImpostor.js';   /* v2.3.4885: one picture p
 import { PlateLayers } from './plateLayer.js';   /* v2.3.4989: other players' name plates drawn after the figures (?platelayer=1) */
 import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 import { markLoad, whenMarked, noteSpareLater } from '../game/loadTimes.js';   /* v2.3.6760: the bro's own preload steps in the Test panel's Loading times; v2.3.6763: + the spare sets after the screen */
-import { broChain, SPARE_WAIT_MS } from '../game/spareLater.js';   /* v2.3.6763: the chain's order (card LOAD part 3b) */
+import { broChain } from '../game/spareLater.js';   /* v2.3.6763: the chain's order (card LOAD part 3b) */
+import { spareLaterOn, openSpareTime, whenSpareSetsBaked } from '../game/spareTime.js';   /* v2.3.6763: the spare sets' gate */
 installBatchIdsLean();   /* v2.3.5007: once, as the renderer loads (batchIdsLean.js) */
 installFieldLean();   /* v2.3.5007: and fieldLean.js */
 
@@ -171,7 +172,6 @@ export function preloadPlayerAssets() {
 function _broChain(results) {
   const later = spareLaterOn();
   noteSpareLater(later);
-  const R = () => _appRef && _appRef.renderer;
   planPrewarmProgress();
   const { screen } = broChain(later, {
     masks: () => prewarmMaskedBodyFrames(),
@@ -182,35 +182,35 @@ function _broChain(results) {
       : () => prewarmAltWornSets({ fast: true }),
     /* v2.3.701: force GPU upload of the baked textures behind the intro
        so early play doesn't pay lazy first-draw upload stalls. */
-    upload: () => uploadBakedTextures(R()),
+    upload: () => uploadBakedTextures(_appRef && _appRef.renderer),
     /* v2.3.1022: also GPU-upload the gear sheets (idle/jog + the preloaded
        swing/bowshot strips) so a first armored turn/swing doesn't pay a
        lazy first-draw upload.  Staggered + dedup'd; appended here so it runs
        after the bake and never blocks the parallel network preloads above. */
-    gear: () => uploadGearTextures(R()),
+    gear: () => uploadGearTextures(_appRef && _appRef.renderer),
     warm: () => {
       /* v2.3.1361: init the damage-popup BitmapText pipe (batcher/shader
          + glyph-atlas GPU upload) behind the intro — it was the last
          first-use render init left, paid on the first HIT of the session
          (iOS fire-goblin crash suspect). */
-      try { prewarmDmgFontPipe(R()); } catch (e) { /* best-effort */ }
+      try { prewarmDmgFontPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ }
       /* v2.3.2904: the metal shine's shader, compiled here instead of in the
          first frame anyone wears metal (glint.js prewarmGlintPipe).  The
          sweep runs whenever light-and-shine is on, sheen or not, so that
          switch is the one that decides. */
-      try { if (lightFxOn()) prewarmGlintPipe(R()); } catch (e) { /* best-effort */ }
+      try { if (lightFxOn()) prewarmGlintPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ }
       /* v2.3.3453: and the batcher that draws the ordinary shine in the frame
          (lightfx/sheenBatch.js), so the first armoured player on screen does
          not compile it either */
-      try { if (lightFxOn()) warmSheenBatch(R()); } catch (e) { /* best-effort */ }
+      try { if (lightFxOn()) warmSheenBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ }
       /* v2.3.3577: and the silhouette batcher (fillBatch.js), so the first
          whirlwind of the session does not compile it */
-      try { warmFillBatch(R()); } catch (e) { /* best-effort */ }
+      try { warmFillBatch(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ }
     },
     /* v2.3.6763: the spare sets start once the loading screen is gone (the
-       world drawn first: onboardingPace.js markWorldIn), or after
-       SPARE_WAIT_MS on a road whose mark never comes */
-    spareTime: () => Promise.race([whenMarked('world'), new Promise((r) => setTimeout(r, SPARE_WAIT_MS))]).then(() => openSpareTime()),
+       world drawn first: onboardingPace.js markWorldIn, on both roads in,
+       BroTown.jsx: with the intro and without it) */
+    spareTime: () => whenMarked('world').then(() => openSpareTime()),
   }, (k) => {
     _preStep(k);
     /* v2.3.3520: QA (mp-joinflicker) -- when the bro's pictures were all

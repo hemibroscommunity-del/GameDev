@@ -45,8 +45,3 @@ export function broChain(later, steps, note) {
     : chain.then(() => _run(S.spareTime)).then(() => _run(S.alt)).then(mark('alt'));
   return { screen: chain, spare };
 }
-
-/** How long the spare sets wait for the screen to be gone before they start
- *  anyway (a road with no loading screen notes the world in at once; this is
- *  only the net under a mark that never comes). */
-export const SPARE_WAIT_MS = 30000;

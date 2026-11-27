@@ -103,8 +103,8 @@ the graphics chip behind the screen.
 
 - The chain's order is `src/game/spareLater.js` `broChain`: the screen waits
   for masks, upload, gear, done; the spare sets (`alt`) begin once the screen
-  is gone (`whenMarked('world')`, or `SPARE_WAIT_MS` on a road whose mark never
-  comes) and the bro's chain is done. Their pass is `later`
+  is gone (`whenMarked('world')`: `markWorldIn`, on both roads in) and the
+  bro's chain is done. Their pass is `later`
   (`entityRenderer.js`): one job at the worker at a time, the page's part of
   each (its inputs, the frames back sent to the chip, 2 ms at most) at the top
   of a frame (`framePacer.js beforeDraw`); nothing of a spare pass runs while

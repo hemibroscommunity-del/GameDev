@@ -36,6 +36,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { broChain } from '../../src/game/spareLater.js';
 import { markLoad, markLift, whenMarked, noteSpareLater, loadTimes } from '../../src/game/loadTimes.js';
+import { readSystem } from './lib/filesOf.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 let failed = 0;
@@ -140,16 +141,16 @@ const loadTimesLines = m ? new Function(m[0].replace('export function', 'functio
 
 /* ── 6 ── */
 {
-  const px = readFileSync(join(ROOT, 'src/rendering/pixiRenderer.js'), 'utf8');
-  const er = readFileSync(join(ROOT, 'src/rendering/systems/entityRenderer.js'), 'utf8');
-  const fn = (px.match(/function _broChain\(results\) \{[\s\S]*?\n\}/) || [''])[0];
+  const RENDER = [...readSystem('render').values()].join('\n');   /* the renderers, read by system */
+  const st = readFileSync(join(ROOT, 'src/game/spareTime.js'), 'utf8');
+  const fn = (RENDER.match(/function _broChain\(results\) \{[\s\S]*?\n\}/) || [''])[0];
   check('6a: the loading screen is given the chain\'s `screen`, the order from the switch', /broChain\(later,/.test(fn) && /const later = spareLaterOn\(\)/.test(fn) && /return screen\.then\(\(\) => results\)/.test(fn) && !/spare\b.*then\(\(\) => results\)/.test(fn), fn.slice(0, 200));
   check('6b: after the screen the spare pass is `later` and its end the first one run to it', /prewarmAltWornSets\(\{ later: true \}\)/.test(fn) && /whenSpareSetsBaked\(\)/.test(fn) && /prewarmAltWornSets\(\{ fast: true \}\)/.test(fn), fn.slice(0, 200));
   check('6c: the spare time is the screen gone (the world mark), opening the pass\'s gate', /whenMarked\('world'\)/.test(fn) && /openSpareTime\(\)/.test(fn));
-  const alt = (er.match(/async function _prewarmAltWornSets\(opts\) \{[\s\S]*?\n\}/) || [''])[0];
-  check('6d: a spare pass in play waits for the gate; the switch is `sparelater`', /await _spareTime;/.test(alt) && /!sw\('sparelater'\)/.test(er) && /SPARE_LATER \? new Promise/.test(er), alt.slice(0, 120));
-  check('6e: the loading bar plans no spare families when they are after the screen', /const families = SPARE_LATER \? 0 : _catalogWornSets\(\)\.length;/.test(er));
-  check('6f: a piece put on stops the spare pass (later only)', /if \(SPARE_LATER\) for \(const _sl of \['chest', 'legs'\]\) onEquipChange\(_sl, \(\) => \{ _altPrewarmSeq\+\+; _ownedSig = ''; \}\);/.test(er));
+  const alt = (RENDER.match(/export async function prewarmAltWornSets\(opts\) \{[\s\S]*?\n\}/) || [''])[0];
+  check('6d: a spare pass in play waits for the gate; the switch is `sparelater`', /await spareTime\(later\);/.test(alt) && /spareSetsRan\(fast\)/.test(alt) && /!sw\('sparelater'\)/.test(st) && /SPARE_LATER \? new Promise/.test(st), alt.slice(0, 120));
+  check('6e: the loading bar plans no spare families when they are after the screen', /const families = SPARE_LATER \? 0 : _catalogWornSets\(\)\.length;/.test(RENDER));
+  check('6f: a piece put on stops the spare pass (later only)', /if \(SPARE_LATER\) for \(const _sl of \['chest', 'legs'\]\) onEquipChange\(_sl, \(\) => \{ _altPrewarmSeq\+\+; _ownedSig = ''; \}\);/.test(RENDER));
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall ok');
