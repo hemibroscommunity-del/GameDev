@@ -2030,7 +2030,8 @@ export const STATES = [
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */
   {
     id: 'ui2-kit', group: 'The new dashboard (in build)', title: 'The new dashboard kit (?uikit=1)',
-    about: 'Not a screen a player meets yet: the new dashboard\'s kit on a page of its own, each piece in every state and two samples (the Bro landing, the Character page with your real data), each inside a box the size of the band on this screen.',
+    /* v2.3.6780 (card UI3-kit): its about brought up to date (the three weights, the owner's palette, ?ui2look=0) */
+    about: 'Not a screen a player meets yet: the new dashboard\'s kit on a page of its own, each piece in every state and two samples (the Bro landing, the Character page with your real data), each inside a box the size of the band on this screen. Since 2026-11-26 it wears the owner\'s palette (base #14232F, navigation #223D53, recessed #0E1D29, line #4B6275, text #F1F0E9, gold #EAC474) and shows the three weights side by side: raised only for a door or an action, a stat sunk with a large number (a chevron only when it opens), facts flat in one container. Its header links ?ui2look=0, the look before, to compare.',
     run: async ({ P }) => {
       const u = new URL(P.page.url());
       u.searchParams.set('uikit', '1');

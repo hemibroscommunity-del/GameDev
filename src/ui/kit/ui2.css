@@ -21,30 +21,45 @@
  * `[aria-selected=true]`: pushed IN, its light inverted, the footprint the
  * same); focused (`:focus-visible`, `.is-focus`: a brass ring for a
  * keyboard); disabled (`[disabled]`, `.is-off`); pending (`.is-pending`).
+ *
+ * v2.3.6780 (card UI3-kit; the owner, 2026-11-26, docs/design/UI_FEEDBACK_2026-11-26.md
+ * part 3): THREE WEIGHTS, and only three.  *"Navigation buttons: Raised, beveled,
+ * prominent. Reserved for destinations and actions. Important statistics: Recessed
+ * surfaces with large numbers. No heavy beveling. Supporting information: Flat,
+ * aligned within shared containers. No individual heavy borders."*  So: RAISED
+ * (`.u2-raised`: a tile, a header control) is a destination or an action, always a
+ * button with a handler; THE STAT (`.u2-stat`) is sunk, its number large, a chevron
+ * only when it opens; FACTS (`.u2-facts`, `.u2-fact`) are label and value rows, flat,
+ * in ONE sunk container, no border, background or shadow of their own.
+ * tools/guards/ui3-weights.test.mjs reads the code and this sheet and fails a raised
+ * face on a thing that cannot be pressed.  The edges read ONE line token,
+ * `--ui2-line` (the owner's #4B6275), never a colour written here.
  */
 
 /* @@ui2-tokens: made by `node tools/guards/ui2-tokens.test.mjs --write` from src/game/ui2Tokens.js. Do not edit. */
 .ui2 {
-  --ui2-frame-top: #223D53;
-  --ui2-frame-mid: #1C3549;
-  --ui2-frame-bottom: #172C3E;
-  --ui2-page: #193145;
-  --ui2-raised-top: #294765;
-  --ui2-raised-mid: #27425D;
-  --ui2-raised-bottom: #1F374E;
-  --ui2-sunk-top: #122334;
-  --ui2-sunk-bottom: #1B3349;
-  --ui2-well: #102336;
-  --ui2-well-soft: #152B3F;
-  --ui2-well-deep: #0A1724;
+  --ui2-frame-top: #1A2E3D;
+  --ui2-frame-mid: #14232F;
+  --ui2-frame-bottom: #0F1C26;
+  --ui2-page: #14232F;
+  --ui2-raised-top: #294963;
+  --ui2-raised-mid: #223D53;
+  --ui2-raised-bottom: #1B3243;
+  --ui2-sunk-top: #0A1620;
+  --ui2-sunk-bottom: #132636;
+  --ui2-well: #0E1D29;
+  --ui2-well-soft: #132533;
+  --ui2-well-deep: #09141D;
   --ui2-brass-brass: #D8AA58;
-  --ui2-brass-highlight: #EAC675;
+  --ui2-brass-highlight: #EAC474;
   --ui2-brass-deep: #8C6530;
-  --ui2-text-ivory: #F4F0E7;
+  --ui2-line: #4B6275;
+  --ui2-line-faint: #293C4B;
+  --ui2-text-ivory: #F1F0E9;
   --ui2-text-muted: #BCC8CC;
   --ui2-text-disabled: #6F8087;
   --ui2-text-on-action: #141D22;
-  --ui2-text-gold: #EAC675;
+  --ui2-text-gold: #EAC474;
   --ui2-gold-face-0: #F3D894;
   --ui2-gold-face-1: #E4BA68;
   --ui2-gold-face-2: #D2A24E;
@@ -107,7 +122,7 @@
   --ui2-size-header: 44px;
   --ui2-size-rim: 2px;
   --ui2-size-edge: 1px;
-  --ui2-size-bevel: 2px;
+  --ui2-size-bevel: 1px;
   --ui2-size-sink: 3px;
   --ui2-size-focus: 2px;
   --ui2-size-bar: 10px;
@@ -127,13 +142,16 @@
   --ui2-fs-small: 11px;
   --ui2-fs-body: 12px;
   --ui2-fs-label: 13px;
+  --ui2-fs-nav: 13px;
   --ui2-fs-value: 15px;
   --ui2-fs-title: 17px;
   --ui2-fs-big: 24px;
   --ui2-shine: 0.5;
   --ui2-gloss: 0.12;
   --ui2-edge-light: 0.16;
-  --ui2-shadow: 0.42;
+  --ui2-shadow: 0.3;
+  --ui2-drop: 0.16;
+  --ui2-bevel-shade: 0.18;
   --ui2-sink-shadow: 0.55;
   --ui2-brush: 0.035;
   --ui2-motion-press: 70ms;
@@ -141,6 +159,29 @@
   --ui2-motion-loop: 1400ms;
 }
 .ui2.ui2-noshine { --ui2-shine: 0; }
+.ui2.ui2-was {
+  --ui2-frame-top: #223D53;
+  --ui2-frame-mid: #1C3549;
+  --ui2-frame-bottom: #172C3E;
+  --ui2-page: #193145;
+  --ui2-raised-top: #294765;
+  --ui2-raised-mid: #27425D;
+  --ui2-raised-bottom: #1F374E;
+  --ui2-sunk-top: #122334;
+  --ui2-sunk-bottom: #1B3349;
+  --ui2-well: #102336;
+  --ui2-well-soft: #152B3F;
+  --ui2-well-deep: #0A1724;
+  --ui2-brass-highlight: #EAC675;
+  --ui2-line: rgba(150, 195, 230, 0.24);
+  --ui2-line-faint: rgba(150, 195, 230, 0.1);
+  --ui2-text-ivory: #F4F0E7;
+  --ui2-text-gold: #EAC675;
+  --ui2-size-bevel: 2px;
+  --ui2-shadow: 0.42;
+  --ui2-drop: 0.28;
+  --ui2-bevel-shade: 0.26;
+}
 @media (prefers-reduced-motion: reduce) {
   .ui2 { --ui2-motion-press: 0ms; --ui2-motion-state: 0ms; --ui2-motion-loop: 0ms; }
 }
@@ -222,7 +263,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--ui2-space-s);
-  font-size: var(--ui2-fs-label);
+  font-size: var(--ui2-fs-nav);   /* v2.3.6780: one size on every navigation button */
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -234,14 +275,15 @@
 .ui2 .u2-raised {
   position: relative;
   color: var(--ui2-text-ivory);
-  border: var(--ui2-size-edge) solid rgba(150, 195, 230, 0.24);
+  border: var(--ui2-size-edge) solid var(--ui2-line);   /* v2.3.6780: the owner's line (was rgba(150, 195, 230, 0.24)) */
   border-bottom-color: rgba(0, 0, 0, 0.45);
   background: linear-gradient(180deg, var(--ui2-raised-top), var(--ui2-raised-mid) 50%, var(--ui2-raised-bottom));
+  /* v2.3.6780: "reduce the button bevels and shadows": the bevel 1, its shade and the soft drop tokens */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, var(--ui2-edge-light)),
-    inset 0 calc(-1 * var(--ui2-size-bevel)) 0 rgba(0, 0, 0, 0.26),
+    inset 0 calc(-1 * var(--ui2-size-bevel)) 0 rgba(0, 0, 0, var(--ui2-bevel-shade)),
     0 var(--ui2-size-bevel) 0 rgba(0, 0, 0, var(--ui2-shadow)),
-    0 3px 5px rgba(0, 0, 0, 0.28);
+    0 2px 4px rgba(0, 0, 0, var(--ui2-drop));
   transition: transform var(--ui2-motion-press) ease-out, box-shadow var(--ui2-motion-state) ease-out;
 }
 /* the gloss: broad, over the top of the face, away from a label at the bottom; ONE token turns it off */
@@ -273,7 +315,7 @@
 .ui2 .u2-raised.is-sel, .ui2 .u2-raised[aria-pressed='true'], .ui2 .u2-raised[aria-selected='true'] {
   transform: none;
   border-color: rgba(0, 0, 0, 0.55);
-  border-bottom-color: rgba(150, 195, 230, 0.2);
+  border-bottom-color: var(--ui2-line);   /* v2.3.6780 (was rgba(150, 195, 230, 0.2)) */
   background: linear-gradient(180deg, var(--ui2-sunk-top), var(--ui2-sunk-bottom));
   box-shadow:
     inset 0 var(--ui2-size-sink) 6px rgba(0, 0, 0, var(--ui2-sink-shadow)),
@@ -290,7 +332,7 @@
 .ui2 .u2-raised[disabled], .ui2 .u2-raised.is-off {
   cursor: default;
   color: var(--ui2-text-disabled);
-  border-color: rgba(150, 195, 230, 0.1);
+  border-color: var(--ui2-line-faint);   /* v2.3.6780 (was rgba(150, 195, 230, 0.1)) */
   background: linear-gradient(180deg, var(--ui2-well-soft), var(--ui2-well));
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
@@ -313,7 +355,7 @@
 .ui2 .u2-tile-art { display: block; object-fit: contain; flex: 0 1 auto; min-height: 0; }
 .ui2 .u2-tile.is-primary .u2-tile-art { width: 46px; height: 46px; }
 .ui2 .u2-tile-label {
-  font-size: var(--ui2-fs-label);
+  font-size: var(--ui2-fs-nav);   /* v2.3.6780: the same as the header's controls */
   font-weight: 700;
   line-height: 1.15;
   white-space: nowrap;
@@ -358,7 +400,11 @@
 .ui2 .u2-group-v { display: block; font-size: var(--ui2-fs-label); font-weight: 700; white-space: nowrap; }
 .ui2 .u2-group-v.is-none { font-weight: 400; color: var(--ui2-text-muted); }
 
-/* ═══ the stat headline: a number you can tap for its breakdown (it LOOKS tappable: raised, a chevron) ═══ */
+/* ═══ v2.3.6780: THE STAT (card UI3-kit): an important number, RECESSED, large; "No heavy beveling" ═══
+   A stat that opens its breakdown is a button and wears the chevron ("120.5 DPS ›"); one that
+   opens nothing is a div, no chevron (Group.jsx).  `.u2-raised.u2-stat` is the old raised headline,
+   still drawn as it was ONLY where the guard's allow list holds it (WeaponPage, SharedPage: card
+   UI3-combat mends them; tools/guards/lib/raisedFormsKnown.mjs). */
 .ui2 .u2-stat {
   min-height: var(--ui2-size-touch);
   border-radius: var(--ui2-radius-button);
@@ -367,13 +413,92 @@
   gap: var(--ui2-space-m);
   padding: var(--ui2-space-s) var(--ui2-space-l);
   text-align: left;
-  cursor: pointer;
+  min-width: 0;
+}
+.ui2 .u2-stat:not(.u2-raised) {
+  position: relative;
+  color: var(--ui2-text-ivory);
+  border: var(--ui2-size-edge) solid rgba(0, 0, 0, 0.45);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, var(--ui2-well), var(--ui2-well-soft));
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow));
+  transition: box-shadow var(--ui2-motion-state) ease-out;
+}
+.ui2 button.u2-stat { cursor: pointer; }
+/* pressed: sunk a little deeper (it is already in; nothing rises) */
+.ui2 button.u2-stat:not(.u2-raised):active, .ui2 .u2-stat:not(.u2-raised).is-press {
+  background: linear-gradient(180deg, var(--ui2-well-deep), var(--ui2-well));
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, var(--ui2-sink-shadow));
+}
+/* selected (the stat whose breakdown is open): a thin brass ring inside, the same footprint */
+.ui2 .u2-stat:not(.u2-raised)[aria-pressed='true'], .ui2 .u2-stat:not(.u2-raised).is-sel {
+  box-shadow: inset 0 0 0 1px var(--ui2-brass-highlight), inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow));
+}
+.ui2 .u2-stat:not(.u2-raised):focus-visible, .ui2 .u2-stat:not(.u2-raised).is-focus {
+  outline: var(--ui2-size-focus) solid var(--ui2-brass-highlight);
+  outline-offset: 2px;
 }
 .ui2 .u2-stat-words { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .ui2 .u2-stat-v { font-size: var(--ui2-fs-value); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+/* "large numbers", gold: "gold for progression and important numbers" */
+.ui2 .u2-stat:not(.u2-raised) .u2-stat-v { font-size: var(--ui2-fs-big); line-height: 1.05; color: var(--ui2-text-gold); }
 .ui2 .u2-stat-k { font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; }
 .ui2 .u2-stat-art { width: 24px; height: 24px; object-fit: contain; flex: 0 0 auto; }
 .ui2 .u2-chev { flex: 0 0 auto; font-size: var(--ui2-fs-value); color: var(--ui2-brass-highlight); line-height: 1; }
+/* the pill (`size="pill"`): one line, a picture and the number, round ends (a balance: card UI3-menus' gold) */
+.ui2 .u2-stat.is-pill {
+  display: inline-flex;
+  min-height: 0;
+  padding: var(--ui2-space-xs) var(--ui2-space-l);
+  gap: var(--ui2-space-s);
+  border-radius: var(--ui2-radius-pill);
+}
+.ui2 button.u2-stat.is-pill { min-height: var(--ui2-size-touch); }
+.ui2 .u2-stat.is-pill .u2-stat-art { width: 18px; height: 18px; }
+.ui2 .u2-stat.is-pill .u2-stat-v { font-size: var(--ui2-fs-label); line-height: 1.2; }
+.ui2 .u2-stat.is-pill .u2-stat-k { font-size: var(--ui2-fs-small); }
+
+/* ═══ v2.3.6780: FACTS (card UI3-kit): "Flat, aligned within shared containers. No individual heavy borders." ═══
+   ONE sunk container (`.u2-facts`) holds the rows; a row (`.u2-fact`) is a muted label on the left
+   and its value on the right, every value on one column (the container's right edge), with NO
+   border, background or shadow of its own (the guard reads this sheet for it).  A row that opens
+   is a button with the chevron, still flat; pressed it dims.  `.is-row`: the rows side by side,
+   each a label over its value (a strip: a phone on its side, a summary under a stat). */
+.ui2 .u2-facts {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--ui2-radius-group);
+  border: var(--ui2-size-edge) solid rgba(0, 0, 0, 0.45);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, var(--ui2-well), var(--ui2-well-soft));
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, var(--ui2-sink-shadow));
+  padding: var(--ui2-space-xs) var(--ui2-space-l);
+}
+.ui2 .u2-facts.is-row { flex-direction: row; align-items: stretch; gap: var(--ui2-space-l); }
+.ui2 .u2-fact {
+  display: flex;
+  align-items: center;
+  gap: var(--ui2-space-m);
+  width: 100%;
+  min-width: 0;
+  min-height: 22px;
+  padding: var(--ui2-space-xs) 0;
+  text-align: left;
+}
+.ui2 button.u2-fact { min-height: var(--ui2-size-touch); border: 0; background: none; box-shadow: none; padding: 0; cursor: pointer; }
+.ui2 button.u2-fact:active, .ui2 button.u2-fact.is-press { opacity: 0.72; }
+.ui2 button.u2-fact:focus-visible, .ui2 .u2-fact.is-focus { outline: var(--ui2-size-focus) solid var(--ui2-brass-highlight); outline-offset: 1px; }
+.ui2 .u2-fact-k { flex: 1 1 auto; min-width: 0; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-fact-end { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--ui2-space-s); min-width: 0; }
+.ui2 .u2-fact-art { width: 18px; height: 18px; object-fit: contain; flex: 0 0 auto; }
+.ui2 .u2-fact-v { font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; text-align: right; }
+.ui2 .u2-fact-v.is-none { font-weight: 400; color: var(--ui2-text-muted); }
+.ui2 .u2-fact-v.is-gold { color: var(--ui2-text-gold); }
+.ui2 .u2-facts.is-row .u2-fact { flex: 1 1 0; width: auto; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+.ui2 .u2-facts.is-row .u2-fact-k { flex: 0 0 auto; max-width: 100%; }
+.ui2 .u2-facts.is-row .u2-fact-v { text-align: left; }
 
 /* ═══ the action button: five light metallic faces, ONE dark label ═══ */
 .ui2 .u2-act {
@@ -396,7 +521,7 @@
     inset 0 1px 0 var(--a-edge),
     inset 0 calc(-1 * var(--ui2-size-bevel)) 0 rgba(0, 0, 0, 0.16),
     0 var(--ui2-size-bevel) 0 rgba(0, 0, 0, var(--ui2-shadow)),
-    0 3px 5px rgba(0, 0, 0, 0.28);
+    0 2px 4px rgba(0, 0, 0, var(--ui2-drop));
   cursor: pointer;
   transition: transform var(--ui2-motion-press) ease-out, box-shadow var(--ui2-motion-state) ease-out;
 }
@@ -415,7 +540,7 @@
 .ui2 .u2-act[disabled], .ui2 .u2-act.is-off {
   cursor: default;
   color: var(--ui2-text-disabled);
-  border-color: rgba(150, 195, 230, 0.12);
+  border-color: var(--ui2-line-faint);   /* v2.3.6780 (was rgba(150, 195, 230, 0.12)) */
   background: linear-gradient(180deg, var(--ui2-well-soft), var(--ui2-well));
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
