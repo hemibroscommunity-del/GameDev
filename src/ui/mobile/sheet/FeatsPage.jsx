@@ -18,7 +18,8 @@
  * (dashNav.js keeps it on every entry, as the stat tree's layers read theirs).
  *
  * THE ROOM: 172 px upright at 390 x 844 (AP over the four, two by two);
- * sideways 63 px, one row, AP the first cell.  No scroll, no smaller text.
+ * sideways 63 px, one row, AP the first cell, its label "AP" ("Achievement
+ * points" was cut at 667 x 375 on the test box).  No scroll, no smaller text.
  * The rules: src/game/feats.js; the words: src/data/say/feats.js. */
 import React from 'react';
 import { frameTap } from '../dash/DashHeader.jsx';
@@ -60,10 +61,10 @@ export function FeatsPage({ S, who }) {
   if (ap.loading) {
     head = <div className="u2-stat" data-feats-ap="loading"><Ui2Loading rows={1} /></div>;
   } else if (!self && ap.total == null) {
-    head = <Ui2Stat v={say(SAY, 'feats.apNotShared')} k={say(SAY, 'feats.ap')} data-feats-ap="" />;
+    head = <Ui2Stat v={say(SAY, 'feats.apNotShared')} k={room.short ? say(SAY, 'feats.apShort') : say(SAY, 'feats.ap')} data-feats-ap="" />;
   } else {
     head = (
-      <Ui2Stat v={fmt(ap.total)} k={say(SAY, 'feats.ap')} data-feats-ap={ap.total} data-feats-ap-known={ap.known ? 1 : 0}
+      <Ui2Stat v={fmt(ap.total)} k={room.short ? say(SAY, 'feats.apShort') : say(SAY, 'feats.ap')} data-feats-ap={ap.total} data-feats-ap-known={ap.known ? 1 : 0}
         aria-label={openTree ? say(SAY, 'feats.apAria', { v: fmt(ap.total) }) : undefined} onClick={openTree} />
     );
   }

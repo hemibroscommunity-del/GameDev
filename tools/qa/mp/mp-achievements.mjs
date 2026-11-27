@@ -419,7 +419,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.closeDest(A).catch(() => {});
 
     /* ── 7 ── */
-    B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, viewport: DESK, world: 'wheel' });
+    /* v2.3.6695 (card UI2-feats): its step 9 reads today's page on a computer, so `?ui2=0` too (Feats on a computer: mp-ui2feats 1c) */
+    B = await H.newPlayer(browser, { name: 'Onlooker', wsPort, webPort, viewport: DESK, world: 'wheel', query: 'bropages=0&ui2=0' });
     B.page.on('pageerror', (e) => errs.push('B: ' + String(e && e.message || e).slice(0, 200)));
     await H.enterWorld(B);
     const okB = await inWheel(B);
