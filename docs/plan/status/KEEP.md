@@ -1,29 +1,31 @@
 card: KEEP
-branch: claude/plan-keep-3-sfx
-prs: PR 1 (6740, the census; draft #2385), PR 2 (6741, the plugin; draft #2388, on PR 1), PR 3a (6742, the sounds; draft, on PR 2)
+branch: claude/plan-keep-4-icons
+prs: PR 1 (6740; #2385), PR 2 (6741; #2388), PR 3a (6742, sounds; #2389), PR 3b (6743, icons; draft, on #2389)
 state: ready
 
 ## Done
 
-- PR 1 (6740), the census: `tools/assets/versions.mjs`, its guard,
-  `tools/qa/mp/mp-keepcensus.mjs`, `docs/plan/census/KEEP-requests.md`.
-- PR 2 (6741), the build stamps every written-out address:
-  `tools/assets/stamp.mjs`, `keepVersions.mjs` (the plugin), guard
-  `asset-stamp.test.mjs`; 1,167 stamped, 108 left; census bare 315 -> 128;
-  scripts +10.7 KB; heap 41.3 of 42.5 MB; precheck 0 FAIL.
-- PR 3a (6742), the sounds: `src/game/assetUrl.js` (one function; its
-  table `src/game/assetTable.js` is written by the build's `load` hook,
-  97 `/sfx` rows, 4.2 KB of script, about 0.01 MB of heap; committed
-  empty, so node and dev ask as written). No `/sfx` address is built from
-  parts; the one bare request was a whole literal with a space (Monster
-  death-bony.mp3), now `%20`, which the build stamps. `loadSample` calls
-  assetUrl (a built one later). `/sfx/*` kept a year in `_headers`. Guard
-  `tools/guards/keep-sfx.test.mjs`. Census: `/sfx` 96/0/0; bare 128 -> 127.
+- PR 1 (6740): the census (`versions.mjs`, `mp-keepcensus`, KEEP-requests.md).
+- PR 2 (6741): the build stamps written-out addresses (`stamp.mjs`,
+  `keepVersions.mjs`); census bare 315 -> 128; heap 41.3 of 42.5 MB.
+- PR 3a (6742): the sounds: `assetUrl` + its build-written table; `/sfx/*`
+  kept a year; guard `keep-sfx.test.mjs`; `/sfx` 96/0/0.
+- PR 3b (6743), the icons: `/icons/` in PAGE_FAMILIES (679 rows, 30.1 KB
+  of script, +25.9); every built `/icons` address calls assetUrl; hand keys
+  gone: ITEMS_V (5 files, 2 lines left), ICON_V (2), FARM_ICON_V,
+  FOOD_ICON_V, FISH_PIC_V, IV, smallIcons V, BADGE_V, BenchParts ITEMS_V;
+  p256Twin asks an /icons twin at its own version; metalIconPath drops a
+  stamped query. Guard keep-sfx takes families (LEFT list). NO `_headers`
+  block: 10 hand requests are pinned by server tests' text, and the HUD
+  bars' address is built in entityRenderer.js (LOAD's).
+- PR 3b's mend (sitting 70's hold): main merged; UI2's two addresses
+  stamped (UiKitPage's kit cells, GearPanels' empty-slot ghost, its hand
+  `?v=2.3.4199` gone); keep-sfx whole green, its plant red.
 
 ## Next
 
-- PR 3b (6743): the next family. `/icons` is 125 hand, 0 bare (the item
-  icons' ITEMS_V); traits-frames (285) waits on entityRenderer.js (LOAD).
+- `/icons/*` block: after LOAD part 2 moves HUD_BAR_VER, and a server-test
+  PR unpins owner-icons 8g, bag-icons 2a, 5c, achievements 9a, 9f.
 
 ## Found
 
@@ -34,4 +36,5 @@ state: ready
 
 ## Needs
 
-- Nothing.
+- The orchestrator's call: a PR of server tests' text (it deploys the
+  worker) so the icons' last hand key and the `/icons/*` block can land.

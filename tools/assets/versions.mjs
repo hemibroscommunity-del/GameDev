@@ -122,8 +122,11 @@ export function versionTable({ root = ROOT, rows = null, twins = true } = {}) {
    the plugin has written the others into the script already): the whole
    table, ~3,300 rows, would be about 0.25 MB of script for nothing.  A
    family's PR 3 adds its prefix here, with the loader that calls assetUrl.
-     '/sfx/'   the sounds (97 files, 4.2 KB of script) */
-export const PAGE_FAMILIES = Object.freeze(['/sfx/']);
+     '/sfx/'   the sounds (97 files, 4.2 KB of script)
+     '/icons/' v2.3.6743: the icons (582 files, 26.5 KB more of script; PR 3b:
+               the item icons' ITEMS_V / ICON_V and the rest of the hand keys
+               that joined an /icons address went to assetUrl) */
+export const PAGE_FAMILIES = Object.freeze(['/sfx/', '/icons/']);
 
 /** The page's rows: [address, version], sorted, for the addresses of
  *  `table` (a Map, versionTable's) under `prefixes`; `versionOf` (the

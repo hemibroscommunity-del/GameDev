@@ -6,11 +6,12 @@
    player sees one picture for a weapon's skill everywhere.  Warmed on the
    loading screen (rendering/xpBarPreload.js). */
 import { POINTS_ART_DIR, POINTS_ART_V } from '../../data/pointsHeadArt.js';
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 export const XP_BAR_ICONS = Object.freeze({
-  sword: `${POINTS_ART_DIR}sword.png?v=${POINTS_ART_V}`,
-  bow: `${POINTS_ART_DIR}bow.png?v=${POINTS_ART_V}`,
-  staff: `${POINTS_ART_DIR}staff.png?v=${POINTS_ART_V}`,
+  sword: assetUrl(`${POINTS_ART_DIR}sword.png?v=${POINTS_ART_V}`),
+  bow: assetUrl(`${POINTS_ART_DIR}bow.png?v=${POINTS_ART_V}`),
+  staff: assetUrl(`${POINTS_ART_DIR}staff.png?v=${POINTS_ART_V}`),
 });
 /* the words a reader hears for each (the skill's own name, PROG3_SKILL_META) */
 export const XP_BAR_LABELS = Object.freeze({ sword: 'Melee', bow: 'Bow', staff: 'Magic' });

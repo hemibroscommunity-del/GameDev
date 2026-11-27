@@ -41,6 +41,7 @@
  *      ImageData let go, when it ends.  With BT_QA_QUERY=burstnumbers=0: the strip held
  *      (6.29 MB) and drawn, as before.
  */
+import { versionTable } from '../../assets/versions.mjs';
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -54,6 +55,11 @@ import { inflateSync } from 'node:zlib';
 import { LEVELUP_NUMBER_SRCS, LEVELUP_MAX_W, LEVELUP_MAX_H, LEVELUP_STRIP_W, LEVELUP_STRIP_H } from '../../../src/data/levelUpBurst.js';
 import { decodePng8 } from '../../../src/rendering/png8Decode.js';
 export const lane = 'full';
+/* v2.3.6743: the address the BUILT page asks for: node reads the hand key
+   (assetUrl's table is empty here), the page its file's version (card KEEP
+   PR 3b): the same table the build writes (tools/assets/versions.mjs) */
+const _vt = versionTable();
+const asPage = (u) => { const b = String(u).split('?')[0]; const v = _vt.get(b); return v ? b + '?v=' + v : u; };
 
 /* v2.3.5004 (step 7): the art from its colour numbers unless the run turns
    them off (BT_QA_QUERY=burstnumbers=0) */
@@ -192,7 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const W = window.__btLevelUpWarm;
       if (!W || typeof W.has !== 'function') return null;
       return urls.map((u) => W.has(new URL(u, location.href).href));
-    }, LEVELUP_NUM_URLS);
+    }, LEVELUP_NUM_URLS.map(asPage));
     rec.ok(`3. the ten gold numerals held decoded from the loading screen (${warm ? warm.filter(Boolean).length : 'no seam'}/10)`,
       !!warm && warm.length === 10 && warm.every(Boolean), warm);
 
