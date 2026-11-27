@@ -3906,6 +3906,10 @@ async function _prewarmAltWornSets(opts) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
     /* v2.3.3704: a set one equip away, not the one you wear */
     const spare = set.worn.map((w) => w[0] + ':' + w[1]).join(',') !== wornSig;
+    /* v2.3.6763: `later` -- the set you wear was the worn pass's, behind the
+       screen (its frames a string of hits here, each one an await: the first
+       run on the test box spent most of its 151 s on them) */
+    if (later && !spare) continue;
     for (const pose of PREWARM_POSES) {
       for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
@@ -3993,11 +3997,12 @@ async function _prewarmAltWornSets(opts) {
             continue;
           }
           try { await _prewarmBake(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }   /* v2.3.2874: off the main thread where it can be */
-          if (++sinceYield >= (fast ? 6 : (soon ? 1 : 2))) {
+          if (++sinceYield >= (fast ? 6 : ((soon || later) ? 1 : 2))) {
             sinceYield = 0;
             if (fast) await new Promise((r) => setTimeout(r, 0));
-            else if (soon) await _idleYieldSoon();
+            else if (soon || later) await _idleYieldSoon();   /* v2.3.6763: `later` with no worker paces as `soon` */
             else await _idleYield();
+            laterT0 = performance.now();
             if (seq !== _altPrewarmSeq) return;   /* v2.3.2873: superseded by a newer kick */
           }
         }

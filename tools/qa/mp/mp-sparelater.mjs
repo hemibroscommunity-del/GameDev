@@ -117,6 +117,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!onFile) await A.page.waitForTimeout(500);
     }
     rec.ok('setup: the worker holds the copper pair worn (guard)', onFile);
+    /* the armour bag reaches the worker when a browser joins with it
+       (wsClient _stashSeed, server/src/gearstash.js): once more through the
+       door, so a fresh browser is given the iron pair back */
+    await A.page.reload({ waitUntil: 'domcontentloaded' });
+    await H.enterWorld(A, 240000);
+    rec.ok('setup: back in the world, the bag seeded (guard)', await inWheel(A));
+    let held = null;
+    for (let i = 0; i < 40 && !held; i++) {
+      const rpg = (await H.adminPlayer(wsPort, myId)).rpg || {};
+      const mats = (l) => (Array.isArray(l) ? l.map((x) => x && x.mat) : []);
+      if (mats(rpg.armorStash).includes('iron') && mats(rpg.legsStash).includes('iron')) held = { armour: mats(rpg.armorStash), legs: mats(rpg.legsStash) };
+      else await A.page.waitForTimeout(500);
+    }
+    rec.ok('setup: the worker holds the iron torso and greaves in the bag (guard)', !!held, held);
     key = await H.keyAndDevice(A);
   } finally {
     stopA();
@@ -145,7 +159,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!done && !done.steps.alt && done.spare.ends === 0, done);
       const fr = end && done ? end.frames - done.frames : null;
       rec.ok(`1c. the spare sets ran to their end after the screen: bro-alt ${at(L, 'bro-alt')} s after bro-done ${at(L, 'bro-done')} s and the world ${stepAt(L, 'world')} s; ${end && end.spare.jobs} jobs in ${fr} of the renderer's frames (${end && done ? ((end.at - done.at) / 1000).toFixed(1) : '--'} s)`,
-        !!end && end.spare.ends >= 1 && at(L, 'bro-alt') != null && at(L, 'bro-alt') >= at(L, 'bro-done') && at(L, 'bro-alt') >= stepAt(L, 'world') && fr != null && fr < 20000, end);
+        !!end && end.spare.ends >= 1 && end.spare.jobs > 0 && at(L, 'bro-alt') != null && at(L, 'bro-alt') >= at(L, 'bro-done') && at(L, 'bro-alt') >= stepAt(L, 'world') && fr != null && fr < 20000, end);
       rec.ok(`1d. the page's longest stretch on the spare sets: ${end && end.spare.maxMs} ms over ${end && end.spare.slices} stretches (the line: 12 ms)`,
         !!end && end.spare.maxMs <= 12, end && end.spare);
       rec.ok('1e. the readout lists the spare sets last and says they were after the screen (spareLater)',
@@ -175,6 +189,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try {
       rec.ok('setup: 3. in the Wheel, a first login (guard)', C.inWheel);
       await H.waitFor(C, () => window.__qaDone || null, (v) => !!v, { timeout: 900000, label: 'the bro done' }).catch(() => null);
+      const bag = await H.waitFor(C, () => ((window._gameState.current.rpg || {}).armorStash || []).map((x) => x && x.mat),
+        (v) => v.includes('iron'), { timeout: 60000, label: 'the iron torso in the bag' }).catch(() => null);
+      rec.ok(`setup: 3. the iron torso is in the bag (guard): ${JSON.stringify(bag)}`, !!bag);
       /* the watch and the equip in one evaluate: nothing between them */
       const r = await C.page.evaluate((LAYERS) => new Promise((resolve) => {
         const t0 = performance.now();
