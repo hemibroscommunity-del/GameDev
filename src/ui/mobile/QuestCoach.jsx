@@ -2,6 +2,7 @@ import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'
 import { coachMayShow, noteCoach, tutorialSkipped, plateUp, noteFirstSteps, noteInTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
+import { coachClear } from '@/ui/tutorSpot.js';   /* v2.3.6791: the card clear of the controller (card UI3 PR 11; game/tutorClear.js) */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
    weapon, which is not "does the player own one" — specialAttack() refuses
    with "No weapon equipped!" when the active slot is empty, and a coach mark
@@ -2104,7 +2105,10 @@ export function QuestCoach(props) {
     React.createElement('div', {
       ref: cardRef,
       'data-coach-card': view.id,
-      style: {
+      'data-tutor': 'coach',
+      /* v2.3.6791 (card UI3 PR 11): the place worked out below, then kept clear of the controller's housings
+         (tutorSpot.js coachClear: a card hung BELOW its target lay on the right lobe sideways) */
+      style: coachClear(box, pg, {
         position: 'absolute',
         /* v2.3.2174: clamped to the WORLD's span, not the screen's.  The
            landscape dashboard can take the left edge now, and a card clamped
@@ -2225,7 +2229,7 @@ export function QuestCoach(props) {
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
         fontFamily: 'Source Sans 3,sans-serif',
-      },
+      }),
       onPointerDown: _press,
       onPointerUp: _dismiss,
     },
