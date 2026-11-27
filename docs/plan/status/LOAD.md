@@ -1,23 +1,35 @@
 card: LOAD
-branch: claude/plan-load-1-readout
-prs: (none yet; PR 1 in progress, tag 6760)
-state: working
+branch: claude/plan-load-2-bakekeep
+prs: #2386 (part 1, tag 6760: merged); #2401 (part 2, tag 6761: a draft, held in sitting 71, mended 2026-11-27)
+state: part 2 mended, waiting on the gatekeeper's next sitting
 
 ## Done
-- PR 1 code (tag 6760): `loadTimes.js` (markLift, the bro's six steps, the armour line, the why line),
-  `IntroVideo.jsx` (a mark in maybeFinish; HARD_CAP_MS const, same 20000); the new words are in DevPanel.jsx `loadTimesLines` (player-words census counts loadTimes.js), `pixiRenderer.js` `_preStep`
-  (also `markLoad('bro-<step>')`), `load-times.md`, `mp-loadtimes` (check 4), new `mp-loadlift`.
-- On the test box (2026-11-26): the coverage read at the lift costs 6 ms (one call, page's thread); bare first login reads "Why it lifted: ready", all six bro steps in order,
-  "none worn"; copper first login in a fresh browser reads "its 20 s limit", armour 8 of 177 at the lift,
-  `masks` never reached. `loadtimes` 6/6, `loadlift` 11/11.
+- Part 1 (#2386, 6760, merged): the Loading times readout says what the screen waited for and why it
+  lifted ("ready" or "its 20 s limit"), the bro's six steps, the armour's frames at the lift.
+- Part 2 (#2401, 6761): the masked bakes kept on the phone's disk by the bake worker (IndexedDB from the
+  worker; `src/game/bakeKeep.js` the key and the store's rules; `?bakekeep=0`; `docs/specs/bake-keep.md`;
+  `mp-bakekeep`).
+- Part 2's mend (sitting 71's hold: the key's proof green at the worker's own readers, the store's cap
+  and version unheld, held by text): `tools/guards/bake-keep.test.mjs` sections 6 and 7 now run the REAL
+  worker in node (`tools/guards/lib/bakeWorkerRig.mjs`: a software canvas, fetch from a table of files,
+  a stand-in IndexedDB kept across logins). 6a: every field the worker reads of a job is on the lists
+  (an allow list; `type` added to JOB_FIELDS as `NONE`: the dispatch reads it, a job has none). 6b: each
+  input the worker reads (in the job, and beside it: each file's bytes, a sheet of numbers, the look's
+  row, the rod, its script, the browser), changed alone, makes the next login bake again; the same job is
+  answered from the store, byte for byte. 7: the store's cap on the disk across logins, a version that
+  empties it, a store that throws switched off. The gatekeeper's seven plants and two of the mend's own:
+  all eleven RED (the guard's header). No plant showed a real fault in the key, the cap or the version.
 
 ## Next
-- precheck, merge origin/main once, push, open the draft PR, message the orchestrator.
+- The gatekeeper's next sitting reads #2401. Part 3 (6762) only if part 2's numbers call for it.
 
-## Found
-- `loads` in the owner's phone paste is the "pictures ready" step; the loading-screen mark ("came up") is
-  noted at the start of preloadPlayerAssets, NOT at IntroVideo's mount, so "up 21.3 s" is not the 20 s limit
-  measured from mount alone (mount is later than the mark). `IntroVideo.jsx` / `BroTown.jsx` untouched for this.
+## Found (not mended: outside the mend)
+- `_tables` / `_bms` are not dropped when a sheet of numbers is replaced under the same key
+  (`maskedBakeWorker.js` onmessage `lookSheet`): the key reads the new numbers, the bake draws the old
+  (a stale picture kept under the new key, within one session). The gatekeeper's next job (debts, LOAD 71).
+- `prewarmAltWornSets` waits on `_wornPass` with no limit (`entityRenderer.js`): the debts' next job.
+- `loads` in the owner's phone paste is the "pictures ready" step; the loading-screen mark is noted at the
+  start of preloadPlayerAssets, not at IntroVideo's mount.
 
 ## Needs
-- Nothing yet.
+- One more Loading times paste from the owner's iPhone after part 2 lands (a second login in copper).

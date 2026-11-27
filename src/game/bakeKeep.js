@@ -79,6 +79,7 @@ export const NONE = 0, KEY = 1, PIXELS = 2, FILE = 3, NUMBERS = 4, NESTED = 5;
    other field: no key. */
 export const JOB_FIELDS = Object.freeze({
   id: NONE,            /* the page's number for the reply */
+  type: NONE,          /* read by the worker's dispatch only (rod, lookSheet, keep...): a job has none (v2.3.6761, sitting 71: the worker's reads are this allow list) */
   body: NESTED,        /* an input (INPUT_FIELDS) */
   belt: NESTED,        /* an input, or null */
   worn: NESTED,        /* [{ k, inp }] (WORN_FIELDS) */

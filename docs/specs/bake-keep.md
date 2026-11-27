@@ -63,8 +63,20 @@ limit with the frames still being made); the limit is unchanged.
 - `tools/guards/bake-keep.test.mjs`: change any input, the key changes; what is
   not keyed does not move it; a field nobody listed makes no key; every field
   the page posts in a job and puts on an input is in the lists (read from
-  `entityRenderer.js`, `bakeByAddress.js`, `gearNumbers.js`); the store's rules;
-  the worker's road.
+  `entityRenderer.js`, `bakeByAddress.js`, `gearNumbers.js`); the store's rules.
+- The same guard, sections 6 and 7 (v2.3.6761, after the gatekeeper's sitting
+  71 held this PR: its proof of the key used readers of its own, and the
+  worker and the store were held by their text). Now the REAL worker runs in
+  node (`tools/guards/lib/bakeWorkerRig.mjs`: a software canvas, fetch from a
+  table of files, a stand-in IndexedDB kept across logins), a fresh import of
+  it each login: every field it reads of a job is on the lists (an allow list:
+  a read nobody listed fails), and each input it reads, in the job or beside
+  it (each file's bytes, a sheet of numbers, the look's row, the rod, its
+  script, the browser), changed alone makes the next login bake again, while
+  the same job is answered from the store byte for byte as it was baked. The
+  store on the stand-in: never past its cap on the disk, across logins; a new
+  version empties it and serves nothing kept by the last; a store that throws
+  is off for the session. Eleven plants, each red (the guard's header).
 - `mp-bakekeep` (`node tools/qa/mp/run.mjs bakekeep`): the owner's copper set,
   a first login, then a second in the same set: every frame ready at the lift,
   `masks` within 3 s of `loads`, the screen lifted on "ready"; every kept answer
