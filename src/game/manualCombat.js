@@ -270,7 +270,12 @@ export function setManualCombat(v) { _mode = v === 2 ? 2 : v === 3 ? 3 : v === 4
    and mouse do not change).  Everything 4 does unless a line asks this:
    manualOn() and tapLockOn() are false for it, so every handler takes the
    held combat's lines.  Its rules are their own modules (game/stickZones.js,
-   game/sight.js, game/latch.js); taking it out again is one small change. */
+   game/sight.js, game/latch.js); taking it out again is one small change.
+   v2.3.6648 (card PAD part 13; the owner, 2026-11-27: "for melee to stay as
+   it is ... but [BOW] and magic need to use the right button that turns into
+   the right joystick again ... with no lock on mechanism"): with a bow or a
+   staff the Attack disc is a stick, mode 4's held aim on the disc, nothing
+   locked; a sword keeps the latch (game/rangedStick.js; `?rangedstick=0`). */
 /** v2.3.6540: is this page playing the two buttons (`?manual=5`)? */
 export function twoButtonsOn() {
   if (_mode === null) _mode = manualMode();

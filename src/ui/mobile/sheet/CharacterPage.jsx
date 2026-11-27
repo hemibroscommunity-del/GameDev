@@ -42,6 +42,8 @@
 import React, { startTransition, useEffect, useRef, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { winVh } from '../playViewport.js';
+import { TITLE_FAMILIES, inTitleFamily, wornHow } from '@/game/feats.js';   /* v2.3.6695 (card UI2-feats): the family, the worn title's how */
+import { TitleFamily } from './TitleFamily.jsx';
 import { frameTap } from '../dash/DashHeader.jsx';
 import { portraitSrc } from './portraitStore.js';
 import { BRO_WEAPONS } from './broStats.js';
@@ -55,6 +57,13 @@ import { combatPools } from '@/game/combatHub.js';   /* v2.3.6686: the passport'
 import { pendingInit, pendingStep, pendingMark, pendingHolds } from '@/game/pending.js';
 import { Ui2Group, Ui2Zones, Ui2Actions, Ui2Empty, Ui2Badge, ui2RootClass } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/charPage.js';
+import { SAY as SAY_DF } from '@/data/say/dashFrame.js';
+/* v2.3.6692 (card UI2-ranks): another player's page, read only from what the game holds of them */
+import { passportFromRow } from '@/game/ranksPage.js';
+import { broHubWhose } from '@/game/broHub.js';
+import { useBoardFaces, BoardFace } from '../dash/BoardRow.jsx';
+import { CharacterOtherView } from '../dash/rankViews.jsx';
+import { rankWord } from '../dash/rankWords.js';
 import { say } from '@/game/say.js';
 import './characterPage.css';
 
@@ -214,6 +223,34 @@ function PassDoor({ id, art, k, v, none, loading, onOpen, points, aria, iconOnly
  * onWeapon  (cat) => void: today's Combat page on that weapon (BroCard)
  */
 export function CharacterPage({ S, who, onWeapon }) {
+  /* v2.3.6692 (card UI2-ranks; UI3-bro's finding 2): ANOTHER player's page never reads your state (readPassport
+     reads only yours: handed their `who`, it showed YOUR name, title, levels and AP under their label).  It is
+     drawn from the readings its caller handed (`who.passport`, a board's row: ranksPage.js passportFromRow), or,
+     handed none, from `who` itself: their name and "Not shared" lines, never one of your values. */
+  if (who != null) return <OtherCharacter who={who} />;
+  return <OwnCharacter S={S} onWeapon={onWeapon} />;
+}
+
+/** Another player's Character: read-only, their name, face and what the row carried; nothing to press. */
+function OtherCharacter({ who }) {
+  const [ref, room] = useRoom();
+  const P = who && typeof who === 'object' && who.passport && Array.isArray(who.passport.facts)
+    ? who.passport : passportFromRow(who && typeof who === 'object' ? who : { id: String(who), name: '' });
+  const faces = useBoardFaces(P.look ? [{ look: P.look }] : []);
+  const w = broHubWhose(who);
+  const whose = w && w.key === 'dashFrame.whose' ? say(SAY_DF, 'dashFrame.whose', { name: w.name }) : say(SAY_DF, 'dashFrame.whoseUnknown');
+  const combatWord = say(SAY, 'charPage.combatLv') + ' ' + (P.combat == null ? rankWord(P.notShared) : P.combat);
+  return (
+    <div ref={ref} style={{ flex: '1 1 auto', height: '100%', minHeight: 0, minWidth: 0, display: 'flex' }}>
+      <CharacterOtherView P={{ ...P, name: P.name || whose }} face={faces[0] || null} Face={BoardFace} whose={whose} word={rankWord}
+        combatWord={combatWord} short={room.short} />
+    </div>
+  );
+}
+
+/* your own passport (today's Character page; UI3-bro made your own the one Bro page) */
+function OwnCharacter({ S, onWeapon }) {
+  const who = null;
   useClock(() => passportKey(S), 500);
   const [ref, room] = useRoom();
   const P = broPassport(readPassport(S), who == null ? null : who);
@@ -358,6 +395,9 @@ export function TitlesPage({ S, who }) {
   useEffect(() => () => { try { window.__btTitles = null; } catch (e) { /* no window */ } }, []);
 
   const list = earnedTitles(S);
+  /* v2.3.6695 (card UI2-feats): the one family (Blooded, Veteran, Centurion) drawn as one row, the rest single */
+  const fams = TITLE_FAMILIES.filter((f) => f.ids.some((id) => list.some((t) => t.id === id)));
+  const singles = list.filter((t) => !inTitleFamily(t.id));
   const earned = (id) => !!(a && has(a.got, id));
   const send = (want) => {
     if (pendingHolds(pend, 'title:equip')) return;   /* a second press never goes out while the first is out */
@@ -378,6 +418,9 @@ export function TitlesPage({ S, who }) {
       {self && a && a.known ? <span className="u2-group-k" style={{ marginLeft: 'auto' }}>{say(SAY, 'charPage.earnedOf', { n: list.length, total: ACHIEVEMENTS.length })}</span> : null}
     </Ui2Group>
   );
+  /* v2.3.6695 (card UI2-feats): how the worn title was earned, under it (its requirement, word for word) */
+  const how = self && wornDef ? wornHow(S) : '';
+  const identity = how ? <>{head}<span className="u2-titles-how" data-titles-how="">{how}</span></> : head;
   let body;
   if (!achvLive(S)) body = <Ui2Empty kind="locked" title={say(SAY, 'charPage.titlesShut')} />;
   else if (!self) body = <Ui2Empty kind="absent" title={say(SAY, 'charPage.titlesOther')} />;
@@ -386,7 +429,8 @@ export function TitlesPage({ S, who }) {
   else {
     body = (
       <div className={'u2-titles' + (room.short ? ' is-short' : '')} data-titles-list={list.length}>
-        {list.map((t) => (
+        {fams.map((f) => <TitleFamily key={f.id} S={S} fam={f} picked={picked} worn={worn} onPick={setPicked} wearingWord={say(SAY, 'charPage.wearing')} />)}
+        {singles.map((t) => (
           <button key={t.id} type="button" className="u2-raised u2-title-row" aria-pressed={picked === t.id ? 'true' : 'false'}
             data-title-row={t.id} data-title-worn={t.id === worn ? 1 : 0} {...frameTap(() => setPicked(t.id))}>
             {t.art ? <img src={t.art} alt="" draggable={false} /> : null}
@@ -403,7 +447,7 @@ export function TitlesPage({ S, who }) {
     ? <Ui2Actions actions={acts} marks={marks} whyWord={(k) => word(k)} /> : null;
   return (
     <div ref={ref} className={ui2RootClass() + ' u2-pass' + (room.short ? ' is-short' : '')} data-titles-page={self ? 'self' : 'other'}>
-      <Ui2Zones style={room.short ? { flexDirection: 'row', gap: 4 } : undefined} identity={head} summary={body} actions={actions} />
+      <Ui2Zones style={room.short ? { flexDirection: 'row', gap: 4 } : undefined} identity={identity} summary={body} actions={actions} />
     </div>
   );
 }

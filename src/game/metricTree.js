@@ -48,7 +48,11 @@ export const OPS = Object.freeze({
   swing: (v) => (v[0] * v[1] * v[2] + (v.length > 3 ? v[3] : 0)) / 1000,
 });
 
-export const SOURCES = Object.freeze(['base', 'points', 'level', 'item']);
+export const SOURCES = Object.freeze(['base', 'points', 'level', 'item',
+  /* v2.3.6695 (card UI2-feats): AP's tree (src/game/feats.js apTree): 'medal' an earned achievement
+     (`id`, a door to its medal; null: none earned yet), 'rest' quests, guild rungs and the arena
+     together (the worker keeps one total) */
+  'medal', 'rest']);
 
 function node(id, value, fmt, more) {
   return Object.freeze({ id, value: Number(value), fmt, ...(more || {}) });
@@ -59,6 +63,9 @@ function leaf(id, value, fmt, source) {
 function branch(id, value, fmt, op, kids) {
   return node(id, value, fmt, { op, kids: Object.freeze(kids.filter(Boolean)) });
 }
+/* v2.3.6695: the same makers for another headline's tree (feats.js apTree), never a second shape */
+export const treeLeaf = leaf;
+export const treeBranch = branch;
 
 /** v2.3.6686: the parts calcDisplayDps(rpg, wpn, out) filled, with its total: { ...out, dps },
  *  or null where it filled none (no weapon).  Call as dpsPartsFrom(out, calcDisplayDps(r, w, out)). */

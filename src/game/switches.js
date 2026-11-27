@@ -256,6 +256,7 @@ const FORMS = {
   'questpages': '0',
   'questpath': '',
   'racedoor': '0',
+  'rangedstick': '0',
   'rankstyle': '0',
   'reachspecials': '0',
   'repairms': '*',

@@ -47,7 +47,7 @@ export const PACKETS = [
      (v2.3.4036), a packet of their own: the two dashboard packets are full */
   { slug: 'dashboard-fish', title: 'Dashboard: the Leaderboards and the rare fish',
     /* v2.3.4393: + the Leaderboards (their own button on the row) and the daily spin's records; v2.3.5503: + the Ranks page's picker open */
-    screens: ['fish-weigh', 'fish-board', 'dash-leaderboard', 'leaderboard-picker', 'leaderboard-skill', 'leaderboard-spin'] },
+    screens: ['fish-weigh', 'fish-board', 'ui2-ranks-landing', 'ui2-ranks-group', 'ui2-ranks-board', 'ui2-ranks-spin', 'ui2-ranks-points'] },   /* v2.3.6692: Ranks under the new dashboard */
   /* v2.3.4151: the Gear tab, the resting dashboard's three panels; v2.3.4191: + the card's "⋯" and a material */
   /* v2.3.6600: with the Bow's combat stats (Bro's Combat page on the bow: what the bow you wear does) */
   { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear (and the Bow\'s combat stats)',

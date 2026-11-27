@@ -515,6 +515,7 @@ const DOOR_SUITES = Object.freeze({
   'server/test/stick-zones.test.mjs': { field: 'S._stickPhase', fn: 'stickTo', holds: '§5: no write of S._stickPhase in src/ outside stickTo', prop: '_stickPhase', besides: [] },   /* v2.3.6540: card CT, the two buttons */
   'server/test/sight.test.mjs': { field: 'S._sightPhase', fn: 'sightTo', holds: '§6: no write of S._sightPhase in src/ outside sightTo', prop: '_sightPhase', besides: [] },   /* v2.3.6540: card CT, the two buttons */
   'server/test/latch.test.mjs': { field: 'S._latchPhase', fn: 'latchTo', holds: '§4: no write of S._latchPhase in src/ outside latchTo', prop: '_latchPhase', besides: [] },   /* v2.3.6540: card CT, the two buttons */
+  'tools/guards/ranged-stick.test.mjs': { field: 'S._discKind', fn: 'discKindTo', holds: '10. every write of S._discKind in src/ is discKindTo\'s, once (the syntax tree)', prop: '_discKind', besides: [] },   /* v2.3.6648: card PAD part 13 (the Attack disc's kind) */
   'server/test/thumb-side.test.mjs': { field: 'S._thumbPhase', fn: 'thumbTo', holds: '5. no write of S._thumbPhase in src/ outside thumbTo', prop: '_thumbPhase', besides: [] },   /* v2.3.6549: card CT part 16 (the right thumb's phase) */
   /* v2.3.5219: the harvest's page door (the page's harvest, cook and fishing rows: one field) */
   'server/test/harvest-page-door.test.mjs': { field: 'S._extraction', fn: 'harvestTo', holds: '§2: no write of ._extraction in src/ outside harvestTo, nor of a harvest record\'s .status',
