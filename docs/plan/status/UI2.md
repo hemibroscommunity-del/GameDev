@@ -1,6 +1,6 @@
 card: UI2
-branch: claude/plan-ui2-11-quests (this session: the Quests mend); claude/plan-ui2-9c-equipment (UI2-gear PR 3)
-prs: Quests #2399 (draft, step 6, tag 6691; base claude/plan-ui2-grip); UI2-gear PR 3, v2.3.6689 (draft, base main; ready once its checks are green)
+branch: claude/plan-ui2-11-quests (this session: the Quests mend); claude/plan-ui2-9c-equipment (UI2-gear PR 3); claude/plan-ui2-12-codex (UI2-codex); claude/plan-ui2-14-pets (UI2-pets)
+prs: Quests #2399 (draft, step 6, tag 6691; base claude/plan-ui2-grip); UI2-gear PR 3, v2.3.6689 (draft, base main; ready once its checks are green); the Codex #2408 (draft, step 6, tag 6693); Pets #2413 (draft, step 6, tag 6696; base claude/plan-ui2-12-codex)
 state: ready
 
 ## Done
@@ -11,13 +11,18 @@ state: ready
 
 - v2.3.6697, card UI2-grip (the owner's request of 2026-11-26; branch claude/plan-ui2-grip): the band's pull handle gone (the owner, 2026-11-26), `?bandgrip=1` the way back; the fold's hook `data-dash-fold` worn by the row's own control (the frame's Gear and Close; CLOSE under ?ui2=0), so no finder moved; the coach's "Tap the handle" only with the handle; `tools/guards/band-grip.test.mjs` (G1 to G6 planted, each red); `mp-bandgrip` (32 of 32 on the test box); UI-DESIGN-NOTES' band section.
 - v2.3.6689, step 5 PR 3 (card UI2-gear; branch claude/plan-ui2-9c-equipment, base main): Bro's Equipment door opens a showcase (`sheet/GearShowcase.jsx`, page `broEquip`: the figure, the nine worn cells by Gear's one body table `src/game/gearShowcase.js GEAR_BODY`, no bag, Manage Gear for yourself only); each cell and the player card's equipment row open the one item page (`itemPageOpen.js`: showcase, profile and another player's read-only sources); `tools/guards/gear-showcase.test.mjs` (S1-S10 planted, each red); `mp-ui2gear` steps 8c, 9c, 11-14 (33 of 33 on the test box, the final code, by a helper); `ui2-bro-equipment` in states.mjs and the notes.
+- v2.3.6693, card UI2-codex (step 6; branch claude/plan-ui2-12-codex, stacked on claude/plan-ui2-11-quests): the Codex as an illustrated collection (the kit's Ui2Collection: Monsters, Items, Resources, Townsfolk, Lands, Pets), a monster's showcase (the kit's Ui2Showcase: its idle strip, Combat, Loot, Habitat, Story, its essentials), Loot as plain rows (one chance each), a drop opening the one item page ("In the Codex", Drops from, Found from); the rules codexView.js, entityInspect.js, lootRows.js and their suites, the mount guard codex-mount; `mp-ui2codex`; states dash-codex-*; its own status file docs/plan/status/UI2-codex.md.
 - v2.3.6689, the mend (sitting 70's gatekeeper held #2391: 2b to 2d read the wiring as text): `tools/guards/gear-showcase.test.mjs` 2b to 2e read the showcase's tap, `openCardItem`, `openItemPage`, `itemPageInput` and the item page off Babel's tree, an ALLOW list holding `owner` to where the actions are offered (plants W1 to W7 red; S2 and S4 also refuse an owner's source carrying a bag entry); mp-ui2bro 2c reads the showcase.
+- v2.3.6694, card UI2-life (step 6; branch claude/plan-ui2-15-life, stacked on claude/plan-ui2-13-ranks): Life Skills under the frame: the landing (Total level, the ten doors filling the page, Lv and the dot inside), a skill's page (ten frame pages), All unlocks, How it works (`sheet/SkillHow.jsx`, today's lines moved whole); `src/game/lifeProfile.js`; `life-profile.test`, `life-mount.test`; `mp-ui2life`; mp-hitladder and mp-xpfade moved. Its own status: `docs/plan/status/UI2-life.md`.
 
 - v2.3.6691, card UI2-quests (step 6; branch claude/plan-ui2-11-quests, stacked on claude/plan-ui2-grip): the landing (your quests as rows; Daily, Completed (n), On offer (n) doors; the empty and loading states), a quest's own page (the steps behind, NOW dominant, "The adventure continues", Track, Show on map, the Rewards door; a done quest's whole history and "Next:"; an offer's talk), the frame pages questRewards, questsDaily, questsDone, questsOffers; `questDetail` out of HANDS_OVER (dash-nav 3h rewritten, its plant red); the rules `questLanding`, `journeyToNow`, `questActions`, `questOpens` (src/game/questPages.js); the drawing `dash/questViews.jsx` run in node by `tools/guards/lib/jsxText.mjs`; `tools/guards/quests-ui2.test.mjs` (R1-R12, V1-V6 planted, each red; 81 mutants, 3 equivalent survivors listed); `tools/guards/quests-mount.test.mjs` (P1-P5, D1-D4 red) on `tools/guards/lib/jsxMount.mjs` (gear-mount's follower moved there); `mp-ui2quests`; the older tests moved (mp-trackquest, mp-dailyrewards 7, mp-deskwords 4, mp-ui2frame 8; mp-questpages and mp-questjournal to `?ui2=0`); states `ui2-quest-*`; UI-DESIGN-NOTES "Quests under the new dashboard".
 - v2.3.6691, the mend of sitting 71 (the gatekeeper held #2399 at 79b820ea): quests-ui2 W2b, an ALLOW list (every word a quest's page draws is the game's own or a fixed label; plants V3b-d, the bare `{page.who.steps.length}`, "2/6" and "4 steps" beside the title, each red; W2 was green on all three); the pinned card's road to a second quest: `questPageSel` / `questPageKey` (src/game/questPages.js; the page keyed per entry, QuestDetailPanel.jsx), dashNav's push in one breath takes the same page under the opener with its way home (Back leaves in one press); quests-ui2 S1-S2 (plants R13-R14 red), dash-nav 3i (its plant red), mp-ui2quests 5b (red on 79b820ea: "beast_1" still shown, Back "‹ Quest"; green on the mend, Back "‹ World"); the sideways actions floored at the touch size (questsUi2.css).
+- tag 6696, card UI2-pets (step 6; branch claude/plan-ui2-14-pets, stacked on claude/plan-ui2-12-codex): Pets as Bro's door, the companion's landing, Owned, a pet's page, All (the journal; the Codex's Pets door opens it); `?ui2=0` today's page; its status docs/plan/status/UI2-pets.md.
 
 ## Next
 - Quests (#2399): nothing, it waits for the gatekeeper.  The mend's runs on its final code (main e8ccff26 merged; the test box): ui2quests 34/34 (by a helper; 5b green, red on 79b820ea), membudget 12/12 (buffers 25.1 at its highest, home again, under the one line 25.2 that now carries both reasons, KEEP's and Quests').  After the merge, ui2quests 6 sideways was red ("Map" 42 px wide with main's kit spacing): questsUi2.css floors the sideways actions at the touch size.
+- Pets (#2413): nothing, it waits for the gatekeeper.  The mend of sitting 72 (Release's ask and every press read at the drawing) is in docs/plan/status/UI2-pets.md.
+- The Codex (#2408): nothing, it waits for the gatekeeper.  The mend of sitting 72 (its loot page by one rule, `lootPage`; the roll's words and the namer read from the page's tree) is in docs/plan/status/UI2-codex.md.
 - Nothing on UI2-gear: its three PRs are up.  The Codex's road into the item page is UI2-codex's: it enters `openItemPage({ from: 'codex', ... })` (dash/itemPageOpen.js), place 'codex'.
 
 ## Found
@@ -27,6 +32,8 @@ state: ready
 
 - (UI2-gear PR 3) `ItemTooltip.jsx` is not mounted (its parent `InventorySurface` left GameApp): no road to move, listed in the PR.
 - (UI2-gear PR 3, mended in its mend) mp-ui2bro's step 2c read "Equipment opens Gear": it now reads the showcase (page broEquip), Back to Bro, as #2405 reads it.
+
+- (UI2-feats, tag 6695) Feats is up beside Life Skills: its status `docs/plan/status/UI2-feats.md`; the Bro strip is four entries now (the title is Feats').
 
 ## Needs
 - Nothing.

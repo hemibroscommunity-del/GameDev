@@ -180,7 +180,7 @@ export const SYSTEMS = Object.freeze({
       f('server/src', 'skillpoints'),   /* v2.3.5283 (card R): the skill points' door */
       f('server/src', 'xp'),   /* v2.3.5289 (card R): experience and levels' door */
       f('server/src', 'queststate'),   /* v2.3.5284 (card R): quest state's door */
-      f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPages|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
+      f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPages|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petPages|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
     ],
     words: ['quest', 'achievement', 'codex', 'pet', 'points', 'tour', 'xp', 'level'],
     traps: ['quests'],
@@ -251,7 +251,7 @@ export const SYSTEMS = Object.freeze({
   },
   input: {
     what: 'touch and the controls on a phone',
-    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch|freeAttack|thumbSide|thumbGlue|thumbArc|contextButton|lockFace|bowSpecialNow|aimMarks|padSkin|tutorClear'), f('src/ui', 'tapDismiss|swallowTapClick|tutorSpot')],   /* v2.3.6791: + the messages' rule clear of the controller and its glue (card UI3 PR 11) */   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons); v2.3.6547: + freeAttack (item 8); v2.3.6549: + thumbSide, thumbGlue, thumbArc (part 16); v2.3.6550: + contextButton (part 17); v2.3.6551: + lockFace (part 18); v2.3.6557: + bowSpecialNow (part 23 PR 2); v2.3.6555: + aimMarks (card CT part 22, the aim's frame and caret); v2.3.6640: + padSkin (card PAD, the controller) */
+    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch|freeAttack|thumbSide|thumbGlue|thumbArc|contextButton|lockFace|bowSpecialNow|rangedStick|aimMarks|padSkin|tutorClear'), f('src/ui', 'tapDismiss|swallowTapClick|tutorSpot')],   /* v2.3.6791: + the messages' rule clear of the controller and its glue (card UI3 PR 11) */   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons); v2.3.6547: + freeAttack (item 8); v2.3.6549: + thumbSide, thumbGlue, thumbArc (part 16); v2.3.6550: + contextButton (part 17); v2.3.6551: + lockFace (part 18); v2.3.6557: + bowSpecialNow (part 23 PR 2); v2.3.6555: + aimMarks (card CT part 22, the aim's frame and caret); v2.3.6640: + padSkin (card PAD, the controller) */
     words: ['touch', 'control', 'tap', 'thumb', 'swallow'],
     traps: ['input'],
     doors: [],
@@ -319,7 +319,12 @@ export const SYSTEMS = Object.freeze({
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
     files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor|guardBreak|broPages|ui2Tokens|dashNav|dashDests|dashGrow|broHub|screenZones|pending|combatHub|progression|metricTree') /* v2.3.6686: a headline number as a tree (card UI2-combat PR 2) */ /* v2.3.6683: Bro's six doors, a screen's zones and actions, what is out (card UI2-bro) */ /* v2.3.6685: Combat's hub and its pools, a skill's progress (card UI2-combat) */ /* v2.3.6682: + the page's growing motion (card UI2-frame PR 2); v2.3.6681: the dashboard's way round and its destinations (card UI2-frame); v2.3.6680: the new dashboard kit's tokens (card UI2); v2.3.6554: the shield drawn down at the worker's break (card CT part 20); v2.3.6600: the Bro tab's pages (card BRO) */, f('src/game', 'itemInspect') /* v2.3.6687: the one item page's model (card UI2-gear) */, f('src/game', 'compare|equipProject|workspace') /* v2.3.6688: Gear's comparison, its projection, the two-panel workspace (card UI2-gear PR 2) */, f('src/game', 'equipLook') /* v2.3.6698: the Equipped panel's look, its one switch (card UI2-equipgreen) */, f('src/game', 'gearShowcase') /* v2.3.6689: Bro's Equipment showcase, the body's one shape, the item page's roads (card UI2-gear PR 3) */, f('src/game', 'menuTile|gearGeometry') /* v2.3.6784: the Menu's picture, Gear's whole rows (card UI3-menus) */, f('src/game', 'charHud') /* v2.3.6781: the character HUD's rules, top left (card UI3 PR 2) */,
-      f('src/game', 'hudCorner') /* v2.3.6790: what the top-left corner holds (card UI3 PR 10) */, f('src/game', 'topGold') /* v2.3.6786: the gold on the top bar's rules (card UI3 PR 7) */, f('src/game', 'hudArt') /* v2.3.6787: the character HUD in the owner's pictures (card UI3 PR 8) */],
+      f('src/game', 'hudCorner') /* v2.3.6790: what the top-left corner holds (card UI3 PR 10) */, f('src/game', 'topGold') /* v2.3.6786: the gold on the top bar's rules (card UI3 PR 7) */,
+      f('src/game', 'lifeProfile') /* v2.3.6694: Life Skills' total, doors, a skill's progress and its whole roadmap (card UI2-life) */,
+      f('src/game', 'feats') /* v2.3.6695: Feats' rules, AP's two sources, the four tiers, the one title family (card UI2-feats) */,
+      f('src/game', 'codexView|entityInspect|lootRows') /* v2.3.6693: the Codex's collection, a showcase, a monster's loot rows (card UI2-codex) */,
+      f('src/game', 'ownPlate') /* v2.3.6788: your own name plate's rule (card UI3 PR 9) */,
+      f('src/game', 'hudArt') /* v2.3.6787: the character HUD in the owner's pictures (card UI3 PR 8) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

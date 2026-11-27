@@ -285,31 +285,33 @@ async function steps({ P, wsPort, rec, errors, me }) {
   await shot(P, 'pet-follows');
 
   /* ── 8. the Pets page ── */
-  await H.openDest(P, 'More').catch(() => {});
-  await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  const page = await P.page.waitForSelector('[data-pets-panel]', { timeout: 5000 }).then(() => true).catch(() => false);
-  const rowP = page ? await P.page.$$eval('[data-pet-row]', (els) => els.map((el) => ({ id: el.getAttribute('data-pet-row'), text: el.innerText.replace(/\s+/g, ' ') }))) : [];
-  rec.ok(`More -> Pets opens the Pets page, a row for Sparky ("${rowP[0] && rowP[0].text}")`, page && rowP.length === 1 && /Sparky/.test(rowP[0].text) && /With you/.test(rowP[0].text), rowP);
+  /* v2.3.6696 (card UI2-pets): Bro's Pets door (H.dashOpen), Owned (a card a pet), a pet's page (its row of actions) */
+  await H.dashOpen(P, 'pets').catch(() => {});
+  const land = await P.page.waitForSelector('[data-pets-page="pets"]', { timeout: 15000 }).then(() => true).catch(() => false);
+  if (land) await P.page.click('[data-pets-door="owned"]').catch(() => {});
+  const page = land && await P.page.waitForSelector('[data-pets-owned]', { timeout: 15000 }).then(() => true).catch(() => false);
+  const rowP = page ? await P.page.$$eval('[data-pets-owned] [data-pets-card]', (els) => els.map((el) => ({ id: el.getAttribute('data-pets-card'), text: el.innerText.replace(/\s+/g, ' ') }))) : [];
+  rec.ok(`Bro -> Pets -> Owned, a card for Sparky ("${rowP[0] && rowP[0].text}")`, page && rowP.length === 1 && /Sparky/.test(rowP[0].text) && /With you/.test(rowP[0].text), rowP);
   await shot(P, 'pets-page');
   if (page && rowP.length) {
-    await P.page.click(`[data-pet-row="${rowP[0].id}"]`);
-    await P.page.waitForTimeout(300);
-    await P.page.click(`[data-pet-active="${rowP[0].id}"]`).catch(() => {});
+    const act = (id) => `[data-pets-one="${rowP[0].id}"] [data-u2-action="${id}"] button`;
+    await P.page.click(`[data-pets-card="${rowP[0].id}"]`);
+    await P.page.waitForSelector(act('active'), { timeout: 8000 }).catch(() => {});
+    await P.page.click(act('active')).catch(() => {});
     await P.page.waitForFunction(() => { const b = window._gameState.current._petBook; return b && b.active === null; }, null, { timeout: 5000 }).catch(() => {});
-    await P.page.waitForTimeout(300);
+    await P.page.waitForTimeout(600);
     const away = await P.page.evaluate(() => window._pixiRenderer.petDrawn());
     rec.ok('Put away: the pet leaves the ground', !!away && away.visible === false, away);
-    await P.page.click(`[data-pet-active="${rowP[0].id}"]`).catch(() => {});
+    await P.page.click(act('active')).catch(() => {});
     await P.page.waitForFunction(() => { const b = window._gameState.current._petBook; return b && b.active; }, null, { timeout: 5000 }).catch(() => {});
-    await P.page.waitForTimeout(300);
+    await P.page.waitForTimeout(600);
     const back = await P.page.evaluate(() => window._pixiRenderer.petDrawn());
     rec.ok('Take out: it is back', !!back && back.visible === true, back);
-    await P.page.click(`[data-pet-release="${rowP[0].id}"]`).catch(() => {});
+    await P.page.click(act('release')).catch(() => {});
     await P.page.waitForTimeout(300);
-    const ask = await P.page.$(`[data-pet-release-yes="${rowP[0].id}"]`);
+    const ask = await P.page.$('[data-pets-one] [data-u2-confirm="release"]');
     rec.ok('Release asks first ("Release ... for good?")', !!ask);
-    await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('[data-pets-panel] button')).find((q) => (q.textContent || '').trim() === 'Keep'); if (b) b.click(); });
+    await P.page.click('[data-pets-one] [data-u2-confirm="release"] [data-esc]').catch(() => {});
   }
   await H.closeDest(P).catch(() => {});
   await P.page.waitForTimeout(400);

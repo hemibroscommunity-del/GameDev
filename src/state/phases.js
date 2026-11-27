@@ -535,6 +535,19 @@ export const PHASES = [
     note: 'v2.3.6540: the five ends (LATCH_ENDS press, range, killed, death, zone) and the one move (the target dead, another in sight: the nearest, no new press). Its notes, the locked id and the last end, written by latchTo with it. v2.3.6548 (card CT part 15): auto is a phase, not a boolean beside it (S.autoAttack derived from it, latchHolds); active to auto at the hold\'s fill (latchFill: the press\'s start time S._latchHoldAt, not a phase); with the hold\'s rule a kill lets go (no move); `?holdauto=0` the old press (a lock is auto at once, the move kept).',
   },
   {
+    name: 'disc', side: 'page', status: 'door',
+    what: 'The two buttons\' Attack disc: a latch (a sword: the sight\'s pick, the lock, the hold) or a stick (a bow or a staff: the thumb aims the shot, nothing locks).',
+    field: 'S._discKind', states: ['latch', 'stick'],
+    fn: 'discKindTo', file: 'src/game/rangedStick.js',
+    clears: [
+      { edge: 'end', at: 'src/game/rangedStick.js discKindTo' },
+    ],
+    rejoin: 'none: the page\'s own, made again each frame from the weapon in hand (discSync)',
+    held: { suite: 'tools/guards/ranged-stick.test.mjs' },
+    notes: [],
+    note: 'v2.3.6648 (card PAD part 13): null off the two buttons. A change of kind (a weapon swapped, the switch) is the hold\'s end: the aim and the held attack let go, the latch idle, the sighting cleared, the press spent. `?rangedstick=0` makes every weapon a latch.',
+  },
+  {
     name: 'thumb', side: 'page', status: 'door',
     what: 'The two buttons\' right side: calm (Attack and Jump), threat (Block: a monster in sight or locked, or a monster\'s hit in the last 3 s) or reach (Block and the specials: a monster where an attack connects).',
     field: 'S._thumbPhase', states: ['calm', 'threat', 'reach'],

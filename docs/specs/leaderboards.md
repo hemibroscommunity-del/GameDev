@@ -190,7 +190,10 @@
   doubles until it is lost, one takes it and deletes the character): the six
   buttons, the page, faces and levels, the win, the loss, the grey DELETED
   rows, sideways, 375 / 360 / 320 px. Pictures: `docs/shots/leaderboards-*.webp`.
-- UI review states `dash-leaderboard`, `leaderboard-spin`, `fish-board`.
+- UI review states `ui2-ranks-landing`, `ui2-ranks-group`, `ui2-ranks-board`, `ui2-ranks-spin`,
+  `ui2-ranks-points`, `fish-board` (v2.3.6692: Ranks under the new dashboard, card UI2-ranks;
+  today's page under `?ui2=0`: `mp-ranksstyle`, `mp-boards`, `mp-boardslook`). The new pages:
+  `node tools/qa/mp/run.mjs ui2ranks`; their rules `tools/guards/ranks-ui2.test.mjs`.
 
 ## Rows from before a row carried a face (v2.3.4545)
 

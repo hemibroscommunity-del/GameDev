@@ -57,15 +57,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 }
 
+/* v2.3.6696 (card UI2-pets): Pets is Bro's door under the new dashboard (H.dashOpen takes a player's taps:
+   the Menu, Bro, Pets; More's tile under ?ui2=0), the companion's landing; More room is on Owned */
 const openPets = async (P) => {
-  await H.openDest(P, 'More').catch(() => {});
-  await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="pets"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
-  /* v2.3.3425: 15 s, not 5 -- on this box, which draws a frame every few
-     hundred ms, More, its tile and the page's first draw took longer than 5:
-     the page came up just after the wait gave up (the screenshot taken next
-     shows it), and the two checks that read it were skipped as "null" */
-  return P.page.waitForSelector('[data-pets-panel]', { timeout: 15000 }).then(() => true).catch(() => false);
+  await H.dashOpen(P, 'pets').catch(() => {});
+  return P.page.waitForSelector('[data-pets-page="pets"]', { timeout: 15000 }).then(() => true).catch(() => false);
+};
+const openOwned = async (P) => {
+  if (!(await openPets(P))) return false;
+  await P.page.click('[data-pets-door="owned"]').catch(() => {});
+  return P.page.waitForSelector('[data-pets-owned]', { timeout: 15000 }).then(() => true).catch(() => false);
 };
 const peerPets = (P) => P.page.evaluate(() => (window._pixiRenderer && window._pixiRenderer.peerPetsDrawn ? window._pixiRenderer.peerPetsDrawn() : null));
 
@@ -91,12 +92,13 @@ async function steps({ A, B, wsPort, rec, errors }) {
   /* ── 2. the Pets page ── */
   const page = await openPets(A);
   const ward = page ? await A.page.evaluate((id) => {
-    const row = document.querySelector(`[data-pet-row="${id}"]`);
+    const row = document.querySelector(`[data-pets-page="pets"] [data-pets-figure="${id}"]`) && document.querySelector('[data-pets-page="pets"]');
     const w = row && row.querySelector('[data-pet-ward]');
     return w ? { pct: w.getAttribute('data-pet-ward'), text: w.innerText.replace(/\s+/g, ' ') } : null;
   }, made.pet) : null;
   rec.ok(`the Pets page says what it wards ("${ward && ward.text}")`, !!ward && ward.pct === '34' && /Softens chills 34%/.test(ward.text), ward);
-  const house = page ? await A.page.evaluate(() => { const h = document.querySelector('[data-pet-house]'); return h ? { cap: h.getAttribute('data-pet-house'), text: h.innerText.replace(/\s+/g, ' ') } : null; }) : null;
+  const owned = page ? await openOwned(A) : false;
+  const house = owned ? await A.page.evaluate(() => { const h = document.querySelector('[data-pet-house]'); return h ? { cap: h.getAttribute('data-pet-house'), text: h.innerText.replace(/\s+/g, ' ') } : null; }) : null;
   rec.ok(`...and offers more room ("${house && house.text}")`, !!house && house.cap === '30' && /room for 10 more pets, 1,000 gold/.test(house.text), house);   /* v2.3.3481: the row says pets */
   await shot(A, 'pets-page');
   await H.closeDest(A).catch(() => {});
@@ -149,20 +151,20 @@ async function steps({ A, B, wsPort, rec, errors }) {
   await H.grant(wsPort, aId, 'gold', { amount: 5000 });
   await A.page.waitForFunction(() => (window._gameState.current.rpg || {}).coins >= 5000, null, { timeout: 8000 }).catch(() => {});
   const coins0 = await H.readState(A, (S) => S.rpg.coins);
-  await openPets(A);
+  await openOwned(A);
   await A.page.click('[data-pet-house-buy="30"]').catch(() => {});
   await A.page.waitForTimeout(300);
   const asked = await A.page.evaluate(() => { const h = document.querySelector('[data-pet-house]'); return h ? h.innerText.replace(/\s+/g, ' ') : ''; });
   rec.ok(`More room asks first ("${asked}")`, /Buy room for 10 more pets for 1,000 gold\?/.test(asked), asked);   /* v2.3.3481 */
-  await A.page.click('[data-pet-house-yes="30"]').catch(() => {});
+  await A.page.click('[data-pet-house="30"] [data-u2-confirm="house"] [data-enter]').catch(() => {});   /* v2.3.6696: the kit's one confirmation */
   await A.page.waitForFunction(() => { const b = window._gameState.current._petBook; return b && b.cap === 40; }, null, { timeout: 8000 }).catch(() => {});
   await A.page.waitForFunction((c) => (window._gameState.current.rpg || {}).coins === c - 1000, coins0, { timeout: 8000 }).catch(() => {});
   const after = await H.readState(A, (S) => ({ cap: S._petBook && S._petBook.cap, coins: S.rpg.coins }));
-  const countText = await A.page.evaluate(() => { const c = document.querySelector('[data-pets-count]'); return c ? c.innerText : ''; });
+  const countText = await A.page.evaluate(() => { const c = document.querySelector('[data-pets-owned] .u2-coll-head'); return c ? c.innerText : ''; });
   const srv = await H.adminPlayer(wsPort, aId).catch(() => null);
   const srvCoins = srv && srv.live && typeof srv.live.coins === 'number' ? srv.live.coins : (srv && srv.rpg ? srv.rpg.coins : null);
   rec.ok(`Buy: 40 places ("${countText}"), 1,000 gold gone (${coins0} -> ${after.coins}), the worker agreeing`,
-    after.cap === 40 && after.coins === coins0 - 1000 && /\/40/.test(countText) && srvCoins === after.coins, { after, countText, srvCoins });
+    after.cap === 40 && after.coins === coins0 - 1000 && / of 40/.test(countText) && srvCoins === after.coins, { after, countText, srvCoins });
   await shot(A, 'more-room');
   await H.closeDest(A).catch(() => {});
   await A.page.waitForTimeout(400);

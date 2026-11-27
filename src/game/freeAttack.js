@@ -40,10 +40,11 @@
  * (tools/guards/free-attack.test.mjs) plays it and reads its road.  The dash
  * gets its own button (Charge) in a later part.
  *
- * Two imports, switches.js and latch.js (the one gate, the latch's press and its hold): node
+ * Three imports, switches.js, latch.js and (v2.3.6648) rangedStick.js's stickLoose; earlier: two, switches.js and latch.js (the one gate, the latch's press and its hold): node
  * tests it (tools/guards/free-attack.test.mjs).
  */
 import { readerFor, sw } from './switches.js';
+import { stickLoose } from './rangedStick.js';   /* v2.3.6648: the bow's held stick (card PAD part 13) */
 import { twoButtonsLive, latchAttackPress, latchPhase, latchHolds, latchHoldStart, latchRing, latchRelease, latchRingOff, latchSlide, autoHoldMs } from './latch.js';   /* the two buttons' one gate, and the latch's press; v2.3.6548: its hold (tap and hold, card CT part 15) */
 
 /** The free arrow for this page: on unless `?freefire=0`.  `search` is for
@@ -64,6 +65,7 @@ export function freeArrow(tapNow, live, on) {
  *  buttons and switch.  A yes is the arrow this frame looses, counted in
  *  `S._freeShots` for QA (mp-twobuttons part 7). */
 export function freeArrowGo(S, tapNow) {
+  if (stickLoose(S)) { S._freeShots = (S._freeShots || 0) + 1; return true; }   /* v2.3.6648: a bow's held stick looses along the thumb, a monster on its line or not (game/rangedStick.js; card PAD part 13) */
   if (!freeArrow(tapNow, twoButtonsLive(), freeFireOn())) return false;
   if (S && typeof S === 'object') S._freeShots = (S._freeShots || 0) + 1;
   return true;

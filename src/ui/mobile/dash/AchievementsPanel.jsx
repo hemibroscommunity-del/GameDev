@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SAY } from '@/data/say/achievements.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say, sayPieces } from '@/game/say.js';   /* v2.3.6351: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
+import { FeatsPages } from '../sheet/FeatsPage.jsx';   /* v2.3.6695 (card UI2-feats) */
 import { COL, panelStyle, getState, QUALITY_PRISM, qualityInk } from './common.js';
 import { panelVw } from '../playViewport.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -308,7 +309,9 @@ export const AchievementsPanel = () => {
   const [filter, setFilter] = useState('all');
   /* v2.3.4172: the Bro page's Titles row opens the page on the row you pick
      a title from (game/achievements.js takeTitlePicker), brought into view */
-  const [open, setOpen] = useState(() => takeTitlePicker(getState()));
+  /* v2.3.6695: the state read once, above the hooks that read it (the open hand's census: tools/guards/open-hand.test) */
+  const S = getState();
+  const [open, setOpen] = useState(() => takeTitlePicker(S));
   useEffect(() => {
     if (!open) return;
     try {
@@ -322,7 +325,6 @@ export const AchievementsPanel = () => {
     } catch (e) { /* the row is where it is */ }
   }, []);   /* once, on mount */
   useAchvClock(() => [panelVw() < 260 ? 1 : 0, drilled() ? 1 : 0].join(''));
-  const S = getState();
   const narrow = panelVw() < 260;
   const box = { ...panelStyle, overflowY: 'auto', overflowX: 'hidden', padding: narrow ? '6px 6px 12px' : '4px 8px 12px' };
   if (!achvLive(S)) {
@@ -376,5 +378,11 @@ export const AchievementsPanel = () => {
     </div>
   );
 };
+
+/* v2.3.6695 (card UI2-feats): Feats, the new dashboard's page for these, rides this same lazy script
+   (src/ui/lazyPanels.js DashFeatsPage, DashFeatsPages); this page is today's, under ?ui2=0 */
+export { FeatsPage } from '../sheet/FeatsPage.jsx';
+/* the deeper pages are PANELS rows (drawn with no props): the state handed from here, this page's own reader */
+export const FeatsPanels = () => <FeatsPages S={getState()} />;
 
 export default AchievementsPanel;

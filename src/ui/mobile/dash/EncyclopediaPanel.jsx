@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { MonsterCodex } from './MonsterCodex.jsx';   /* v2.3.3209: the monster codex */
 import { takeCodexOpen, codexOpenWaiting } from '@/game/monsterCodex.js';   /* v2.3.3336: the NEW MONSTER card's tap */
+import { CodexPage } from './CodexPage.jsx';   /* v2.3.6693: the Codex under the new dashboard (card UI2-codex) */
+import { ui2FrameOn } from '../ui2Frame.js';
 
 /* v2.3.3209: 'Bestiary' -> 'Monsters', the monster codex (MonsterCodex.jsx).
    The old tab listed `rpg._seenMonsters || rpg.killedMonsters`, which nothing
@@ -51,7 +53,22 @@ const chip = (active) => ({
   whiteSpace: 'nowrap',
 });
 
-export const EncyclopediaPanel = () => {
+/* ═══ v2.3.6693: UNDER THE FRAME, THE COLLECTION; UNDER ?ui2=0, TODAY'S CODEX (card UI2-codex) ═══
+   The choice is made here, on the frame's own switch (as GearTab.jsx's
+   GearTabChoice): CodexPage.jsx (the kit's collection; a monster's showcase
+   and its doors are frame pages, dash/MonsterShowcase.jsx) or today's tabs
+   and MonsterCodex.jsx, below, unchanged.  tools/guards/codex-mount.test.mjs
+   follows the syntax tree from BottomDashboard's PANELS `encyclopedia`,
+   through lazyPanels.js's import, to the page each way draws. */
+const EncyclopediaChoice = () => {
+  const frameOn = (() => { try { return ui2FrameOn(); } catch (e) { return false; } })();
+  if (frameOn) return <CodexPage getS={getState} />;
+  return <EncyclopediaWas getS={getState} />;   /* the game's state handed down: the page's own reaches fell 3 -> 2 (open-hand.test) */
+};
+export { EncyclopediaChoice as EncyclopediaPanel };
+
+/* today's Codex (`?ui2=0`) */
+const EncyclopediaWas = ({ getS }) => {
   const [tab, setTab] = useState('monsters');
   /* v2.3.3209: the monster page open (MonsterCodex.jsx).  These tabs step
      aside while one is, its header and tabs taking their place on the
@@ -61,18 +78,18 @@ export const EncyclopediaPanel = () => {
      taken by the effect below as it mounts, or after any render while it is
      up (the card's tap re-opens the dashboard, which renders this).  Taken in
      an effect, not the initializer: React may call an initializer twice. */
-  const [monster, setMonster] = useState(() => codexOpenWaiting(getState()));
+  const [monster, setMonster] = useState(() => codexOpenWaiting(getS()));
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 800);
     return () => clearInterval(id);
   }, []);
   useEffect(() => {
-    const k = takeCodexOpen(getState());
+    const k = takeCodexOpen(getS());
     if (k) { setTab('monsters'); setMonster(k); }
   });
 
-  const S = getState();
+  const S = getS();
   const R = S?.rpg || {};
   const seenCol       = R._seenCollisions || {};
   const seenMats      = R._seenMaterials || {};

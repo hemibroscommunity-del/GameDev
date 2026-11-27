@@ -1,0 +1,86 @@
+/* ═══ v2.3.6693: THE COLLECTION AND THE SHOWCASE (card UI2-codex; Collection.jsx, Showcase.jsx) ═══
+ * Built on the kit (ui2.css: its tokens, its raised face, its facts); only
+ * the two pieces' own arrangement is here.  Raised: a kind's door, an
+ * entry's card, a showcase's door (each opens something); flat in one sunk
+ * strip: the essentials.  Every press is 44 px or more; no word under 11 px.
+ * THE ROOM (the master notes' part 3): about 172 px of page upright at
+ * 390 x 844, 63 sideways (`is-side`, `is-short`). */
+
+/* ── the collection: the kinds over the cards; the cards scroll in their zone ── */
+.ui2.u2-coll, .ui2 .u2-coll { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--ui2-space-s); }
+.ui2 .u2-coll-shelves {
+  flex: 0 0 auto; display: flex; gap: var(--ui2-space-s); min-width: 0; overflow-x: auto; overscroll-behavior: contain;
+  touch-action: pan-x; scrollbar-width: none; padding-bottom: 1px;
+}
+.ui2 .u2-coll-shelves::-webkit-scrollbar { display: none; }
+.ui2 .u2-coll-shelf { flex: 0 0 auto; touch-action: manipulation; }
+.ui2 .u2-coll-body {
+  flex: 1 1 auto; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; gap: var(--ui2-space-s);
+}
+.ui2 .u2-coll-head { grid-column: 1 / -1; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); padding: 0 var(--ui2-space-s); font-variant-numeric: tabular-nums; }
+.ui2 .u2-coll-body > .u2-empty { grid-column: 1 / -1; }
+/* sideways: the kinds a column at the left, the cards one row that scrolls sideways */
+.ui2 .u2-coll.is-side { flex-direction: row; }
+.ui2 .u2-coll.is-side .u2-coll-shelves { flex-direction: column; overflow-x: hidden; overflow-y: auto; touch-action: pan-y; width: 112px; }
+.ui2 .u2-coll.is-side .u2-coll-shelf { width: 100%; }
+.ui2 .u2-coll.is-side .u2-coll-body {
+  overflow-y: hidden; overflow-x: auto; touch-action: pan-x; grid-template-columns: none; grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 170px); grid-template-rows: auto; grid-auto-rows: auto; align-items: start;
+}
+.ui2 .u2-coll.is-side .u2-coll-head { display: none; }
+.ui2 .u2-coll.is-side .u2-coll-body > .u2-empty { grid-column: auto; min-width: 260px; }
+/* a computer's tall column: the picture over the words */
+.ui2 .u2-coll.is-big .u2-coll-body { gap: var(--ui2-space-m); }
+
+/* ── a card: the picture first and largest, over its words (beside them on a phone on its side) ── */
+.ui2 .u2-cc {
+  position: relative; min-width: 0; min-height: var(--ui2-size-touch); width: 100%; box-sizing: border-box; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start; gap: 2px; padding: var(--ui2-space-xs) var(--ui2-space-s);
+  border-radius: var(--ui2-radius-button); font-family: inherit; text-align: center; cursor: pointer; touch-action: manipulation;
+}
+.ui2 .u2-cc-art { position: relative; flex: 0 0 auto; width: 48px; height: 48px; display: grid; place-items: center; }
+.ui2 .u2-cc-mark {
+  position: absolute; top: -2px; left: -14px; padding: 0 4px; border-radius: var(--ui2-radius-pill); background: #2E7D6F;
+  color: var(--ui2-text-ivory); font-size: var(--ui2-fs-small); font-weight: 800; line-height: 13px; letter-spacing: 0.04em;
+}
+.ui2 .u2-cc-words { flex: 0 0 auto; width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.ui2 .u2-cc-name { max-width: 100%; font-size: var(--ui2-fs-label); font-weight: 700; color: var(--ui2-text-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55); }
+.ui2 .u2-cc-sub { display: flex; align-items: center; justify-content: center; gap: 3px; max-width: 100%; min-width: 0; font-size: var(--ui2-fs-small); color: var(--ui2-text-muted); }
+.ui2 .u2-cc-subart { width: 13px; height: 13px; object-fit: contain; flex: 0 0 auto; }
+.ui2 .u2-cc-subword { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-cc-line { max-width: 100%; font-size: var(--ui2-fs-small); font-weight: 700; color: var(--ui2-text-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.ui2 .u2-cc.is-dim .u2-cc-name, .ui2 .u2-cc.is-dim .u2-cc-line { color: var(--ui2-text-muted); }
+.ui2 .u2-coll.is-big .u2-cc { justify-content: center; padding: var(--ui2-space-m) var(--ui2-space-s); min-height: 150px; }
+.ui2 .u2-coll.is-big .u2-cc-art { width: 72px; height: 72px; }
+/* sideways: the picture beside its words, the card the page's 63 px tall */
+.ui2 .u2-coll.is-side .u2-cc { flex-direction: row; align-items: center; text-align: left; gap: var(--ui2-space-s); }
+.ui2 .u2-coll.is-side .u2-cc-words { flex: 1 1 auto; align-items: flex-start; }
+.ui2 .u2-coll.is-side .u2-cc-sub { justify-content: flex-start; }
+.ui2 .u2-coll.is-side .u2-cc-mark { left: -2px; }
+
+/* ── the showcase: the figure, its doors, its essentials ── */
+.ui2.u2-show, .ui2 .u2-show {
+  flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden;
+  display: grid; grid-template-columns: minmax(84px, 30%) minmax(0, 1fr); grid-template-rows: minmax(0, auto) auto; gap: var(--ui2-space-s);
+  align-content: start;
+}
+.ui2 .u2-show-figure { grid-row: 1 / span 2; min-width: 0; min-height: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+.ui2 .u2-show-doors { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ui2-space-s); }
+.ui2 .u2-show-door { min-width: 0; touch-action: manipulation; }
+.ui2 .u2-show-door .u2-tile-sub { overflow: hidden; text-overflow: ellipsis; }
+.ui2 .u2-show-facts.u2-facts.is-row { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--ui2-space-l); row-gap: 0; }
+.ui2 .u2-show-facts .u2-fact { min-width: 0; }
+.ui2 .u2-show-facts .u2-fact-v { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ui2 .u2-show-locked { min-width: 0; display: flex; align-items: center; }
+/* sideways: one row -- the figure, the four doors, the essentials */
+.ui2 .u2-show.is-short { grid-template-columns: 64px minmax(0, 1.3fr) minmax(0, 1.2fr); grid-template-rows: auto; }
+.ui2 .u2-show.is-short .u2-show-figure { grid-row: auto; }
+.ui2 .u2-show.is-short .u2-show-doors { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ui2 .u2-show.is-short .u2-show-facts.u2-facts.is-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* v2.3.6696 (card UI2-pets): a showcase with its `head` (the entry's own words above its doors) */
+.ui2 .u2-show.has-head { grid-template-rows: auto minmax(0, auto) auto; }
+.ui2 .u2-show.has-head .u2-show-figure { grid-row: 1 / span 3; }
+.ui2 .u2-show-head { min-width: 0; }
+.ui2 .u2-show.is-short.has-head { grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.1fr); grid-template-rows: auto; }
+.ui2 .u2-show.is-short.has-head .u2-show-figure { grid-row: auto; }

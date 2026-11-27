@@ -289,14 +289,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.unfoldBand(A).catch(() => null);
       /* a real tap, as mp-boards does (Ranks on the band's row) */
       await H.dashOpen(A, 'leaderboard').catch(() => null);
-      await A.page.waitForSelector('[data-lb-page]', { timeout: 15000 }).catch(() => {});
-      await A.page.waitForTimeout(2500);
-      const cats = await A.page.evaluate(() => document.querySelectorAll('[data-lb-rail] [data-lb-cat]').length).catch(() => 0);
-      let faces = 0;
-      for (let i = 0; i < cats; i++) {
-        await A.page.evaluate((i) => { const c = document.querySelectorAll('[data-lb-rail] [data-lb-cat]')[i]; if (c) c.click(); }, i);
-        await A.page.waitForTimeout(1500);
-        faces = Math.max(faces, await A.page.evaluate(() => document.querySelectorAll('[data-lb-icon] img, [data-lb-board] img, [data-lb-board] canvas').length).catch(() => 0));
+      /* v2.3.6692 (card UI2-ranks): under the new dashboard Ranks is three group doors and each group's
+         boards (dash/RanksLanding.jsx); every board is opened from its group, Back between them */
+      await A.page.waitForSelector('[data-ranks-ui2="landing"]', { timeout: 15000 }).catch(() => {});
+      await A.page.waitForTimeout(1500);
+      const tap = (sel) => A.page.evaluate((s) => { const b = document.querySelector(s); if (b) b.click(); return !!b; }, sel).catch(() => false);
+      const back = () => tap('[data-dash-frame] [data-dash-ctl="back"]');
+      const groups = await A.page.evaluate(() => [...document.querySelectorAll('[data-ranks-ui2="landing"] [data-rank-tile]')].map((b) => b.dataset.rankTile)).catch(() => []);
+      let cats = 0, faces = 0;
+      for (const g of groups) {
+        await tap('[data-ranks-ui2="landing"] [data-rank-tile="' + g + '"]');
+        await A.page.waitForTimeout(800);
+        const boards = await A.page.evaluate(() => [...document.querySelectorAll('[data-ranks-ui2="group"] [data-rank-tile]')].map((b) => b.dataset.rankTile).filter((t) => t !== 'points')).catch(() => []);
+        for (const b of boards) {
+          await tap('[data-ranks-ui2="group"] [data-rank-tile="' + b + '"]');
+          await A.page.waitForTimeout(1500);
+          cats++;
+          faces = Math.max(faces, await A.page.evaluate(() => document.querySelectorAll('[data-rank-board] img, [data-rank-board] canvas').length).catch(() => 0));
+          await back();
+          await A.page.waitForTimeout(500);
+        }
+        await back();
+        await A.page.waitForTimeout(500);
       }
       await A.page.evaluate(() => { const x = document.querySelector('[data-esc]'); if (x) x.click(); }).catch(() => {});
       await H.closeDest(A, { timeout: 3000 }).catch(() => {});

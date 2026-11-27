@@ -725,7 +725,7 @@ const outerName = (f, p) => {
   }
   /* v2.3.5942: by the function that awaits it, with why (each under Found) */
   const UNSURE_KNOWN = {
-    PetsPanel: 'PetsPanel.jsx: the pet\'s List frees its button on any answer and says "Not listed" on unsure (and storeListPet posts "/list", a route with no action row: the door refuses it, so it never leaves the page)',
+    PetsWas: 'PetsPanel.jsx (v2.3.6696: today\'s page, `?ui2=0`, named PetsWas since the choice took PetsPanel): the pet\'s List frees its button on any answer and says "Not listed" on unsure (and storeListPet posts "/list", a route with no action row: the door refuses it, so it never leaves the page)',
     ExchangePanel: 'ExchangePanel.jsx: the General Store\'s Place posts with no time limit (no postWithin); a fetch error frees the lock (storeSellTap.js: interim, until the worker names a weapon by its id)',
   };
   const found = new Set();
