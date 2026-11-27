@@ -474,6 +474,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!pb && pb.rows === 33 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
         && pb.summaryAt === 'head@head' && pb.inView >= 2, { pb, col });
     await B.page.screenshot({ path: join(OUT, 'achievements-5-computer.png') });
+    /* v2.3.6695 (card UI2-feats): the page put away first, so the world (where the banner shows) is in view: under ?ui2=0 the page now opens on B (9a) */
+    await H.closeDest(B).catch(() => {});
     await H.devOp(wsPort, 'achv', bId, { id: 'golden_giant' }).catch(() => {});
     const bb = await B.page.waitForSelector('[data-achv-banner="golden_giant"]', { timeout: 15000 }).then(() => bannerLook(B)).catch(() => null);
     if (bb) await B.page.screenshot({ path: join(OUT, 'achievements-6-computer-banner.png') });
