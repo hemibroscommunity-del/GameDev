@@ -308,7 +308,7 @@ export const SYSTEMS = Object.freeze({
   },
   render: {
     what: 'drawing the world: the Pixi renderer, the entity and effects renderers, light, fx',
-    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'poseHides|cameraFollow') /* v2.3.6208: what a body's pose hides (card EN); v2.3.6660: the camera's follow (card GR) */],
+    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'poseHides|cameraFollow|frameFoot') /* v2.3.6208: what a body's pose hides (card EN); v2.3.6660: the camera's follow (card GR); v2.3.6209: a dying body's frame's own ground (card EN) */],
     rest: [re('^src/rendering/')],
     words: ['render', 'draw', 'fx', 'pixi', 'batch', 'light', 'camera'],
     traps: ['render'],
