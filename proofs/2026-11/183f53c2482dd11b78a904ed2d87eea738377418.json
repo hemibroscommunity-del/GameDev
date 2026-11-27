@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "183f53c2482dd11b78a904ed2d87eea738377418",
+  "tree": "bf98448d841d0269c29241ed9bf78cdaf9f22c9a",
+  "committedAt": "2026-11-27T11:42:16-08:00",
+  "subject": "Merge pull request #2412 from hemibroscommunity-del/claude/plan-ui2-13-ranks",
+  "files": 9158,
+  "bytes": 1084897232,
+  "listingSha256": "d557a20cf9e1bab2dd8484020be0dd859caafbe8150e436cae657e88c18fe633",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
