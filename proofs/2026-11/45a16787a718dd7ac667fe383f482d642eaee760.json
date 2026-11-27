@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "45a16787a718dd7ac667fe383f482d642eaee760",
+  "tree": "3311cb37e9af57b11865c36912d4fdceeb06b61d",
+  "committedAt": "2026-11-27T15:44:50-08:00",
+  "subject": "Merge pull request #2430 from hemibroscommunity-del/claude/ui4-fit",
+  "files": 9354,
+  "bytes": 1115583481,
+  "listingSha256": "05673ad11a9eeb33154edcc1514eb8362630cbd0f4d9ac6da2c14e8ccc98181c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
