@@ -10,11 +10,8 @@
  *   (WeaponPage.jsx, SharedPage.jsx: the DPS and Max HP stats kept `u2-raised`
  *     through their className; card UI3-combat's one template made them the
  *     kit's sunk stat, and their rows fell, tag 6783);
- *   ItemPage.jsx: the item page's doors are `<Ui2Stat k="">` with a handler, a
- *     door drawn as a stat (card UI2-gear's PR 3 is in that file now; the next
- *     job makes them `Ui2Tile size="compact"`, `data-item-door` and the handler
- *     kept).
+ *   (ItemPage.jsx's doors, `<Ui2Stat k="">` with a handler, became the kit's
+ *   compact tile in tag 6784, card UI3-menus: its row fell.)
  */
 export const RAISED_KNOWN = Object.freeze({
-  'src/ui/mobile/dash/ItemPage.jsx': 1,
 });
