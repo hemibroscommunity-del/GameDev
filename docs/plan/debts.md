@@ -640,8 +640,13 @@ stays with that PR until it lands, and is marked (held).
   in the mail (`gameEvents.js`:2120 `inbox_delivered`) is added without the
   gid check: send it through `adoptHeldShields`.
 
-## LOAD (72: #2401 listed at f56dfa3b, its mend)
+## LOAD (72: #2401 held at f56dfa3b, its mend: on main 380317e6 four-lines 1b red)
 
+- HELD by the rehearsal on main 380317e6 (after #2421): merged with main,
+  `four-lines` 1b is RED (`src/rendering/systems/entityRenderer.js` 7985
+  code lines over its line 7984; it adds about 40): mend: move the worn
+  pass's gate (`_wornPassBegin`, `_wornPass`) out of the big file (rule 5).
+  Green on main 2bd82b3b. Its review LANDS:
 - Sitting 71's plants RED (`maskedBakeWorker.js`:613, :609, :630, :579;
   `bakeKeep.js`:341, :295), `bake-keep.test` 6-7 on the real worker in
   node. Next jobs (`tools/guards/bake-keep.test.mjs`): 6b changes inputs
