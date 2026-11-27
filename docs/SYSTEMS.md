@@ -273,8 +273,8 @@ Sound and music: cues, voices, ambience, the music deck, the Sound Studio.
 
 Touch and the controls on a phone.
 
-- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin
-- **Files**: `src/ui/`: tapDismiss, swallowTapClick
+- **Files**: `src/game/`: controlVisibility, playerActions, coachMarkSize, stickZones, sight, latch, freeAttack, thumbSide, thumbGlue, thumbArc, contextButton, lockFace, bowSpecialNow, aimMarks, padSkin, tutorClear
+- **Files**: `src/ui/`: tapDismiss, swallowTapClick, tutorSpot
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#input)
 - **Words**: `touch`, `control`, `tap`, `thumb`, `swallow`
@@ -368,7 +368,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
 - **Files**: `src/rendering/tables/`: render
-- **Files**: `src/game/`: poseHides, cameraFollow
+- **Files**: `src/game/`: poseHides, cameraFollow, frameFoot
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)
@@ -387,6 +387,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: gearShowcase
 - **Files**: `src/game/`: menuTile, gearGeometry
 - **Files**: `src/game/`: charHud
+- **Files**: `src/game/`: hudCorner
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

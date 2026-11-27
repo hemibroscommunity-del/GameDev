@@ -2,6 +2,7 @@ import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'
 import { coachMayShow, noteCoach, tutorialSkipped, plateUp, noteFirstSteps, noteInTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
+import { coachClear } from '@/ui/tutorSpot.js';   /* v2.3.6791: the card clear of the controller (card UI3 PR 11; game/tutorClear.js) */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
    weapon, which is not "does the player own one" — specialAttack() refuses
    with "No weapon equipped!" when the active slot is empty, and a coach mark
@@ -37,7 +38,7 @@ import { SAY } from '@/data/say/questCoach.js';
 import { SAY as GUIDE } from '@/data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 import { say } from '@/game/say.js';
 import { bandGripOn } from './dash/bandGripSwitch.js';   /* v2.3.6697: the handle's words only while it is drawn (card UI2-grip) */
-import { charHudSpan } from '@/game/charHud.js';   /* v2.3.6781: the character HUD and the quest line, one box to keep clear of */
+import { cornerBox, cornerSpan } from '@/game/hudCorner.js';   /* v2.3.6781: the character HUD and the quest line, one box to keep clear of (v2.3.6790: the HUD alone when the line is gone) */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -276,8 +277,9 @@ function readCoachPage() {
   try {
     const el = document.querySelector('[data-coach-card]');
     p.cardH = (el && el.offsetHeight) || 0;
-    /* v2.3.6781: with the character HUD up, the HUD and the quest line are one box (game/charHud.js charHudSpan: no new read) */
-    p.qh = charHudSpan(rect(document.querySelector('[data-quest-hud]')));
+    /* v2.3.6781: with the character HUD up, the HUD and the quest line are one box (game/charHud.js charHudSpan: no new read);
+       v2.3.6790: without the line (game/hudCorner.js cornerBox) the HUD's own box, never a line that is not there */
+    p.qh = cornerSpan(rect(document.querySelector(cornerBox())));
     p.map = rect(document.querySelector('[data-world-map-open]'));
   } catch (_e) { /* none to keep clear of */ }
   return p;
@@ -298,9 +300,9 @@ function samePage(a, b) {
    its notes are), as a function: run in the commit with `?afterpaint=0`, else at the top of the next frame */
 function deskStepRight() {
   const el = document.querySelector('[data-coach-card]');
-  const qh = document.querySelector('[data-quest-hud]');
+  const qh = document.querySelector(cornerBox());   /* v2.3.6790: the quest card, the line, or the HUD alone (game/hudCorner.js) */
   if (!el || !qh) return;
-  const cr = el.getBoundingClientRect(), qr = charHudSpan(qh.getBoundingClientRect());   /* v2.3.6781: the HUD's span */
+  const cr = el.getBoundingClientRect(), qr = cornerSpan(qh.getBoundingClientRect());   /* v2.3.6781: the HUD's span */
   if (!(cr.width > 0) || !(qr.width > 0)) return;
   if (!(cr.left < qr.right && cr.right > qr.left && cr.top < qr.bottom && cr.bottom > qr.top)) return;
   const layer = document.querySelector('[data-coach]');
@@ -772,7 +774,10 @@ const LESSONS = [
     firstStep: true,
     info: true,
     anchors: [{ sel: '[data-quest-hud]', reach: '[data-quest-hud]',
-                body: 'Your quest, and how far along you are.' }],
+                body: 'Your quest, and how far along you are.' },
+              /* v2.3.6790 (card UI3 PR 10): with the character HUD alone in the top left (no quest card drawn: game/hudCorner.js)
+                 the Menu button, where the Quests door and its ready dot are; never unreachable, so the Login Key still comes */
+              { sel: '[data-nav="hero"]', reach: '[data-nav="hero"]', body: say(SAY, 'questCoach.questsMenu') }],
     label: 'Your quest',
     live: function (rpg) { return inTutorial(rpg) && firstGearOn(rpg); },
     done: null,     /* shown, then timed -- see the info tracker below */
@@ -2100,7 +2105,10 @@ export function QuestCoach(props) {
     React.createElement('div', {
       ref: cardRef,
       'data-coach-card': view.id,
-      style: {
+      'data-tutor': 'coach',
+      /* v2.3.6791 (card UI3 PR 11): the place worked out below, then kept clear of the controller's housings
+         (tutorSpot.js coachClear: a card hung BELOW its target lay on the right lobe sideways) */
+      style: coachClear(box, pg, {
         position: 'absolute',
         /* v2.3.2174: clamped to the WORLD's span, not the screen's.  The
            landscape dashboard can take the left edge now, and a card clamped
@@ -2221,7 +2229,7 @@ export function QuestCoach(props) {
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
         fontFamily: 'Source Sans 3,sans-serif',
-      },
+      }),
       onPointerDown: _press,
       onPointerUp: _dismiss,
     },

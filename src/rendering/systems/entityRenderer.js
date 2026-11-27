@@ -79,6 +79,7 @@ import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../fol
 import { isFolkSkill, drawFolkSkill, hideFolkSkill, dropFolkSkill, folkSkillProbe, folkSkillPrepare, folkSkillFallback } from '../folkSkill.js';   /* v2.3.5462: ...at their own trades (card TF) */
 import { folkBeatOf } from '../../game/townsfolkWalk.js';   /* v2.3.5462: his beat */
 import { exBodyPose, hideHeld, ownToolPose, poseHidesHeld } from '../../game/poseHides.js';   /* v2.3.6208: what a body's pose hides, asked by my bro and a peer alike */
+import { showDeathFrame } from '../../game/frameFoot.js';   /* v2.3.6209: a dying body's shadow hangs from its own frame's feet */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker, lookSheetFetchFailed, lookSheetFetchDone } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -7882,6 +7883,10 @@ export class EntityRenderer {
             n: _t && _t.__btN != null ? _t.__btN : null,
             sy: +d._spriteBody.scale.y.toFixed(3),
             y: +Number(d._spriteBody.y).toFixed(2),
+            /* v2.3.6209: where the display stands and how big it is drawn, the sprite's anchor row and its
+               frame's own foot (zoneTextures `__btFoot`) -- mp-deathshadow reads a dying body's ground off these */
+            dy: +Number(d.y).toFixed(2), ds: +Number(d.scale.y).toFixed(4), ay: +Number(d._spriteBody.anchor.y).toFixed(4),
+            oh: _t && _t.orig ? _t.orig.height : 0, foot: _t && _t.__btFoot != null ? _t.__btFoot : null,
             size: d._size,
             facing: d._lastFacing || null,
             idlePose: !!d._idlePose,
@@ -8037,7 +8042,7 @@ export class EntityRenderer {
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
             const tex = variantSprites.death.get(frameIdx);
             const sb = display._spriteBody;
-            if (tex && sb.texture !== tex) sb.texture = tex;
+            showDeathFrame(sb, tex);   /* v2.3.6209: set and marked: its shadow hangs from this frame's own feet (game/frameFoot.js) */
             /* Death scale: variant.deathScalePx if set, else falls
                back to liveScalePx so the cut from walk -> death stays
                continuous by default.  Set deathScalePx larger than
@@ -8095,7 +8100,7 @@ export class EntityRenderer {
             if (tex && (display._slimeState !== 'death' || display._slimeFrame !== frameIdx)) {
               display._slimeState = 'death';
               display._slimeFrame = frameIdx;
-              sb.texture = tex;
+              showDeathFrame(sb, tex);   /* v2.3.6209: as the variant's death above */
             }
             sb.scale.x = (96 / 128) * _peakK;
             sb.scale.y = (96 / 128) * _peakK;
@@ -8136,7 +8141,7 @@ export class EntityRenderer {
             const frameIdx = Math.max(0, Math.min(snowFc - 1, Math.floor(t * snowFc)));
             const tex = getSnowmanDeathFrame(frameIdx);
             const sb = display._spriteBody;
-            if (tex && sb.texture !== tex) sb.texture = tex;
+            showDeathFrame(sb, tex);   /* v2.3.6209: as the variant's death above */
             /* Smaller than the 64-px idle/hit scale — particles
                radiate out to the frame edges, so a smaller render
                keeps the explosion footprint from reading as a hard

@@ -4,6 +4,7 @@ import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.224
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
 import { manualOn, tapLockOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
+import { ctlCardClear } from '@/ui/tutorSpot.js';   /* v2.3.6791: the card clear of the controller (card UI3 PR 11) */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
@@ -164,7 +165,12 @@ function measureEl(sel) {
 /* v2.3.1235: Measure every step.  Multi-sel steps get the union of
    whichever anchors are present; a step with no live anchor at all is
    dropped (target-less steps always survive with rect: null). */
+/* v2.3.6791 (card UI3 PR 11): the controller's shell, measured with the
+   steps (at open, the same reads): its foot is the band's top, which the card
+   keeps its words clear of the housings from (tutorSpot.js ctlCardClear) */
+let _shellAt = null;
 function measureSteps() {
+  _shellAt = measureEl('[data-padhousing="shell"]');
   const out = [];
   for (const s of STEPS) {
     if (!s.sels) { out.push({ ...s, rect: null }); continue; }
@@ -304,6 +310,14 @@ export const ControlsTutorial = () => {
     cardTop = '60%';
     cardTransform = 'translateX(-50%)';
   }
+  /* ═══ v2.3.6791: ITS WORDS NEVER ON THE CONTROLLER (card UI3 PR 11) ═══
+     The owner, 2026-11-27: "Needs to fix tutorial messages over new
+     controller area."  The card points at a control by its spotlight; its
+     words go where the rule (game/tutorClear.js) says, clear of every
+     housing: sideways a card at 20% of a 375 px screen reached the right
+     lobe.  Kept as it was where it covers none (and with no controller). */
+  const cardAt = ctlCardClear(box, cardTop, _shellAt);
+  if (cardAt) { cardTop = cardAt.top; cardTransform = cardAt.transform; }
 
   const btnBase = {
     minHeight: 44,
@@ -390,6 +404,8 @@ export const ControlsTutorial = () => {
            the owner asked for the click there.  On the LAST step it closes
            instead, and onClose's ui-close cancels this click before it plays. */
         data-uisfx="click"
+        data-ctltut-card=""
+        data-tutor="controls"
         onClick={(e) => {
           e.stopPropagation();
           if (isLast) onClose(); else setStep((n) => Math.min(total - 1, n + 1));
@@ -401,6 +417,8 @@ export const ControlsTutorial = () => {
           top: cardTop,
           left: '50%',
           transform: cardTransform,
+          maxHeight: cardAt ? cardAt.maxHeight : undefined,   /* v2.3.6791: a card cut to the room over the controller scrolls */
+          overflowY: cardAt && cardAt.maxHeight ? 'auto' : undefined,
           /* v2.3.1235: Checkpoint B — content-driven height, exactly
              16px padding all around, maxWidth 336 (was 300). */
           width: 'min(88vw, 336px)',
