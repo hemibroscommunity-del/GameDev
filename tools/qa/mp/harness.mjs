@@ -1369,6 +1369,8 @@ const STRIP_OF = {};   /* v2.3.6782 (card UI3-bro): entries of the Bro page's st
 const SELF_IS_BRO = { broCharacter: 'hero' };   /* v2.3.6782: your Character is the one Bro page */
 const COMBAT_OF = { broSword: 'sword', broBow: 'bow', broStaff: 'staff' };   /* v2.3.6685 (card UI2-combat): doors of Combat's hub */
 const FEATS_OF = { broTitles: 'titles', featsMedals: 'achievements', featsQuests: 'quests' };   /* v2.3.6695 (card UI2-feats): doors of Feats (sheet/FeatsPage.jsx) */
+/* v2.3.6694 (card UI2-life): a life skill's page, a door of the Life Skills landing */
+const LIFE_OF = { lifeWoodcutting: 'woodcutting', lifeFishing: 'fishing', lifeMining: 'mining', lifeFarming: 'farming', lifeTrapping: 'trapping', lifeCooking: 'cooking', lifeBlacksmithing: 'blacksmithing', lifeWoodworking: 'woodworking', lifeGemCutting: 'gemCutting', lifeEnchanting: 'enchanting' };
 async function frameUp(P) {
   return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
 }
@@ -1405,6 +1407,7 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
     return (await frameKind(P)) === 'gear-root';
   }
   if (SELF_IS_BRO[id]) id = SELF_IS_BRO[id];
+  if (LIFE_OF[id]) { await dashOpen(P, 'skills', { timeout }); await tapTop(P.page, `[data-life-door="${LIFE_OF[id]}"]`, timeout); await P.page.waitForTimeout(350); return true; }
   await dashMenuRoot(P, { timeout });
   if (id === 'more' || id === 'menu') return true;
   /* v2.3.6683 (card UI2-bro): Bro's own pages through Bro's six doors (src/game/broHub.js):

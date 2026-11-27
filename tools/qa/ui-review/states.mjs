@@ -518,6 +518,24 @@ export const STATES = [
     about: 'The resting game screen in the town square: top bar (only the log-out door since v2.3.4183: the coins are in the Gear tab\'s header and the achievement points on the Bro card, a gain said as a "+12 gold" / "+5 AP" word under the bar; since v2.3.4113 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the quest card just under the top bar (since v2.3.4163 no player frame: your HP and energy show over your bro\'s head and on the dashboard), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
+  /* v2.3.6781 (card UI3, PR 2): the character HUD, top left -- the face, the
+     name, "Lv N" and the gold bar of the weapon whose next level raises it;
+     (v2.3.6790: no quest line under it, the HUD alone in the corner).  Its own row a layout: upright,
+     sideways (compact, 176 x 48) and a computer. */
+  { id: 'charhud', group: 'The world (HUD)', title: 'The character HUD, top left (upright)', views: ['portrait'],
+    about: 'Top left under the top bar, opposite the minimap: your face (the dashboard\'s own portrait), your name and "Lv N" (the combat level) beside it, and under them a gold XP bar labelled with the weapon whose next level raises your combat level (its picture and its word, "45 / 120" in the bar). Nothing else always there (v2.3.6790, the owner: "Leave only character hud in top left corner"): no quest tracker over the world (the quests are on the Quests page; ?questline=1 brings the one line back), and the status chips and the party chip, when they show, right under the HUD. A tap anywhere on the HUD opens Bro. 184 x 52. No health or energy (the owner took those off the game screen, v2.3.4163). ?hud=0 gives back the old top left.',
+    run: async ({ P }) => { await wait(P, 600); } },
+  { id: 'charhud-side', group: 'The world (HUD)', title: 'The character HUD, top left (sideways)', views: ['landscape'],
+    about: 'The same HUD on a phone held sideways: compact, 176 x 48, the face drawn 40 in its 44 px tap box; the status chips under it and the party chip beside it (no quest line: v2.3.6790), clear of the minimap.',
+    run: async ({ P }) => { await wait(P, 600); } },
+  { id: 'charhud-desk', group: 'The world (HUD)', title: 'The character HUD, top left (a computer)', views: ['desktop'],
+    about: 'The same HUD on a computer playing wide (184 x 52): a click on it opens Bro and never swings; its tooltip says "Click to open Bro".',
+    run: async ({ P }) => { await wait(P, 600); } },
+  /* v2.3.6786 (card UI3, PR 7): the gold on the top bar, between BroTown and
+     the daily spin (ZoneHeader.jsx, game/topGold.js).  Every layout. */
+  { id: 'topbar-gold', group: 'The world (HUD)', title: 'The top bar: your gold, between BroTown and the daily spin',
+    about: 'The top bar in the world: LOGOUT at the left, the BroTown logo centred on the screen, and to its right your gold (a coin and the number, as Gear says it: "9,999", "12.4K", "2.55M") just left of the free daily spin\'s button. The gold keeps its place when the spin\'s button is not shown; it takes no tap. `?topgold=0` takes it off the bar.',
+    run: async ({ P }) => { await wait(P, 600); } },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
      told), its window, and (until v2.3.4163) the player frame top-left.  v2.3.4113: the chip
@@ -831,7 +849,7 @@ export const STATES = [
   Object.assign(dash('skills', 'Bro: Life Skills', 'The Life Skills page, under Bro (the card\'s Life Skills row opens it; back returns to the card): your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
     id: 'dash-bro-skill-detail', group: 'Dashboard', title: 'Bro: a life skill in detail',
-    about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
+    about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.  Under the new frame (v2.3.6694) these lines are the skill\'s How it works page (Mining): each hit and the next level\'s, full and less XP, the benefit, where it is found, how it is earned, as facts in one container.',
     /* v2.3.3481: the 2026-10-19 UI review -- the laptop's picture was the
        ten-skill list, not the detail: the press went in while the band was
        still unfolding (the last view of a run on a box drawing a few frames a
@@ -841,6 +859,13 @@ export const STATES = [
     run: async ({ P }) => {
       await bus(P, 'open', 'skills');
       await wait(P, 600);
+      /* v2.3.6694 (card UI2-life): under the new frame the detail's lines are a skill's "How it works"
+         (sheet/SkillHow.jsx); the in-panel detail below is today's page, under ?ui2=0 */
+      if (await has(P, '[data-life-page]')) {
+        for (const sel of ['[data-life-door="mining"]', '[data-life-how-door]']) { const e = await tapSel(P, sel); if (e) return e; await wait(P, 600); }
+        if (!(await has(P, '[data-life-how="mining"]'))) return 'How it works did not open';
+        return;
+      }
       const backSel = DASH.split(',').map((s) => s.trim() + ' button').join(', ');
       for (let k = 0; k < 2; k++) {
         const e = await clickText(P, /^(mining|woodcutting|fishing)\b/i, DASH);
@@ -910,7 +935,7 @@ export const STATES = [
       return tapSel(P, '[data-gear-summary] [data-gear-details]');
     } },
   /* v2.3.6688: Gear's two panels (card UI2-gear PR 2): management, a look from the bag, a look from the worn cells */
-  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars. v2.3.6784 (card UI3-menus): the label rows 24 px (their words 11 px caps), the gold a recessed pill, the bag\'s squares the kit\'s socket (the worn cells\'), the bag in WHOLE rows (three wherever 44 px squares allow; the scroll snaps to a row: src/game/gearGeometry.js).',
+  { id: 'dash-gear-panels', group: 'Dashboard', title: 'Gear: two panels', about: 'Gear under the frame: Inventory left (the storage grid, the filter and the coins in its label row), Equipped right (the nine cells in a body\'s shape: the weapons down the left, Cape, Chest and Legs on the figure\'s line, Shield, Amulet and Gem down the right); no middle column, no bars. v2.3.6784 (card UI3-menus): the label rows 24 px (their words 11 px caps), the gold a recessed pill, the bag\'s squares the kit\'s socket (the worn cells\'), the bag in WHOLE rows (three wherever 44 px squares allow; the scroll snaps to a row: src/game/gearGeometry.js). Tag 6698 (card UI2-equipgreen): the Equipped panel on a pale green ground (gearPanels.css --u2-gp-equip-ground), its label in the kit\'s dark ink, a worn picture 94% of its slot as a bag square\'s; ?equiplook=0 the dark well and 72%.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); }); } },
   { id: 'dash-gear-look-bag', group: 'Dashboard', title: 'Gear: a look from the bag', about: 'A bag square tapped: the Inventory stays left, the square pushed in; the Equipped panel\'s place is its summary (a piece you could wear: your DPS or Damage cut now and if equipped, the change, Details and Equip).',
     run: async ({ P }) => {
@@ -925,7 +950,7 @@ export const STATES = [
       return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
     } },
   /* v2.3.6689: Bro's Equipment door, a showcase (card UI2-gear PR 3) */
-  { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line.',
+  { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line. Tag 6698: a worn picture 94% of its slot (as Gear\'s); its own ground, not Gear\'s green.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broEquip' }); }); } },
   /* v2.3.4393: the Leaderboards have a button of their own on the row
      ("Ranks"); v2.3.5501 (card LB): the new look after the owner's mockups --
@@ -2111,6 +2136,43 @@ export const STATES = [
       await wait(P, 300);
     },
     after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
+  },
+  /* v2.3.6694 (card UI2-life): Life Skills under the new frame -- the landing (PANELS skills, every road
+     in), a skill's page, its All unlocks (dash-bro-skill-detail is its How it works); today's page only
+     under ?ui2=0 (mp-ui2life plays it) */
+  {
+    id: 'ui2-life-landing', group: 'Dashboard', title: 'Life Skills: the total and the ten',
+    about: 'Bro\'s Life Skills door (v2.3.6694, card UI2-life; the owner 2026-11-26: "Enlarge the icons and cards to occupy the unused vertical space. Put level indicators inside the cards instead of having badges protrude from them. Match the rest of the game\'s typography"): under the one header (\u2039 Bro, Life Skills, Menu, Close) "Total level", the sum of the ten levels, sunk with its number large; under it the ten as raised doors filling the rest of the page, five by two (one row of eleven sideways, the total the first cell), the gather row over the craft row: each its picture, its name (on two lines at its joint where a fifth of the phone is too narrow), "Lv N" and a thin XP bar inside the face, and the brass dot inside its edge on a level-up not yet looked at. No label of what kind of player you are, no radar. Under ?ui2=0 today\'s page.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      if (!(await has(P, '[data-life-page]'))) return 'the landing did not open';
+    },
+  },
+  {
+    id: 'ui2-life-skill', group: 'Dashboard', title: 'Life Skills: a skill\'s page (Fishing)',
+    about: 'The landing\'s Fishing door (header "Fishing", \u2039 Life Skills): its level and XP bar (now / the worker\'s need, and what is left to the next level), then one flat container of facts -- the next unlock ("Lv 5: Clownfish"), the latest one, and its guild\'s line (Angler\'s Circle: your rank), a door with its chevron to Guilds -- beside two raised doors, All unlocks (n) and How it works. Sideways one row; the latest unlock is All unlocks\' there.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      const t = await tapSel(P, '[data-life-door="fishing"]');
+      if (t) return t;
+      await wait(P, 600);
+      if (!(await has(P, '[data-life-skill="fishing"]'))) return 'Fishing\'s page did not open';
+    },
+  },
+  {
+    id: 'ui2-life-unlocks', group: 'Dashboard', title: 'Life Skills: All unlocks (Fishing)',
+    about: 'Fishing\'s All unlocks door (header "All unlocks", \u2039 Fishing): every rung of its real ladder, one row each -- its level, its name, and Got, Next or Later by a word and a mark (never colour alone) -- the one Life Skills page that scrolls, opened with the next rung in view. Trapping and Enchanting unlock nothing by level: the kit\'s empty state with how the skill is earned.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'skills');
+      if (e) return e;
+      await wait(P, 600);
+      for (const sel of ['[data-life-door="fishing"]', '[data-life-all]']) { const t = await tapSel(P, sel); if (t) return t; await wait(P, 600); }
+      if (!(await has(P, '[data-life-unlocks="fishing"]'))) return 'All unlocks did not open';
+    },
   },
   /* v2.3.6680: the new dashboard kit's page (card UI2): last, since it loads the page again with
      ?uikit=1 (the kit lies over the game; the world goes on under it), and `after` loads it back */

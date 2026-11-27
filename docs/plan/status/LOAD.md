@@ -1,23 +1,39 @@
 card: LOAD
-branch: claude/plan-load-1-readout
-prs: (none yet; PR 1 in progress, tag 6760)
-state: working
+branch: claude/plan-load-3b-sparelater (part 3b; part 2 on claude/plan-load-2-bakekeep)
+prs: #2386 (part 1, tag 6760: merged); #2401 (part 2, tag 6761: in the merge round); #2423 (part 3b, tag 6763: a draft, base part 2)
+state: ready (part 3b: #2423, the four checks green; the runs on the final code below)
 
 ## Done
-- PR 1 code (tag 6760): `loadTimes.js` (markLift, the bro's six steps, the armour line, the why line),
-  `IntroVideo.jsx` (a mark in maybeFinish; HARD_CAP_MS const, same 20000); the new words are in DevPanel.jsx `loadTimesLines` (player-words census counts loadTimes.js), `pixiRenderer.js` `_preStep`
-  (also `markLoad('bro-<step>')`), `load-times.md`, `mp-loadtimes` (check 4), new `mp-loadlift`.
-- On the test box (2026-11-26): the coverage read at the lift costs 6 ms (one call, page's thread); bare first login reads "Why it lifted: ready", all six bro steps in order,
-  "none worn"; copper first login in a fresh browser reads "its 20 s limit", armour 8 of 177 at the lift,
-  `masks` never reached. `loadtimes` 6/6, `loadlift` 11/11.
+- Part 1 (#2386, 6760, merged): the Loading times readout says what the screen waited for and why it
+  lifted ("ready" or "its 20 s limit"), the bro's six steps, the armour's frames at the lift.
+- Part 2 (#2401, 6761): the masked bakes kept on the phone's disk by the bake worker (IndexedDB from the
+  worker; `src/game/bakeKeep.js` the key and the store's rules; `?bakekeep=0`; `docs/specs/bake-keep.md`;
+  `mp-bakekeep`).
+- Part 2's mend (sitting 71): `tools/guards/bake-keep.test.mjs` 6 and 7 run the REAL worker in node (the
+  key's every input, the store's cap and version); eleven plants RED; no real fault found.
+- Part 2 on its final code (main e8ccff26): precheck 0 FAIL; bake-keep ok; membudget 12/12; bakekeep 18/19
+  (RED as before: `masks` 95 s after `loads` on this slow box).
+- Part 3b (6763, the owner's "Yes" 05:30 11-27): the loading screen no longer waits for the spare armour
+  sets; they bake after it lifts (`src/game/spareLater.js` the chain's order, `src/game/spareTime.js` the gate
+  and the pace: one job at a time, the page's share at the top of a frame), the readout lists them last
+  "after the loading screen"; `?sparelater=0` the old order. The GPU uploads moved unchanged to
+  `src/rendering/bakeUpload.js` (entityRenderer's four-lines line). `sparelater` guard all ok, 6 plants RED.
+  Final code (main 02966bcb merged), `mp-sparelater` 18/20: spare pass shut at the lift and at `done`, ran
+  after (96 jobs, 339 s here), the page's longest stretch 3.2 ms; the iron torso put on at `done`: drawn every
+  frame, no blink, 8 plain frames. RED by this box's speed: 2a `?sparelater=0`'s `done` not within 15 min (the
+  old spare bake behind the screen), 3c the new set's 322 frames not all baked within 10 min. Screen 39.8 s
+  by default, 40.8 s with `?sparelater=0` (the limit both; worn masks 5.5 min here). Not run: bakekeep, loadlift.
 
 ## Next
-- precheck, merge origin/main once, push, open the draft PR, message the orchestrator.
+- The gatekeeper's next sitting reads #2401. Part 3 (6762) only if part 2's numbers call for it.
 
-## Found
-- `loads` in the owner's phone paste is the "pictures ready" step; the loading-screen mark ("came up") is
-  noted at the start of preloadPlayerAssets, NOT at IntroVideo's mount, so "up 21.3 s" is not the 20 s limit
-  measured from mount alone (mount is later than the mark). `IntroVideo.jsx` / `BroTown.jsx` untouched for this.
+## Found (not mended: outside the mend)
+- `_tables` / `_bms` are not dropped when a sheet of numbers is replaced under the same key
+  (`maskedBakeWorker.js` onmessage `lookSheet`): the key reads the new numbers, the bake draws the old
+  (a stale picture kept under the new key, within one session). The gatekeeper's next job (debts, LOAD 71).
+- `prewarmAltWornSets` waits on `_wornPass` with no limit (`entityRenderer.js`): the debts' next job.
+- `loads` in the owner's phone paste is the "pictures ready" step; the loading-screen mark is noted at the
+  start of preloadPlayerAssets, not at IntroVideo's mount.
 
 ## Needs
-- Nothing yet.
+- One more Loading times paste from the owner's iPhone after part 2 lands (a second login in copper).

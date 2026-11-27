@@ -398,3 +398,38 @@ export function ranksEntry(nav, id) {
   for (let i = st.length - 1; i >= 0; i--) if (st[i] && st[i].id === id) return st[i];
   return null;
 }
+
+/* v2.3.6692 (the mend of sitting 72, card UI2-ranks): a board's ANSWER, told
+ * from no answer.  Held: the Coin flip board said "Nobody has won a flip
+ * against Ace yet." before the worker had answered (its source claimed
+ * `loading: false`, and the flip's store starts as an empty board).  So every
+ * board's source hands its answer here, and NOTHING here is an answer but what
+ * the worker sent: null (or undefined) is "not answered yet", and the page
+ * shows the kit's placeholder; an answer with no rows is "answered, and
+ * empty", and only then the board's "nobody" words.
+ *
+ *   kind     'ranked' (answer: the worker's rows, an array), 'spin', 'flip'
+ *            ({ wins, losses }), 'fish' ({ boards: { [kind]: rows } })
+ *   answer   what the worker sent, or null while it has not
+ *   choice   the spin's and flip's side ('wins' | 'losses'), the fish's kind
+ *   returns  { waiting, rows, state }: `state` 'off' or 'unavailable' when the
+ *            worker said so (its words are the board's), else null */
+export function rankAnswer(kind, answer, choice) {
+  if (answer === null || typeof answer !== 'object') return Object.freeze({ waiting: true, rows: Object.freeze([]), state: null });
+  if (answer.off) return Object.freeze({ waiting: false, rows: Object.freeze([]), state: 'off' });
+  if (answer.unavailable) return Object.freeze({ waiting: false, rows: Object.freeze([]), state: 'unavailable' });
+  let rows;
+  if (kind === 'ranked') rows = answer;
+  else if (kind === 'fish') rows = answer.boards && typeof answer.boards === 'object' ? answer.boards[choice] : null;
+  else rows = choice === 'losses' ? answer.losses : answer.wins;
+  return Object.freeze({ waiting: false, rows: Object.freeze(Array.isArray(rows) ? rows.filter(Boolean) : []), state: null });
+}
+
+/** v2.3.6692 (the same mend): the board list is the worker's answer too (its
+ *  `caps`, at state_sync: LeaderboardPanel.jsx boardList).  A board or group
+ *  the entry names but the list lacks is "nobody is on this board" only once
+ *  the worker has said what it keeps; before (a kept entry drawn again before
+ *  state_sync), it waits.  `caps` is S._serverCaps, or null. */
+export function rankListWaiting(caps) {
+  return caps === null || caps === undefined || typeof caps !== 'object';
+}

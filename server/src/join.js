@@ -2120,6 +2120,7 @@ export const joinMethods = {
         bowPath: this._bowPathOn() ? 1 : undefined,
         /* v2.3.6443 (card DG PR 4): THE WIRE DOOR HOLDS A FIELD TO ITS FORM (wire/door.js WIRE_FORM): a named field out of its form (`n: "5"`, `-5`, a 15,000-character id) is refused before any handler.  The page sends only fields in form, so it gates nothing on this: the Test panel reads it (CAP_GATES).  2 while the door only counts (`wireform: 'count'`), gone with `wireform: false` -- lower case, a kill switch */
         wireForm: this._wireFormMode() === 'on' ? 1 : (this._wireFormMode() === 'count' ? 2 : undefined),
+        shieldshop: this._shieldShopOff() ? undefined : 1 /* v2.3.6800 (card SHOP): DIEGO SELLS A LOST PINE SHIELD (shop.js SHIELD_KEY) -- one, 100 coins, to a player a quest gave one who owns none; `shop_result` carries the piece.  `shieldshop: false` in the live flags un-advertises it, takes it off the shelf and refuses every buy. */,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

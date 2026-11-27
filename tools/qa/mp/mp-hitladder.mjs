@@ -43,6 +43,18 @@ const pointerUp = (P, sel) => P.page.evaluate((s) => {
 
 /* Skills, open on one skill's own page: from the list, or back to it first. */
 async function openSkill(P, key) {
+  /* v2.3.6694 (card UI2-life): under the new frame a skill's detail lines are its "How it works" page
+     (sheet/SkillHow.jsx, the same lines and marks): the landing, the skill's door, then How it works */
+  if (await P.page.evaluate(() => !!document.querySelector('[data-dash-frame]'))) {
+    await H.dashOpen(P, 'skills');
+    await P.page.waitForTimeout(500);
+    for (const sel of [`[data-life-door="${key}"]`, '[data-life-how-door]']) {
+      await P.page.evaluate((s) => { const b = document.querySelector(s); if (b) b.click(); }, sel);
+      await P.page.waitForTimeout(600);
+    }
+    await P.page.waitForTimeout(700);   /* the page re-reads the game's state every 600 ms */
+    return;
+  }
   await P.page.evaluate(() => window.__broDashPanelBus.open('skills'));
   await P.page.waitForTimeout(500);
   for (let i = 0; i < 4; i++) {

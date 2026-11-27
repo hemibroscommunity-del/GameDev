@@ -84,6 +84,10 @@ export const BRO_HUB_PAGES = Object.freeze({
   /* v2.3.6695 (card UI2-feats): Feats' landing; the page id stays `achievements`, so every road in lands on it
      (sheet/FeatsPage.jsx; its deeper pages are PANELS rows, src/game/feats.js FEATS_PAGES) */
   achievements: 'feats',
+  /* v2.3.6694 (card UI2-life): a life skill's page (sheet/LifeSkillPage.jsx), its All unlocks and How it works */
+  lifeWoodcutting: 'life', lifeFishing: 'life', lifeMining: 'life', lifeFarming: 'life', lifeTrapping: 'life',
+  lifeCooking: 'life', lifeBlacksmithing: 'life', lifeWoodworking: 'life', lifeGemCutting: 'life', lifeEnchanting: 'life',
+  lifeUnlocks: 'lifeUnlocks', lifeHow: 'lifeHow',
 });
 
 /**

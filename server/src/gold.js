@@ -186,6 +186,7 @@ export const GOLD_ROADS = Object.freeze({
   shop_tool:           R('take', 'whole', 'shop.js _shopBuy: a lost tool bought back', 'burn'),
   shop_staple:         R('take', 'whole', 'shop.js _shopBuy: a staple', 'burn'),
   shop_pile:           R('take', 'whole', 'shop.js _shopBuy: from his pile', 'burn'),   /* the shop keeps goods, never gold */
+  shop_shield:         R('take', 'whole', 'shop.js _shopBuy: a lost shield bought back', 'burn'),   /* v2.3.6800: the Pine Shield, a replacement (shop.js SHIELD_SHELF) */
 
   /* ── selling ── */
   shop_sell:           R('give', 'wholeClamp', 'shop.js _shopSell', 'mint'),
