@@ -11,7 +11,7 @@ state: ready
 - The mend of sitting 72 (HELD: "'at most one when each rolls alone' (MonsterShowcase.jsx:161) and 'the same sword, different names' (:59 `nameOf` dropped)", both green at the page): the page now makes its rows AND the roll's words by ONE call of a rule, `lootPage(kind, { ...dropOpts(S), nameOf: codexItemName })` (src/game/lootRows.js), and draws `.roll` and `.mark` from it; loot-rows.test runs lootPage over every kind and both rolls and reads the page's tree (no lootRows, lootRollWords, lootGrades or codexDropsFor called there, no roll words said, no `shared` beside the caps, the namer imported from itemPageOpen.js). Plants now red: R11-R12 in lootRows.js, R13 `lootRollWords(true)` at the page, R14 `nameOf` dropped at the page, R15 the mark typed, R16 `shared: true` beside the caps, R17 a table namer. Nothing a player sees changes. Main merged once.
 
 ## Next
-- Nothing: the PR waits for the gatekeeper.  Final runs (head 40829ee2, the test box): ui2codex 31/31, membudget 12/12, ui2gear 33/33.
+- Nothing: the PR waits for the gatekeeper.  The mend's runs on its final code (main 5ab943fe merged; the test box): loot-rows 29/29 (R11-R17 red), precheck 0 FAIL; ui2codex 31/31 (by a helper; my own first run had step 6, the NEW MONSTER card, red once, a slow box's timing: the card's code and the loading gate are unchanged by main and the mend). Before the mend: ui2codex 31/31, membudget 12/12, ui2gear 33/33 (head 40829ee2).
 
 ## Found
 - The item card names a shard by its key when it has no row for it ("Sky" for the Wind Shard: ItemDetailPopup.jsx's fallback); the Codex uses the drop table's name.
