@@ -26,6 +26,7 @@
  */
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { loadCroppedStrip } from './gearSheets.js';   /* v2.3.2776: the 8-cell fx strips are cropped */
+import { sw } from '../game/switches.js';   /* v2.3.6646: `?padgold=1`, the gold energy blocks (card PAD part 11) */
 
 export const STUN_STARS = { frames: [], url: '/sprites/fx/stun-stars-v1.png?v=2.3.1735' };
 export const WHIRL_VORTEX = { frames: [], url: '/sprites/fx/whirl-vortex-v1.png?v=2.3.1735' };
@@ -99,9 +100,18 @@ export const PORTAL_BEAM = { tex: null, url: '/sprites/fx/portal-beam.webp?v=2.3
  * first use is the first time you spend mana, i.e. mid-fight. GLOBAL, not
  * per-zone -- the bars follow their owner into every zone. */
 export const BLOCK_BARS = {
-  stamina: { frames: [], url: '/icons/ui/blocks-stam.webp?v=2.3.2300' },
+  /* v2.3.6646 (card PAD part 11; the owner, 2026-11-26: "Turn steel"): the
+     energy blocks in the controller's steel, a twin of the owner's gold strip
+     (tools/art/steel-strip.mjs: same size and geometry, only its gold moved
+     onto the steel sheet's colours); `?padgold=1` the gold.  ONE file loads. */
+  stamina: { frames: [], url: sw('padgold') ? '/icons/ui/blocks-stam.webp?v=2.3.2300' : '/icons/ui/blocks-stam-steel.webp?v=2.3.6646' },
   mana:    { frames: [], url: '/icons/ui/blocks-mp.webp?v=2.3.2300' },
 };
+
+/* v2.3.6646: QA's probe (mp-padskin 8g): the stamina strip this page asked
+   for (its file is read off the page's thread, in no resource list), and
+   whether it was cut */
+if (typeof window !== 'undefined' && window.__btProbe) window.__btBlockBars = () => ({ stamina: BLOCK_BARS.stamina.url, cut: !!BLOCK_BARS.stamina.parts });
 
 export const STUN_SPIN_MS = 700;
 export const WHIRL_FX_MS = 520;

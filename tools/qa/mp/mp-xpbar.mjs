@@ -34,11 +34,19 @@
  * to the end, then the new level starts from what carried over.
  * Pictures: tools/qa/mp/out/xpbar-*.png (each layout a "-gain" and a
  * "-filled"; "-levelup-*" the level-up's steps). */
+import { versionTable } from '../../assets/versions.mjs';
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { XP_BAR_SHOW_MS, XP_FILL_DELAY_MS, XP_FILL_MS, xpToNextWords } from '../../../src/game/xpBar.js';
 export const lane = 'full';
+/* v2.3.6743: the address the BUILT page asks for: node reads the hand key
+   (assetUrl's table is empty here), the page its file's version (card KEEP
+   PR 3b): the same table the build writes (tools/assets/versions.mjs) */
+const _vt = versionTable();
+const asPage = (u) => { const b = String(u).split('?')[0]; const v = _vt.get(b); return v ? b + '?v=' + v : u; };
+/* v2.3.6743: an address's file (the page's carries its version, node's the hand key) */
+const fileOf = (u) => String(u || '').split('?')[0];
 /* v2.3.3796: "45 / 120" as numbers */
 const parseNum = (t) => { const m = /^([\d.,]+) \/ ([\d.,]+)$/.exec(String(t || '').trim()); return m ? { v: Number(m[1].replace(/,/g, '')), of: Number(m[2].replace(/,/g, '')) } : null; };
 import { XP_BAR_ICONS } from '../../../src/ui/mobile/xpBarArt.js';
@@ -228,7 +236,8 @@ async function toFrost(P, wsPort, rec, label) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Xpbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
+  /* v2.3.6781: the top bar's XP slot is this test's purpose, and with the character HUD up (card UI3) that slot is quiet: `?hud=0` (mp-charhud plays the HUD's bar) */
+  const P = await H.newPlayer(browser, { name: 'Xpbro', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'hud=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let D = null;
@@ -243,7 +252,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const warm = await P.page.evaluate((urls) => {
       const W = window.__btXpBarWarm;
       return W ? urls.map((u) => W.has(new URL(u, location.href).href)) : null;
-    }, Object.values(XP_BAR_ICONS));
+    }, Object.values(XP_BAR_ICONS).map(asPage));
     rec.ok(`0. the three skill pictures held decoded from the loading screen (${warm ? warm.filter(Boolean).length : 'no seam'}/3)`,
       !!warm && warm.length === 3 && warm.every(Boolean), warm);
 
@@ -266,7 +275,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       b1.opacity > 0.3 && !!want && b1.level === want.level && b1.lvText === 'Lv ' + want.level
         && Math.abs(b1.frac - Math.min(1, want.xp / need)) < 0.002 && /scaleX\(/.test(b1.fillScale || ''), b1);
     rec.ok(`2. ...with the sword's picture (${(b1.icon || '').split('/').pop()}), loaded`,
-      b1.icon === XP_BAR_ICONS.sword && b1.iconLoaded, b1.icon);
+      fileOf(b1.icon) === fileOf(XP_BAR_ICONS.sword) && b1.iconLoaded, b1.icon);
     const gained = want && sk0 ? (want.level === sk0.level ? want.xp - sk0.xp : null) : null;
     /* v2.3.3992: the whole part of it (the owner: "don't include any decimals
        in numbers for xp"; the fraction is held for the next gain) */
@@ -401,7 +410,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the first samples, then each change */
     const seen = seenAll.filter((x, i) => i < 3 || x.white !== seenAll[i - 1].white || Math.abs((x.gold || 0) - (seenAll[i - 1].gold || 0)) > 0.05);
     rec.ok(`4. XP into the bow brings the bow's bar and picture ("${b3a && b3a.lvText}", ${(b3a && b3a.icon || '').split('/').pop()})`,
-      !!b3a && b3a.shown && b3a.cat === 'bow' && b3a.icon === XP_BAR_ICONS.bow && b3a.iconLoaded && b3a.level === bowWas + 1, b3a && { lv: b3a.lvText, icon: b3a.icon, shown: b3a.shown });
+      !!b3a && b3a.shown && b3a.cat === 'bow' && fileOf(b3a.icon) === fileOf(XP_BAR_ICONS.bow) && b3a.iconLoaded && b3a.level === bowWas + 1, b3a && { lv: b3a.lvText, icon: b3a.icon, shown: b3a.shown });
     const iEnd = seenAll.findIndex((x) => x.white >= 0.999);
     /* the gold ran up behind the white: short of half while the white was at
        the end, then past half before the new level (this box samples a few
@@ -448,7 +457,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
 
     /* 8. a computer playing wide (src/ui/deskWide.js): real clicks */
-    D = await H.newPlayer(browser, { name: 'Xpdesk', wsPort, webPort, viewport: { width: 1280, height: 800 }, dpr: 2, world: 'wheel', wide: true });
+    D = await H.newPlayer(browser, { name: 'Xpdesk', wsPort, webPort, viewport: { width: 1280, height: 800 }, dpr: 2, world: 'wheel', wide: true, query: 'hud=0' });   /* v2.3.6781: the top bar's slot, as above */
     const dErrors = [];
     D.page.on('pageerror', (e) => dErrors.push(String((e && e.message) || e).slice(0, 200)));
     await H.enterWorld(D);

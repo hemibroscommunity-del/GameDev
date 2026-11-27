@@ -431,6 +431,7 @@ import { drawSightLine } from '../sightLineDraw.js';   /* v2.3.6544: the two but
 import { _chopArtAsymmetric, _peerChopArt, _chopKeyMask, COOK_FW, COOK_FH, _loadStandInImg, _bakeCookSplit, placeFarmFigProxy, makeFarmFigProxy, chopStandInSpot, cookStandInSpot, FIRE_FW, FIRE_FH, _fireFrameShift, _litLogKey, _figBytes, _crossedFrame } from '../leaves/effects-skills.js';   /* v2.3.6220: the skills system's leaves, moved verbatim (card FX) */
 import { bandWithEmote } from '../leaves/effects-social.js';   /* v2.3.6220: the social system's leaves, moved verbatim (card FX) */
 import { POPUP_ZOOM, POPUP_WORLD, popupZoomK, MSG_WRAP_W, msgWrapW, _tightPopupIcon, isAsciiOnly, wrapMessage } from '../leaves/effects-ui.js';   /* v2.3.6220: the ui system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + wrapMessage (and MSG_MAX_LINES, which only it reads) */
+import { assetUrl } from '../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 export { chopStandInSpot, cookStandInSpot };   /* v2.3.6220: still the renderer's exports (moved to ../leaves/) */
 export { CHOP_STANDIN_H, COOK_STANDIN_H, COOK_PAN_DX, CHOP_OFFSET, FIRE_STANDIN_H };   /* v2.3.5346: still the renderer's exports (moved to ../tables/) */
 
@@ -986,8 +987,12 @@ const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: 
 const TIGHT_POPUP_ICONS = new Set(['heart', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC)));
 /* v2.3.6220: _tightPopupIcon moved verbatim to ../leaves/effects-ui.js (card FX) */
 function _loadPopupIcon(k, attempt) {
-  const bust = attempt > 0 ? '&r=' + attempt : '';
-  return _fxLoad((POPUP_ICON_SRC[k] || ('/icons/popups/' + k + '.webp')) + '?v=2.3.2201' + bust)
+  /* v2.3.6743: the file's own version (assetUrl), not the hand key
+     ?v=2.3.2201 joined onto an address the build had already stamped (the
+     census read '?v=<its own>?v=<10 hex>?v=2.3.2201'); a retry's `r` after it */
+  const url = assetUrl(POPUP_ICON_SRC[k] || ('/icons/popups/' + k + '.webp'));
+  const bust = attempt > 0 ? (url.indexOf('?') >= 0 ? '&r=' : '?r=') + attempt : '';
+  return _fxLoad(url + bust)
     .then((tex) => { POPUP_ICONS[k] = TIGHT_POPUP_ICONS.has(k) ? _tightPopupIcon(tex) : tex; })
     .catch(() => {
       if (attempt < 2) {
@@ -1005,7 +1010,8 @@ Promise.all(POPUP_ICON_KEYS.map((k) => _loadPopupIcon(k, 0)));
    the overlay. */
 const SHARD_ICONS = {};
 Promise.all(Object.values(ZONE_SHARDS).map((s) =>
-  _fxLoad('/icons/shards/' + s.key + '.webp?v=2.3.4222').then((tex) => { SHARD_ICONS[s.key] = tex; })
+  _fxLoad(assetUrl('/icons/shards/' + s.key + '.webp')).then(   /* v2.3.6743: its file's version, not ?v=2.3.4222 */
+    (tex) => { SHARD_ICONS[s.key] = tex; })
 )).catch((err) => console.warn('[shard-icons] load failed', err));
 
 /* v2.3.1334: painted magic bolt (owner sheet) — the basic staff

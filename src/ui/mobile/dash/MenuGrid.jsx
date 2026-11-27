@@ -18,6 +18,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Ui2Tile } from '@/ui/kit/index.js';
 import { menuGridShape } from '@/game/dashDests.js';
+import { menuTileArt, MENU_GAP, MENU_TILE_PAD } from '@/game/menuTile.js';   /* v2.3.6784: the picture's rule (card UI3-menus) */
 import { winVh } from '../playViewport.js';
 import { frameTap } from './DashHeader.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -99,6 +100,10 @@ const shortGuess = () => { try { return winVh() < 500; } catch (e) { return fals
 export function MenuGrid({ doors, marks, onDoor, label, wordFor }) {
   const ref = useRef(null);
   const [short, setShort] = useState(shortGuess);
+  /* v2.3.6784 (card UI3-menus, reading 1): the grid's own box, from the SAME entry that says short (its width
+     and its height; docs/specs/layout-reads.md way 5: no new read); before the first entry the rule gives
+     yesterday's 46 / 28 */
+  const [box, setBox] = useState(null);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
@@ -106,19 +111,25 @@ export function MenuGrid({ doors, marks, onDoor, label, wordFor }) {
     try {
       ro = new ResizeObserver((entries) => {
         const e = entries && entries[0];
-        const h = e && e.contentRect ? e.contentRect.height : 0;
+        const r = e && e.contentRect;
+        const h = r ? r.height : 0;
+        const w = r ? r.width : 0;
         if (h > 0) setShort(h < 110);
+        if (h > 0 && w > 0) setBox((b) => (b && b.width === w && b.height === h ? b : { width: w, height: h }));
       });
       ro.observe(el);
     } catch (e) { ro = null; }
     return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
   }, []);
   const shape = menuGridShape(doors.length, short);
-  const art = short ? 28 : 46;
+  /* v2.3.6784: the owner, 2026-11-26: "Enlarge the icons by approximately 25%" (46 -> 58 upright, 28 -> 35
+     sideways), as far as the tile's room lets it, the band never taller; the tile's padding 2 everywhere (the
+     kit's 4 leaves 56 at 390 x 844).  Bro's six and the hubs draw through here too: one rule, one tile. */
+  const art = menuTileArt(box, { cols: shape.cols, rows: shape.rows, short });
   return (
-    <div ref={ref} data-dash-grid={label} data-grid-rows={shape.rows}
+    <div ref={ref} data-dash-grid={label} data-grid-rows={shape.rows} data-menu-art={art}
       style={{
-        display: 'grid', height: '100%', minHeight: 0, gap: 6,
+        display: 'grid', height: '100%', minHeight: 0, gap: MENU_GAP,
         gridTemplateColumns: `repeat(${shape.cols}, minmax(0, 1fr))`,
         gridTemplateRows: `repeat(${shape.rows}, minmax(0, 1fr))`,
       }}>
@@ -131,7 +142,7 @@ export function MenuGrid({ doors, marks, onDoor, label, wordFor }) {
             badge={m.count} dot={m.dot} glow={m.glow}
             locked={d.locked || undefined} data-locked={d.locked ? '' : undefined}
             data-dest={d.id} data-key={d.key || undefined}
-            style={{ minWidth: 0, minHeight: 44, padding: short ? 2 : undefined }}
+            style={{ minWidth: 0, minHeight: 44, padding: MENU_TILE_PAD }}
             {...frameTap(() => onDoor(d, from))} />
         );
       })}

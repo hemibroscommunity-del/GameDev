@@ -40,6 +40,7 @@
 
 const _marks = [];                       /* [{ key, t }] in the order they came */
 const _seen = Object.create(null);
+const _waits = Object.create(null);      /* v2.3.6763: step -> who waits for it (whenMarked) */
 const _groups = Object.create(null);     /* picture group -> ms after its wave began */
 let _groupsFrom = null;
 
@@ -52,7 +53,24 @@ export function markLoad(key) {
   if (!key || _seen[key]) return;
   _seen[key] = true;
   _marks.push({ key: String(key), t: Math.round(now()) });
+  const w = _waits[key];
+  if (w) { delete _waits[key]; for (const r of w) { try { r(); } catch (e) { /* a waiter's own */ } } }
 }
+
+/* v2.3.6763: a promise that settles when a step is noted (at once if it was):
+   the spare armour sets wait for 'world', the loading screen gone
+   (pixiRenderer.js preloadPlayerAssets, game/spareLater.js) */
+export function whenMarked(key) {
+  if (_seen[key]) return Promise.resolve();
+  return new Promise((r) => { (_waits[key] || (_waits[key] = [])).push(r); });
+}
+
+/* v2.3.6763: the spare armour sets bake AFTER the loading screen (the owner's
+   yes, 2026-11-27; `?sparelater=0` the old order).  Told once by
+   pixiRenderer.js; the readout then lists 'bro-alt' after 'bro-done', the
+   order the steps run in, and the panel's words say it was after the screen. */
+let _spareLater = false;
+export function noteSpareLater(on) { _spareLater = !!on; }
 
 /** The picture groups behind the loading screen: each one's end, timed from
  *  when the groups began.  Returns the groups as given (the promises). */
@@ -99,6 +117,8 @@ const STEPS = [
    'bro-<step>').  Keys only: the words the Test panel prints for them are
    DevPanel.jsx's (loadTimesLines), a developer-only file. */
 const BRO_STEPS = ['bro-loads', 'bro-masks', 'bro-alt', 'bro-upload', 'bro-gear', 'bro-done'];
+/* v2.3.6763: ...and with the spare sets after the screen, the order they run in now */
+const BRO_STEPS_LATER = ['bro-loads', 'bro-masks', 'bro-upload', 'bro-gear', 'bro-done', 'bro-alt'];
 
 /** This page's load so far: each step's moment (s since the page began), the
  *  loading screen's own length, and the slowest picture groups. */
@@ -107,12 +127,12 @@ export function loadTimes() {
   for (const m of _marks) at[m.key] = m.t;
   const s = (ms) => (ms == null ? null : +(ms / 1000).toFixed(1));
   const steps = STEPS.map(([key, label]) => ({ key, label, at: s(at[key]) }));
-  const bro = BRO_STEPS.map((key) => ({ key, at: s(at[key]) }));
+  const bro = (_spareLater ? BRO_STEPS_LATER : BRO_STEPS).map((key) => ({ key, at: s(at[key]) }));
   const screen = at.loading != null && at.world != null ? s(at.world - at.loading) : null;
   const groups = Object.keys(_groups).map((name) => ({ name, s: s(_groups[name]) }))
     .sort((a, b) => b.s - a.s);
   const lift = _lift ? { limit: _lift.limit, capS: _lift.capS, armour: _lift.armour, at: s(_lift.t) } : null;
-  return { steps, screen, groups, groupsFrom: s(_groupsFrom), bro, lift };
+  return { steps, screen, groups, groupsFrom: s(_groupsFrom), bro, lift, spareLater: _spareLater };
 }
 
 /** The same as lines of text, for the panel's copy button (and a screenshot).

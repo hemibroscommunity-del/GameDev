@@ -27,8 +27,9 @@
  *      every property it reads exists, a reduced-motion rule that stops every
  *      loop, and the shine switch's class;
  *   9. the contrast arithmetic itself, on known pairs;
- *  10. the serif's weights are the two the page asks Google Fonts for (and
- *      Raleway, which nothing used, is no longer asked for);
+ *  10. the face's weights are ones the page asks Google Fonts for, upright,
+ *      in both links (and Raleway, which nothing used, is no longer asked for;
+ *      v2.3.6785: the face is Source Sans 3, and Merriweather is not asked);
  *  v2.3.6780 (card UI3-kit, the owner's palette of 2026-11-26):
  *  11. the owner's six colours are here to the digit (base #14232F, navigation
  *      #223D53, recessed #0E1D29, the line #4B6275, text #F1F0E9, gold #EAC474);
@@ -53,6 +54,8 @@
  *   ui2Tokens.js: UI2_WAS's sunk-top row taken out               -> FAIL 7 and 13
  *   ui2.css: `border: 1px solid rgba(150, 195, 230, 0.24)` again  -> FAIL 12
  *
+ *   ui2Tokens.js: UI2_WAS_UNWORN's font row moved into UI2_WAS  -> FAIL 7 and 13 (v2.3.6785)
+ *   index.html: Merriweather asked again in one link             -> FAIL 10 (v2.3.6785)
  * Run: node tools/guards/ui2-tokens.test.mjs [--write]
  */
 import fs from 'node:fs';
@@ -60,7 +63,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import {
-  UI2_LINE, UI2_WAS, UI2_BORN, UI2_BRASS,
+  UI2_LINE, UI2_WAS, UI2_WAS_UNWORN, UI2_BORN, UI2_BRASS,
   UI2_SURFACE, UI2_TEXT, UI2_ACTIONS, UI2_ACTION_NAMES, UI2_RARITY, UI2_GRADES, UI2_MARK,
   UI2_SIZE, UI2_TYPE, UI2_TYPE_FLOOR, UI2_BADGE_FLOOR, UI2_LIGHT, UI2_FONT,
   ui2Vars, ui2Css, ui2Contrast, ui2Mix, ui2Rgb, ui2Luminance, UI2_BLOCK_START, UI2_BLOCK_END,
@@ -223,13 +226,40 @@ if (process.argv.includes('--write')) {
     `${ui2Contrast('#777777', '#FFFFFF')} ${ui2Luminance('#0A0A0A')} ${ui2Luminance('#0B0B0B')}`);
 }
 
-/* ── 10. the serif's weights are the ones the page asks Google Fonts for ── */
+/* ── 10. the face's weights are ones the page asks Google Fonts for ──
+ * v2.3.6785 (card UI3-type): the face is the game's own Source Sans 3 (the owner, 2026-11-26), asked
+ * with its italic axis (`ital,wght@0,400;...`), so each link's family is read as Google's own grammar:
+ * `family=Name:axes@tuple;tuple`, an upright weight a tuple `0,W` (or `W` with one axis).  Every kit
+ * weight is asked upright in BOTH links (never a weight the browser fakes), and neither link asks
+ * Merriweather (the serif left the page) nor Raleway. */
 {
   const html = fs.readFileSync(path.join(ROOT, 'src/index.html'), 'utf8');
   const fam = UI2_FONT.fontFamily.split(',')[0].replace(/'/g, '').trim();
-  const asks = (html.match(new RegExp('family=' + fam.replace(/ /g, '\\+') + ':wght@([0-9;]+)', 'g')) || []).map((x) => x.split('@')[1]);
-  check(`10. the page asks Google Fonts for ${fam} in the kit's weights (${UI2_FONT.weights.join(', ')}), in both its links`,
-    asks.length === 2 && asks.every((w) => w === UI2_FONT.weights.join(';')) && !/family=Raleway/.test(html), asks.join(' | ') || 'not asked');
+  const links = (html.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"]+/g) || []);
+  const famsOf = (url) => {
+    const out = Object.create(null);
+    for (const part of url.split('?')[1].split('&')) {
+      const [k, v] = part.split('=');
+      if (k !== 'family' || !v) continue;
+      const [name, spec] = decodeURIComponent(v).replace(/\+/g, ' ').split(':');
+      const up = new Set();
+      if (spec) {
+        const [axes, tuples] = spec.split('@');
+        const ax = axes.split(',');
+        for (const t of tuples.split(';')) {
+          const vals = t.split(',');
+          const at = (a) => vals[ax.indexOf(a)];
+          if (ax.includes('wght') && (!ax.includes('ital') || at('ital') === '0')) up.add(Number(at('wght')));
+        }
+      }
+      out[name] = up;
+    }
+    return out;
+  };
+  const per = links.map(famsOf);
+  const ok = per.length === 2 && per.every((f) => f[fam] && UI2_FONT.weights.every((w) => f[fam].has(w)) && !('Merriweather' in f) && !('Raleway' in f));
+  check(`10. the page asks Google Fonts for ${fam} upright in the kit's weights (${UI2_FONT.weights.join(', ')}), in both its links, and no Merriweather`,
+    ok, JSON.stringify(per.map((f) => Object.fromEntries(Object.entries(f).map(([n, w]) => [n, [...w]])))));
 }
 
 /* ── 11. the owner's six, to the digit (v2.3.6780) ── */
@@ -263,17 +293,20 @@ if (process.argv.includes('--write')) {
   const MAIN = 'd33d3ec97e4d5e5114c509891a91d7500f064f9df0f5eeeeab1c4e3642c06609';
   const now = ui2Vars();
   const names = new Set(now.map(([n]) => n));
-  const yesterday = now.filter(([n]) => !UI2_BORN.includes(n)).map(([n, v]) => n + ': ' + (n in UI2_WAS ? UI2_WAS[n] : v)).join('\n');
+  /* v2.3.6785: a row ?ui2look=0 does not wear (the letters: UI2_WAS_UNWORN) is still yesterday's here */
+  const was13 = { ...UI2_WAS_UNWORN, ...UI2_WAS };
+  const yesterday = now.filter(([n]) => !UI2_BORN.includes(n)).map(([n, v]) => n + ': ' + (n in was13 ? was13[n] : v)).join('\n');
   const sum = crypto.createHash('sha256').update(yesterday).digest('hex');
-  const stray = Object.keys(UI2_WAS).filter((n) => !names.has(n) || now.find(([m]) => m === n)[1] === UI2_WAS[n]);
+  const stray = Object.keys(was13).filter((n) => !names.has(n) || now.find(([m]) => m === n)[1] === was13[n] || (n in UI2_WAS && n in UI2_WAS_UNWORN));
   const born = UI2_BORN.filter((n) => !names.has(n));
   const block = ui2Css();
   const wasAt = block.indexOf('.ui2.ui2-was {');
   const wasBody = wasAt >= 0 ? block.slice(wasAt, block.indexOf('}', wasAt)) : '';
   const missing = Object.keys(UI2_WAS).filter((n) => !wasBody.includes(`  ${n}: ${UI2_WAS[n]};`));
+  const worn = Object.keys(UI2_WAS_UNWORN).filter((n) => wasBody.includes(`  ${n}:`));   /* v2.3.6785: today's letters under ?ui2look=0 too */
   check('13. ?ui2look=0 holds yesterday: today with UI2_WAS over it is main 7ec316e9\'s block to the byte; every row changed; the block after the shine switch\'s',
-    sum === MAIN && stray.length === 0 && born.length === 0 && missing.length === 0 && wasAt > block.indexOf('.ui2.ui2-noshine'),
-    JSON.stringify({ sum, stray, born, missing }));
+    sum === MAIN && stray.length === 0 && born.length === 0 && missing.length === 0 && worn.length === 0 && wasAt > block.indexOf('.ui2.ui2-noshine'),
+    JSON.stringify({ sum, stray, born, missing, worn }));
 }
 
 /* ── 14. suite 2 over yesterday's surfaces and words ── */

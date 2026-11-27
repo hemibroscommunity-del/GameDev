@@ -26,13 +26,13 @@
 import React, { useEffect } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashNavView } from '@/game/dashNav.js';
-import { ranksGroups, ranksOpens, rankSel } from '@/game/ranksPage.js';
+import { ranksGroups, ranksOpens, rankSel, rankListWaiting } from '@/game/ranksPage.js';
 import { BRO_HUB_DOORS } from '@/game/broHub.js';
 import { LB_ART } from './BoardRow.jsx';
 import { RankTilesView } from './rankViews.jsx';
 import { RankStandings } from './RankStandings.jsx';
 import { useRoom } from '../sheet/CharacterPage.jsx';
-import { Ui2Empty, ui2RootClass } from '@/ui/kit/index.js';
+import { Ui2Empty, Ui2Loading, ui2RootClass } from '@/ui/kit/index.js';
 import { rankBoardWord, rankGroupWord, rankWord } from './rankWords.js';
 import { SAY } from '@/data/say/leaderboard.js';
 import { say } from '@/game/say.js';
@@ -80,10 +80,15 @@ export function RanksUi2({ boards, parts, getS }) {
     go(ranksOpens({ kind: 'board', board: 'fish', choice: want }));
   }, [want]);
 
+  /* v2.3.6692 (the mend of sitting 72): a page the list lacks waits for the
+     worker's list (ranksPage.js rankListWaiting) before it says "nobody" */
+  const absent = (mark) => (rankListWaiting((getS() && getS()._serverCaps) || null)
+    ? <div className={ui2RootClass()} {...mark} data-rank-loading="" style={{ flex: 1 }}><Ui2Loading rows={3} /></div>
+    : <div className={ui2RootClass()} {...mark} style={{ flex: 1 }}><Ui2Empty title={say(SAY, 'leaderboard.emptyBoard')} /></div>);
   if (page === 'ranksBoard') {
     const { board, choice } = rankSel(top.sel);
     const b = byId(board);
-    if (!b) return <div className={ui2RootClass()} data-rank-board="" style={{ flex: 1 }}><Ui2Empty title={say(SAY, 'leaderboard.emptyBoard')} /></div>;
+    if (!b) return absent({ 'data-rank-board': '' });
     return <RankStandings key={top.key + ':' + b.id + ':' + (b.kind === 'fish' ? choice : '')} board={b} choice={choice} parts={parts} getS={getS} />;
   }
   if (page === 'ranksPoints') {
@@ -93,7 +98,7 @@ export function RanksUi2({ boards, parts, getS }) {
   }
   if (page === 'ranksGroup') {
     const g = groups.find((x) => x.id === top.sel);
-    if (!g) return <div className={ui2RootClass()} data-ranks-ui2="group" style={{ flex: 1 }}><Ui2Empty title={say(SAY, 'leaderboard.emptyBoard')} /></div>;
+    if (!g) return absent({ 'data-ranks-ui2': 'group' });
     const tiles = g.boards.map((id) => ({ id, label: rankBoardWord(id), art: boardArt(byId(id)), tap: { kind: 'board', board: id } }));
     if (g.points.length) tiles.push({ id: 'points', label: rankWord('leaderboard.pointsDoor'), art: boardArt(byId(g.points[0])), tap: { kind: 'points' } });
     return <Tiles kind="group" group={g.id} tiles={tiles} />;

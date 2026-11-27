@@ -31,6 +31,7 @@ import { firstSpendHint } from '../../../game/pointsTips.js';
 import { pointsResetOn } from '../../../game/pointsReset.js';
 import { SAY } from '@/data/say/heroExpanded.js';
 import { say } from '@/game/say.js';
+import { assetUrl } from '../../../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 
 /* the Points window's lanes and their pictures (moved with the window: both read them) */
 export const SHARED_LANE = { key: 'shared', label: say(SAY, 'heroExpanded.sharedLane'), shared: true };
@@ -39,10 +40,10 @@ export const POINT_LANES = ['sword', 'staff', 'bow']
   .filter(Boolean)
   .concat([SHARED_LANE]);
 export const POINTS_ICONS = Object.freeze({
-  sword: `${POINTS_ART_DIR}sword.png?v=${POINTS_ART_V}`,
-  staff: `${POINTS_ART_DIR}staff.png?v=${POINTS_ART_V}`,
-  bow: `${POINTS_ART_DIR}bow.png?v=${POINTS_ART_V}`,
-  shared: `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`,
+  sword: assetUrl(`${POINTS_ART_DIR}sword.png?v=${POINTS_ART_V}`),
+  staff: assetUrl(`${POINTS_ART_DIR}staff.png?v=${POINTS_ART_V}`),
+  bow: assetUrl(`${POINTS_ART_DIR}bow.png?v=${POINTS_ART_V}`),
+  shared: assetUrl(`${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`),
 });
 
 /* v2.3.3522: the points a stat holds -- a weapon stat in its lane, a shared

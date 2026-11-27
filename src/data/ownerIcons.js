@@ -37,6 +37,7 @@
  *
  * No imports: node-tested (server/test/owner-icons.test.mjs).
  */
+import { assetUrl } from '../game/assetUrl.js';   /* v2.3.6743: an icon built from parts gets its file's version (card KEEP PR 3b) */
 const V = '?v=2.3.3481';
 /* v2.3.3511: the scenes were cut again, the plate's scroll ends under them
    gone (tools/ui/cut-owner-icons.py rim_cut): a new address, so a phone
@@ -57,7 +58,11 @@ export function landSceneUrl(id) {
   return typeof id === 'string' && Object.prototype.hasOwnProperty.call(LAND_SCENE, id) ? LAND_SCENE[id] : null;
 }
 
-const icon = (name, w, h, v) => Object.freeze({ src: '/icons/ui/' + name + '.webp' + (v || V), w, h });
+/* v2.3.6743: assetUrl gives each its file's own version on the page (card
+   KEEP PR 3b), replacing the key written here, which server/test/
+   owner-icons.test.mjs reads as written in node.  V itself stays: the quest
+   pins below are /ui's, a family of their own. */
+const icon = (name, w, h, v) => Object.freeze({ src: assetUrl('/icons/ui/' + name + '.webp' + (v || V)), w, h });
 export const OWNER_ICON = Object.freeze({
   arenaHelmet: icon('arena-helmet', 24, 28),
   tradeHandshake: icon('trade-handshake', 40, 26),

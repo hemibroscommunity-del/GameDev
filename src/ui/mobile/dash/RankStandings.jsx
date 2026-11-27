@@ -26,7 +26,7 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashNavView } from '@/game/dashNav.js';
 import { beforeDraw } from '@/game/framePacer.js';
 import { act } from '@/game/actions.js';
-import { ranksBoardHeads, youRow, youPinned, ranksOpens, medalOf } from '@/game/ranksPage.js';
+import { ranksBoardHeads, youRow, youPinned, ranksOpens, medalOf, rankAnswer } from '@/game/ranksPage.js';
 import { askSpinBoard, subscribeSpinBoard } from '@/game/spinBoard.js';
 import { aceFlipBus } from '../aceFlipBus.js';
 import { askFishBoard, subscribeFishWeigh } from '@/game/fishWeigh.js';
@@ -39,6 +39,7 @@ import { rankWord, rankBoardWord } from './rankWords.js';
 import { SAY } from '@/data/say/leaderboard.js';
 import { SAY as SAY_F } from '@/data/say/fishBoard.js';
 import { say } from '@/game/say.js';
+import { assetUrl } from '@/game/assetUrl.js';   /* v2.3.6692: a fish icon's address by KEEP's helper (its file's version), never by hand */
 
 /* a row and its 2 px gap: the rule's pitch (ranksUi2.css .u2-rk-row, .u2-rk-list's gap) */
 export const RANK_PITCH = 46;
@@ -68,7 +69,7 @@ export function useRankRows(cat) {
           setBoards(prev => { const next = Object.create(null); Object.assign(next, prev); next[cat] = d.results || []; return next; });
         })
         .catch(() => {})
-        .finally(() => { if (alive) setLoading(false); });
+        .finally(() => { if (alive) setLoading(false); });   /* today's page's `loading`; the new board waits on `answer` (v2.3.6692) */
     };
     setLoading(!boards[cat]);
     load();
@@ -77,7 +78,10 @@ export function useRankRows(cat) {
   }, [cat]);
   /* v2.3.3527: the AP board leaves off everyone at 0 */
   const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
-  return { rows, loading };
+  /* v2.3.6692 (the mend of sitting 72): `answer` is null until the worker has
+     answered (a failed fetch is no answer: `loading` goes false on it, so the
+     new board never reads `loading` as "answered") */
+  return { rows, loading, answer: boards[cat] === undefined ? null : rows };
 }
 
 /* the room's records, each asked for while its board is up (today's SpinBoard,
@@ -91,32 +95,44 @@ function useAsk(ask, subscribe) {
     return () => clearInterval(id);
   }, []);
 }
+/* v2.3.6692 (the mend of sitting 72: the Coin flip board said "Nobody has won a
+   flip against Ace yet." before the answer came): every source hands the
+   worker's answer, or null while there is none, to the rule (ranksPage.js
+   rankAnswer), and the page waits on the rule's `waiting`; no source says it
+   is loaded on its own */
 function useSpin(getS, side) {
   useAsk(() => askSpinBoard(getS()), subscribeSpinBoard);
-  const sb = getS() && getS()._spinBoard;
-  const state = !sb ? null : sb.off ? say(SAY, 'leaderboard.spinClosed') : sb.unavailable ? say(SAY, 'leaderboard.spinUnreadable') : null;
-  return { rows: (sb && (side === 'losses' ? sb.losses : sb.wins)) || [], loading: !sb, state, value: (r) => amount(r.n),
+  const a = rankAnswer('spin', (getS() && getS()._spinBoard) || null, side);
+  return { ...a, state: a.state === 'off' ? say(SAY, 'leaderboard.spinClosed') : a.state ? say(SAY, 'leaderboard.spinUnreadable') : null, value: (r) => amount(r.n),
     empty: side === 'losses' ? say(SAY, 'leaderboard.spinEmptyLoss') : say(SAY, 'leaderboard.spinEmptyWin') };
 }
+/* The flip's store (aceFlipBus.js) starts as an EMPTY board, `{ wins: [],
+   losses: [] }`, before the worker has said anything; its answer
+   (`setBoard`, on join and after each ask or flip) is always a new object.
+   So the board the store held when this module first ran is "no answer"
+   (this module is loaded with the Ranks window, lazily: if an answer had
+   already come by then, the board waits for its own ask's, never the other
+   way round). */
+const FLIP_UNANSWERED = aceFlipBus.board;
 function useFlip(getS, side) {
   useAsk(() => { const S = getS(); try { if (S && S.channel) act('ace_board_request', {}); } catch (e) { /* the next ask */ } },
     (fn) => aceFlipBus.subscribe(fn));
   const b = aceFlipBus.board;
-  return { rows: ((b && (side === 'losses' ? b.losses : b.wins)) || []).filter(Boolean), loading: false, state: null, value: (r) => amount(r.amount),
+  const a = rankAnswer('flip', b === FLIP_UNANSWERED ? null : b, side);
+  return { ...a, value: (r) => amount(r.amount),
     empty: side === 'losses' ? say(SAY, 'leaderboard.flipEmptyLoss') : say(SAY, 'leaderboard.flipEmptyWin') };
 }
 function useFish(getS, sp) {
   useAsk(() => askFishBoard(getS()), subscribeFishWeigh);
-  const fb = getS() && getS()._fishBoard;
+  const a = rankAnswer('fish', (getS() && getS()._fishBoard) || null, sp);
   const name = (FISH_SPECIES.find((f) => f.id === sp) || {}).name || say(SAY_F, 'fishBoard.someFish');
-  const state = !fb ? null : fb.off ? say(SAY_F, 'fishBoard.off') : fb.unavailable ? say(SAY_F, 'fishBoard.unavailable') : null;
-  return { rows: fb && fb.boards && Array.isArray(fb.boards[sp]) ? fb.boards[sp] : [], loading: !fb, state, value: (r) => fishKg(r.g),
+  return { ...a, state: a.state === 'off' ? say(SAY_F, 'fishBoard.off') : a.state ? say(SAY_F, 'fishBoard.unavailable') : null, value: (r) => fishKg(r.g),
     tag: (r) => (r.v === 'albino' ? { id: 'albino', word: say(SAY_F, 'fishBoard.albino') } : r.v === 'large' ? { id: 'large', word: say(SAY_F, 'fishBoard.large') } : null),
     empty: say(SAY_F, 'fishBoard.empty', { name }) };
 }
 function useRanked(parts, board) {
-  const { rows, loading } = parts.useRows(board);
-  return { rows, loading, state: null, value: (r) => parts.valueOf(board, r), empty: parts.emptyOf(board) };
+  const a = rankAnswer('ranked', parts.useRows(board).answer, null);
+  return { ...a, value: (r) => parts.valueOf(board, r), empty: parts.emptyOf(board) };
 }
 /* one source a board kind (the component is keyed by the board, so its hooks never change order) */
 function useSource(kind, parts, board, choice, getS) {
@@ -154,7 +170,7 @@ function Choice({ kind, choice, onChoice }) {
   }
   if (kind === 'fish') {
     return FISH_SPECIES.map((f) => (
-      <Ui2Tile key={f.id} size="compact" selected={choice === f.id} art={'/icons/items/fish-' + f.id + '.webp'} label={f.name}
+      <Ui2Tile key={f.id} size="compact" selected={choice === f.id} art={assetUrl('/icons/items/fish-' + f.id + '.webp')} label={f.name}
         data-rank-fish={f.id} onClick={() => onChoice(f.id)} />
     ));
   }
@@ -216,8 +232,8 @@ export function RankStandings({ board, choice: kept, parts, getS }) {
     <div ref={roomRef} style={{ flex: '1 1 auto', height: '100%', minHeight: 0, minWidth: 0, display: 'flex' }}>
       <StandingsView board={board.id} short={room.short}
         heads={{ rank: say(SAY, 'leaderboard.rankHead'), player: say(SAY, 'leaderboard.playerHead'), metric: unit }}
-        rows={rows} pinned={pinned} notRanked={!you.rank && !src.loading && rows.length > 0}
-        loading={src.loading && rows.length === 0} empty={src.state || src.empty}
+        rows={rows} pinned={pinned} notRanked={!you.rank && !src.waiting && rows.length > 0}
+        loading={src.waiting} empty={src.state || src.empty}
         choice={record ? <Choice kind={kind} choice={choice} onChoice={keepChoice} /> : null}
         words={{ you: say(SAY, 'leaderboard.you'), deleted: say(SAY, 'leaderboard.deletedWord'), notRanked: say(SAY, 'leaderboard.notRanked') }}
         Medal={RankMark} Face={BoardFace} pitch={RANK_PITCH} listRef={listRef} zoneRef={zoneRef}

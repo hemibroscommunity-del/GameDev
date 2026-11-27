@@ -11,6 +11,10 @@
  */
 export const SYSTEM = 'preload';
 export const ROWS = [
+  { variable: '_open', file: 'src/game/spareTime.js', system: 'preload', lifetime: 'sitting', suggested: '?', born: 'let bool', twoFiles: '', noRead: false, phase: null, flag: true, neverChanged: false, writers: ['src/game/spareTime.js'] },
+  { variable: '_openFn', file: 'src/game/spareTime.js', system: 'preload', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/spareTime.js'] },
+  { variable: '_ranFn', file: 'src/game/spareTime.js', system: 'preload', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/spareTime.js'] },
+  { variable: '_st', file: 'src/game/spareTime.js', system: 'preload', lifetime: 'sitting', suggested: '?', born: 'const object', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/game/spareTime.js'] },
   { variable: '_held', file: 'src/rendering/chestPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'const array', twoFiles: '', noRead: true, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/chestPreload.js'] },
   { variable: '_p', file: 'src/rendering/chestPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/chestPreload.js'] },
   { variable: '_portraitHeld', file: 'src/rendering/levelUpBurstPreload.js', system: 'preload', lifetime: 'sitting', suggested: 'never', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/rendering/levelUpBurstPreload.js'] },

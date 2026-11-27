@@ -165,6 +165,15 @@ export function metalIconPath(basePath, material) {
   if (!basePath) return basePath;
   const m = material && MATERIALS[material];
   if (!m || m.tint === NATIVE_TINT) return basePath;
+  /* v2.3.6743: the base arrives with its file's version now (the build
+     stamps '/icons/items/sword.webp' to '...sword.webp?v=<10>', card KEEP
+     PR 2), and '.webp?v=..' + '-iron.webp' asked for the plain sword under a
+     broken query (the bag's iron chest would show the plain plate).  The query
+     goes before the rule, and the rule stays a path: the metal's own file is
+     asked for with ITS version by whoever loads it (assetUrl around this, or
+     gearVariants.js's armorIconFor / gearIdIcon), never the base's. */
+  const q = basePath.indexOf('?');
+  if (q >= 0) basePath = basePath.slice(0, q);
   /* v2.3.2068: .webp, not .png.  The per-metal icons were the only PNGs left
      in /icons/items and they were reached ONLY through this concatenation —
      no filename grep would have found them.  They are lossless webp now

@@ -10,7 +10,7 @@ import { hardenCost, hardenIsWood, hardenTierOf, hardenLevelFor } from '@/data/h
 import { weaponDisplayName } from '@/ui/mobile/sheet/equipModel.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';
-import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx';
+import { C, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/woodwork.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say as sayWords, sayPieces } from '@/game/say.js';   /* v2.3.6347: `say` here is the window's popup (below) */
@@ -51,8 +51,8 @@ import { say as sayWords, sayPieces } from '@/game/say.js';   /* v2.3.6347: `say
  * data-harden-go / data-harden-mat / data-harden-gate, and the two tabs' own
  * (data-hw-*, data-traps-*). */
 
-const BOW_ICON = '/icons/items/bow.webp' + ITEMS_V;
-const STAFF_ICON = '/icons/items/staff.webp' + ITEMS_V;
+const BOW_ICON = '/icons/items/bow.webp';
+const STAFF_ICON = '/icons/items/staff.webp';
 const TYPE_WORD = { bow: sayWords(SAY, 'woodwork.bow'), staff: sayWords(SAY, 'woodwork.staff') };
 const SLOT_OF = { bow: 'rangedWeapon', staff: 'staffWeapon' };
 const H_ODDS = [80, 20, 5, 1, 0.5];

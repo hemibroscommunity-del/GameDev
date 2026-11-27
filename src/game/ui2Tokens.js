@@ -157,10 +157,21 @@ export const UI2_RADIUS = Object.freeze({ frame: 14, tile: 12, button: 11, group
 
 export const UI2_SPACE = Object.freeze({ xs: 2, s: 4, m: 6, l: 8, xl: 12 });
 
-/* ── type: ONE serif, its sizes and weights ── */
+/* ── type: ONE face, its sizes and weights ──
+ * v2.3.6785 (card UI3-type): the owner, 2026-11-26, "Also swap out the typography (font style) on
+ * all menus to be same as the 'logout' font": the game's own sans-serif, spelled as the Log Out
+ * button and the top bar spell it (AccountPanel.jsx, ZoneHeader.jsx), over the master
+ * specification's serif.  Merriweather is no longer asked of Google Fonts.  Its weights are two of
+ * the three the page loads Source Sans 3 at (400, 600, 700: src/index.html), so no weight is faked. */
 export const UI2_FONT = Object.freeze({
-  fontFamily: "'Merriweather', Georgia, 'Times New Roman', serif",
-  weights: Object.freeze([400, 700]),   /* the only two asked of Google Fonts (src/index.html) */
+  fontFamily: "'Source Sans 3', sans-serif",
+  weights: Object.freeze([400, 700]),   /* the kit's regular and bold (src/index.html asks both, upright) */
+});
+/** v2.3.6785: rows of yesterday that `?ui2look=0` does NOT wear (the suite's yesterday still reads
+ *  them, so main 7ec316e9's block is rebuilt to the byte).  The letters: the owner's word is "all
+ *  menus", and the serif is no longer loaded, so yesterday's colours wear today's letters. */
+export const UI2_WAS_UNWORN = Object.freeze({
+  '--ui2-font': "'Merriweather', Georgia, 'Times New Roman', serif",
 });
 export const UI2_TYPE = Object.freeze({
   badge: 10,    /* a count badge only */

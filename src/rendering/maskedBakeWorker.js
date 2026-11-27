@@ -41,6 +41,7 @@ import { bakeMaskedCanvas } from './maskedBake.js';
 import { lookSheetParse, lookFrameRGBA } from './lookExpand.js';   /* v2.3.3752: the armoured body from the colour numbers */
 import { unpackLookSheet, lookBytesHash } from './lookUnpack.js';   /* v2.3.5015: a sheet's bytes made here, from its file */
 import { lookBake } from './lookBake.js';
+import { KEEP_V, KEEP_CAP_BYTES, KEEP_CAP_MB, keyParts, keyOf, keptOk, keepStore, stableText } from '../game/bakeKeep.js';   /* v2.3.6761: the bakes kept */
 
 /* ═══ v2.3.3752: THE BODY FROM THE COLOUR NUMBERS (lookArmour.js) ═══
    A look drawn from the shared numbers has no picture of its own to send, so
@@ -104,6 +105,21 @@ function lookTable(key, sh) {
   return t;
 }
 const _bms = new Map();   /* 'key@x,y,w,h' -> ImageBitmap */
+/* v2.3.6761: a sheet of numbers' digest (the keep's key reads it), made again when its sheet is */
+const _numbers = new Map();   /* key -> Promise<Uint8Array | null> */
+function numbersDigest(key) {
+  let p = _numbers.get(key);
+  if (p) return p;
+  const sh = lookSheets.get(key);
+  if (!sh || !sh.bytes) return Promise.resolve(null);
+  const b = sh.bytes;
+  const head = new Uint8Array(new Uint32Array([sh.w | 0, sh.rows | 0, sh.bits | 0]).buffer);
+  const all = new Uint8Array(head.length + b.length);
+  all.set(head, 0); all.set(b instanceof Uint8Array ? b : new Uint8Array(b.buffer || b), head.length);
+  p = self.crypto.subtle.digest('SHA-256', all).then((h) => new Uint8Array(h), () => null);
+  _numbers.set(key, p);
+  return p;
+}
 const BM_CAP = 48;
 async function lookBitmap(inp) {
   const sh = lookSheets.get(inp.look);
@@ -174,7 +190,12 @@ function sheetOf(url) {
   const lateP = new Promise((r) => { give = r; });
   const cut = setTimeout(() => { late = true; if (ac) ac.abort(); give(null); }, SHEET_URL_MS);
   const read = fetch(url, ac ? { signal: ac.signal } : undefined).then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.blob(); })
-    .then((b) => createImageBitmap(b));
+    .then((b) => {
+      /* v2.3.6761: the file decoded here, digested, so a job is kept only
+         when the file it drew is the file its key read (urlInputs) */
+      if (keepReady()) e.digest = b.arrayBuffer().then((buf) => self.crypto.subtle.digest('SHA-256', buf)).then((h) => new Uint8Array(h), () => null);
+      return createImageBitmap(b);
+    });
   read.then((bm) => { if (late && bm) { try { bm.close(); } catch (err) { /* gone */ } } }, () => {});
   e.p = Promise.race([read, lateP])
     .then((bm) => { clearTimeout(cut); if (!bm) throw new Error('late'); e.bm = bm; e.bytes = bm.width * bm.height * 4; sheetsTrim(); return bm; })
@@ -218,6 +239,14 @@ async function urlInputs(j, ins) {
     if (inp.qaBm) qa.push(sameCut(inp));
   });
   if (qa.length) j._qa = qa;
+  /* v2.3.6761: kept only if every sheet drawn is the file its key read */
+  if (!fail.length && j._key) {
+    for (let i = 0; i < ins.length && j._key; i++) {
+      const want = j._files && j._files.get(ins[i].url);
+      const got = used[i].digest ? await used[i].digest : null;
+      if (!want || !got || want.length !== got.length || want.some((v, k) => v !== got[k])) j._key = null;
+    }
+  }
   if (!fail.length) return true;
   jobDone(j);
   self.postMessage({ id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: 'url', urlFail: fail, qa: j._qa || null, kept: sheetsKeptBytes() });
@@ -353,6 +382,7 @@ function fetchSheet(j) {
         const g = c.getContext('2d', { willReadFrequently: true });
         g.drawImage(bm, 0, 0);
         const out = unpackLookSheet(g.getImageData(0, 0, s.W, s.n + s.T).data, s);
+        _numbers.delete(j.key);   /* v2.3.6761: its digest made again */
         lookSheets.set(j.key, lookSheetParse(out, s.W, s.rows, s.bits));
         if (j.check) self.postMessage({ type: 'lookSheetDone', key: j.key, hash: lookBytesHash(out) });
       } finally { try { bm.close(); } catch (e2) { /* closed */ } }
@@ -373,8 +403,9 @@ function waitsFor(j) {
 self.onmessage = (e) => {
   const j = e.data || {};
   if (j.type === 'rod') { rod = j.rod || null; return; }
-  if (j.type === 'lookSheet') { try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
+  if (j.type === 'lookSheet') { _numbers.delete(j.key); try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
   if (j.type === 'lookSheetUrl') { fetchSheet(j); return; }
+  if (j.type === 'keep') { keepSet(j); return; }   /* v2.3.6761: the page's switch, before its first job */
   /* v2.3.5050 (sitting 5): a job's sheets by address start reading as it
      arrives, beside the wait for its sheets of numbers (they read only after
      it, under the page's 6 s watch) */
@@ -389,6 +420,9 @@ self.onmessage = (e) => {
   takeJob(j);
 };
 function takeJob(j) {
+  /* v2.3.6761: with the keep, the job's key first, before any sheet is read
+     (keyFirst): a kept job is answered from the disk and reads nothing */
+  if (!j._keyTried && keepReady()) { j._keyTried = true; keyFirst(j); return; }
   /* v2.3.5043: inputs by address read first (urlInputs); the page told when
      they are (`urlsRead`: an address being read when the worker is let go as
      stuck is refused, bakeByAddress.js) */
@@ -409,13 +443,24 @@ function takeJob(j) {
   }
   /* v2.3.5000: the pieces from numbers made bitmaps first (the one wait: the
      job is then baked in one run, as before) */
-  if ((j.worn || []).some((w) => w && w.inp && w.inp.look)) { lookBitmaps(j).then(() => runJob(j), () => runJob(j)); return; }
-  runJob(j);
+  if ((j.worn || []).some((w) => w && w.inp && w.inp.look)) { lookBitmaps(j).then(() => answerJob(j), () => answerJob(j)); return; }
+  answerJob(j);
 }
-function runJob(j) {
-  if (j.look) { lookJob(j); return; }
+function answerJob(j) {
+  /* v2.3.6761: QA's check of a kept answer (its inputs read only for this) */
+  if (j._verifyOut) { try { verifyKept(j, j._verifyOut); } catch (e) { keep.differ++; } postReply(j, j._verifyOut); return; }
+  /* v2.3.6761: a job with a key (not kept yet) is baked and kept */
+  const key = j._key || null;
+  const b = j.look ? lookNow(j, !!key) : runJob(j, !!key);
+  postReply(j, b);
+  if (key && b.kept && keepReady()) keep.store.put(key, b.kept).then((ok) => { if (ok) keep.stored++; });
+}
+/* the bake itself (its name kept from before the keep: TRAPS §253's list): { reply, transfer, kept } -- `kept` (wantKept) the bytes
+   the store keeps, read from the very canvas the reply is made of */
+function runJob(j, wantKept) {
   const reply = { id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: null };
   const transfer = [];
+  let kept = null;
   try {
     const r = bakeMaskedCanvas({
       mk,
@@ -439,6 +484,15 @@ function runJob(j) {
          frame whole, as before, with no cell */
       let crop = null;
       if (j.crop) { try { crop = cropFrame(dc, dctx); } catch (e2) { crop = null; } }
+      /* v2.3.6761: what is kept is read before the canvas becomes the reply;
+         a frame baked before its belt came is not kept (nor does the page keep it) */
+      if (wantKept && !r.beltPending) {
+        try {
+          const kc = crop ? crop.cc : dc;
+          const kx = crop ? kc.getContext('2d') : dctx;
+          kept = { t: 'px', w: kc.width, h: kc.height, px: kx.getImageData(0, 0, kc.width, kc.height).data, cell: crop ? crop.cell : null, belt: false };
+        } catch (e2) { kept = null; }
+      }
       if (crop) { reply.bitmap = crop.cc.transferToImageBitmap(); reply.cell = crop.cell; }
       else reply.bitmap = dc.transferToImageBitmap();
       reply.beltPending = !!r.beltPending;
@@ -446,17 +500,23 @@ function runJob(j) {
     }
   } catch (err) {
     reply.err = String((err && err.message) || err);
+    kept = null;
   }
+  return { reply, transfer, kept };
+}
+/* every reply leaves here: the job's inputs let go first (jobDone) */
+function postReply(j, b) {
   jobDone(j);   /* v2.3.5043: + the QA cuts, and its sheets let go */
-  if (j._qa) reply.qa = j._qa;
-  reply.kept = sheetsKeptBytes();
-  self.postMessage(reply, transfer);
-};
+  if (j._qa) b.reply.qa = j._qa;
+  b.reply.kept = sheetsKeptBytes();
+  self.postMessage(b.reply, b.transfer);
+}
 
 /* v2.3.3752: a look job -- lookBake.js, on CPU canvases (mkCpu) */
-function lookJob(j) {
+function lookNow(j, wantKept) {
   const reply = { id: j.id, raw: false, err: null };
   const transfer = [];
+  let kept = null;
   try {
     const sh = lookSheets.get(j.look.sheet);
     if (!sh) throw new Error('no sheet ' + j.look.sheet);
@@ -468,21 +528,237 @@ function lookJob(j) {
     }, mkCpu);
     if (r.raw) reply.raw = true;
     else {
+      /* v2.3.6761: kept before its buffer goes to the page (a copy) */
+      if (wantKept && !r.beltPending) {
+        kept = { t: 'look', show: r.show.slice(), counts: r.counts, belt: false,
+          residue: r.residue ? { x: r.residue.x, y: r.residue.y, w: r.residue.w, h: r.residue.h, px: r.residue.px } : null };
+      }
       reply.show = r.show; transfer.push(r.show.buffer);
       reply.counts = r.counts;
       reply.beltPending = r.beltPending;
       if (r.residue) {
-        const rc = mkCpu(r.residue.w, r.residue.h);
-        rc.getContext('2d').putImageData(new ImageData(r.residue.px, r.residue.w, r.residue.h), 0, 0);
-        reply.residue = { x: r.residue.x, y: r.residue.y, w: r.residue.w, h: r.residue.h, bitmap: rc.transferToImageBitmap() };
+        reply.residue = residueOf(r.residue);
         transfer.push(reply.residue.bitmap);
       }
     }
   } catch (err) {
     reply.err = String((err && err.message) || err);
+    kept = null;
   }
-  jobDone(j);   /* v2.3.5043: + the QA cuts, and its sheets let go */
-  if (j._qa) reply.qa = j._qa;
-  reply.kept = sheetsKeptBytes();
-  self.postMessage(reply, transfer);
+  return { reply, transfer, kept };
+}
+/* the residue's sprite from its pixels: the bake's way and the keep's */
+function residueOf(res) {
+  const rc = mkCpu(res.w, res.h);
+  rc.getContext('2d').putImageData(new ImageData(res.px, res.w, res.h), 0, 0);
+  return { x: res.x, y: res.y, w: res.w, h: res.h, bitmap: rc.transferToImageBitmap() };
+}
+
+/* ═══ v2.3.6761: THE BAKES KEPT ON THE DISK (src/game/bakeKeep.js) ═══
+   The owner's Loading times (2026-11-26, their iPhone): the screen up 21.3 s
+   on its 20 s limit, waiting for these bakes, made again at every login.
+   Now a job's key is made from what this worker received (keyParts: every
+   input by the pixels it would draw), and a job kept is answered from the
+   store, in the same reply the bake makes; one not kept is baked and kept.
+   The store is this worker's alone (IndexedDB is here in a worker); the page
+   asks for a bake as it always did and never knows which it got.  Off until
+   the page has said (`{ type: 'keep' }`, `?bakekeep=0`); off for the session
+   when the store throws or is not there.  docs/specs/bake-keep.md. */
+const keep = { on: false, verify: false, port: null, store: null, ver: '',
+  hits: 0, misses: 0, stored: 0, bad: 0, nokey: 0, same: 0, differ: 0, diffs: [], ms: 0,
+  missed: [],   /* QA: each job not kept, as its pose and its inputs' sources (a first 400) */
+  t: { px: 0, digest: 0, get: 0, out: 0, n: 0, bm: 0 } };   /* QA: where a kept answer's time goes */
+function keepSet(m) {
+  keep.on = !!m.on;
+  keep.verify = !!m.verify;
+  keep.port = m.port || null;
+  const ua = String(m.ua || '');   /* the browser, as the page's device profile says it (deviceProfile.js userAgent) */
+  let at = '';
+  try { at = String((self.location && self.location.pathname) || ''); } catch (e) { at = ''; }
+  /* the bake's version: the keep's own, this script (hashed in a build), the browser */
+  keep.ver = 'v' + KEEP_V + '|' + at + '|' + ua;
+  if (keep.on && !keep.store) {
+    let idb = null;
+    try { idb = self.indexedDB || null; } catch (e) { idb = null; }
+    keep.store = keepStore(idb, keep.ver, KEEP_CAP_BYTES);
+    keep.store.open();
+  }
+  if (keep.port) keep.port.onmessage = (e) => { try { const st = keepStats(); if (e && e.data && e.data.missed) st.missedList = keep.missed.slice(); keep.port.postMessage(st); } catch (e2) { /* the page is gone */ } };
+}
+function keepStats() {
+  const S = keep.store ? keep.store.state : null;
+  return { on: keep.on && !!S && !S.off, verify: keep.verify, why: S ? S.why : (keep.on ? '' : 'switched-off'),
+    hits: keep.hits, misses: keep.misses, stored: keep.stored, bad: keep.bad, nokey: keep.nokey,
+    same: keep.same, differ: keep.differ, diffs: keep.diffs.slice(0, 6), ms: Math.round(keep.ms), missed: keep.missed.length,
+    t: { px: Math.round(keep.t.px), digest: Math.round(keep.t.digest), get: Math.round(keep.t.get), out: Math.round(keep.t.out), n: keep.t.n, bm: keep.t.bm },
+    frames: S ? S.rows.size : 0, mb: S ? Math.round(S.bytes / 1048576 * 100) / 100 : 0, capMb: KEEP_CAP_MB };
+}
+const keepReady = () => keep.on && !!keep.store && !keep.store.state.off && !!(self.crypto && self.crypto.subtle);
+/* a cut input's pixels as the bake draws it (drawer): its rectangle, 1:1 */
+function inputPixels(inp) {
+  /* only a bitmap cut on the page is read (a sheet by address is keyed by its
+     file, a frame of numbers by its sheet's numbers: keyParts) */
+  const src = inp && inp.bm;
+  if (!src || !(inp.fw > 0) || !(inp.fh > 0)) return null;
+  const c = mkCpu(inp.fw, inp.fh);
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0, inp.fw, inp.fh, 0, 0, inp.fw, inp.fh);
+  return g.getImageData(0, 0, inp.fw, inp.fh).data;
+}
+/* a body from the look's numbers: the frame lookBake.js reads (lookFrameRGBA) */
+function lookPixels(look) {
+  const sh = lookSheets.get(look.sheet);
+  if (!sh || !look.cell) return null;
+  return lookFrameRGBA(sh, look.cell, look.row);
+}
+let _rodBytesOf = null, _rodBytes = null;
+function rodBytes() {
+  if (!rod) return null;
+  if (_rodBytesOf !== rod) {
+    const head = new Uint8Array(new Uint32Array([rod.frames | 0, rod.fw | 0, rod.fh | 0, rod.w | 0]).buffer);
+    const m = rod.mask || [];
+    const out = new Uint8Array(head.length + m.length);
+    out.set(head, 0);
+    for (let i = 0; i < m.length; i++) out[head.length + i] = m[i];
+    _rodBytesOf = rod; _rodBytes = out;
+  }
+  return _rodBytes;
+}
+async function keepKey(j, files, numbers) {
+  const t0 = performance.now();
+  const parts = keyParts(j, { pixels: (inp) => { keep.t.bm++; return inputPixels(inp); }, file: (u) => files.get(u) || null, numbers: (k) => numbers.get(k) || null, look: lookPixels, rod: rodBytes, build: keep.ver });
+  const t1 = performance.now();
+  keep.t.px += t1 - t0;
+  if (!parts) { keep.nokey++; return null; }
+  const k = await keyOf(parts, (b) => self.crypto.subtle.digest('SHA-256', b));
+  keep.t.digest += performance.now() - t1;
+  return k;
+}
+/* a kept value as the reply the bake makes; null when it does not fit the job */
+function fromKept(j, v) {
+  if (!keptOk(v)) return null;
+  if (!j.look && v.t === 'px') {
+    const c = mkCpu(v.w, v.h);   /* a CPU canvas: putting bytes back reads nothing off a graphics chip */
+    const px = v.px instanceof Uint8ClampedArray ? v.px : new Uint8ClampedArray(v.px);
+    c.getContext('2d').putImageData(new ImageData(px, v.w, v.h), 0, 0);
+    const bitmap = c.transferToImageBitmap();
+    return { reply: { id: j.id, bitmap, cell: v.cell || null, beltPending: !!v.belt, raw: false, err: null }, transfer: [bitmap], kept: null };
+  }
+  if (j.look && v.t === 'look') {
+    const show = new Uint8Array(v.show);
+    const reply = { id: j.id, raw: false, err: null, show, counts: v.counts, beltPending: !!v.belt };
+    const transfer = [show.buffer];
+    if (v.residue) {
+      const px = v.residue.px instanceof Uint8ClampedArray ? v.residue.px : new Uint8ClampedArray(v.residue.px);
+      reply.residue = residueOf({ x: v.residue.x, y: v.residue.y, w: v.residue.w, h: v.residue.h, px });
+      transfer.push(reply.residue.bitmap);
+    }
+    return { reply, transfer, kept: null };
+  }
+  return null;
+}
+/* QA (window.__btBakeKeepVerify): a bitmap's pixels, to compare two */
+function bitmapPixels(bm) {
+  if (!bm) return null;
+  const c = mkCpu(bm.width, bm.height);
+  const g = c.getContext('2d');
+  g.drawImage(bm, 0, 0);
+  return g.getImageData(0, 0, bm.width, bm.height).data;
+}
+const sameBytes = (a, b) => {
+  if (!a || !b || a.length !== b.length) return a === b;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+};
+/* QA: the job baked again beside its kept answer, byte for byte, as the page
+   receives them (the bitmap drawn back, the cell, the bits, the residue) */
+function verifyKept(j, out) {
+  const b = j.look ? lookNow(j, false) : runJob(j, false);
+  const a = out.reply, f = b.reply;
+  let why = '';
+  if (f.err || f.raw) why = f.err ? 'rebake-failed' : 'rebake-raw';
+  else if (!j.look) {
+    if (stableText(a.cell) !== stableText(f.cell)) why = 'diff-cell';
+    else if (!!a.beltPending !== !!f.beltPending) why = 'diff-belt';
+    else if (!sameBytes(bitmapPixels(a.bitmap), bitmapPixels(f.bitmap))) why = 'diff-pixels';
+  } else {
+    if (!sameBytes(a.show, f.show)) why = 'diff-show';
+    else if (stableText(a.counts) !== stableText(f.counts)) why = 'diff-counts';
+    else if (!!a.beltPending !== !!f.beltPending) why = 'diff-belt';
+    else if (!!a.residue !== !!f.residue) why = 'diff-residue';
+    else if (a.residue && (stableText([a.residue.x, a.residue.y, a.residue.w, a.residue.h]) !== stableText([f.residue.x, f.residue.y, f.residue.w, f.residue.h])
+      || !sameBytes(bitmapPixels(a.residue.bitmap), bitmapPixels(f.residue.bitmap)))) why = 'diff-residue-pixels';
+  }
+  for (const t of b.transfer) { try { if (t && t.close) t.close(); } catch (e) { /* gone */ } }
+  if (why) { keep.differ++; if (keep.diffs.length < 6) keep.diffs.push(((j.poseInfo && (j.poseInfo.pose + '/' + j.poseInfo.dir + ' #' + j.poseInfo.frameIdx)) || '?') + ': ' + why); } else keep.same++;
+}
+/* a sheet's file by address, digested: the digest sheetOf makes of the very
+   file it reads (one read an address, its 4 s and its failure as before:
+   picture-door's row), and the job's hold on the sheet while it waits.  A
+   kept job then draws nothing from it; a job not kept finds it read. */
+async function sheetDigest(url) {
+  const e = sheetOf(url);
+  e.uses++;
+  try {
+    const bm = await e.p;
+    return bm && e.digest ? await e.digest : null;
+  } finally { e.uses--; sheetsTrim(); sheetsIdleSoon(); }
+}
+/* QA: a job not kept, said as its pose and where each input came from (a
+   file's digest, its first bytes; a sheet of numbers'; a cut picture) */
+const hex4 = (u8) => (u8 ? Array.from(u8.slice(0, 4), (v) => (v < 16 ? '0' : '') + v.toString(16)).join('') : '-');
+function missSay(j) {
+  const p = j.poseInfo || {};
+  const one = (x) => {
+    if (!x) return '0';
+    const at = '@' + [x.tx, x.ty, x.fw, x.fh, x.ow, x.oh].join(',');
+    if (x.look) return 'n' + hex4(j._numbersSeen && j._numbersSeen.get(x.look)) + ':' + [x.cell && x.cell.x, x.cell && x.cell.y].join(',') + at;
+    if (x.url) return (String(x.url).slice(0, 5) === 'blob:' ? 'b' : 'f') + hex4(j._files && j._files.get(x.url)) + ':' + x.sx + ',' + x.sy + at;
+    return 'c' + at;
+  };
+  return p.pose + '/' + p.dir + '#' + p.frameIdx + ' ' + (j.look ? 'look:' + j.look.sheet + ' ' : 'body:' + one(j.body) + ' ') + 'belt:' + one(j.belt) + ' ' + (j.worn || []).map((w) => w.k + ':' + one(w.inp)).join(' ');
+}
+/* the key first: a kept job answered from the disk; one not kept goes on
+   its road (its sheets read, baked) with its key, and is kept when baked */
+async function keyFirst(j) {
+  const t0 = performance.now();
+  let key = null;
+  try {
+    const worn = (j.worn || []).map((w) => w && w.inp);
+    /* a piece from numbers whose sheet is not here: no key (its road fails it, as before) */
+    if (!worn.some((x) => x && x.look && !lookSheets.has(x.look))) {
+      const files = new Map(), numbers = new Map();
+      for (const x of [j.body, j.belt, ...worn]) {
+        if (x && x.url && !files.has(x.url)) files.set(x.url, await sheetDigest(x.url));
+        if (x && x.look && !numbers.has(x.look)) numbers.set(x.look, await numbersDigest(x.look));
+      }
+      key = await keepKey(j, files, numbers);
+      j._files = files;
+      j._numbersSeen = numbers;
+    }
+  } catch (e) { key = null; }
+  if (key) {
+    const tg = performance.now();
+    const v = await keep.store.get(key);   /* never throws: null, and the store off, on a failure */
+    const to = performance.now();
+    keep.t.get += to - tg;
+    if (v) {
+      let out = null;
+      try { out = fromKept(j, v); } catch (e) { out = null; }
+      keep.t.out += performance.now() - to; keep.t.n++;
+      if (out) {
+        keep.hits++;
+        keep.ms += performance.now() - t0;   /* the keep's own time: the key and the read (not QA's bake again) */
+        if (keep.verify) { j._verifyOut = out; takeJob(j); return; }   /* QA: read its inputs and bake it again beside (runJob) */
+        postReply(j, out);
+        return;
+      }
+      keep.bad++;   /* not whole: baked again below, and replaced */
+    }
+    keep.misses++;
+    if (keep.missed.length < 400) keep.missed.push(missSay(j));
+  }
+  j._key = key;
+  takeJob(j);
 }

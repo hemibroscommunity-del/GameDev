@@ -50,6 +50,8 @@ import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader 
 import { SAY as GUIDE } from '../data/say/dashGuide.js';   /* v2.3.6682: the words under the new frame (card UI2-frame PR 2) */
 import { say } from '../game/say.js';
 import { beforeDraw } from '../game/framePacer.js';   /* v2.3.6286: the tick at the top of the game's frame (card HB2 PR 7) */
+import { clearOf, fromTop } from '../game/tutorClear.js';
+import { winVh } from './mobile/playViewport.js';
 import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6286: `?afterpaint` */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
@@ -65,6 +67,11 @@ export const CLOSE_MS = 90000;    /* v2.3.4343: the CLOSE lesson */
 export const COMBAT_MS = 14000;   /* v2.3.4343: the phone's special / shield lesson */
 const SIZE = 56;                /* the arrow, CSS px */
 const GAP = 6;                  /* between its point and the target's edge */
+const WORDS_H = 26;             /* v2.3.6791: the words' box (13 px at 1.2, 3 px of padding, the 1.5 px border), never measured */
+/* v2.3.6791: the controller's housings, handed in by ui/tutorSpot.js (tutorKeep), so this file imports no glue
+   (node tests it); none until then */
+let _keep = () => [];
+export function guideArrowKeep(fn) { _keep = typeof fn === 'function' ? fn : () => []; }
 const GOLD = '#F5CE3C', EDGE = '#3A2606';
 const LS_PREFIX = 'bt_guideArrow:';
 
@@ -369,6 +376,8 @@ function ensureEl() {
   el.appendChild(bob);
   const label = document.createElement('div');
   const ls = label.style;
+  label.setAttribute('data-guide-arrow-words', '');   /* v2.3.6791: its words, placed clear of the controller (place) */
+  label.setAttribute('data-tutor', 'arrow');
   ls.position = 'absolute'; ls.left = '0px'; ls.whiteSpace = 'nowrap';
   ls.font = '700 13px/1.2 system-ui, -apple-system, sans-serif'; ls.color = '#FFF6D6';
   ls.background = 'rgba(17,25,29,.92)'; ls.border = '1.5px solid ' + GOLD; ls.borderRadius = '8px'; ls.padding = '3px 8px';
@@ -443,12 +452,11 @@ function place(r, words, fromLeft, follow) {
   const vw = window.innerWidth || 0;
   const sp = spotOf(r, side);
   const left = follow ? onDevicePx(sp.left) : Math.round(sp.left);
-  const top = follow ? onDevicePx(sp.top) : Math.round(sp.top);
+  let top = follow ? onDevicePx(sp.top) : Math.round(sp.top);
   const first = !_el.style.transition;
   const glide = follow ? 'none' : 'left .2s ease-out, top .2s ease-out';
   if (!first && _el.style.transition !== glide) _el.style.transition = glide;
   _el.style.left = left + 'px'; _el.style.top = top + 'px';
-  if (first) { void _el.offsetWidth; _el.style.transition = glide; }
   _followAt.left = follow ? left : NaN; _followAt.top = follow ? top : NaN;
   if (_side !== side) {
     _side = side;
@@ -471,12 +479,49 @@ function place(r, words, fromLeft, follow) {
   const want = left + SIZE / 2 - lw / 2;
   const at = Math.max(4, Math.min(vw - 4 - lw, want));
   _label.style.left = Math.round(at - left) + 'px';
+  /* ═══ v2.3.6791: ITS WORDS NEVER ON THE CONTROLLER (card UI3 PR 11) ═══
+     The owner, 2026-11-27: "Needs to fix tutorial messages over new
+     controller area."  Sideways, pointing down at Gear (under the shell),
+     "Tap to open" stood on the rail and the stick's lobe.  The arrow may
+     touch what it points past; its WORDS may not: where they would meet a
+     housing, the arrow goes up by what the rule (game/tutorClear.js) lifts
+     them, still pointing down at its target.  Only from above or the left
+     (from below the words would cover the target). */
+  if (words && side !== 'below') {
+    const keep = _keep();
+    if (keep.length && _sheetPx >= 0) {   /* the first tick has no reading yet: the next one lifts it */
+      const bandTop = (winVh() || 0) - Math.max(0, _sheetPx);
+      const wTop = side === 'above' ? top - 2 - WORDS_H : top + SIZE + 2;
+      const got = clearOf(fromTop(wTop, WORDS_H, at, lw, bandTop), keep);
+      const dy = got.moved ? Math.ceil(bandTop - got.hi - wTop) : 0;
+      if (dy < 0) {
+        const nt = follow ? onDevicePx(top + dy) : Math.round(top + dy);
+        _el.style.top = nt + 'px';
+        if (follow) _followAt.top = nt;
+        top = nt;
+        qa.lifted = -dy;
+      } else qa.lifted = 0;
+    }
+  }
+  /* v2.3.6791: the glide is switched on only now, after the words' lift: on
+     its first placing the arrow appears where it stands, never gliding up
+     off the controller from where it would have been */
+  if (first) { void _el.offsetWidth; _el.style.transition = glide; }
   qa.side = side;
   qa.rect = { left, top, w: SIZE, h: SIZE };
   qa.target = { x: Math.round(side === 'left' ? r.left : cx), y: Math.round(side === 'left' ? r.top + r.height / 2 : side === 'above' ? r.top : r.bottom), left: Math.round(r.left), top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
 }
 
+/* v2.3.6791: the band's height (--sheet-h), read at the top of the frame
+   (tick, from beforeDraw: docs/specs/layout-reads.md way 3) once a tick, and
+   kept for place(); only while the controller is drawn (a computer has none) */
+let _sheetPx = -1;
 function tick(getS) {
+  _sheetPx = -1;
+  if (_keep().length) {
+    /* the shell's own edge: --sheet-h, else --dash-h (PadHousings.jsx `bottom`) */
+    try { const cs = getComputedStyle(document.documentElement); const v = parseFloat(cs.getPropertyValue('--sheet-h')); _sheetPx = v >= 0 ? v : (parseFloat(cs.getPropertyValue('--dash-h')) || 0); } catch (e) { _sheetPx = -1; }
+  }
   const now = Date.now();
   const dt = _lastTick ? Math.min(1000, now - _lastTick) : 0;
   _lastTick = now;
