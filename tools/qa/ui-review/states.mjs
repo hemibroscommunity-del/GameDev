@@ -2253,7 +2253,7 @@ export const STATES = [
   },  /* v2.3.6840 (card UI4 PR 1, the owner's V17): the nine roles, and the five pieces V17 names that the kit
      lacked, each a plate of ?uikit=1 in today's look (no screen uses them yet); like ui2-kit, last */
   ...[
-    ['roles', 'The kit\'s nine roles (?uikit=1)', 'The nine roles of the owner\'s V17 (a fact, a stat you inspect, a way to go, the chosen one, adjust, commit, danger, disabled, an item slot), each drawn by a kit piece made with that role, in today\'s look.'],
+    ['roles', 'The kit\'s nine roles (?uikit=1)', 'The nine roles of the owner\'s V17 (a fact, a stat you inspect, a way to go, the chosen one, adjust, commit, danger, disabled, an item slot), each drawn by a kit piece made with that role, in V17\'s look (v2.3.6841; ui4-look-before has the day before\'s).'],
     ['tab', 'The kit\'s tab (?uikit=1)', 'A real tab row (Active, Daily, Completed): the chosen one pushed in and its word always written; not yet used by a screen.'],
     ['stepper', 'The kit\'s stepper (?uikit=1)', 'The trade window\'s quantity stepper as a kit piece: one fewer, the number with what you have, one more, each end off at its end; not yet used by a screen.'],
     ['inspect', 'The kit\'s stat you inspect (?uikit=1)', 'A stat that always opens (its chevron, or the word Details), beside a stat that does not.'],
@@ -2278,4 +2278,28 @@ export const STATES = [
       await wait(P, 1500);
     },
   })),
+  /* v2.3.6841 (card UI4 PR 2): the nine roles in the look of the day before V17 (?v17look=0), beside
+     ui4-kit-roles in V17's, so the owner compares; the switch is cleared after (it is remembered) */
+  {
+    id: 'ui4-look-before', group: 'The new dashboard (in build)', title: 'The kit\'s nine roles before V17 (?uikit=1&v17look=0)',
+    about: 'The same plate as ui4-kit-roles in the look of the day before the owner\'s V17: five light action faces, the chosen one pushed in, gold stat numbers and chevrons.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.set('uikit', '1');
+      u.searchParams.set('v17look', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      const up = await P.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 60000 }).then(() => true, () => false);
+      if (!up) return 'the kit\'s page did not come up';
+      const at = await P.page.evaluate(() => { const el = document.querySelector('[data-u2-plate="roles"]'); if (!el) return false; el.scrollIntoView({ block: 'start' }); return true; });
+      if (!at) return 'the plate roles is not on the kit\'s page';
+      await wait(P, 800);
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.delete('uikit');
+      u.searchParams.set('v17look', '1');   /* clears the remembered =0 */
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    },
+  },
 ];

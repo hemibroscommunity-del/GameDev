@@ -34,7 +34,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
   Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass, Ui2TwoPanel, Ui2ItemGrid,
-  Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm, Ui2Facts, Ui2Fact, ui2LookWas,
+  Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm, Ui2Facts, Ui2Fact, ui2LookWas, v17LookOn,
   Ui2Collection, Ui2CollectionCard, Ui2Showcase,
   Ui2Tabs, Ui2Tab, Ui2Stepper, Ui2InspectStat, Ui2Comparison, Ui2Overlay,
 } from './index.js';
@@ -476,7 +476,7 @@ export function UiKitPage() {
   }, []);
   useEffect(() => {
     try {
-      window.__btUiKit = { ready: fonts, room, player: !!me, plates: document.getElementsByClassName('u2-frame').length, look: ui2LookWas() ? 'was' : 'new', taps: 0, lastTap: null,
+      window.__btUiKit = { ready: fonts, room, player: !!me, plates: document.getElementsByClassName('u2-frame').length, look: ui2LookWas() ? 'was' : 'new', v17: v17LookOn() && !ui2LookWas(), taps: 0, lastTap: null,
         font: fonts && document.fonts.check(`700 16px ${UI2_FONT.fontFamily.split(',')[0]}`) };
     } catch (e) { /* no window */ }
   }, [fonts, room, me]);
@@ -492,6 +492,8 @@ export function UiKitPage() {
         <a href={shineOff ? '?uikit=1' : '?uikit=1&ui2shine=0'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{shineOff ? 'Shine on' : 'Shine off'}</a>
         {/* v2.3.6780: yesterday's look, to compare (remembered on this phone; ?ui2look=1 returns) */}
         <a href={was ? '?uikit=1&ui2look=1' : '?uikit=1&ui2look=0'} data-u2-look={was ? 'was' : 'new'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{was ? 'New look' : 'Old look'}</a>
+        {/* v2.3.6841 (card UI4 PR 2): the owner's V17 look, on by default; today's to compare (remembered; ?v17look=1 returns) */}
+        {was ? null : <a href={v17LookOn() ? '?uikit=1&v17look=0' : '?uikit=1&v17look=1'} data-u2-v17={v17LookOn() ? 'on' : 'off'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{v17LookOn() ? 'Before V17' : 'V17 look'}</a>}
       </div>
       <div style={wrap}>
         <Plate id="bro" room={room} title="Bro" caption={'Sample: the Bro landing' + (me ? ' (your doors; a count where points wait)' : ' (no player handed to this page)')}><BroSample room={room} me={me} /></Plate>

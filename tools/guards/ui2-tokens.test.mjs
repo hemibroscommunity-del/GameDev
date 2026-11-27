@@ -41,6 +41,18 @@
  *      names a property that did change, and the block sits after the shine
  *      switch's;
  *  14. suite 2 again over yesterday's surfaces and words.
+ *  v2.3.6841 (card UI4 PR 2, the owner's V17, `?v17look`):
+ *  15. every pair of words and face the V17 look draws at 4.5 to 1 (the label on
+ *      commit, danger, go, adjust, disabled, a tab chosen or not; ivory, muted,
+ *      the point's cue and the chevron on the recessed, the slate and the page);
+ *  16. V17's nine colours (V17:39-49) are the look's, to the digit (a value that
+ *      failed 15 would take the nearest that passes, and be listed here: none);
+ *  17. the type: each kit size under the look sits in its V17:49 band, the
+ *      smallest word 12 (the badge's 10), and a screen that keeps 11 is a root's
+ *      own class;
+ *  18. the look is its own block (`.ui2.ui2-v17`, after yesterday's), none of its
+ *      properties in ui2Vars() (yesterday's hash), and it changes only sizes V17
+ *      moves.
  *
  * BREAK PROOF (tried by hand, 2026-11-25; the PR body lists them):
  *   ui2Tokens.js: muted '#BCC8CC' -> '#A9B7BD'                 -> FAIL 2 (raised top under its gloss) and FAIL 7
@@ -66,6 +78,7 @@ import {
   UI2_LINE, UI2_WAS, UI2_WAS_UNWORN, UI2_BORN, UI2_BRASS,
   UI2_SURFACE, UI2_TEXT, UI2_ACTIONS, UI2_ACTION_NAMES, UI2_RARITY, UI2_GRADES, UI2_MARK,
   UI2_SIZE, UI2_TYPE, UI2_TYPE_FLOOR, UI2_BADGE_FLOOR, UI2_LIGHT, UI2_FONT,
+  UI2_V17, UI2_V17_TYPE, UI2_V17_SIZES, UI2_V17_SMALL11, ui2V17Vars,
   ui2Vars, ui2Css, ui2Contrast, ui2Mix, ui2Rgb, ui2Luminance, UI2_BLOCK_START, UI2_BLOCK_END,
 } from '../../src/game/ui2Tokens.js';
 
@@ -199,7 +212,7 @@ if (process.argv.includes('--write')) {
   check('8c. no picture in the chrome (no url(), no image-set())', pics.length === 0, pics.join(' '));
   const filt = hand.match(/(?:^|[\s;{])(?:-webkit-)?(?:backdrop-)?filter\s*:/g) || [];
   check('8d. no filter and no backdrop-filter', filt.length === 0, filt.join(' '));
-  const have = new Set(ui2Vars().map(([n]) => n));
+  const have = new Set([...ui2Vars(), ...ui2V17Vars()].map(([n]) => n));   /* v2.3.6841: and the V17 look's */
   const read = [...new Set((hand.match(/var\(\s*(--ui2-[a-z0-9-]+)/g) || []).map((s) => s.replace(/^var\(\s*/, '')))];
   const missing = read.filter((n) => !have.has(n));
   check(`8e. every token the sheet reads exists (${read.length} read)`, missing.length === 0 && read.length > 40, missing.join(', ') || read.length);
@@ -323,6 +336,62 @@ if (process.argv.includes('--write')) {
     if (!(k >= MIN)) bad.push(`${tn} on ${sn} ${sv}: ${r2(k)}`);
   }
   check(`14. yesterday's look (?ui2look=0) keeps ivory, muted and gold at 4.5 to 1 on its ${surf.length} surfaces (worst ${r2(worst)} to 1)`, bad.length === 0, bad.join('; '));
+}
+
+/* ── 15. the V17 look's pairs (v2.3.6841) ── */
+{
+  const V = UI2_V17;
+  const pairs = [
+    ['commit label', V.onCommit, V.commit], ['danger label', V.onDanger, V.danger], ['go label', V.ivory, V.go],
+    ['adjust label', V.ivory, V.adjust], ['disabled label', V.offText, V.off], ['chosen tab', V.selectText, V.go],
+    ['tab not chosen', V.ivory, V.tab], ['ivory on recessed', V.ivory, V.info], ['muted on recessed', V.muted, V.info],
+    ['chevron on recessed', V.muted, V.info], ['chevron on the slate', V.muted, V.go], ['muted on the slate', V.muted, V.go],
+    ['point cue on the slate', V.priorityText, V.go], ['point cue on the page', V.priorityText, UI2_SURFACE.page],
+    ['point cue on the well', V.priorityText, UI2_SURFACE.well], ['ivory on the page', V.ivory, UI2_SURFACE.page],
+    ['muted on the page', V.muted, UI2_SURFACE.page], ['muted on the frame', V.muted, UI2_SURFACE.frameTop],
+  ];
+  const bad = [];
+  let worst = 99;
+  for (const [n, t, f] of pairs) { const k = ui2Contrast(t, f); worst = Math.min(worst, k); if (!(k >= MIN)) bad.push(`${n} ${t} on ${f}: ${r2(k)}`); }
+  check(`15. the V17 look's ${pairs.length} pairs of words and face at 4.5 to 1 (worst ${r2(worst)} to 1)`, bad.length === 0, bad.join('; '));
+}
+
+/* ── 16. V17's own colours, to the digit ── */
+{
+  /* V17:39 #0A1620, :40 #91A9B9, :41 #294963 and #698397, :44 #E4BA68 and #141D22, :45 #753439, :49 #F1F0E9 and #BCC8CC */
+  const OWNER = { info: '#0A1620', inspectEdge: '#91A9B9', go: '#294963', goEdge: '#698397', commit: '#E4BA68', onCommit: '#141D22', danger: '#753439', ivory: '#F1F0E9', muted: '#BCC8CC' };
+  const MOVED = {};   /* a V17 value that failed suite 15, and the nearest that passes: none */
+  const bad = Object.keys(OWNER).filter((k) => String(UI2_V17[k]).toUpperCase() !== (MOVED[k] || OWNER[k]));
+  check('16. V17\'s nine colours are the look\'s to the digit (none moved for contrast)', bad.length === 0 && Object.keys(MOVED).length === 0, bad.map((k) => `${k} ${UI2_V17[k]} not ${OWNER[k]}`).join('; '));
+}
+
+/* ── 17. the type under the look ── */
+{
+  const bad = [];
+  for (const k of Object.keys(UI2_TYPE)) {
+    const s = UI2_V17_SIZES[k];
+    const b = s && UI2_V17_TYPE[s.band];
+    if (!b || !(s.px >= b.band[0] && s.px <= b.band[1])) bad.push(`${k} ${s ? s.px + ' in ' + s.band : 'unnamed'}`);
+  }
+  for (const k of Object.keys(UI2_V17_TYPE)) { const t = UI2_V17_TYPE[k]; if (!(t.token >= t.band[0] && t.token <= t.band[1])) bad.push(`token ${k} ${t.token}`); }
+  const least = Math.min(...Object.keys(UI2_V17_SIZES).filter((k) => k !== 'badge').map((k) => UI2_V17_SIZES[k].px));
+  const keep = UI2_V17_SMALL11.filter((sel) => !/^\.[a-z0-9-]+(\.[a-z0-9-]+)*$/.test(sel));
+  check(`17. every kit size sits in its V17:49 band under the look; the smallest word ${least} (badge ${UI2_V17_SIZES.badge.px}); ${UI2_V17_SMALL11.length} screen(s) keep 11, each a root's class`,
+    bad.length === 0 && least === 12 && UI2_V17_SIZES.badge.px === 10 && keep.length === 0, bad.concat(keep).join('; '));
+}
+
+/* ── 18. the look is its own block ── */
+{
+  const block = ui2Css();
+  const at = block.indexOf('.ui2.ui2-v17 {');
+  const body = at >= 0 ? block.slice(at, block.indexOf('}', at)) : '';
+  const mine = ui2V17Vars();
+  const inToday = mine.filter(([n]) => n.startsWith('--ui2-v17-') && ui2Vars().some(([m]) => m === n));
+  const unwritten = mine.filter(([n, v]) => !body.includes(`  ${n}: ${v};`));
+  const moved = mine.filter(([n]) => !n.startsWith('--ui2-v17-')).map(([n]) => n);
+  check('18. the V17 look is its own block, after yesterday\'s; none of it in ui2Vars(); of today\'s properties it moves only the smallest word',
+    at > block.indexOf('.ui2.ui2-was {') && inToday.length === 0 && unwritten.length === 0 && moved.join(',') === '--ui2-fs-small',
+    JSON.stringify({ at, inToday, unwritten, moved }));
 }
 
 console.log(failed ? `\n${failed} check(s) failed` : '\nall checks pass');

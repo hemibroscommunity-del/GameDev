@@ -32,11 +32,38 @@ export function ui2LookWas() {
   return _was;
 }
 
-/** The kit root's classes: the scope, the shine switch when thrown, yesterday's look when wanted. */
+/* v2.3.6841 (card UI4 PR 2): the owner's V17 look, ON by default (`.ui2-v17`: the roles wear V17:37-49,
+   src/game/ui2Tokens.js UI2_V17).  `?v17look=0` gives the game exactly as it was the day before (no
+   class: every rule of the look is under it), remembered on that phone (localStorage bt_v17look, the
+   pattern above); `?v17look=1` clears it.  Yesterday's palette (`?ui2look=0`) is older than V17, so it
+   never wears V17 on top. */
+const V17_KEY = 'bt_v17look';
+let _v17 = null;
+
+/** The V17 look on this phone: on unless `?v17look=0` stored it off. */
+export function v17LookOn() {
+  if (_v17 !== null) return _v17;
+  let v = null;
+  try { v = swValue('v17look'); } catch (e) { v = null; }
+  if (v === '1') {
+    try { localStorage.removeItem(V17_KEY); } catch (e) { /* no storage: on anyway */ }
+    _v17 = true;
+  } else if ((() => { try { return sw('v17look'); } catch (e) { return false; } })()) {
+    try { localStorage.setItem(V17_KEY, '0'); } catch (e) { /* no storage: this load only */ }
+    _v17 = false;
+  } else {
+    try { _v17 = localStorage.getItem(V17_KEY) !== '0'; } catch (e) { _v17 = true; }
+  }
+  return _v17;
+}
+
+/** The kit root's classes: the scope, the shine switch when thrown, yesterday's look when wanted,
+    V17's when on (v2.3.6841). */
 export function ui2RootClass(extra) {
   let off = false;
   try { off = sw('ui2shine'); } catch (e) { off = false; }
-  return 'ui2' + (off ? ' ui2-noshine' : '') + (ui2LookWas() ? ' ui2-was' : '') + (extra ? ' ' + extra : '');
+  const was = ui2LookWas();
+  return 'ui2' + (off ? ' ui2-noshine' : '') + (was ? ' ui2-was' : '') + (!was && v17LookOn() ? ' ui2-v17' : '') + (extra ? ' ' + extra : '');
 }
 
 /** A piece's still state for the fixture (pressed, selected, focused, off,

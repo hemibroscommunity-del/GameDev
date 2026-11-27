@@ -2458,6 +2458,22 @@ Screens: ui4-kit-roles, ui4-kit-tab, ui4-kit-stepper, ui4-kit-inspect, ui4-kit-c
 
 Sources: src/game/uiRoles.js, src/game/kitRules.js, src/ui/kit/ (Tab.jsx, Stepper.jsx, InspectStat.jsx, Comparison.jsx, Overlay.jsx, the pieces that ask ui2Role, ui2.css's last block, UiKitPage.jsx), tools/guards/ui4-roles.test.mjs, tools/guards/lib/rolesKnown.mjs, tools/qa/mp/mp-uikit.mjs (11), docs/shots/ui4-kit-pieces.png, docs/shots/ui4-kit-pieces-sideways.png, docs/design/v17/.
 
+## The kit's roles in V17's look (v2.3.6841, card UI4 PR 2)
+Screens: ui4-look-before
+
+**What it is for:** The owner's V17 look (2026-11-27, `docs/design/v17/MASTER-IMPLEMENTATION.md:37-49`) worn by every kit piece through the role it names (PR 1's `data-u2-role`), so a fact, a thing to inspect, a way to go, the chosen one, a commitment and a danger look different everywhere at once. The owner: *"Clearly distinguish passive facts, inspectable facts, navigation/preparation, selected controls and commitments throughout every menu. Do not make information compete with actions"* (V17:9). ui4-kit-roles shows it; ui4-look-before shows the same plate the day before.
+
+**Decisions, and why:**
+- **One switch, on by default, remembered** (`?v17look=0` the day before, `?v17look=1` back; `bt_v17look`). The look is ONE class on the kit root (`ui2-v17`, `src/ui/kit/shine.js`) and every rule of it is under that class, so `=0` draws the game as before to the pixel: the PR's pictures of Bro, Combat, the Sword's page and Gear match the base build's except the AP figure and a pulsing hint ring (game state, not look). `?ui2look=0` (the palette before 11-26) never wears V17 on top.
+- **V17's colours to the digit** (`UI2_V17` in the tokens): facts recessed #0A1620 with no border; a stat you inspect #0A1620 with the #91A9B9 border; every raised door the flat slate #294963 with its #698397 edge (V17's own examples of navigation include "Power +"); the chosen one the slate with a gold #EAC474 border, a bar under it and its word underlined (never colour alone); adjust and dismiss the neutral slate #203644; commit solid #E4BA68 with #141D22 words; danger #753439 with white words; disabled #20303B with #BCC8CC words, "muted but readable" (a locked tile too: V17's own example is "Locked recipe"). The values V17's words leave open are read from the owner's prototype's last rule for each role, never made up. Every pair holds 4.5 to 1 (`ui2-tokens.test` 15).
+- **No third colour.** V17 has no green and no blue: Accept (green) now wears commit gold, Travel (blue) the navigation slate. Flagged for the owner (Q5).
+- **Gold leaves stat numbers and chevrons** (V17:49, *"Gold is not a generic primary-navigation color"*): the number ivory, the chevron #BCC8CC (#91A9B9 on the slate reads only 3.85 to 1). A level's number keeps the game's gold (progress, the owner's 11-26 word; V17 does not name it).
+- **A point to spend: V17's priority cue, not commit gold** (V17:20): the count's words #F5CF83 bold and the attribute tile's edge #BC9B60, the prototype's `.v17priority`. Flagged (Q7): it is still a warm colour.
+- **The smallest word 12** (V17:49 metadata 12-13), measured: Bro, Combat, the Sword's page and Gear, upright and sideways, hold at 12 everything they held at 11 (no scroll grows, no word cut, no control leaves the band: `mp-v17look` 3). No screen keeps 11 in this sample; `UI2_V17_SMALL11` lists one that must. A count badge stays 10.
+- **What it does not do:** no word, size of the band, layout or rule changes; the item slot keeps its rarity and selection (V17:47); Gear is untouched beyond its doors' colours (card UI4 PR 6 measures it).
+
+Sources: src/game/ui2Tokens.js (UI2_V17, UI2_V17_TYPE, UI2_V17_SMALL11), src/ui/kit/shine.js (v17LookOn), src/ui/kit/ui2.css's last block, src/ui/mobile/sheet/combatPage.css's last rules, tools/guards/ui4-look.test.mjs, tools/guards/ui2-tokens.test.mjs (15-18), tools/qa/mp/mp-v17look.mjs, tools/qa/mp/mp-uikit.mjs (12), docs/shots/ui4-look-*-pair*.png.
+
 ## The one item page (v2.3.6687, card UI2-gear PR 1)
 Screens: dash-item-page
 

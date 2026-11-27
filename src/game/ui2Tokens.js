@@ -270,6 +270,81 @@ export const UI2_WAS = Object.freeze({
  *  (the navigation size is new and the same 13 the tiles read then, so it needs no `UI2_WAS` row). */
 export const UI2_BORN = Object.freeze(['--ui2-line', '--ui2-line-faint', '--ui2-fs-nav', '--ui2-drop', '--ui2-bevel-shade']);
 
+/* ══ v2.3.6841: THE OWNER'S V17 LOOK, for `?v17look` (card UI4 PR 2; on by default, `=0` today's) ══
+ * The owner's menu redesign, V17 (docs/design/v17/MASTER-IMPLEMENTATION.md, the table of lines 37-47
+ * and line 49): "Passive information | Recessed #0A1620 or flat aligned facts; no button border";
+ * "Inspection | Recessed, restrained contrasting border #91A9B9, chevron or explicit Details";
+ * "Navigation/preparation | Raised slate #294963, edge #698397"; "Selected tab/filter | Slate with
+ * gold border/underline, persistent text cue and selected semantics"; "Adjust/toggle/dismiss | Neutral
+ * slate ... not gold merely because interactive"; "Commit | Solid gold #E4BA68, dark text #141D22";
+ * "Destructive/high-risk commit | Red #753439, clear light text"; "Disabled | Muted but readable,
+ * reason available".  The values V17's words leave open (the selected tab's slate and gold, the neutral
+ * slate, the disabled face, a danger's edge, the cue of a point to spend) are read from the owner's own
+ * prototype's last rule for each role (`prototype.html` on claude/owner-handoff-v17, by grep:
+ * `button[data-ui-role="tab"].active`, `"adjust"`, `:disabled`, `"danger"`, `.v17priority`), never made
+ * up here.  Every one holds its words at 4.5 to 1 (tools/guards/ui2-tokens.test.mjs 15).  These are
+ * NOT in ui2Vars() (yesterday's hash, suite 13, reads that): they are their own block, `.ui2.ui2-v17`,
+ * which the kit root wears only while the look is on (src/ui/kit/shine.js), so `?v17look=0` draws
+ * every pixel as before. */
+export const UI2_V17 = Object.freeze({
+  info: '#0A1620',          /* V17:39 passive: recessed */
+  inspectEdge: '#91A9B9',   /* V17:40 inspection's border */
+  go: '#294963',            /* V17:41 navigation's slate */
+  goEdge: '#698397',        /* V17:41 its edge */
+  tab: '#1A2E3D',           /* a tab not chosen (the prototype's "tab"; the kit's frame top) */
+  selectEdge: '#EAC474',    /* V17:42 the chosen one's gold border and underline (the prototype's; the kit's brass highlight) */
+  selectText: '#EAC474',    /* its words (the prototype's) */
+  adjust: '#203644',        /* V17:43 the neutral slate (the prototype's "adjust", "dismiss", "toggle") */
+  commit: '#E4BA68',        /* V17:44 solid gold */
+  onCommit: '#141D22',      /* V17:44 dark text */
+  danger: '#753439',        /* V17:45 */
+  onDanger: '#FFFFFF',      /* V17:45 "clear light text" (the prototype's #fff) */
+  dangerEdge: '#EE958A',    /* the prototype's (the kit's red face) */
+  off: '#20303B',           /* V17:46 disabled: the prototype's face */
+  offEdge: '#4B6275',       /* its edge (the owner's line) */
+  offText: '#BCC8CC',       /* "muted but readable": the supporting colour, never the dim #6F8087 */
+  ivory: '#F1F0E9',         /* V17:49 base ivory */
+  muted: '#BCC8CC',         /* V17:49 supporting; also the chevron (#91A9B9 on a raised slate is 3.85 to 1) */
+  priorityEdge: '#BC9B60',  /* V17:20 "Available points deserve a priority cue but not commit-style gold": the prototype's .v17priority edge */
+  priorityText: '#F5CF83',  /* and its count's words (bold) */
+});
+/** V17:49's type scale, each band [least, most]; `token` the size the look gives it (the kit's own
+ *  where it already sits in the band).  The smallest WORD is 12 (V17's metadata), never 11, save on
+ *  the screens of UI2_V17_SMALL11 (measured: tools/qa/mp/mp-v17look.mjs); a count badge stays 10. */
+export const UI2_V17_TYPE = Object.freeze({
+  headline: Object.freeze({ band: Object.freeze([22, 26]), token: 24 }),
+  title: Object.freeze({ band: Object.freeze([17, 19]), token: 17 }),
+  primary: Object.freeze({ band: Object.freeze([14, 16]), token: 15 }),
+  supporting: Object.freeze({ band: Object.freeze([13, 14]), token: 13 }),
+  metadata: Object.freeze({ band: Object.freeze([12, 13]), token: 12 }),
+  badge: Object.freeze({ band: Object.freeze([10, 11]), token: 10 }),
+});
+/** The kit's sizes under the look, and the V17 band each wears (the suite holds each inside it). */
+export const UI2_V17_SIZES = Object.freeze({
+  big: Object.freeze({ px: 24, band: 'headline' }),
+  title: Object.freeze({ px: 17, band: 'title' }),
+  value: Object.freeze({ px: 15, band: 'primary' }),
+  label: Object.freeze({ px: 13, band: 'supporting' }),
+  nav: Object.freeze({ px: 13, band: 'supporting' }),
+  body: Object.freeze({ px: 12, band: 'metadata' }),
+  small: Object.freeze({ px: 12, band: 'metadata' }),
+  badge: Object.freeze({ px: 10, band: 'badge' }),
+});
+/** The screens that KEEP 11 for the smallest word under the look: at 12 the band would scroll more
+ *  or cut a word there (mp-v17look measures 11 against 12).  Each is its root's own class. */
+export const UI2_V17_SMALL11 = Object.freeze([]);
+
+/** The look's custom properties, as [name, value] (the `.ui2.ui2-v17` block). */
+export function ui2V17Vars() {
+  const out = [];
+  for (const k of Object.keys(UI2_V17)) out.push(['--ui2-v17-' + kebab(k), UI2_V17[k]]);
+  for (const k of Object.keys(UI2_V17_TYPE)) out.push(['--ui2-v17-fs-' + k, UI2_V17_TYPE[k].token + 'px']);
+  for (const k of Object.keys(UI2_V17_SIZES)) {
+    if (UI2_V17_SIZES[k].px !== UI2_TYPE[k]) out.push(['--ui2-fs-' + kebab(k), UI2_V17_SIZES[k].px + 'px']);
+  }
+  return out;
+}
+
 export const UI2_BLOCK_START = '/* @@ui2-tokens: made by `node tools/guards/ui2-tokens.test.mjs --write` from src/game/ui2Tokens.js. Do not edit. */';
 export const UI2_BLOCK_END = '/* @@ui2-tokens-end */';
 
@@ -284,6 +359,11 @@ export function ui2Css() {
   L.push('.ui2.ui2-was {');
   for (const n of Object.keys(UI2_WAS)) L.push(`  ${n}: ${UI2_WAS[n]};`);
   L.push('}');
+  /* v2.3.6841: `?v17look` (`.ui2-v17`, on by default): V17's colours and type, after yesterday's */
+  L.push('.ui2.ui2-v17 {');
+  for (const [n, v] of ui2V17Vars()) L.push(`  ${n}: ${v};`);
+  L.push('}');
+  for (const sel of UI2_V17_SMALL11) L.push(`.ui2.ui2-v17${sel} { --ui2-fs-small: ${UI2_TYPE.small}px; }`);
   L.push('@media (prefers-reduced-motion: reduce) {');
   L.push('  .ui2 { --ui2-motion-press: 0ms; --ui2-motion-state: 0ms; --ui2-motion-loop: 0ms; }');
   L.push('}');

@@ -182,6 +182,35 @@
   --ui2-drop: 0.28;
   --ui2-bevel-shade: 0.26;
 }
+.ui2.ui2-v17 {
+  --ui2-v17-info: #0A1620;
+  --ui2-v17-inspect-edge: #91A9B9;
+  --ui2-v17-go: #294963;
+  --ui2-v17-go-edge: #698397;
+  --ui2-v17-tab: #1A2E3D;
+  --ui2-v17-select-edge: #EAC474;
+  --ui2-v17-select-text: #EAC474;
+  --ui2-v17-adjust: #203644;
+  --ui2-v17-commit: #E4BA68;
+  --ui2-v17-on-commit: #141D22;
+  --ui2-v17-danger: #753439;
+  --ui2-v17-on-danger: #FFFFFF;
+  --ui2-v17-danger-edge: #EE958A;
+  --ui2-v17-off: #20303B;
+  --ui2-v17-off-edge: #4B6275;
+  --ui2-v17-off-text: #BCC8CC;
+  --ui2-v17-ivory: #F1F0E9;
+  --ui2-v17-muted: #BCC8CC;
+  --ui2-v17-priority-edge: #BC9B60;
+  --ui2-v17-priority-text: #F5CF83;
+  --ui2-v17-fs-headline: 24px;
+  --ui2-v17-fs-title: 17px;
+  --ui2-v17-fs-primary: 15px;
+  --ui2-v17-fs-supporting: 13px;
+  --ui2-v17-fs-metadata: 12px;
+  --ui2-v17-fs-badge: 10px;
+  --ui2-fs-small: 12px;
+}
 @media (prefers-reduced-motion: reduce) {
   .ui2 { --ui2-motion-press: 0ms; --ui2-motion-state: 0ms; --ui2-motion-loop: 0ms; }
 }
@@ -834,3 +863,63 @@
 .ui2 .u2-cmp-d.is-bad { color: var(--ui2-red-face-0); }
 .ui2 .u2-over { max-width: 100%; }
 .ui2 .u2-over-body { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+
+/* ═══ v2.3.6841: THE OWNER'S V17 LOOK, BY ROLE (card UI4 PR 2; `?v17look`, on by default) ═══
+   V17's table (docs/design/v17/MASTER-IMPLEMENTATION.md:37-47), worn through the role each kit piece
+   writes (`data-u2-role`, src/game/uiRoles.js), its colours the `--ui2-v17-*` tokens (src/game/
+   ui2Tokens.js UI2_V17).  EVERY rule here is under `.ui2.ui2-v17`, the class the kit root wears only
+   while the look is on (src/ui/kit/shine.js v17LookOn), so `?v17look=0` draws as before, to the pixel
+   (tools/guards/ui4-look.test.mjs holds it).  V17:49 "no unnecessary text color changes": the faces are
+   flat (no gloss), the depth a light top edge or an inset shadow. */
+.ui2.ui2-v17 .u2-raised::before, .ui2.ui2-v17 .u2-act::before { opacity: 0; }
+/* go (V17:41, "Raised slate #294963, edge #698397"): every raised face, a tile, a header's Back and Menu,
+   a card, the screens' own raised doors ("Power +, select a recipe" are V17's own examples) */
+.ui2.ui2-v17 .u2-raised { background: var(--ui2-v17-go); }
+.ui2.ui2-v17 .u2-raised:not(.is-glow) { border-color: var(--ui2-v17-go-edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.125); }
+.ui2.ui2-v17 .u2-raised:active:not([disabled]), .ui2.ui2-v17 .u2-raised.is-press { background: var(--ui2-v17-go); box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.35); }
+/* a tab not chosen: the prototype's quieter slate */
+.ui2.ui2-v17 .u2-tab[aria-selected='false'] { background: var(--ui2-v17-tab); box-shadow: none; }
+/* selected (V17:42, "Slate with gold border/underline, persistent text cue and selected semantics"): the
+   slate, the gold border, a gold bar under it (a shape) and its word underlined (a cue on the text), so
+   never colour alone; the footprint is the same */
+.ui2.ui2-v17 .u2-raised.is-sel, .ui2.ui2-v17 .u2-raised[aria-pressed='true'], .ui2.ui2-v17 .u2-raised[aria-selected='true'], .ui2.ui2-v17 .u2-raised[data-u2-role='selected'] {
+  color: var(--ui2-v17-select-text);
+  border-color: var(--ui2-v17-select-edge);
+  background: var(--ui2-v17-go);
+  box-shadow: inset 0 -3px 0 var(--ui2-v17-select-edge);
+}
+.ui2.ui2-v17 .u2-raised.is-sel .u2-tile-label, .ui2.ui2-v17 .u2-raised[aria-pressed='true'] .u2-tile-label, .ui2.ui2-v17 .u2-raised[aria-selected='true'] .u2-tile-label, .ui2.ui2-v17 .u2-raised[data-u2-role='selected'] .u2-tile-label {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+/* adjust (V17:43, "Neutral slate ... not gold merely because interactive"): the header's Close, a stepper, a cancel */
+.ui2.ui2-v17 .u2-raised[data-u2-role='adjust'] { background: var(--ui2-v17-adjust); border-color: var(--ui2-v17-go-edge); box-shadow: none; }
+.ui2.ui2-v17 .u2-act[data-u2-role='adjust'] { color: var(--ui2-v17-ivory); border-color: var(--ui2-v17-go-edge); background: var(--ui2-v17-adjust); box-shadow: none; }
+/* commit (V17:44, "Solid gold #E4BA68, dark text #141D22"): today's gold AND green faces (Accept was green) */
+.ui2.ui2-v17 .u2-act[data-u2-role='commit'] { color: var(--ui2-v17-on-commit); border-color: var(--ui2-v17-commit); background: var(--ui2-v17-commit); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.33); }
+/* go as an action (today's blue face: Travel, Find on map): the navigation slate, ivory words */
+.ui2.ui2-v17 .u2-act[data-u2-role='go'] { color: var(--ui2-v17-ivory); border-color: var(--ui2-v17-go-edge); background: var(--ui2-v17-go); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.125); }
+/* danger (V17:45, "Red #753439, clear light text") */
+.ui2.ui2-v17 .u2-act[data-u2-role='danger'] { color: var(--ui2-v17-on-danger); border-color: var(--ui2-v17-danger-edge); background: var(--ui2-v17-danger); box-shadow: none; }
+/* pressed: down a pixel (the kit's), an inner shadow; the face keeps its colour */
+.ui2.ui2-v17 .u2-act:active:not([disabled]), .ui2.ui2-v17 .u2-act.is-press { box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.28); }
+/* the pending ring on a light word */
+.ui2.ui2-v17 .u2-act[data-u2-role='go'] .u2-spin, .ui2.ui2-v17 .u2-act[data-u2-role='adjust'] .u2-spin, .ui2.ui2-v17 .u2-act[data-u2-role='danger'] .u2-spin { border-color: rgba(255, 255, 255, 0.25); border-top-color: var(--ui2-v17-ivory); }
+/* info (V17:39, "Recessed #0A1620 or flat aligned facts; no button border or affordance") */
+.ui2.ui2-v17 .u2-stat:not(.u2-raised)[data-u2-role='info'], .ui2.ui2-v17 .u2-group, .ui2.ui2-v17 .u2-facts { background: var(--ui2-v17-info); border-color: transparent; }
+/* inspect (V17:40, "Recessed, restrained contrasting border #91A9B9, chevron or explicit Details") */
+.ui2.ui2-v17 .u2-stat[data-u2-role='inspect'] { color: var(--ui2-v17-ivory); border: 1px solid var(--ui2-v17-inspect-edge); background: var(--ui2-v17-info); box-shadow: none; }
+.ui2.ui2-v17 .u2-stat[data-u2-role='inspect'][aria-pressed='true'], .ui2.ui2-v17 .u2-stat[data-u2-role='inspect'].is-sel { box-shadow: inset 0 0 0 1px var(--ui2-v17-select-edge); }
+/* gold leaves the stat numbers and the chevrons (V17:49 "Gold is not a generic primary-navigation color";
+   "Keep base ivory #F1F0E9 and supporting #BCC8CC") */
+.ui2.ui2-v17 .u2-stat .u2-stat-v { color: var(--ui2-v17-ivory); }
+.ui2.ui2-v17 .u2-chev { color: var(--ui2-v17-muted); }
+/* disabled (V17:46, "Muted but readable, reason available; no misleading emphasis"): a locked tile too
+   (V17's own example, "Locked recipe"), which stays pressable to say why */
+.ui2.ui2-v17 .u2-act[disabled], .ui2.ui2-v17 .u2-act.is-off, .ui2.ui2-v17 .u2-raised[disabled], .ui2.ui2-v17 .u2-raised.is-off {
+  color: var(--ui2-v17-off-text);
+  border-color: var(--ui2-v17-off-edge);
+  background: var(--ui2-v17-off);
+  box-shadow: none;
+}

@@ -19,7 +19,7 @@ export { Ui2Slot } from './Slot.jsx';
 export { Ui2Progress } from './Progress.jsx';
 export { Ui2Badge } from './Badge.jsx';
 export { Ui2Loading } from './Loading.jsx';
-export { ui2RootClass, ui2LookWas } from './shine.js';
+export { ui2RootClass, ui2LookWas, v17LookOn } from './shine.js';   /* v2.3.6841: v17LookOn, the V17 look (card UI4 PR 2) */
 /* v2.3.6683 (card UI2-bro): a screen's pieces -- its zones, its row of actions, its empty state, its one confirmation */
 export { Ui2Zones } from './Zones.jsx';
 export { Ui2Actions } from './ActionRow.jsx';

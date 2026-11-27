@@ -48,6 +48,20 @@
  *      colour on the good and bad only; the overlay's ✕ is 44 x 44 with
  *      data-esc and its body scrolls under its header.
  * Pictures: docs/shots/ui4-kit-pieces.png, -pieces-sideways.
+ *
+ * v2.3.6841 (card UI4 PR 2, `?v17look`, the owner's V17 look, ON by default):
+ * checks 1 to 11 hold TODAY's look, so they run with `?v17look=0` (remembered
+ * on each page of theirs), and their pictures stay the day before's;
+ *  12. by default (no switch) every kit root wears `ui2-v17` and the plate
+ *      "Roles" wears V17:39-46: commit #E4BA68 with #141D22 words, danger
+ *      #753439 with white words, go #294963 with its #698397 edge, adjust
+ *      #203644, inspect #91A9B9's border on #0A1620, the chosen one its gold
+ *      border #EAC474, a bar under it and its word underlined (never colour
+ *      alone), disabled #BCC8CC words on #20303B; the five faces of "Actions"
+ *      are three (green Accept now commit gold, blue Travel the slate);
+ *      `?v17look=0` takes the class away, still after a reload with no switch
+ *      (remembered), and `?v17look=1` brings it back.
+ * Pictures: docs/shots/ui4-look-kit-<roles|actions>-<on|off>.png.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -260,7 +274,7 @@ async function shotPlates(P, file, ids) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   fs.mkdirSync(SHOTS, { recursive: true });
-  const P = await H.newPlayer(browser, { name: NAME, wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'uikit=1' });
+  const P = await H.newPlayer(browser, { name: NAME, wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'uikit=1&v17look=0' });
   try {
     /* the kit lies over the door: put it aside while the player walks in */
     await P.page.waitForSelector('#bt-uikit', { state: 'attached', timeout: 60000 }).catch(() => null);
@@ -373,7 +387,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } finally { await P.ctx.close().catch(() => {}); }
 
   /* 6 and 7: the switch and reduced motion, on a page of their own (no world needed) */
-  const Q = await H.newPlayer(browser, { name: 'Kitshine', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, query: 'uikit=1' });
+  const Q = await H.newPlayer(browser, { name: 'Kitshine', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, query: 'uikit=1&v17look=0' });
   try {
     const gloss = () => Q.page.evaluate(() => {
       const t = document.querySelector('[data-u2-demo="Default"]');
@@ -420,8 +434,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the picture of yesterday\'s look (docs/shots/ui3-kit-was)', shotWas, shotWas);
   } finally { await Q.ctx.close().catch(() => {}); }
 
+  /* v2.3.6841: 12. the V17 look, by default, on the kit page; =0 remembered; =1 back */
+  const R = await H.newPlayer(browser, { name: 'Kitlook', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'uikit=1' });
+  try {
+    const up = () => R.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 30000 }).then(() => true, () => false);
+    const look = () => R.page.evaluate(() => {
+      const cs = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e) : null; };
+      const pick = (sel, ...ps) => { const c = cs(sel); return c ? ps.map((p) => c[p]).join(' | ') : null; };
+      const lab = document.querySelector('[data-u2-plate="roles"] [data-u2-role="selected"] .u2-tile-label');
+      return {
+        roots: document.querySelectorAll('.ui2').length, v17: document.querySelectorAll('.ui2.ui2-v17').length,
+        commit: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="commit"]', 'backgroundColor', 'color'),
+        danger: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="danger"]', 'backgroundColor', 'color'),
+        go: pick('[data-u2-plate="roles"] .u2-raised[data-u2-role="go"]', 'backgroundColor', 'borderTopColor'),
+        adjust: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="adjust"]', 'backgroundColor', 'color'),
+        inspect: pick('[data-u2-plate="roles"] .u2-stat[data-u2-role="inspect"]', 'backgroundColor', 'borderTopColor'),
+        selected: pick('[data-u2-plate="roles"] [data-u2-role="selected"]', 'borderTopColor', 'boxShadow'),
+        underline: lab ? getComputedStyle(lab).textDecorationLine : null,
+        disabled: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="disabled"]', 'backgroundColor', 'color'),
+        green: pick('[data-u2-plate="actions"] [data-u2-demo="green"]', 'backgroundColor'),
+        blue: pick('[data-u2-plate="actions"] [data-u2-demo="blue"]', 'backgroundColor', 'color'),
+      };
+    });
+    const shoot = async (plate, file) => R.page.$(`[data-u2-plate="${plate}"]`).then((e) => (e ? e.screenshot({ path: path.join(SHOTS, file) }).then(() => true, () => false) : false));
+    await up();
+    const on = await look();
+    const s1 = await shoot('roles', 'ui4-look-kit-roles-on.png');
+    const s2 = await shoot('actions', 'ui4-look-kit-actions-on.png');
+    rec.ok('12a. by default every kit root wears ui2-v17, and the roles wear V17:39-46 (commit #E4BA68/#141D22, danger #753439/white, go #294963 edge #698397, adjust #203644, inspect #91A9B9 on #0A1620, disabled #BCC8CC on #20303B)',
+      on.roots > 0 && on.v17 === on.roots && on.commit === 'rgb(228, 186, 104) | rgb(20, 29, 34)' && on.danger === 'rgb(117, 52, 57) | rgb(255, 255, 255)'
+        && on.go === 'rgb(41, 73, 99) | rgb(105, 131, 151)' && /^rgb\(32, 54, 68\)/.test(on.adjust || '') && on.inspect === 'rgb(10, 22, 32) | rgb(145, 169, 185)'
+        && on.disabled === 'rgb(32, 48, 59) | rgb(188, 200, 204)', on);
+    rec.ok('12b. the chosen one: its gold border #EAC474, a bar under it (an inset shadow) and its word underlined: never colour alone',
+      /^rgb\(234, 196, 116\)/.test(on.selected || '') && /inset/.test(on.selected || '') && /underline/.test(on.underline || ''), on);
+    rec.ok('12c. no third colour: green Accept is commit gold, blue Travel the navigation slate with ivory words', on.green === 'rgb(228, 186, 104)' && on.blue === 'rgb(41, 73, 99) | rgb(241, 240, 233)', on);
+    const goto = async (q) => { await R.page.goto(R.page.url().replace(/[?&]v17look=[01]/, '') + q, { waitUntil: 'domcontentloaded' }); await up(); return look(); };
+    const off = await goto('&v17look=0');
+    const s3 = await shoot('roles', 'ui4-look-kit-roles-off.png');
+    const s4 = await shoot('actions', 'ui4-look-kit-actions-off.png');
+    const kept = await goto('');
+    const back = await goto('&v17look=1');
+    rec.ok('12d. ?v17look=0 takes the class from every root, still after a reload with no switch (remembered); ?v17look=1 brings it back',
+      off.v17 === 0 && off.roots > 0 && kept.v17 === 0 && back.v17 === back.roots && back.roots > 0 && /gradient/.test('' + off.green) === false, { off: off.v17, kept: kept.v17, back: back.v17 });
+    rec.ok('12e. the pictures, both ways (docs/shots/ui4-look-kit-roles-*, -actions-*)', s1 && s2 && s3 && s4, [s1, s2, s3, s4]);
+  } finally { await R.ctx.close().catch(() => {}); }
+
   /* v2.3.6780: 8 on a computer (the band's 480 px at most) */
-  const D = await H.newPlayer(browser, { name: 'Kitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'uikit=1' });
+  const D = await H.newPlayer(browser, { name: 'Kitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'uikit=1&v17look=0' });
   try {
     const up = await D.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 30000 }).then(() => true, () => false);
     const W = up ? await D.page.evaluate(weights) : null;

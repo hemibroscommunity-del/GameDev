@@ -307,7 +307,10 @@ export function cssRules(text) {
 
 /* the text colours (part 6: "consistent off-white text throughout, gold for progression and important
    numbers, and other colors only when they communicate something meaningful") */
-export const TEXT_TOKENS = Object.freeze(['text-ivory', 'text-muted', 'text-gold', 'text-on-action', 'text-disabled', 'brass-highlight']);
+export const TEXT_TOKENS = Object.freeze(['text-ivory', 'text-muted', 'text-gold', 'text-on-action', 'text-disabled', 'brass-highlight',
+  /* v2.3.6841 (card UI4 PR 2): the V17 look's words (src/game/ui2Tokens.js UI2_V17), read only under
+     `.ui2.ui2-v17` (tools/guards/ui4-look.test.mjs L1) */
+  'v17-ivory', 'v17-muted', 'v17-on-commit', 'v17-on-danger', 'v17-off-text', 'v17-select-text', 'v17-priority-text']);
 /* the colours that mean something, and the selectors they mean it on: [token pattern, selector pattern, why] */
 export const MEANING = Object.freeze([
   [/^grade-(rare|elite|elite-light|godly)$/, /\[data-grade=/, 'an item\'s grade'],
