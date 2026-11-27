@@ -389,6 +389,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: charHud
 - **Files**: `src/game/`: hudCorner
 - **Files**: `src/game/`: topGold
+- **Files**: `src/game/`: lifeProfile
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`
 - **Doors**: none named yet

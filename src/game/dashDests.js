@@ -82,6 +82,13 @@ export const FRAME_PAGES = Object.freeze({
   questsDaily: 'dashFrame.questsDaily',
   questsDone: 'dashFrame.questsDone',
   questsOffers: 'dashFrame.questsOffers',
+  /* v2.3.6694 (card UI2-life): a life skill's page, one a skill (src/game/lifeProfile.js LIFE_PAGE_OF; the header
+     its name), and its All unlocks and How it works (the skill in the stack entry's `sel`) */
+  lifeWoodcutting: 'dashFrame.lifeWoodcutting', lifeFishing: 'dashFrame.lifeFishing', lifeMining: 'dashFrame.lifeMining',
+  lifeFarming: 'dashFrame.lifeFarming', lifeTrapping: 'dashFrame.lifeTrapping', lifeCooking: 'dashFrame.lifeCooking',
+  lifeBlacksmithing: 'dashFrame.lifeBlacksmithing', lifeWoodworking: 'dashFrame.lifeWoodworking',
+  lifeGemCutting: 'dashFrame.lifeGemCutting', lifeEnchanting: 'dashFrame.lifeEnchanting',
+  lifeUnlocks: 'dashFrame.lifeUnlocks', lifeHow: 'dashFrame.lifeHow',
 });
 
 /** More's fifteen (dash/MorePanel.jsx TILES) and the road each takes now:
