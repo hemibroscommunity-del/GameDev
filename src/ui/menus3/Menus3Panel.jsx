@@ -34,6 +34,9 @@ import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
 import { Menus3Codex, codexTitle } from './Menus3Codex.jsx';   /* v2.3.6867 (card MN step 8): World · Codex */
 import { codex3Body, isCodex3Page } from '@/game/menus3Codex.js';
+import { Menus3Feats } from './Menus3Feats.jsx';   /* v2.3.6868 (card MN step 9) */
+import { SAY as SAY_F } from '@/data/say/menus3Feats.js';
+import { SAY as SAY_FT } from '@/data/say/feats.js';
 import { Menus3SettingsLazy } from '../lazyPanels.js';   /* v2.3.6869 (card MN step 12): Settings, its own script */
 import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.jsx';   /* v2.3.6864 (card MN step 10) */
 import './menus3.css';
@@ -81,6 +84,8 @@ function pageTitle(top, getS) {
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
+  if (top.section === 'feats' && top.page === 'ap') return say(SAY_F, 'menus3Feats.apOpen');   /* v2.3.6868 */
+  if (top.section === 'feats' && top.page === 'medal') return say(SAY_FT, 'feats.medal');
   return sectionWord(top.section);
 }
 
@@ -146,6 +151,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {body === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
           {body === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {body === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
           {body === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
           {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
           {body !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
