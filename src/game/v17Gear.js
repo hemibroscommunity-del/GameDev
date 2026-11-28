@@ -111,10 +111,13 @@ export function sideCell(W, cell, pad, gap, min) {
    (360 x 780) and above.  Under the line the word gives way and its controls keep the row (the panel keeps its
    name for a screen reader: the kit's TwoPanel `name`). */
 export const INV_TITLE_MIN = 150;
+/* v2.3.6845, the owner's "Remove the coins from bag": without the gold pill (54 px and its gap) the word and the
+   filter need about 96 px; 116 leaves the word's letter spacing its room */
+export const INV_TITLE_MIN_NO_COINS = 116;
 
-/** Does the Inventory label row hold its title beside the filter and the gold? */
-export function invTitleFits(inner) {
-  return inner >= INV_TITLE_MIN;
+/** Does the Inventory label row hold its title beside the filter (and the gold, `coins` not false)? */
+export function invTitleFits(inner, coins) {
+  return inner >= (coins === false ? INV_TITLE_MIN_NO_COINS : INV_TITLE_MIN);
 }
 
 /** Do the Equipped body's three rows of `cell` fit in `below`, the room under its label row, with at least

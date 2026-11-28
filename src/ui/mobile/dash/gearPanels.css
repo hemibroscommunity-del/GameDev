@@ -112,3 +112,14 @@
    so at 844 x 390 "Copper Greatsword" had 42 px and was cut): the name and its ✕ grow, the facts keep their size */
 .ui2.u2-gp[data-v17-gear] .u2-gp-sum.is-row .u2-gp-id { flex: 1 1 auto; }
 .ui2.u2-gp[data-v17-gear] .u2-gp-sum.is-row .u2-gp-facts { flex: 0 1 auto; }
+/* v2.3.6845: the owner, 2026-11-28 about 02:10 UTC, on the phone: "Equipped has whiteish background not green".
+   Not the V17 look's doing: the ground was the same with `?v17look=0` and on main (#C6DCCD under a white sheen draws
+   about #C3D7C9 on the phone, a greyed sage that reads white).  Under `?v17gear` the panel is a clear pale green, its
+   own token (the day before's --u2-gp-equip-ground untouched for `=0`); the label row's dark ink on it is held over
+   4.5 to 1 by tools/guards/ui4-gear.test.mjs (G1) */
+.ui2.u2-gp { --u2-gp-equip-v17: #A6DCB4; }
+.ui2.u2-gp[data-v17-gear][data-equip-look] .u2-pane.is-worn { background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.06)), var(--u2-gp-equip-v17); }
+/* v2.3.6845: the owner, 2026-11-28 about 02:10 UTC: "Inventory slots are awkwardly spaced on the sides": the
+   bag's whole columns spread evenly across their panel, the same room at both edges and between them (the
+   squares' size and count unchanged: wider squares would lose a row, one more column does not fit at 44) */
+.ui2.u2-gp[data-v17-gear] .u2-grid-in { justify-content: space-evenly; }

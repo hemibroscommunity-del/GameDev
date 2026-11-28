@@ -82,5 +82,5 @@ export function gearPanelsGeometry(W, H, opts) {
   const torsoW = Math.min(Math.floor(bodyCell * 1.25), inner - 2 * bodyCell - 2 * GEAR_BODY_G);
   const bagCols = v17 ? wholeCols(inner, bagCell, G, cols) : cols;
   return { short, W, H, invW: pw, eqW: pw, cols: bagCols, bagCell, rows, bagH, below, bodyCell, torsoW: Math.max(bodyCell, torsoW),
-    wornHead, invTitle: !v17 || invTitleFits(inner) };
+    wornHead, invTitle: !v17 || invTitleFits(inner, opts.coins) };
 }

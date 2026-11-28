@@ -313,6 +313,15 @@ async function sweep(P, rec, size, form, suffix = '') {
     /* v2.3.6845: Gear's own box and columns as the page drew them (`?v17gear` writes them), for its PR's numbers */
     if (sc.id === 'gear' || sc.id === 'item') {
       row.gearBox = await P.page.evaluate(() => { const g = document.querySelector('[data-gear-ws]'); return g ? [g.getAttribute('data-gear-box'), g.getAttribute('data-gear-cols')].join(' / ') : null; }).catch(() => null);
+      /* the bag's room at its two edges (the owner, 11-28: "Inventory slots are awkwardly spaced on the sides"): the
+         panel's inner edges against the first column's left and the last column's right */
+      row.bagEdges = await P.page.evaluate(() => {
+        const pane = document.querySelector('[data-ws-side="left"] .u2-pane-body'), cells = Array.from(document.querySelectorAll('[data-gear-bag] .u2-grid-in > .u2-cell'));
+        if (!pane || !cells.length) return null;
+        const p = pane.getBoundingClientRect(), xs = cells.map((c) => c.getBoundingClientRect());
+        const left = Math.min(...xs.map((r) => r.left)), right = Math.max(...xs.map((r) => r.right));
+        return { left: Math.round(left - p.left), right: Math.round(p.right - right), cell: Math.round(xs[0].width) };
+      }).catch(() => null);
     }
     const tag = `${size}${suffix} ${sc.name}`;
     if (m.missing) { rec.ok(`${tag}: opened (guard)`, false, m.missing); continue; }

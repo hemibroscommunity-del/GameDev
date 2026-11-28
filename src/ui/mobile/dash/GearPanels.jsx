@@ -32,7 +32,8 @@
  * health, mana or energy bars here: they are on the world's own screen. */
 import React from 'react';
 import { Ui2TwoPanel, Ui2ItemGrid, Ui2ItemCell, Ui2Slot, Ui2Action, Ui2Stat, Ui2Comparison, ui2RootClass } from '@/ui/kit/index.js';
-import { v17GearOn, GEAR_INTENT, itemActIntent, sumLayout } from '@/game/v17Gear.js';   /* v2.3.6845 (card UI4 PR 6): `?v17gear` */
+import { v17GearOn, GEAR_INTENT, itemActIntent, sumLayout } from '@/game/v17Gear.js';
+import { topGoldOn } from '@/game/topGold.js';   /* v2.3.6845: the purse's other place (the top bar) */   /* v2.3.6845 (card UI4 PR 6): `?v17gear` */
 import { getBagEntries } from './bagModel.js';
 import { groupSpare } from './gearBag.js';
 import { BagTile } from './InventoryPanel.jsx';
@@ -102,7 +103,7 @@ function useBox() {
 export { gearPanelsGeometry };
 
 /* ── the label rows ── */
-function InventoryHead({ fid, coins, menu }) {
+function InventoryHead({ fid, coins, menu, coinsHere = true }) {
   const word = fid === 'all' ? say(SAY, 'gearPanels.clear') : ((GEAR_FILTERS[fid] || {}).pill || say(SAY, 'gearPanels.allItems'));
   return (
     <>
@@ -116,8 +117,11 @@ function InventoryHead({ fid, coins, menu }) {
       ) : null}
       {/* v2.3.6784 (card UI3-menus, reading 6): the owner, 2026-11-26: "make the gold balance a compact pill":
           the kit's stat at pill size, recessed, the number gold, NOT a button (it opens nothing) */}
-      <Ui2Stat intent={GEAR_INTENT.coins} size="pill" className="u2-gp-coins" art={coinArtFor(coins)} v={barNumber(coins, true, 10000)}
-        data-gear-gold={coins} title={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} aria-label={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} />
+      {/* v2.3.6845 (`?v17gear`): the owner, 2026-11-28 about 02:10 UTC: "Remove the coins from bag and slide filter
+          over": the purse is on the top bar (src/game/topGold.js), so here it goes and the filter takes its place at
+          the row's end; a phone that hid the top bar's gold (`?topgold=0`) keeps it here (no screen without it) */}
+      {coinsHere ? <Ui2Stat intent={GEAR_INTENT.coins} size="pill" className="u2-gp-coins" art={coinArtFor(coins)} v={barNumber(coins, true, 10000)}
+        data-gear-gold={coins} title={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} aria-label={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} /> : null}
     </>
   );
 }
@@ -393,7 +397,8 @@ export function GearPanels({ R: Rin }) {
   }, [drawn]);
 
   const on = v17GearOn();
-  const geo = gearPanelsGeometry(box.w, box.h, on ? { v17: true } : undefined);   /* v2.3.6845: the mends of mp-v17fit */
+  const coinsHere = !on || !topGoldOn();   /* v2.3.6845: the bag's gold pill only where the top bar shows none */
+  const geo = gearPanelsGeometry(box.w, box.h, on ? { v17: true, coins: coinsHere } : undefined);   /* v2.3.6845: the mends of mp-v17fit */
   const coins = Number(R.coins || 0);
   const weaponsHeld = (R.weaponStash || []).filter(Boolean).length;
   const cells = entries.map((e) => ({ key: bagKeyOf(e), grade: (e.obj && e.obj.quality) || 'normal', e }));
@@ -428,10 +433,10 @@ export function GearPanels({ R: Rin }) {
     if (show[which] === 'summary') return { kind: 'summary', label: '', children: summary, style: { flex: `0 0 ${which === 'left' ? geo.invW : geo.eqW}px` } };
     if (which === 'left') {
       return { kind: 'storage', label: geo.short || !geo.invTitle ? '' : say(SAY, 'gearPanels.inventory'), name: on ? say(SAY, 'gearPanels.inventory') : undefined, headH: geo.short ? undefined : HEAD,
-        head: geo.short ? null : <InventoryHead fid={fid} coins={coins} menu={st.menu} />,
+        head: geo.short ? null : <InventoryHead fid={fid} coins={coins} menu={st.menu} coinsHere={coinsHere} />,
         children: geo.short ? (
           <div className="u2-gp-shortrow">
-            <div className="u2-gp-shorthead" style={{ width: SHORT_HEAD }}><InventoryHead fid={fid} coins={coins} menu={st.menu} /></div>
+            <div className="u2-gp-shorthead" style={{ width: SHORT_HEAD }}><InventoryHead fid={fid} coins={coins} menu={st.menu} coinsHere={coinsHere} /></div>
             <div style={{ flex: '1 1 auto', minWidth: 0, height: '100%' }}>{inventory}</div>{menu}
           </div>
         ) : <>{inventory}{menu}</>,
@@ -444,7 +449,7 @@ export function GearPanels({ R: Rin }) {
   return (
     <div ref={rootRef} className={ui2RootClass('u2-gp')} data-gear-ws="" data-ws-mode={ws.mode} data-ws-from={ws.from || undefined}
       data-ws-keys={keys.length} data-gear-short={geo.short ? '1' : undefined} data-equip-look={equipLookOn() ? '1' : undefined}
-      data-v17-gear={on ? '1' : undefined} data-gear-cols={on ? geo.cols : undefined} data-gear-box={on ? box.w + 'x' + box.h : undefined}>
+      data-v17-gear={on ? '1' : undefined} data-gear-cols={on ? geo.cols : undefined} data-gear-coins={on ? (coinsHere ? '1' : '0') : undefined} data-gear-box={on ? box.w + 'x' + box.h : undefined}>
       {box.w > 0 ? <Ui2TwoPanel left={side('left')} right={side('right')} /> : null}
     </div>
   );

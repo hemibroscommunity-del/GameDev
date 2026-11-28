@@ -294,7 +294,47 @@ function centred(rules) {
 }
 check('F6. the owner\'s "I\'d prefer centered": the filter\'s word, alone in its box, centred under the switch', centred(gpRules) === true, centred(gpRules));
 
+/* ── G. the owner's three words of 2026-11-28 (about 02:10 UTC) ── */
+function hex(h) { const m = /^#([0-9a-f]{6})$/i.exec(String(h || '').trim()); return m ? [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)) : null; }
+function lum(c) { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); }
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function greenEnough(rules) {
+  /* "Equipped has whiteish background not green": the v17 ground is GREEN (its green channel leads red and blue by
+     a clear margin, and it is darker than the day before's sage), painted on the Equipped panel only under the
+     switch, and the label row's ink (the kit's dark ink, #141D22 or darker) reads at 4.5 to 1 or more on it */
+  const tok = cssNum(rules, '.ui2.u2-gp', '--u2-gp-equip-v17');
+  const c = hex(tok);
+  if (!c) return 'no --u2-gp-equip-v17 ground';
+  const was = hex(cssNum(rules, '.ui2.u2-gp', '--u2-gp-equip-ground'));
+  if (!(c[1] - Math.max(c[0], c[2]) >= 28)) return `${tok} is not plainly green`;
+  if (was && lum(c) >= lum(was)) return `${tok} is no less white than the day before's`;
+  if (ratio(c, [20, 29, 34]) < 4.5) return `the dark ink on ${tok} is under 4.5 to 1`;
+  const paint = rules.find((r) => /var\(--u2-gp-equip-v17\)/.test(r.decls.map((d) => d.value).join(' ')));
+  if (!paint || !/\[data-v17-gear\]/.test(paint.sel) || !/\.u2-pane\.is-worn$/.test(paint.sel.trim())) return 'the green is not painted on the Equipped panel under the switch';
+  return true;
+}
+check('G1. the Equipped panel plainly pale green under the switch, the dark ink over 4.5 to 1 on it', greenEnough(gpRules) === true, greenEnough(gpRules));
+check('G2. "Remove the coins from bag": without the gold pill the title needs less room; the 320 phone keeps "INVENTORY"',
+  invTitleFits(142, false) && !invTitleFits(142, true) && gearPanelsGeometry(312, 161, { v17: true, coins: false }).invTitle === true);
+function coinsGated(src) {
+  /* the pill is drawn only where `coinsHere` says (the top bar hidden on this phone), and coinsHere asks topGoldOn */
+  if (!/coinsHere \? <Ui2Stat/.test(src)) return 'the gold pill is not gated';
+  if (!/const coinsHere = !on \|\| !topGoldOn\(\)/.test(src)) return 'the gate does not ask whether the top bar shows the gold';
+  return true;
+}
+check('G3. the bag\'s gold pill goes only where the top bar shows the gold (never a screen without it)', coinsGated(GP) === true, coinsGated(GP));
+function gridEven(rules) {
+  const r = rules.find((x) => /\[data-v17-gear\]/.test(x.sel) && /\.u2-grid-in/.test(x.sel));
+  return r && r.decls.some((d) => d.prop === 'justify-content' && d.value === 'space-evenly') ? true : 'the bag\'s columns are not spread evenly';
+}
+check('G4. "Inventory slots are awkwardly spaced on the sides": the bag\'s columns spread evenly, equal room at both edges', gridEven(gpRules) === true, gridEven(gpRules));
+
 /* ── P. the dodges ── */
+plant('a ground still greyed sage', greenEnough, cssRules('.ui2.u2-gp { --u2-gp-equip-ground: #C6DCCD; --u2-gp-equip-v17: #C6DCCD; } .ui2.u2-gp[data-v17-gear][data-equip-look] .u2-pane.is-worn { background: var(--u2-gp-equip-v17); }'));
+plant('a green too dark for the ink', greenEnough, cssRules('.ui2.u2-gp { --u2-gp-equip-v17: #1E6B34; } .ui2.u2-gp[data-v17-gear][data-equip-look] .u2-pane.is-worn { background: var(--u2-gp-equip-v17); }'));
+plant('the green painted on the whole of Gear', greenEnough, cssRules('.ui2.u2-gp { --u2-gp-equip-v17: #A6DCB4; } .ui2.u2-gp[data-v17-gear] { background: var(--u2-gp-equip-v17); }'));
+plant('the gold pill dropped even where the top bar shows none', coinsGated, GP.replace('const coinsHere = !on || !topGoldOn()', 'const coinsHere = !on'));
+plant('the grid left where it was (centred columns, the spare at one side)', gridEven, cssRules('.ui2 .u2-grid-in { justify-content: center; }'));
 plant('the sideways row without the groups\' padding (the day before\'s sum)', rowMatchesSheet, (cell, pad) => 9 * cell + 6 * 2 + 2 * GEAR_BODY_G * 2 + 2 * pad);
 plant('the sideways cell kept at 56 where the row overflows', sideFits, (W, H, o) => { const g = gearPanelsGeometry(W, H, o); return g.short ? { ...g, cell: 56, eqW: sideRowW(56, GEAR_PAD), invW: Math.max(120, W - 4 - sideRowW(56, GEAR_PAD)) } : g; });
 plant('a mend that moves a phone\'s geometry (the body 2 px smaller everywhere)', sameExceptMends, (W, H, o) => { const g = gearPanelsGeometry(W, H, o); return o && !g.short ? { ...g, bodyCell: g.bodyCell - 2 } : g; });
