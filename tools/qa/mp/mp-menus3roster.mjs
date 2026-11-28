@@ -96,7 +96,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the invite, and the other's yes */
     await tap(A, `[data-m3-near="${bId}"] [data-m3-row-act="invite"]`, true);
     await B.page.waitForTimeout(1500);
-    await B.page.evaluate((id) => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'party_accept', payload: { target: id } }); }, aId);
+    /* the other's yes, as the invite card's Join sends it (PartyHUD.jsx; the frame as mp-charhud sends one) */
+    const invited = await B.page.evaluate(() => !!document.querySelector('[data-party-invite]'));
+    rec.ok('upright: the other gets the invite card', invited, null);
+    await B.page.evaluate((id) => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'broadcast', event: 'party_accept', payload: { target: id } }); }, aId);
     const pa = await H.waitFor(A, (S) => (S._party && S._party.state === 'open' ? S._party.members.length : 0), (n) => n === 2, { timeout: 15000, label: 'a party of two' }).catch(() => null);
     rec.ok('upright: the row\'s Invite and the other\'s yes make a party of two', pa === 2, { pa });
     await A.page.waitForTimeout(1500);
@@ -198,6 +201,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await ready(D);
     await H.waitFor(D, (S) => Object.keys(S.others || {}).length, (n) => n >= 1, { timeout: 30000, label: 'sees the first' }).catch(() => null);
     let ps = await openPeople(D, false);
+    await D.page.waitForFunction((id) => !!document.querySelector(`[data-m3-player-row="${id}"]`), aId, { timeout: 30000 }).catch(() => {});
     rec.ok('computer: People opens the drawer on Roster', ps.open && ps.section === 'roster' && (await D.page.evaluate(() => window.__btMenus3.shape())) === 'drawer', ps);
     await tap(D, `[data-m3-player-row="${aId}"]`, false);
     ps = await pstate(D);
