@@ -131,9 +131,9 @@
   ],
   "drawn": [
    13,
-   663,
-   364,
-   171
+   676,
+   339,
+   158
   ],
   "controls": 7,
   "small": [],
@@ -147,7 +147,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -183,11 +183,11 @@
   ],
   "drawn": [
    8,
-   658,
-   374,
-   171
+   657,
+   378,
+   183
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -195,7 +195,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 126,
+  "mainW": 125,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -235,9 +235,9 @@
   ],
   "drawn": [
    8,
-   666,
+   657,
    374,
-   158
+   176
   ],
   "controls": 11,
   "small": [],
@@ -247,7 +247,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 94,
+  "mainW": 93,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -497,9 +497,9 @@
   ],
   "drawn": [
    13,
-   490,
-   349,
-   167
+   501,
+   327,
+   156
   ],
   "controls": 7,
   "small": [],
@@ -513,7 +513,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -549,11 +549,11 @@
   ],
   "drawn": [
    8,
-   485,
-   359,
-   168
+   484,
+   363,
+   179
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -561,7 +561,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 121,
+  "mainW": 120,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -601,9 +601,9 @@
   ],
   "drawn": [
    8,
-   493,
+   484,
    359,
-   155
+   172
   ],
   "controls": 11,
   "small": [],
@@ -613,7 +613,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 90,
+  "mainW": 89,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -862,10 +862,10 @@
    161
   ],
   "drawn": [
-   13,
-   409,
-   294,
-   149
+   8,
+   413,
+   285,
+   146
   ],
   "controls": 7,
   "small": [],
@@ -879,7 +879,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -914,24 +914,20 @@
    161
   ],
   "drawn": [
-   9,
-   404,
-   301,
-   151
+   8,
+   403,
+   308,
+   161
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
-  "cut": [
-   "Attack speed (wider than its box)"
-  ],
-  "overlapWords": [
-   "Attack speed / 1.67 /s"
-  ],
+  "cut": [],
+  "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 103,
+  "mainW": 101,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -971,22 +967,19 @@
   ],
   "drawn": [
    8,
-   412,
+   403,
    304,
-   141
+   152
   ],
   "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
   "cut": [],
-  "overlapWords": [
-   "Max Mana / +",
-   "Move speed / +"
-  ],
+  "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 77,
+  "mainW": 75,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -1251,9 +1244,9 @@
   ],
   "drawn": [
    13,
-   607,
-   334,
-   163
+   616,
+   314,
+   154
   ],
   "controls": 7,
   "small": [],
@@ -1267,7 +1260,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -1303,11 +1296,11 @@
   ],
   "drawn": [
    8,
-   602,
-   344,
-   165
+   601,
+   348,
+   175
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -1315,7 +1308,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 116,
+  "mainW": 115,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -1355,21 +1348,19 @@
   ],
   "drawn": [
    8,
-   610,
+   601,
    344,
-   152
+   166
   ],
   "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
   "cut": [],
-  "overlapWords": [
-   "Move speed / +"
-  ],
+  "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 87,
+  "mainW": 85,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -1619,9 +1610,9 @@
   ],
   "drawn": [
    13,
-   708,
-   388,
-   177
+   724,
+   359,
+   162
   ],
   "controls": 7,
   "small": [],
@@ -1635,7 +1626,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -1671,11 +1662,11 @@
   ],
   "drawn": [
    8,
-   702,
-   398,
-   177
+   701,
+   402,
+   191
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -1683,7 +1674,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 134,
+  "mainW": 133,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -1723,9 +1714,9 @@
   ],
   "drawn": [
    8,
-   710,
+   701,
    398,
-   164
+   184
   ],
   "controls": 11,
   "small": [],
@@ -1735,7 +1726,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 100,
+  "mainW": 99,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -1985,9 +1976,9 @@
   ],
   "drawn": [
    13,
-   741,
-   404,
-   180
+   757,
+   373,
+   165
   ],
   "controls": 7,
   "small": [],
@@ -2001,7 +1992,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -2037,11 +2028,11 @@
   ],
   "drawn": [
    8,
-   732,
-   414,
-   182
+   731,
+   418,
+   197
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -2049,7 +2040,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 139,
+  "mainW": 138,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -2089,9 +2080,9 @@
   ],
   "drawn": [
    8,
-   740,
+   731,
    414,
-   168
+   190
   ],
   "controls": 11,
   "small": [],
@@ -2101,7 +2092,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 104,
+  "mainW": 103,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -2350,9 +2341,9 @@
    74
   ],
   "drawn": [
-   13,
+   11,
    325,
-   761,
+   794,
    48
   ],
   "controls": 7,
@@ -2363,11 +2354,11 @@
   "overlapWords": [],
   "mains": 4,
   "perRow": 4,
-  "mainW": 206,
+  "mainW": 205,
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    136,
    0,
@@ -2402,9 +2393,9 @@
    74
   ],
   "drawn": [
-   13,
+   8,
    312,
-   823,
+   832,
    74
   ],
   "controls": 11,
@@ -2415,7 +2406,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 6,
-  "mainW": 85,
+  "mainW": 86,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -2454,10 +2445,10 @@
    74
   ],
   "drawn": [
-   13,
+   8,
    312,
    823,
-   56
+   64
   ],
   "controls": 11,
   "small": [],
@@ -2467,7 +2458,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 7,
-  "mainW": 88,
+  "mainW": 86,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -2720,9 +2711,9 @@
    69
   ],
   "drawn": [
-   13,
+   11,
    313,
-   628,
+   627,
    48
   ],
   "controls": 7,
@@ -2733,11 +2724,11 @@
   "overlapWords": [],
   "mains": 4,
   "perRow": 4,
-  "mainW": 162,
+  "mainW": 161,
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    58,
    0,
@@ -2772,9 +2763,9 @@
    69
   ],
   "drawn": [
-   13,
+   8,
    302,
-   646,
+   655,
    69
   ],
   "controls": 11,
@@ -2785,7 +2776,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 6,
-  "mainW": 55,
+  "mainW": 57,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -2824,10 +2815,10 @@
    69
   ],
   "drawn": [
-   13,
+   8,
    302,
    646,
-   54
+   62
   ],
   "controls": 11,
   "small": [],
@@ -2837,7 +2828,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 7,
-  "mainW": 63,
+  "mainW": 61,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -3097,10 +3088,10 @@
    64
   ],
   "drawn": [
-   13,
-   301,
-   683,
-   46
+   11,
+   300,
+   696,
+   48
   ],
   "controls": 7,
   "small": [],
@@ -3110,11 +3101,11 @@
   "overlapWords": [],
   "mains": 4,
   "perRow": 4,
-  "mainW": 180,
+  "mainW": 179,
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    106,
    0,
@@ -3149,9 +3140,9 @@
    64
   ],
   "drawn": [
-   13,
+   8,
    292,
-   719,
+   728,
    64
   ],
   "controls": 11,
@@ -3162,7 +3153,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 6,
-  "mainW": 67,
+  "mainW": 69,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -3201,10 +3192,10 @@
    64
   ],
   "drawn": [
-   13,
+   8,
    292,
    719,
-   51
+   59
   ],
   "controls": 11,
   "small": [],
@@ -3214,7 +3205,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 7,
-  "mainW": 73,
+  "mainW": 71,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -3472,9 +3463,9 @@
    87
   ],
   "drawn": [
-   13,
+   11,
    359,
-   827,
+   880,
    48
   ],
   "controls": 7,
@@ -3485,11 +3476,11 @@
   "overlapWords": [],
   "mains": 4,
   "perRow": 4,
-  "mainW": 228,
+  "mainW": 227,
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    150,
    0,
@@ -3524,12 +3515,12 @@
    87
   ],
   "drawn": [
-   13,
+   8,
    339,
-   911,
-   63
+   920,
+   87
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -3537,7 +3528,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 6,
-  "mainW": 71,
+  "mainW": 101,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -3576,10 +3567,10 @@
    87
   ],
   "drawn": [
-   13,
+   8,
    339,
    911,
-   63
+   71
   ],
   "controls": 11,
   "small": [],
@@ -3589,7 +3580,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 7,
-  "mainW": 101,
+  "mainW": 99,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -3848,9 +3839,9 @@
   ],
   "drawn": [
    313,
-   719,
-   814,
-   171
+   732,
+   714,
+   158
   ],
   "controls": 7,
   "small": [],
@@ -3864,7 +3855,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -3900,9 +3891,9 @@
   ],
   "drawn": [
    308,
-   714,
+   713,
    824,
-   171
+   176
   ],
   "controls": 10,
   "small": [],
@@ -3912,7 +3903,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 276,
+  "mainW": 275,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -3952,9 +3943,9 @@
   ],
   "drawn": [
    308,
-   722,
+   713,
    824,
-   158
+   176
   ],
   "controls": 11,
   "small": [],
@@ -3964,7 +3955,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 207,
+  "mainW": 205,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -4218,9 +4209,9 @@
   ],
   "drawn": [
    285,
-   587,
-   454,
-   171
+   600,
+   414,
+   158
   ],
   "controls": 7,
   "small": [],
@@ -4234,7 +4225,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -4270,11 +4261,11 @@
   ],
   "drawn": [
    280,
-   582,
-   464,
-   171
+   581,
+   468,
+   183
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -4282,7 +4273,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 156,
+  "mainW": 155,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -4322,9 +4313,9 @@
   ],
   "drawn": [
    280,
-   590,
+   581,
    464,
-   158
+   176
   ],
   "controls": 11,
   "small": [],
@@ -4334,7 +4325,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 117,
+  "mainW": 115,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -4588,9 +4579,9 @@
   ],
   "drawn": [
    413,
-   619,
-   454,
-   171
+   632,
+   414,
+   158
   ],
   "controls": 7,
   "small": [],
@@ -4604,7 +4595,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    27,
    0,
@@ -4640,11 +4631,11 @@
   ],
   "drawn": [
    408,
-   614,
-   464,
-   171
+   613,
+   468,
+   183
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -4652,7 +4643,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 156,
+  "mainW": 155,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -4692,9 +4683,9 @@
   ],
   "drawn": [
    408,
-   622,
+   613,
    464,
-   158
+   176
   ],
   "controls": 11,
   "small": [],
@@ -4704,7 +4695,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 117,
+  "mainW": 115,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -4958,9 +4949,9 @@
   ],
   "drawn": [
    493,
-   719,
-   454,
-   171
+   732,
+   414,
+   158
   ],
   "controls": 7,
   "small": [],
@@ -4974,7 +4965,7 @@
   "hidden": [],
   "scrolled": false,
   "minFont": 12,
-  "maxFont": 24,
+  "maxFont": 13,
   "canvas": [
    0,
    0,
@@ -5010,11 +5001,11 @@
   ],
   "drawn": [
    488,
-   714,
-   464,
-   171
+   713,
+   468,
+   183
   ],
-  "controls": 10,
+  "controls": 11,
   "small": [],
   "grown": [],
   "over": [],
@@ -5022,7 +5013,7 @@
   "overlapWords": [],
   "mains": 6,
   "perRow": 3,
-  "mainW": 156,
+  "mainW": 155,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
@@ -5062,9 +5053,9 @@
   ],
   "drawn": [
    488,
-   722,
+   713,
    464,
-   158
+   176
   ],
   "controls": 11,
   "small": [],
@@ -5074,7 +5065,7 @@
   "overlapWords": [],
   "mains": 7,
   "perRow": 4,
-  "mainW": 117,
+  "mainW": 115,
   "hidden": [],
   "scrolled": false,
   "minFont": 11,
