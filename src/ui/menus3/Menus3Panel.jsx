@@ -29,6 +29,8 @@ import { navCanBack, navTop } from '@/game/menus3Nav.js';   /* v2.3.6861 */
 import { beforeDraw } from '@/game/framePacer.js';
 import { gearCell } from '@/ui/mobile/dash/itemCategory.js';
 import { Menus3Bag } from './Menus3Bag.jsx';
+import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 7) */
+import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
 import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
@@ -70,6 +72,8 @@ function BackIcon() {
 function pageTitle(top) {
   if (!top) return '';
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
+  if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
+  if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
   return sectionWord(top.section);
 }
 
@@ -127,6 +131,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           data-menus3-body={st.section || ''} data-menus3-page={top ? top.page : ''}
           onScroll={keepScroll}>
           {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
+          {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
         </div>
       </section>
     </div>,

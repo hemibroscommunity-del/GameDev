@@ -127,10 +127,12 @@ export function menus3Close(why) {
 
 /** Run an entry's road (a dock button, a shortcut).  True when it went. */
 export function menus3Go(entry, ctx) {
-  /* v2.3.6861: the built sections open the new panel (the Bag first) */
-  const r = menus3Route(entry, ctx || { built: MENUS3_BUILT });
+  /* v2.3.6861: the built sections open the new panel (the Bag first).
+     v2.3.6863: `ctx.quest` -- the HUD's quest line names its quest (QuestCard.jsx openQuestPage) */
+  const r = menus3Route(entry, Object.assign({ built: MENUS3_BUILT }, ctx || {}));
   _lastRoute = r;
   if (!r) return false;
+  _ticket = null;   /* v2.3.6863: another road: a deep link's way back is dropped */
   /* one menu at a time: today's band goes when the panel opens, the panel when a road opens the band */
   if (r.road === 'panel') {
     if (_panel.open && _panel.menu === r.menu && entry.indexOf('dock.') === 0) { menus3Close('dock'); return true; }
@@ -155,10 +157,56 @@ export function menus3Go(entry, ctx) {
         if (ui && typeof ui.chatOpen === 'function') { ui.chatOpen(); return true; }
         return false;
       }
-      case 'panel': menus3Bus.open(r.menu, r.section); return true;
+      case 'panel':
+        menus3Bus.open(r.menu, r.section);
+        /* v2.3.6863: the quest line opens THAT quest's page, its Back the Quests' own page */
+        if (r.section === 'quests' && ctx && typeof ctx.quest === 'string' && ctx.quest) menus3Bus.push('quest', ctx.quest);
+        return true;
       default: return false;
     }
   } catch (e) { return false; }
+}
+
+/* ═══ v2.3.6863: A DEEP LINK TO TODAY'S PAGE, AND THE WAY BACK (card MN step 7, World · Quests) ═══
+   A quest's link (a monster's Codex page, an item's page) opens TODAY's page
+   in today's band until the new Codex is built (card MN step 8).  The panel
+   shuts (one menu at a time) and its history is kept as a TICKET; the page
+   opened is an arrival (src/game/dashNav.js: its Back closes the band).  When
+   the band shuts, the ticket says how: its Back took the arrival off the
+   stack, so the panel opens again where it was (the quest, its rail and
+   scroll); a Close (the X, the world, Esc) keeps the arrival on the stack and
+   the panel stays shut.  Only one ticket; any other road drops it. */
+let _ticket = null;
+let _ticketOff = null;
+function arrivalKey() {
+  try {
+    const n = dashboardPanelBus.nav();
+    const st = n && n.ws && Array.isArray(n[n.ws]) ? n[n.ws] : null;
+    const t = st && st.length ? st[st.length - 1] : null;
+    return t && t.key != null ? { ws: n.ws, key: t.key } : null;
+  } catch (e) { return null; }
+}
+function onBandChange() {
+  const tk = _ticket;
+  if (!tk || bandShown()) return;
+  _ticket = null;
+  if (_ticketOff) { try { _ticketOff(); } catch (e) { /* gone */ } _ticketOff = null; }
+  let still = false;
+  try { const n = dashboardPanelBus.nav(); still = !!(n && Array.isArray(n[tk.at.ws]) && n[tk.at.ws].some((e) => e && e.key === tk.at.key)); } catch (e) { still = false; }
+  if (still) return;   /* a Close: the panel stays shut */
+  _panel = Object.freeze({ open: true, menu: tk.menu, section: tk.section, nav: tk.nav });
+  stamp(); emit();
+}
+export function menus3Away(go) {
+  if (!_panel.open || typeof go !== 'function') return false;
+  const keep = { menu: _panel.menu, section: _panel.section, nav: _panel.nav };
+  menus3Bus.close();
+  try { go(); } catch (e) { return false; }
+  const at = arrivalKey();
+  if (!at || !bandShown()) return true;   /* nothing arrived in the band (the old dashboard): no way back to keep */
+  _ticket = Object.assign(keep, { at });
+  if (!_ticketOff) { try { _ticketOff = dashboardPanelBus.subscribe(onBandChange); } catch (e) { _ticketOff = null; } }
+  return true;
 }
 
 /* the one class block game.css reads */
@@ -177,7 +225,8 @@ function stamp() {
 
 /* ── the world's tap and the header's swipe ── */
 function onWorld(t) {
-  return !!(t && t.tagName === 'CANVAS' && !(t.closest && t.closest('[data-band-box],[data-menus3-panel]')));
+  /* v2.3.6863: the world map's own canvas is no tap on the world (a quest's Show on map opens it OVER the panel) */
+  return !!(t && t.tagName === 'CANVAS' && !(t.closest && t.closest('[data-band-box],[data-menus3-panel],[data-world-map]')));
 }
 function onHeader(t) {
   if (!t || !t.closest) return false;
@@ -270,7 +319,7 @@ export function startMenus3() {
     panelState: () => _panel,
     back: () => menus3Bus.back(),
     top: () => menus3Bus.top(),
-    go: (entry) => menus3Go(entry),
+    go: (entry, ctx) => menus3Go(entry, ctx),   /* v2.3.6863: + ctx (the quest line's quest) */
     route: () => _lastRoute,
     why: () => _lastWhy,
   };
