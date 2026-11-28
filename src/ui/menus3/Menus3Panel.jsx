@@ -37,6 +37,9 @@ import { Menus3SkillsLazy } from '../lazyPanels.js';   /* v2.3.6865 (card MN ste
 import { hasUnseenLevelUps } from '@/ui/mobile/sheet/skillsModel.js';
 import { lifeSkillOf, lifeRoadmap } from '@/game/lifeProfile.js';
 import { SAY as SAY_L } from '@/data/say/lifePage.js';
+import { Menus3Feats } from './Menus3Feats.jsx';   /* v2.3.6868 (card MN step 9) */
+import { SAY as SAY_F } from '@/data/say/menus3Feats.js';
+import { SAY as SAY_FT } from '@/data/say/feats.js';
 import { Menus3SettingsLazy } from '../lazyPanels.js';   /* v2.3.6869 (card MN step 12): Settings, its own script */
 import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.jsx';   /* v2.3.6864 (card MN step 10) */
 import './menus3.css';
@@ -84,6 +87,8 @@ function pageTitle(top, getS) {
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
   if (top.section === 'skills') return skillsTitle(top) || sectionWord('skills');   /* v2.3.6865: the skill's name */
+  if (top.section === 'feats' && top.page === 'ap') return say(SAY_F, 'menus3Feats.apOpen');   /* v2.3.6868 */
+  if (top.section === 'feats' && top.page === 'medal') return say(SAY_FT, 'feats.medal');
   return sectionWord(top.section);
 }
 
@@ -160,6 +165,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
           {st.section === 'skills' ? <Menus3SkillsLazy R={rpgState} getS={getS} top={top} /> : null}
+          {st.section === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
           {st.section === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
           {st.section === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
           {st.section !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
