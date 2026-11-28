@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "681a3b91b56d6511ad404b67002ef5431e0934f2",
+  "tree": "63c992c90718890757f31aaccc6035ddb88551c3",
+  "committedAt": "2026-11-28T02:01:55-08:00",
+  "subject": "Merge pull request #2437 from hemibroscommunity-del/claude/ui4-hud-attack-size",
+  "files": 9488,
+  "bytes": 1131648603,
+  "listingSha256": "4bf4fc09ee783d46382442dc4c0321fa88de740ff238e99b9c9e009e5651a14a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
