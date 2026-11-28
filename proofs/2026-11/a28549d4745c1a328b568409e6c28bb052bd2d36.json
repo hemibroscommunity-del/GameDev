@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a28549d4745c1a328b568409e6c28bb052bd2d36",
+  "tree": "c87daa423192d51fc83c12dc9139be93bea5edac",
+  "committedAt": "2026-11-27T22:48:17-08:00",
+  "subject": "Merge pull request #2435 from hemibroscommunity-del/claude/plan-ui4-combat",
+  "files": 9480,
+  "bytes": 1130246213,
+  "listingSha256": "f8e2cdcca1f1975d9873fca1e273e79522324dd0ee16927aa9287761578bd845",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
