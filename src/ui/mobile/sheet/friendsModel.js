@@ -148,6 +148,20 @@ export function removeFriend(S, fid) {
   return next;
 }
 
+/* v2.3.6864 (card MN step 10): the player card's Add Friend as a function, for the
+   new Player page (menus3/Menus3Roster.jsx): the same device entry the card writes
+   ({ id, name, color, addedAt } into bt_friends; InspectPlayerPanel.jsx), its
+   friend_request sent by the page as the card sends it.  A friend already kept is
+   left as it is. */
+export function addFriend(S, fid, name, color) {
+  const now = getFriends(S);
+  if (now.some(f => (f.id || f) === fid)) return now;
+  const next = now.concat([{ id: fid, name, color, addedAt: Date.now() }]);
+  try { localStorage.setItem('bt_friends', JSON.stringify(next)); } catch (_e) {}
+  if (S) { if (S.friends) S.friends = next; if (S._friends) S._friends = next; }
+  return next;
+}
+
 /* v2.3.4365: Block and Unblock go through chatMute.js setBlockedId, the one
    writer of `bt_blocked` (it reads the stored list fresh, so a block made here
    is never erased by a write somewhere else).  setBlock is the player card's
