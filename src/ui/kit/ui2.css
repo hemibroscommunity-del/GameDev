@@ -214,6 +214,7 @@
 .ui2.ui2-v17[data-bro-landing] { --ui2-fs-small: 11px; }
 .ui2.ui2-v17[data-weapon-page] { --ui2-fs-small: 11px; }
 .ui2.ui2-v17[data-shared-page] { --ui2-fs-small: 11px; }
+.ui2.ui2-v17.u2-st { --ui2-fs-small: 11px; }
 @media (prefers-reduced-motion: reduce) {
   .ui2 { --ui2-motion-press: 0ms; --ui2-motion-state: 0ms; --ui2-motion-loop: 0ms; }
 }

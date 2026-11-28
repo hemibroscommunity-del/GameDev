@@ -334,8 +334,10 @@ export const UI2_V17_SIZES = Object.freeze({
  *  or cut a word there (mp-v17look measures 11 against 12).  Each is its root's own class or data mark.
  *  Measured 2026-11-27 (390 x 844 and 844 x 390): Bro's strip (AP, Quests, Clan, Guilds) runs 2 px past
  *  its labels' boxes at 12 (their descenders would be cut), both ways up; the Sword's page one line
- *  upright; the Shared page is the same template (attrTemplate.jsx) and keeps the Sword's size. */
-export const UI2_V17_SMALL11 = Object.freeze(['[data-bro-landing]', '[data-weapon-page]', '[data-shared-page]']);
+ *  upright; the Shared page is the same template (attrTemplate.jsx) and keeps the Sword's size; the stat
+ *  tree (StatTree.jsx, `.u2-st`, every layer) because its hit base's five reasons scroll at 12 on a small
+ *  phone on its side, 667 x 375 (mp-ui2combat 4d). */
+export const UI2_V17_SMALL11 = Object.freeze(['[data-bro-landing]', '[data-weapon-page]', '[data-shared-page]', '.u2-st']);
 
 /** The look's custom properties, as [name, value] (the `.ui2.ui2-v17` block). */
 export function ui2V17Vars() {
