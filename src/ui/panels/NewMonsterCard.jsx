@@ -5,6 +5,8 @@ import { codexAnnouncement, codexAnnounceDone, codexOpenPage, ANNOUNCE_MS } from
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { worldReady } from '@/ui/loadingGate.js';   /* v2.3.4136: not while a loading screen is up */
 import { PetPortrait } from '@/ui/petPortrait.jsx';
+import { menus3On } from '../menus3/menus3Switch.js';   /* v2.3.6867 */
+import { menus3Go } from '../menus3/menus3Wire.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.3336: NEW MONSTER -- AN ANNOUNCEMENT YOU CAN TAP ═══
@@ -71,6 +73,8 @@ export function NewMonsterCard({ stateRef }) {
     codexAnnounceDone(S, a.at);
     seenRef.current = null;
     setTick((x) => (x + 1) % 1000000);
+    /* v2.3.6867 (card MN step 8): under ?menus3 the new panel's Codex, which takes the card's ask as it draws */
+    if (menus3On() && menus3Go('card.newMonster')) return;
     dashboardPanelBus.open('encyclopedia');
   };
   const stop = (ev) => ev.stopPropagation();
