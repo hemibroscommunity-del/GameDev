@@ -7,7 +7,7 @@
  * hand (grand plan step 5.7) takes these to nothing; the gatekeeper alone
  * makes the census strict.
  */
-export const LINE = 224;          /* code lines that reach the hand, every file */
+export const LINE = 220;   /* v2.3.6869: SettingsPanel.jsx's 4 moved to settingsParts.jsx (card MN step 12), none added */          /* code lines that reach the hand, every file */
 export const FILES_LINE = 85;     /* files that do */
 export const KNOWN = {
   'src/debug/crashTrap.js': 1,
@@ -59,10 +59,10 @@ export const KNOWN = {
   'src/ui/mobile/ZoneHeader.jsx': 1,
   'src/ui/mobile/dash/AchievementsPanel.jsx': 4,
   'src/ui/mobile/dash/ClanPanel.jsx': 1,
-  'src/ui/mobile/dash/EncyclopediaPanel.jsx': 3,
+  'src/ui/mobile/dash/EncyclopediaPanel.jsx': 2,
   'src/ui/mobile/dash/FeedbackPanel.jsx': 2,
   'src/ui/mobile/dash/FishBoard.jsx': 2,
-  'src/ui/mobile/dash/GearTab.jsx': 2,
+  'src/ui/mobile/dash/GearTab.jsx': 1,
   'src/ui/mobile/dash/GuildPanel.jsx': 1,
   'src/ui/mobile/dash/InventoryPanel.jsx': 2,
   'src/ui/mobile/dash/ItemDetailPopup.jsx': 21,
@@ -72,12 +72,12 @@ export const KNOWN = {
   'src/ui/mobile/dash/MonsterCodex.jsx': 2,
   'src/ui/mobile/dash/MorePanel.jsx': 1,
   'src/ui/mobile/dash/NotificationsPanel.jsx': 1,
-  'src/ui/mobile/dash/PetsPanel.jsx': 4,
+  'src/ui/mobile/dash/PetsPanel.jsx': 3,
   'src/ui/mobile/dash/QuestDetailPanel.jsx': 1,
   'src/ui/mobile/dash/QuestsPanel.jsx': 1,
   'src/ui/mobile/dash/SelfPanel.jsx': 1,
-  'src/ui/mobile/dash/SettingsPanel.jsx': 4,
-  'src/ui/mobile/dash/SkillsPanel.jsx': 3,
+  'src/ui/mobile/dash/SkillsPanel.jsx': 2,
+  'src/ui/mobile/dash/settingsParts.jsx': 4,   /* v2.3.6869: SettingsPanel.jsx's four, moved with the sound and the restart */
   'src/ui/mobile/dash/SocialPanel.jsx': 1,
   'src/ui/mobile/dash/SpendPointConfirm.jsx': 2,
   'src/ui/mobile/dash/StatsPanel.jsx': 1,

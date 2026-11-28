@@ -54,6 +54,7 @@ export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
   'codex',   /* v2.3.6867 (card MN step 8): + World's Codex (Feats still today's) */
+  'settings',   /* v2.3.6869 (card MN step 12): + Settings, from the gear (no menu of the dock's) */
   'roster',
 ]);
 
