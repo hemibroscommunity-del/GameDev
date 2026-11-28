@@ -48,9 +48,11 @@ export const MENUS3_TODAY = Object.freeze({
 /* v2.3.6861 (card MN step 4): the sections whose new page exists, the page's
    `ctx.built` (menus3Wire.js menus3Go): the Bag first.  Power and Skills,
    tabs of the same panel, still open today's screens until their steps.
-   v2.3.6863 (card MN step 7): + World's Quests (Codex and Feats still today's). */
+   v2.3.6863 (card MN step 7): + World's Quests (Codex and Feats still today's).
+   v2.3.6864 (card MN step 10): + People's Roster (Chat and Ranks still today's). */
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
+  'roster',
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */
@@ -64,6 +66,11 @@ export const MENUS3_ENTRIES = Object.freeze({
   'hud.gear': Object.freeze({ menu: null, section: 'settings' }),
   'hud.questLine': Object.freeze({ menu: 'world', section: 'quests', quest: 'line' }),
   'hud.chatLines': Object.freeze({ menu: 'people', section: 'chat' }),
+  /* v2.3.6864 (card MN step 10): the party chip (SPEC "HUD party chip opens it"), and every door
+     that opened the old top-left player list (the Saloon's "Invite a player", the Sheriff's "Duel a
+     player", the Party page's button: BroTown's playersOpen) -- People · Roster on Nearby */
+  'hud.partyChip': Object.freeze({ menu: 'people', section: 'roster' }),
+  'game.players': Object.freeze({ menu: 'people', section: 'roster', seg: 'nearby' }),
 });
 
 /* The owner's keys: what each opens, and whether the game already uses it. */
@@ -92,7 +99,7 @@ export function menus3Route(entry, ctx) {
   if (!e) return null;
   const c = ctx || {};
   const built = c.built ? (Array.isArray(c.built) ? c.built.indexOf(e.section) >= 0 : !!(c.built.has && c.built.has(e.section))) : false;
-  if (built) return { entry, menu: e.menu, section: e.section, road: 'panel', built: true };
+  if (built) return e.seg ? { entry, menu: e.menu, section: e.section, road: 'panel', built: true, seg: e.seg } : { entry, menu: e.menu, section: e.section, road: 'panel', built: true };
   const t = MENUS3_TODAY[e.section];
   const out = { entry, menu: e.menu, section: e.section, road: t.road, built: false };
   if (t.page) out.page = t.page;

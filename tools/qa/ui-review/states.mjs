@@ -1017,6 +1017,40 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6864 (card MN step 10, `?menus3`): People, the Roster in the new panel, and the one Player page */
+  { id: 'menus3-roster', group: 'Dashboard', title: 'The new menus: People, the Roster', about: 'The owner\'s new menus, step 10 (docs/design/menus3/): the People button opens the new panel on Roster, always (its tabs Roster, Chat, Ranks; Chat and Ranks still today\'s). Pinned at the top the party bar: alone ONE slim "No party" line with Create (the game has no create request: a party starts when someone you invite says yes, so Create lights Nearby and says so); in a party its members (the leader first, then you), Invite and Leave (two taps), and an Alliance line only when the party is one or wears its former clan\'s tag. Under it the segments Nearby, Friends, Requests, Blocked with their real counts; a row is the player\'s drawn disc, name and what the phone knows, with one action (Invite, Message, Unblock); Friends has Add friend with the invite link. The old top-left player list is gone under ?menus3: its doors open Roster on Nearby.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.people'); });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  { id: 'menus3-player', group: 'Dashboard', title: 'The new menus: the one Player page', about: 'The owner\'s new menus, step 10: a Roster row (or a party member) opens the one Player page inside the panel, Back top left and the player\'s name -- their drawn disc, level and where (only what the phone already has: the full remote page stays off), In your party, Friend, the Hemi Bro count; then today\'s actions two across, each the request today\'s player card sends: Message (today\'s chat box on the whisper lane aimed at them; the panel comes back when it shuts), Invite to party, Remove from party (the leader, two taps), Trade, Duel, Add or Remove friend, Player card (today\'s card and its Inspect card), Mute, Block or Unblock, Report (its four reasons). The Chat and Ranks steps open it by one call.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.people'); });
+      await wait(P, 1200);
+      /* the first row's page (a capture alone has nobody near: then the Roster shows its honest empty Nearby) */
+      await evalIn(P, () => { const r = document.querySelector('[data-m3-player-row]'); if (r) r.click(); });
+      await wait(P, 1000);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6842 (card UI4, PR 3): a computer's open band, V17's 840 block (game/v17Wide.js; ?v17wide=0 the 480 one) */
   { id: 'v17wide-bro', group: 'Dashboard', title: 'A computer\'s open band, 840 wide (V17)', views: ['desktop'], about: 'On a computer (or a tablet) the open band\'s block -- the header row, the open page and the resting columns -- is 840 px wide and centred, as the owner\'s V17 handoff draws it (2026-11-27: "840 x 243 centered"; "use extra horizontal space for additional entries, not larger art, text or gameplay view"). The band\'s height (243), the header (52), the world above it and the camera are the same as before; the words and pictures keep their phone sizes, and the pages that lay out from their box (the Menu\'s tiles, Bro\'s doors, Gear\'s bag) use the room for more in a row. A phone is unchanged (its band is its own width). ?v17wide=0 (remembered) gives the 480 px block of 2026-11-05 ("Simply make the container areas smaller"): the owner\'s choice (card UI4, Q9).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },
