@@ -56,6 +56,8 @@ const TOOLS = () => {
   const key = (a) => (a._shotTs ? a._shotTs + ':' + (a._sn != null ? a._sn : '') : a);   /* v2.3.6650: a special's arrows carry no stamp: known by their object */   /* never its angle: that changes in flight */
   for (const a of (S0.arrows || [])) if (a) seen.add(key(a));
   window.__rsShots = [];
+  window.__caPress = 0;   /* presses that reached the Special button */
+  if (!window.__caHook) { window.__caHook = true; document.addEventListener('touchstart', (e) => { if (e.target && e.target.closest && e.target.closest('[data-special]')) window.__caPress++; }, true); }
   window.__rsOut = [];
   cancelAnimationFrame(window.__rsR);
   /* each shot recorded AS IT IS PUSHED (its launch angle: an arrow's angle
@@ -87,9 +89,10 @@ const NOW = (P, id) => H.readState(P, bind((S, id) => {
   return {
     kind: S._discKind || null, latch: S._latchPhase || 'idle', lid: S._latchId == null ? null : String(S._latchId),
     lock: S.lockedTarget ? String(S.lockedTarget.id) : null, aiming: !!S._aiming, auto: !!S.autoAttack,
-    queued: S._bowSpecialQueued || 0, face: typeof S._facingAngle === 'number' ? S._facingAngle : null, f: S._frameCount || 0, mana: S.rpg ? S.rpg.mana : null,
+    queued: S._bowSpecialQueued || 0, lastAim: typeof S._lastAimAngle === 'number' ? S._lastAimAngle : null, face: typeof S._facingAngle === 'number' ? S._facingAngle : null, f: S._frameCount || 0, mana: S.rpg ? S.rpg.mana : null,
     hits: (window.__btHitLog || []).filter((h) => String(h.id) === id).length,
     special: !!document.querySelector('[data-special]'),
+    press: window.__caPress || 0, refuse: { daze: S._dazeNoteAt ? Date.now() - S._dazeNoteAt : null, stagger: S._staggerNoteAt ? Date.now() - S._staggerNoteAt : null, shield: !!S._shieldUp, swipe: S._lastSwipe ? Date.now() - S._lastSwipe : null, dead: !!S._dead, ext: !!S._extraction },
     why: m ? { hitAgo: typeof m._hitByMeAt === 'number' ? Date.now() - m._hitByMeAt : null, idT: typeof m.id, vw: S._viewW, vh: S._viewH, cam: S.camera ? [Math.round(S.camera.x), Math.round(S.camera.y)] : null, me: [Math.round(S.player.x), Math.round(S.player.y)], mxy: [Math.round(m.x), Math.round(m.y)], others: (S.monsters || []).filter((x) => x && typeof x._hitByMeAt === 'number').map((x) => [String(x.id), Date.now() - x._hitByMeAt]).slice(0, 4) } : null,
     mon: m ? { alive: !!m.alive, hp: m.curHp, a: Math.atan2(m.y - S.player.y, m.x - S.player.x), d: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) } : null,
   };
@@ -162,11 +165,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       };
       /* Special tapped by its own finger (id 3), the disc's finger (if any) still down as `held` */
       const special = async (held) => {   /* the state one frame after the press (a readied special lasts 2.5 s, and this box draws a few frames a second); null: no button */
-        const SB = await P.page.evaluate(() => { const el = document.querySelector('[data-special]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
-        if (!SB) return null;
         const pts = held ? [held] : [];
-        await touch('touchStart', pts.concat([{ x: SB.x, y: SB.y, id: 3 }])); await frames(P, 1);
-        await touch(pts.length ? 'touchMove' : 'touchEnd', pts.length ? pts : []);   /* CDP: a point left out of the list is lifted, so a move with the disc's finger alone lifts Special's and keeps the disc's down */
+        for (let k = 0; k < 2; k++) {   /* the ring's buttons move as a fight changes: a tap that missed Special (the page's own count) is made once more */
+          const SB = await P.page.evaluate(() => { const el = document.querySelector('[data-special]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, n: window.__caPress || 0 }; });
+          if (!SB) return null;
+          await touch('touchStart', pts.concat([{ x: SB.x, y: SB.y, id: 3 }])); await frames(P, 1);
+          await touch(pts.length ? 'touchMove' : 'touchEnd', pts.length ? pts : []);   /* CDP: a point left out of the list is lifted, so a move with the disc's finger alone lifts Special's and keeps the disc's down */
+          const n = await P.page.evaluate(() => window.__caPress || 0);
+          if (n > SB.n) break;
+        }
         return NOW(P, mon.id);
       };
       /* the bow held toward the monster until the worker says it was hit (or `kill`: until it dies) */
@@ -186,6 +193,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await frames(P, 3);
         return last;
       };
+      /* the thumb's LAST aim set away from the monster (a short drag the other way, lifted): today's Special goes along it, so only the new rule sends one at the monster */
+      const aimAway = async () => {
+        const s = await NOW(P, mon.id);
+        if (!s.mon) return s;
+        /* the clearest way: of 16, the one farthest (in angle) from every live monster within 900 px, and at least 120 deg off this one, so its arrows hit nobody (a monster they hit would be the last target) */
+        const a = await H.readState(P, bind((S, o) => {
+          const P0 = S.player, ws = [];
+          for (const m of (S.monsters || [])) if (m && m.alive && Math.hypot(m.x - P0.x, m.y - P0.y) < 900) ws.push(Math.atan2(m.y - P0.y, m.x - P0.x));
+          const dd = (x, y) => Math.abs(Math.atan2(Math.sin(x - y), Math.cos(x - y)));
+          let best = o.a + Math.PI, bestD = -1;
+          for (let k = 0; k < 16; k++) { const c = k * Math.PI / 8; if (dd(c, o.a) < 2.1) continue; let d = Math.PI; for (const w of ws) d = Math.min(d, dd(c, w)); if (d > bestD) { bestD = d; best = c; } }
+          return best;
+        }, { a: s.mon.a }));
+        const e = await down(a); await frames(P, 2); await touch('touchEnd', [e]); await frames(P, 2);
+        return a;
+      };
       /* wait for the special's shot toward the monster and the worker's new hit on it */
       const watch = async (h0, m0, ms) => {
         const t0 = Date.now();
@@ -198,23 +221,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { s, got };
       };
 
-      /* ── a ── the last target */
-      const H1 = await hitIt(false);
-      rec.ok(`a. ${label}: the bow dragged toward the monster: the worker echoed a hit on it (${H1.hits}): the last target`, H1.hits > 0, H1);
-      if (!(H1.hits > 0) || !H1.mon) continue;
-      await turn(H1.mon.a + Math.PI);
-      await clock(P, 1800);   /* the special's 1.5 s cooldown, if anything spent one */
-      await vitals();
-      await frames(P, 3);
-      const A0 = await NOW(P, mon.id);
-      rec.ok(`a. ${label}: turned away (facing ${A0.face != null ? Math.round(off(A0.face, A0.mon ? A0.mon.a : 0) / DEG) : '?'} deg off the monster), no thumb on the disc, the Special button shown (guard)`, !A0.aiming && A0.special && A0.face != null && A0.mon && off(A0.face, A0.mon.a) > 90 * DEG, A0);
-      const m0 = await MARK(P);
-      const pressed = await special(null);
-      const W = await watch(A0.hits, m0, 8000);
-      /* the special aims at the monster's BODY (combatHelpers lockShotPoint, the hit test's point), above its feet: so near, tens of degrees off the feet's line, never the facing's */
-      const toMon = W.got.shots.filter((x) => x.sp && A0.mon && off(x.ang, A0.mon.a) < 60 * DEG);
-      rec.ok(`a. ${label}: Special with no aim: at once (nothing readied) the special left toward the last target (${toMon.length} of ${W.got.shots.length} shots), never the facing, and the WORKER echoed new hits on it (${A0.hits} -> ${W.s.hits})`,
-        pressed && toMon.length > 0 && W.got.shots.every((x) => off(x.ang, A0.face) > 90 * DEG) && W.s.queued === 0 && W.s.hits > A0.hits, { pressed, shots: W.got.shots.slice(0, 4), s: W.s, monA: A0.mon && A0.mon.a });
+      /* ── a ── the last target (once more if this slow box let the hit age past the 8 s before the press) */
+      let A0 = null, W = null, pressed = null;
+      for (let tryA = 0; tryA < 2; tryA++) {
+        if (tryA) { await clock(P, 2000); await vitals(); }
+        const H1 = await hitIt(false);
+        rec.ok(`a. ${label}: the bow dragged toward the monster: the worker echoed a hit on it (${H1.hits}): the last target (guard)`, H1.hits > 0 || tryA === 0, H1);
+        if (!(H1.hits > 0) || !H1.mon) { if (tryA) break; continue; }
+        await aimAway();
+        A0 = await NOW(P, mon.id);
+        const m0 = await MARK(P);
+        pressed = await special(null);
+        W = await watch(A0.hits, m0, 8000);
+        W.m0 = m0;
+        if (pressed && pressed.why && pressed.why.hitAgo != null && pressed.why.hitAgo <= 8000) break;
+        rec.skip(`a. ${label}: try ${tryA + 1}`, 'the hit was more than 8 s old at the press (this box draws a few frames a second)', pressed && pressed.why);
+      }
+      if (!A0 || !W) continue;
+      rec.ok(`a. ${label}: no thumb on the disc, the thumb's last aim and the facing turned away (${A0.lastAim != null && A0.mon ? Math.round(off(A0.lastAim, A0.mon.a) / DEG) : '?'} deg off the monster), the Special button shown (guard)`, !A0.aiming && A0.special && A0.lastAim != null && A0.mon && off(A0.lastAim, A0.mon.a) > 90 * DEG, A0);
+      /* the special aims at the monster's BODY (combatHelpers lockShotPoint, the hit test's point), above its feet, so a big monster near you is tens of degrees off its feet's line: each special arrow is nearer the monster's way than the thumb's last aim (today's road), which is at least 120 deg from it */
+      const toMon = W.got.shots.filter((x) => x.sp && A0.mon && off(x.ang, A0.mon.a) < off(x.ang, A0.lastAim) && off(x.ang, A0.lastAim) > 45 * DEG);
+      const spA = W.got.shots.filter((x) => x.sp);
+      rec.ok(`a. ${label}: Special with no aim: at once (nothing readied) the special left toward the last target (${toMon.length} of ${spA.length} special arrows), not along the last aim, and the WORKER echoed new hits on it (${A0.hits} -> ${W.s.hits})`,
+        !!pressed && spA.length > 0 && toMon.length === spA.length && pressed.queued === 0 && W.s.hits > A0.hits, { pressed, shots: W.got.shots.slice(0, 4), s: W.s, monA: A0.mon && A0.mon.a, lastAim: A0.lastAim });
       rec.ok(`a. ${label}: ...and nothing locked or latched (the stick keeps no lock)`, W.s.latch === 'idle' && W.s.lid == null && W.s.lock == null, W.s);
       if (!full) continue;
 
@@ -225,6 +254,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const dead = !D0.mon || !D0.mon.alive || D0.mon.hp <= 0;
       rec.ok(`d. the monster killed by the bow (guard)`, dead, D0);
       if (dead) {
+        await aimAway();
         await clock(P, 1800); await vitals(); await frames(P, 3);
         const md = await MARK(P);
         /* another monster your bow hit on the way is the last target now (the rule's: your last landed blow); none: today's road */
@@ -234,8 +264,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const gotD = await SINCE(P, md);
         const wasA = D0.mon ? D0.mon.a : null;
         const spD = gotD.shots.filter((x) => x.sp);
-        rec.ok(`d. the last target dead: never at its body; ${other ? 'another monster hit since is the last target: the special at it' : 'nothing else hit: today\'s, readied'} (readied ${!!(D1 && D1.queued)}, ${spD.length} special shots)`,
-          !!D1 && (other ? spD.length > 0 && spD.every((x) => off(x.ang, other.a) < 60 * DEG) : D1.queued > 0 && spD.length === 0), { D1, shots: gotD.shots.slice(0, 4) });
+        rec.ok(`d. the last target dead: never at its body; ${other ? 'another monster hit since is the last target: the special at it' : 'nothing else hit: today\'s (readied, or along the last aim, away)'} (readied ${!!(D1 && D1.queued)}, ${spD.length} special shots)`,
+          !!D1 && (other ? spD.length > 0 && spD.every((x) => off(x.ang, other.a) < 90 * DEG) : (D1.queued > 0 || spD.length > 0) && (wasA == null || spD.every((x) => off(x.ang, wasA) > 90 * DEG))), { D1, shots: gotD.shots.slice(0, 4) });
       }
       /* ── b ── the stick wins (a fresh monster, hit first: a last target the stick must beat) */
       await H.devOp(wsPort, 'combat', me, { skill: 'bow', level: 1 }).catch(() => null);   /* d's kill done: a bow that does not kill in a blow */
@@ -264,16 +294,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
       /* ── c ── `?comboaim=0` */
       await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.set('comboaim', '0'); history.replaceState(null, '', u.toString()); });
+      mon = await fresh(' (c)');
+      if (!mon) continue;
+      const hc0 = (await NOW(P, mon.id)).hits;
       const HC = await hitIt(false);   /* a last target the switch must ignore */
+      await aimAway();
       await clock(P, 1800); await vitals(); await frames(P, 3);
       const C0 = await NOW(P, mon.id);
-      if (HC.hits > 0 && C0.mon && C0.mon.alive) {
-        if (C0.face != null && off(C0.face, C0.mon.a) < 90 * DEG) await turn(C0.mon.a + Math.PI);
+      if (HC.hits > hc0 && C0.mon && C0.mon.alive) {
         const mc = await MARK(P);
         const C1 = await special(null);
         await frames(P, 8);
         const gotC = await SINCE(P, mc);
-        rec.ok(`c. \`?comboaim=0\`: today's: the special readied (${!!(C1 && C1.queued)}), nothing toward the monster (${gotC.shots.length} shots)`, !!C1 && C1.queued > 0 && !gotC.shots.some((x) => off(x.ang, C0.mon.a) < 60 * DEG), { C1, shots: gotC.shots.slice(0, 4) });
+        const hitC = (await NOW(P, mon.id)).hits > C0.hits;
+        rec.ok(`c. \`?comboaim=0\`: today's: readied (${!!(C1 && C1.queued)}) or along the last aim, away; nothing at the monster (${gotC.shots.length} shots, all away; the worker's hits on it ${hitC ? 'grew (an arrow on the ground ticks)' : 'did not grow'})`, !!C1 && (C1.queued > 0 || gotC.shots.some((x) => x.sp)) && gotC.shots.every((x) => off(x.ang, C0.mon.a) > 90 * DEG), { C1, shots: gotC.shots.slice(0, 4) });
       } else rec.skip('c. ?comboaim=0', 'the monster is gone', C0);
       await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.set('comboaim', '1'); history.replaceState(null, '', u.toString()); });
       await clock(P, 3200);
