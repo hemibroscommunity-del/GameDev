@@ -31,6 +31,7 @@ import { menus3Route, MENUS3_BUILT, MENUS3_TODAY } from '../../game/menus3Router
 import { menus3Shape, menus3CamOffset } from '../../game/menus3Panel.js';
 import { navStart, navPush, navBack, navKeep, navPrune, navTop, awayStep } from '../../game/menus3Nav.js';   /* v2.3.6861: the one Back (card MN step 4) */
 import { menus3CloseWhy } from '../../game/menus3Close.js';
+import { counterStation } from '../../game/menus3Counter.js';   /* v2.3.6872: the Counter (card MN step 13) */
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';
 import { dashMinBus } from '../mobile/dashMinBus.js';
 import { bandSideways } from '../mobile/bandSideways.js';
@@ -85,6 +86,12 @@ export const menus3Bus = {
     if (n !== _panel.nav) { _panel = Object.freeze({ ..._panel, nav: n }); emit(); }
   },
   top() { return _panel.nav ? navTop(_panel.nav) : null; },
+  /* v2.3.6872 (card MN step 13): a town station's Counter (src/game/menus3Counter.js), no dock menu's: its title, the gold, the X */
+  counter(station) {
+    if (bandShown()) { try { dashboardPanelBus.go({ type: 'close' }); } catch (e) { /* no band */ } }
+    _panel = Object.freeze({ open: true, menu: null, section: 'counter', station, nav: navStart('counter', null) });
+    stamp(); emit();
+  },
   bump() { if (_panel.open) emit(); },
   close() { if (!_panel.open) return; _panel = SHUT; stamp(); emit(); },
   subscribe(fn) { _subs.add(fn); return () => _subs.delete(fn); },
@@ -362,6 +369,28 @@ export function startMenus3() {
 }
 
 export function menus3Active() { return _on; }
+/* ═══ v2.3.6872: A STATION'S DOOR OPENS ITS COUNTER (card MN step 13) ═══
+   Every bench opens by today's window setter (BroTown's setBuildingPanel:
+   its door, its keeper, the town board), so the gate is on the setter, once:
+   a window whose Counter is built (src/game/menus3Counter.js counterStation)
+   opens the Counter in the panel instead, today's window shut; every other
+   id, and everything under ?menus3=0, goes to today's setter untouched.  The
+   wrapper is kept per setter, so it is the same function every render. */
+const _gates = new WeakMap();
+export function menus3StationGate(set) {
+  if (typeof set !== 'function') return set;
+  let g = _gates.get(set);
+  if (!g) {
+    g = (p) => {
+      const st = typeof p === 'string' ? counterStation(p, _on) : null;
+      if (!st) { set(p); return; }
+      set(null);
+      menus3Bus.counter(st);
+    };
+    _gates.set(set, g);
+  }
+  return g;
+}
 
 /** v2.3.6861 (card MN step 4): the camera's shift while the new panel is open
     upright, in the world's px for a world `H` tall (src/game/menus3Panel.js

@@ -2842,6 +2842,26 @@ Screens: menus3-roster, menus3-player
 - R (Roster in the owner's keys) is Whirlwind in the game: no key was added.
 
 Sources: src/game/menus3Roster.js, menus3Router.js (MENUS3_BUILT, `hud.partyChip`, `game.players`), src/ui/menus3/Menus3Roster.jsx, Menus3Panel.jsx, menus3Wire.js (menus3AwayChat, menus3ChatShut), menus3.css, src/ui/panels/PartyHUD.jsx (the chip), src/ui/BroTown.jsx (playersOpen, the Saloon's and the Hall's doors, the chat's shutting), src/ui/mobile/sheet/friendsModel.js (addFriend), src/data/say/menus3Roster.js; server/test/menus3-roster.test.mjs; tools/qa/mp/mp-menus3roster.mjs.
+## The new menus' Counter and Make: the Blacksmith (v2.3.6872, card MN step 13)
+Screens: menus3-counter
+
+**What it is for:** one shape for every town station (decided 6: *"One component, four modes; a station is always its one mode"*), and the first mode, Make, at the Blacksmith: what today's Blacksmith window lets a player make, in the new panel, with the one quantity picker.
+
+**Decisions, and why:**
+- **The station's door opens the Counter** (under `?menus3`): every bench opens through today's window setter (its door, its keeper Blacksmith Bro, the test levers), so the gate is on the setter once (`menus3Wire.js menus3StationGate`, rule `src/game/menus3Counter.js counterStation`): the Blacksmith opens the panel as the Counter; the Woodworker, the Gem Works and the Cookhouse still open today's windows until they are built. `?menus3=0`: today's window, untouched.
+- **The header carries the station, its mode and the gold** ("Blacksmith · Make", a drawn coin, the X with `data-esc`); no dock tabs (a counter is no menu's).
+- **Today's tabs on the rail**, each on today's cap (Smelt, Forge, Armor, Upgrade, Amulet only to someone holding gold for it, Salvage), the tab remembered for the load, as today's bench remembers its own.
+- **A tap SELECTS a recipe** (the SPEC's Quick-Tap is overruled by decided 6): its row is today's row (picture, name, every cost as have/need, the lock that names the one thing missing, its chips), lit with the kit's selected state, dimmed when it cannot be made now.
+- **The foot**: the whole order's costs (each cost times the number), the ONE quantity picker (`menus3/Menus3Qty.jsx`, rule `src/game/menus3Qty.js`: minus, plus, Max, every button 44 x 44, capped at the fewest makes any cost allows and, for a blade, the weapon bag's room), and one commit ("Forge 3"). No Undo.
+- **A number over one is today's request sent one after another** (the queue, `menus3Counter.js`): each waits for the character to change, a silence (today's 3.5 s) is today's refusal word and stops the rest, said in one line ("Could not forge. Made 2 of 5; the rest was not sent."). The smelter's request already takes a count (today's "Smelt all"), so a smelt is that one request, in pieces of the worker's 50.
+- **One at a time where today is one**: Harden (each a gamble with its own answer), taking a gem out, crafting an amulet (a new amulet REPLACES the worn one: a queue would burn the first). The foot says "One at a time".
+- **Salvage is today's tab, as it is**: its two taps ("Sure?") are its review; nothing in it takes a number.
+- **The bag is not shown**: decided 6 shows it only where the station uses it; at a bench every material is on the recipe's own row.
+
+**Flagged to the owner:** the SPEC's "Repeat Last" is not built (the bench would have to remember the last make: state the worker does not have); its "lit-item auto-sort" has nothing to sort (no bag at a bench). The Woodworker, the Gem Works and the Cookhouse (and the Cookhouse's Eat list, decided 11) wait for the next step. The recipes' pictures load as today's bench's do, when it opens.
+
+Sources: src/game/menus3Counter.js, menus3Qty.js; src/ui/menus3/Menus3Counter.jsx, Menus3Make.jsx, Menus3Qty.jsx, Menus3Panel.jsx (the header), menus3Wire.js (menus3StationGate), menus3.css; src/ui/panels/buildings/SmithyPanel.jsx (SalvageTab, weaponIcon, TYPE_LABEL shared); server/test/menus3-counter.test.mjs; tools/qa/mp/mp-menus3make.mjs.
+
 ## The new menus' Feats: the AP line, Medals | Titles | Records, a medal's page (v2.3.6868, card MN step 9)
 Screens: menus3-feats
 
