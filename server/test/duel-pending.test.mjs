@@ -114,7 +114,8 @@ const geTo = GE.indexOf("case 'pvp_threat':", geFrom);
 const duelCases = GE.slice(geFrom, geTo);
 const PANEL = src('src/ui/panels/DuelRequestPanel.jsx');
 const accIdx = PANEL.indexOf("act('duel_accept'");   /* v2.3.5190: the send goes through the action door (act) */
-const onClickIdx = PANEL.lastIndexOf('onClick: function onClick()', accIdx);
+/* v2.3.6871 (card MN step 3): the Accept is a named handler now (the one Card's yes calls it too), its body today's */
+const onClickIdx = PANEL.lastIndexOf('var accept = function accept()', accIdx) >= 0 ? PANEL.lastIndexOf('var accept = function accept()', accIdx) : PANEL.lastIndexOf('onClick: function onClick()', accIdx);
 const acceptBody = cutBraces(PANEL, onClickIdx);
 
 const popups = [];

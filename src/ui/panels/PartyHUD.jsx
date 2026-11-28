@@ -11,6 +11,7 @@ import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests lea
 import { SAY } from '@/data/say/partyHud.js';   /* v2.3.6342: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
 import { menus3Active, menus3Go } from '../menus3/menus3Wire.js';   /* v2.3.6864: under ?menus3 the chip opens People · Roster (card MN step 10) */
+import { Menus3Card } from '../menus3/Menus3Card.jsx';   /* v2.3.6871: under ?menus3 the invite is the one Card (card MN step 3) */
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -134,6 +135,18 @@ export function PartyHUD(props) {
 
   /* ── incoming invite card ── */
   if (party.invite) {
+    /* v2.3.6871 (card MN step 3): under ?menus3 the invite is the owner's one Card, its two
+       answers today's two sends below, unchanged (the card's words: src/game/menus3Card.js) */
+    if (menus3Active()) {
+      return /*#__PURE__*/React.createElement(Menus3Card, {
+        kind: 'party.invite', args: { fromName: party.fromName, partySize: party.partySize },
+        mark: { 'data-party-invite': '' },
+        onAnswer: function (a) {
+          send(a === 'yes' ? 'party_accept' : 'party_decline', { target: party.from });
+          setParty(null);
+        }
+      });
+    }
     /* ═══ v2.3.1966: PORTALED, AND AT 40 ═══
        A party invite that arrived while your dashboard was open was drawn
        BEHIND it, and the Join button was not merely hidden but untappable —

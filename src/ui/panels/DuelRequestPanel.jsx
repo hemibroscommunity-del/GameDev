@@ -10,6 +10,9 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/duelRequest.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say, sayPieces } from '@/game/say.js';
+import { menus3Active } from '../menus3/menus3Wire.js';   /* v2.3.6871: the one Card (card MN step 3) */
+import { Menus3Card } from '../menus3/Menus3Card.jsx';
+import { cardTakes } from '@/game/menus3Card.js';
 /* === DuelRequestPanel — the incoming duel-request modal === */
 /* v2.3.891: extracted verbatim from the duelRequest JSX subtree in
    BroTown.jsx (the incoming PvP duel-challenge popup: accept or
@@ -59,6 +62,28 @@ export function DuelRequestPanel(props) {
     });
     setDuelRequest(null);
   };
+  /* v2.3.6871 (card MN step 3): today's Accept, byte for byte, named so the Card's yes calls it */
+  var accept = function accept() {
+    var S2 = stateRef.current;
+    if (S2.channel) act('duel_accept', {   /* v2.3.5190: through the action door (actions.js) */
+      target: duelRequest.fromId,
+      from: S2.myId,
+      fromName: S2.myName,
+      wager: duelRequest.wager || 0
+    });
+    /* v2.3.4361: PENDING until the worker's settled echo comes back
+       (src/game/duelPending.js): a refused or unanswered accept is dropped
+       after a few seconds instead of leaving a phantom duel */
+    enterPendingDuel(S2, duelRequest.fromId, duelRequest.fromName, duelRequest.wager || 0, Date.now());
+    /* v2.3.2145: both sides lock on, or only the challenger gets a block
+       button -- the same half-a-fix shape as v2.3.1306's _inDuel gate.
+       See src/game/duelLock.js. */
+    lockOntoDuelOpponent(S2, duelRequest.fromId);
+    setDuelRequest(null);
+    pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'DUEL!', '#a78bfa');
+    cue('duelStart');   /* v2.3.3343: was a beep() -- silent */
+    try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* the Accept button's click yields to it */ }
+  };
   /* v2.3.4628: the card closes when the worker's challenge runs out (duelPending.js
      DUEL_CARD): an accept after it is refused anyway, and the inert backdrop
      left nothing else to close it with.  The challenger's own card was never
@@ -74,6 +99,15 @@ export function DuelRequestPanel(props) {
     }, duelCardLeftMs(duelRequest, Date.now()));
     return function () { clearTimeout(t); };
   }, [duelRequest]);
+  /* v2.3.6871 (card MN step 3): under ?menus3 a challenge WITHOUT a wager is the owner's one
+     Card, its answers today's accept and decline; one with a wager is gold and keeps this window */
+  var cardArgs = { fromName: duelRequest.fromName, wager: duelRequest.wager || 0 };
+  if (cardTakes('duel.invite', cardArgs, menus3Active())) {
+    return React.createElement(Menus3Card, {
+      kind: 'duel.invite', args: cardArgs, mark: { 'data-duel-request': '' },
+      onAnswer: function (a) { if (a === 'yes') accept(); else decline(); }
+    });
+  }
   return createPortal(React.createElement("div", {
     className: "bt-inspect",
     'data-duel-request': '',   /* v2.3.3526: a hook for mp-blockasks, as the party card's data-party-invite */
@@ -202,27 +236,7 @@ export function DuelRequestPanel(props) {
       fontSize: 13,
       cursor: 'pointer'
     },
-    onClick: function onClick() {
-      var S2 = stateRef.current;
-      if (S2.channel) act('duel_accept', {   /* v2.3.5190: through the action door (actions.js) */
-        target: duelRequest.fromId,
-        from: S2.myId,
-        fromName: S2.myName,
-        wager: duelRequest.wager || 0
-      });
-      /* v2.3.4361: PENDING until the worker's settled echo comes back
-         (src/game/duelPending.js): a refused or unanswered accept is dropped
-         after a few seconds instead of leaving a phantom duel */
-      enterPendingDuel(S2, duelRequest.fromId, duelRequest.fromName, duelRequest.wager || 0, Date.now());
-      /* v2.3.2145: both sides lock on, or only the challenger gets a block
-         button -- the same half-a-fix shape as v2.3.1306's _inDuel gate.
-         See src/game/duelLock.js. */
-      lockOntoDuelOpponent(S2, duelRequest.fromId);
-      setDuelRequest(null);
-      pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'DUEL!', '#a78bfa');
-      cue('duelStart');   /* v2.3.3343: was a beep() -- silent */
-      try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* the Accept button's click yields to it */ }
-    }
+    onClick: accept   /* v2.3.6871: today's handler, named (the Card calls it too) */
   }, duelRequest.wager > 0 ? say(SAY, 'duelRequest.acceptWager', { wager: duelRequest.wager }) : say(SAY, 'duelRequest.accept')), /*#__PURE__*/React.createElement("button", {
     style: {
       /* v2.3.1235: raised secondary decline, strong hairline */

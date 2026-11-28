@@ -298,6 +298,19 @@ html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visi
 .m3-pacts > * { min-height: 44px; min-width: 0; }
 .m3-roster .m3-door { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .m3-roster .m3-qlink { justify-content: space-between; }
+/* v2.3.6871 (card MN step 3): THE ONE CARD -- the wireframe's .modalcard: a dim over the whole screen
+   (inert: a stray tap answers nothing, as today's duel card), the card in the middle at most 330 wide,
+   its title bold, a muted line, the two answers on one row, each 44 tall.  Over the new panel (40). */
+.m3-card-dim { position: fixed; inset: 0; z-index: 42; display: grid; place-items: center; padding: 15px;
+  background: rgba(21, 23, 19, 0.5); pointer-events: auto; touch-action: manipulation; }
+.m3-card { width: 100%; max-width: 330px; display: flex; flex-direction: column; gap: 6px; padding: 12px;
+  background: var(--ui2-page, #193145); border: 2px solid var(--ui2-edge, #b89b63); border-radius: 10px;
+  box-shadow: 0 8px 25px rgba(23, 21, 14, 0.6); text-align: left; }
+.m3-card-title { font-size: 15px; font-weight: 700; color: var(--ui2-text-ivory, #F1F0E9); }
+.m3-card-line { font-size: 13px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-card-fine { font-size: 11px; color: var(--ui2-text-muted, #BCC8CC); opacity: .85; }
+.m3-card-row { display: flex; gap: 8px; margin-top: 4px; }
+.m3-card-row > button { touch-action: manipulation; }
 /* v2.3.6870 (card MN step 11): People · Chat -- the wireframe's channels' rail, its log (lines 5 apart,
    13.5 px, the name gold and bold before the words) and its composer (the smiley at the left, the box
    44 tall, Send at the right); the page fills the panel and only the log scrolls, drawn bottom up so the
