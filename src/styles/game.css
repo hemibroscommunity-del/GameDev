@@ -7316,6 +7316,14 @@ html.bt-one-band:not(.bt-band-side) [data-band-box="page"]{width:100%}
   visibility:hidden!important;
   pointer-events:none!important;
 }
+/* v2.3.6861 (card MN step 4): the new panel open as the right drawer (a phone on its side,
+   a computer): the right-hand fight controls stand LEFT of it, moved by the drawer's own
+   width (40% of the window, menus3Panel.js), never resized nor hidden (the owner's decision 1).
+   Only a control hung from the right (its inline `right:`) moves; `translate`, not
+   `transform`, so the attack disc's sideways scale (below) is kept.  The canvas is not
+   touched (the world's size and scale stay). */
+html.bt-menus3-drawer-open :is(.bt-rjoy-zone, [data-ability], [data-jump], [data-special], [data-shield], [data-sprint],
+  .bt-charge-pie, [data-ride], [data-trap-round])[style*="right:"]{ translate: -40vw 0; }
 /* ...and folded, they take the sideways geometry (bandSideways.js
    ctlLandscape: the side column's world was short too).  They are already
    inside the world's box: .brotown-wrap's `contain:paint` is the containing

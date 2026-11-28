@@ -203,7 +203,7 @@ for (const [name, dir] of Object.entries(DIRS)) {
 {
   const calls = findIn('ui', /\bfollowCamera\s*\(/);
   check('9: the game\'s loop calls followCamera once', calls.length === 1, calls.map((c) => c.file + ':' + c.line));
-  check('9: ...with the switch `!sw(\'camfollow\')`', calls.length === 1 && /followCamera\(S, P\.x, P\.y, W, H, dx, dy, Date\.now\(\), !sw\('camfollow'\)\)/.test(calls[0].text));
+  check('9: ...with the switch `!sw(\'camfollow\')`', calls.length === 1 && /followCamera\(S, P\.x, P\.y, W, H, dx, dy, Date\.now\(\), !sw\('camfollow'\)(, menus3CamShift\(H\))?\)/.test(calls[0].text));   /* v2.3.6861: + the new panel's shift upright (card MN step 4; menus3-bag.test 6) */
   const left = findIn('ui', /\bvar (?:_camLead|_camSpeed|_camK|camTargetX|camTargetY|_camPunchX)\b/);
   check('9: the old lead and chase are gone from the loop', left.length === 0, left.map((c) => c.file + ':' + c.line));
   check('9: the switch has its row in the table', /name: '\?camfollow', side: 'page'[^\n]*born: 6660, thrown: '=0'/.test(read('tools/guards/lib/switches.mjs')));

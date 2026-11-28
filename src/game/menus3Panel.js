@@ -25,7 +25,7 @@ export const MENUS3_PANEL = Object.freeze({
   MAX_H: 410,          /* upright: never taller (px) */
   UP_SHARE: 0.48,      /* upright: of the screen's height */
   DRAWER_SHARE: 0.40,  /* sideways and a computer: of the screen's width */
-  WORLD_SHIFT: 0.14,   /* upright: the wireframe's camera move (not applied in step 1) */
+  WORLD_SHIFT: 0.14,   /* upright: the wireframe's camera move (applied from step 4, v2.3.6861) */
 });
 
 /** 'upright' or 'drawer'.  A computer (a mouse) is always the drawer; a
@@ -58,4 +58,15 @@ export function panelCss(shape) {
     return { left: 0, right: 0, bottom: 0, width: 'auto', height: `clamp(${P.MIN_H}px, ${Math.round(P.UP_SHARE * 100)}vh, ${P.MAX_H}px)` };
   }
   return { top: 0, right: 0, bottom: 0, width: `${Math.round(P.DRAWER_SHARE * 100)}%`, height: 'auto' };
+}
+
+/** v2.3.6861 (card MN step 4): the camera's move while the panel is open, in
+ *  the world's px for a world `H` tall: upright the wireframe's 14% (v4.4
+ *  `.game.open svg.world{transform:translateY(-14%)}`), the bro drawn that
+ *  much higher so he stays in view above the panel; the drawer none (the
+ *  world beside it is whole).  A SHIFT only: never the world's scale.  Whole
+ *  px; the renderer puts the camera on whole device pixels (TRAPS §231). */
+export function menus3CamOffset(open, shape, H) {
+  if (!open || shape !== 'upright') return 0;
+  return Math.round(Math.max(0, Number(H) || 0) * MENUS3_PANEL.WORLD_SHIFT);
 }

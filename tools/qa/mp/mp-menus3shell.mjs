@@ -7,7 +7,8 @@
  *
  *   1. UPRIGHT (390 x 844, touch): the dock (Bro, World, People, each 44+
  *      tall) where the Gear and Menu buttons sat; the gear (44 x 44) left of
- *      the minimap; Bro opens Gear's root, World the Quests, People the
+ *      the minimap; Bro opens the new panel on the Bag (v2.3.6861, card MN
+ *      step 4: mp-menus3bag plays it), World the Quests, People the
  *      Social hub, the gear the Settings hub; the fight controls step aside
  *      while a menu is open and come back on its close; the closes: the X,
  *      a tap on the world, a swipe down on the header, a hit outside a safe
@@ -123,20 +124,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(P, 'upright-rest');
 
       /* the dock's three */
+      /* v2.3.6861 (card MN step 4): Bro opens the new panel on the Bag */
       await press(P, '[data-menus3-dock="bro"]', true);
-      let n = await nav(P);
-      rec.ok('upright: Bro opens the Bag (Gear\'s root)', n.shown && n.ws === 'gear' && !n.top, n);
+      const ps = await P.page.evaluate(() => window.__btMenus3.panelState());
+      rec.ok('upright: Bro opens the new panel on the Bag', ps.open && ps.menu === 'bro' && ps.section === 'bag' && (await shown(P)) === false, ps);
       rec.ok('upright: the fight controls step aside while it is open', await hidCtl(P), null);
       const ctlVis = await P.page.evaluate(() => { const el = document.querySelector('[data-joyzone]'); return el ? getComputedStyle(el).visibility : 'none'; });
       rec.ok('upright: a stick zone is hidden', ctlVis === 'hidden' || ctlVis === 'none', ctlVis);
-      rec.ok('upright: the Menu\'s doors one press away (nothing lost)', !!(await box(P, '[data-dash-ctl="menu"]')), null);
       await shot(P, 'upright-bro');
-      await press(P, '[data-dash-ctl="close"]', true);
-      rec.ok('upright: the X closes it', (await shown(P)) === false, await nav(P));
+      await press(P, '[data-menus3-x]', true);
+      rec.ok('upright: the X closes it', (await P.page.evaluate(() => window.__btMenus3.panelState().open)) === false, null);
       rec.ok('upright: the controls come back', !(await hidCtl(P)), null);
 
       await press(P, '[data-menus3-dock="world"]', true);
       rec.ok('upright: World opens the Quests', (await topId(P)) === 'quests', await nav(P));
+      rec.ok('upright: the Menu\'s doors one press away (nothing lost)', !!(await box(P, '[data-dash-ctl="menu"]')), null);
       /* a tap on the world closes */
       const at = await P.page.evaluate(() => { const x = 195, y = 260; const el = document.elementFromPoint(x, y); return { x, y, tag: el ? el.tagName : null }; });
       if (at.tag === 'CANVAS') {
@@ -163,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await closeBand(P);
 
       /* a hit: inside the safe ground nothing; outside, it closes */
-      await press(P, '[data-menus3-dock="bro"]', true);
+      await press(P, '[data-menus3-dock="world"]', true);
       await H.readState(P, (S) => { S.lastDamageTaken = Date.now(); return 1; });
       await P.page.waitForTimeout(1200);
       rec.ok('upright: a hit on safe ground leaves it open', (await shown(P)) === true, await why(P));

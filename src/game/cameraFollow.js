@@ -68,7 +68,11 @@ export function camPunch(S, now) {
  *   now      the clock the punch was stamped on (Date.now())
  *   on       the follow (false: `?camfollow=0`, the old chase)
  */
-export function followCamera(S, px, py, W, H, dx, dy, now, on) {
+/* v2.3.6861 (card MN step 4): `oy` (game px, optional) moves the view's aim
+   down, so the bro is drawn that much HIGHER: the new menus' panel open
+   upright (src/game/menus3Panel.js menus3CamOffset).  Only the aim moves, so
+   the chase slides the view there at its own rates and back when it shuts. */
+export function followCamera(S, px, py, W, H, dx, dy, now, on, oy) {
   const cam = S.camera;
   const dt = S._dtScale || 1;
   const pu = camPunch(S, now);
@@ -93,5 +97,5 @@ export function followCamera(S, px, py, W, H, dx, dy, now, on) {
      once a 60th closes 1-(1-k)^dt over dt 60ths */
   const k = 1 - Math.pow(1 - rate, dt);
   cam.x += (px - W / 2 + lx + pu[0] - cam.x) * k;
-  cam.y += (py - H / 2 + ly + pu[1] - cam.y) * k;
+  cam.y += (py - H / 2 + (Number(oy) || 0) + ly + pu[1] - cam.y) * k;
 }

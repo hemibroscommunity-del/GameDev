@@ -1,0 +1,49 @@
+/* ═══ v2.3.6861: THE NEW MENUS' BAG, ITS PAGES (card MN step 4) ═══
+   The wireframe v4.4's shapes (docs/design/menus3/WIREFRAME.html: the rail's
+   pills 44 tall, the grid four across of tiles 66 tall, the Gear tab three
+   across, the Item page's picture and name over its facts, its lead action
+   full width at the foot) in the game's kit (the u2 raised control and its
+   selected state, the u2 slot for a picture): no new colour.  Every
+   tappable thing 44 or more; touch-action manipulation (TRAPS §229). */
+.m3-body { padding: 6px 8px 8px; }
+.m3-body button { touch-action: manipulation; }
+.m3-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 700; font-size: 15px; color: var(--ui2-text-ivory, #F1F0E9); padding: 0 4px; }
+.m3-rail { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px 0 6px; touch-action: pan-x; }
+.m3-rail::-webkit-scrollbar { display: none; }
+.m3-pill { flex: none; min-height: 44px; min-width: 44px; padding: 3px 12px; font-size: 13px; white-space: nowrap; }
+.m3-grid { display: grid; gap: 5px; }
+.m3-tile { min-width: 0; min-height: 66px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.m3-tile-art { width: 40px; height: 40px; display: block; pointer-events: none; }
+.m3-tile-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 650; }
+.m3-geargrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.m3-slot { min-width: 0; min-height: 56px; display: flex; align-items: center; gap: 6px; padding: 4px 6px; text-align: left; }
+.m3-slot-art { flex: none; pointer-events: none; }
+.m3-slot-words { min-width: 0; display: flex; flex-direction: column; }
+.m3-slot-label { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-slot-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-petrow { width: 100%; min-height: 48px; margin-top: 6px; display: flex; align-items: center; gap: 8px; padding: 2px 10px; }
+.m3-petrow-art { width: 30px; height: 30px; flex: none; pointer-events: none; }
+.m3-door { width: 100%; min-height: 44px; margin-top: 8px; }
+.m3-line { margin: 6px 2px; font-size: 13px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-page { display: flex; flex-direction: column; gap: 6px; min-height: 100%; }
+.m3-item-id { display: flex; align-items: center; gap: 10px; }
+.m3-item-words { min-width: 0; display: flex; flex-direction: column; }
+.m3-item-name { font-weight: 700; font-size: 15px; }
+.m3-item-sub { font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.m3-acts { display: flex; gap: 8px; }
+.m3-acts > * { min-height: 44px; }
+.m3-why { margin: 0 2px; font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-counters { display: flex; flex-direction: column; gap: 4px; }
+.m3-counters-head { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ui2-text-muted, #BCC8CC); margin-top: 4px; }
+.m3-counter { display: flex; align-items: center; min-height: 44px; opacity: .55; padding: 4px 10px; border: 1px dashed var(--ui2-line, #4B6275); font-size: 13px; }
+.m3-foot { margin-top: auto; position: sticky; bottom: 0; padding-top: 6px; background: var(--ui2-page, #14232F); }
+.m3-foot > * { min-height: 44px; }
+.m3-row { flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 4px 8px; text-align: left; }
+.m3-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-cand { display: flex; align-items: center; gap: 6px; }
+.m3-cand > :last-child { flex: none; min-height: 44px; min-width: 76px; }
+.m3-cmp { display: flex; flex-direction: column; gap: 2px; }
+/* the wireframe's tiles and rows are squared (7 px corners), the kit's control a pill: the shape only */
+.m3-body :is(.m3-tile, .m3-slot, .m3-row, .m3-counter, .m3-door, .m3-petrow) { border-radius: 8px; }

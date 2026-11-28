@@ -40,6 +40,9 @@ const parse = (src) => B.parse(src, { sourceType: 'module', plugins: ['jsx'], er
 
 const INV = 'src/ui/mobile/dash/InventoryPanel.jsx';
 const GEAR = 'src/ui/mobile/dash/GearPanels.jsx';
+/* v2.3.6861 (card MN step 4): the owner's new Bag (menus3/Menus3Bag.jsx) is Gear's successor and wears
+   the same socket; the shop, a trade and InventoryPanel's own grid still never do */
+const SOCKETED = new Set([GEAR, 'src/ui/menus3/Menus3Bag.jsx']);
 /* every file under src/ that draws a BagTile (found, not listed) */
 const walk = (d, out = []) => {
   for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
@@ -72,7 +75,7 @@ function rules(files) {
     });
   }
   const withKit = calls.filter((c) => c.kit);
-  t('K2. `kit` is passed to BagTile at Gear\'s two panels only', withKit.length > 0 && withKit.every((c) => c.p === GEAR), withKit);
+  t('K2. `kit` is passed to BagTile at Gear\'s two panels only', withKit.length > 0 && withKit.every((c) => SOCKETED.has(c.p)), withKit);
   t('K2b. Gear\'s two panels pass it', calls.some((c) => c.p === GEAR && c.kit), calls.filter((c) => c.p === GEAR));
   /* the tiles */
   const inv = files[INV] || '';

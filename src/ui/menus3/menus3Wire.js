@@ -27,8 +27,9 @@
  * section opens it yet: only the QA probe (`__btMenus3.panel(menu)`) does,
  * so its shape and its closes are tested before step 4 fills it. */
 import { menus3On } from './menus3Switch.js';
-import { menus3Route } from '../../game/menus3Router.js';
-import { menus3Shape } from '../../game/menus3Panel.js';
+import { menus3Route, MENUS3_BUILT, MENUS3_TODAY } from '../../game/menus3Router.js';
+import { menus3Shape, menus3CamOffset } from '../../game/menus3Panel.js';
+import { navStart, navPush, navBack, navKeep, navPrune, navTop } from '../../game/menus3Nav.js';   /* v2.3.6861: the one Back (card MN step 4) */
 import { menus3CloseWhy } from '../../game/menus3Close.js';
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';
 import { dashMinBus } from '../mobile/dashMinBus.js';
@@ -36,19 +37,64 @@ import { bandSideways } from '../mobile/bandSideways.js';
 import { winVw, winVh } from '../mobile/playViewport.js';
 import { fineInput } from '../../game/deviceProfile.js';
 
-/* ── the new panel's one state (step 1: the QA probe opens it) ── */
+/* ── the new panel's one state ──
+   v2.3.6861 (card MN step 4): + `nav`, the one Back's history (src/game/menus3Nav.js): every
+   open and every header tab starts it again at its section's own page (the owner's rule 1);
+   a page opened inside the panel (an item, a slot, a pet) is pushed on it, the page under it
+   keeping its rail and scroll for Back. */
 const _subs = new Set();
-let _panel = Object.freeze({ open: false, menu: null, section: null });
+const SHUT = Object.freeze({ open: false, menu: null, section: null, nav: null });
+let _panel = SHUT;
+const isBuilt = (s) => MENUS3_BUILT.indexOf(s) >= 0;
 export const menus3Bus = {
   get state() { return _panel; },
   open(menu, section) {
-    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: section || null });
+    const sec = section || null;
+    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec) });
     stamp(); emit();
   },
-  section(s) { if (_panel.open) { _panel = Object.freeze({ ..._panel, section: s }); emit(); } },
-  close() { if (!_panel.open) return; _panel = Object.freeze({ open: false, menu: null, section: null }); stamp(); emit(); },
+  /* a header tab: a built section starts its own page; one not built yet goes
+     today's road (its screen in today's band), the panel shut behind it */
+  section(s) {
+    if (!_panel.open) return;
+    if (isBuilt(s)) { _panel = Object.freeze({ ..._panel, section: s, nav: navStart(s) }); emit(); return; }
+    menus3Bus.close();
+    goToday(s);
+  },
+  push(page, arg, keep) {
+    if (!_panel.open || !_panel.nav) return;
+    const n = navPush(_panel.nav, page, arg, keep);
+    if (n !== _panel.nav) { _panel = Object.freeze({ ..._panel, nav: n }); emit(); }
+  },
+  back() {
+    if (!_panel.open || !_panel.nav) return false;
+    const n = navBack(_panel.nav);
+    if (n === _panel.nav) return false;
+    _panel = Object.freeze({ ..._panel, nav: n }); emit();
+    return true;
+  },
+  /* the page showing keeps its rail or scroll (no redraw: it is the page's own) */
+  keep(k) { if (_panel.open && _panel.nav) _panel = Object.freeze({ ..._panel, nav: navKeep(_panel.nav, k) }); },
+  /* pages over a thing that is gone (eaten, dropped) leave the history */
+  prune(alive) {
+    if (!_panel.open || !_panel.nav) return;
+    const n = navPrune(_panel.nav, alive);
+    if (n !== _panel.nav) { _panel = Object.freeze({ ..._panel, nav: n }); emit(); }
+  },
+  top() { return _panel.nav ? navTop(_panel.nav) : null; },
+  bump() { if (_panel.open) emit(); },
+  close() { if (!_panel.open) return; _panel = SHUT; stamp(); emit(); },
   subscribe(fn) { _subs.add(fn); return () => _subs.delete(fn); },
 };
+/* a section not built yet: today's screen in today's band (step 1's roads) */
+function goToday(s) {
+  const t = Object.prototype.hasOwnProperty.call(MENUS3_TODAY, s) ? MENUS3_TODAY[s] : null;
+  if (!t) return;
+  try {
+    if (t.road === 'page') dashboardPanelBus.open(t.page);
+    else if (t.road === 'gear') dashboardPanelBus.go({ type: 'gear' });
+  } catch (e) { /* no band */ }
+}
 function emit() { for (const fn of _subs) { try { fn(_panel); } catch (e) { /* one listener */ } } }
 
 let _on = false;
@@ -81,9 +127,17 @@ export function menus3Close(why) {
 
 /** Run an entry's road (a dock button, a shortcut).  True when it went. */
 export function menus3Go(entry, ctx) {
-  const r = menus3Route(entry, ctx);
+  /* v2.3.6861: the built sections open the new panel (the Bag first) */
+  const r = menus3Route(entry, ctx || { built: MENUS3_BUILT });
   _lastRoute = r;
   if (!r) return false;
+  /* one menu at a time: today's band goes when the panel opens, the panel when a road opens the band */
+  if (r.road === 'panel') {
+    if (_panel.open && _panel.menu === r.menu && entry.indexOf('dock.') === 0) { menus3Close('dock'); return true; }
+    if (bandShown()) { try { dashboardPanelBus.go({ type: 'close' }); } catch (e) { /* no band */ } }
+  } else if (_panel.open) {
+    menus3Bus.close();
+  }
   try {
     switch (r.road) {
       case 'gear': dashboardPanelBus.go({ type: 'gear' }); return true;
@@ -116,6 +170,8 @@ function stamp() {
     const shape = _on ? menus3ShapeNow() : 'upright';
     de.classList.toggle('bt-menus3-hide-ctl', open && shape === 'upright');
     de.classList.toggle('bt-menus3-drawer', _on && shape === 'drawer');
+    /* v2.3.6861: the new panel open as the right drawer: the right-hand fight controls stand left of it (game.css) */
+    de.classList.toggle('bt-menus3-drawer-open', _on && _panel.open && shape === 'drawer');
   } catch (e) { /* no page */ }
 }
 
@@ -131,17 +187,39 @@ function onHeader(t) {
 }
 let _press = null;
 let _touch = null;
+/* ═══ v2.3.6861: THE PRESS THAT CLOSES A MENU IS SWALLOWED (card MN step 4; step 1's flaw) ═══
+   While a menu is open, a press that starts on the world is the menu's, whole:
+   its pointer events, the touch and mouse twins of it, and the click after it
+   never reach the world's own listeners (window, capture: first of all), so it
+   neither walks, swings nor talks.  A tap (moved under 10 px) closes the menu;
+   a drag only goes nowhere.  The next press is the world's again. */
+let _eat = false;      /* the press being swallowed */
+let _eatClick = 0;     /* the click that follows it, until this time */
+function swallow(e) {
+  try { e.stopPropagation(); e.stopImmediatePropagation(); } catch (x) { /* an old event */ }
+  try { if (e.cancelable) e.preventDefault(); } catch (x) { /* passive */ }
+}
 function down(e) {
   _press = null;
+  _eat = false;
   if (!menus3Open() || !onWorld(e.target)) return;
   _press = { x: e.clientX, y: e.clientY };
+  _eat = true;
+  swallow(e);
 }
 function up(e) {
   const p = _press;
   _press = null;
+  if (_eat) { swallow(e); _eat = false; _eatClick = Date.now() + 600; }
   if (!p) return;
   const why = menus3CloseWhy({ kind: 'world', dx: e.clientX - p.x, dy: e.clientY - p.y });
   if (why) menus3Close(why);
+}
+function eatTwin(e) {
+  if (_eat || (e.type === 'click' && Date.now() < _eatClick && onWorld(e.target))) {
+    if (e.type === 'click') _eatClick = 0;
+    swallow(e);
+  }
 }
 function tStart(e) {
   _touch = null;
@@ -172,7 +250,10 @@ export function startMenus3() {
   dashMinBus.set(true);
   window.addEventListener('pointerdown', down, true);
   window.addEventListener('pointerup', up, true);
-  window.addEventListener('pointercancel', () => { _press = null; }, true);
+  window.addEventListener('pointercancel', () => { _press = null; _eat = false; }, true);
+  /* v2.3.6861: the swallowed press's twins (passive: false, so a touch's walk is stopped too) */
+  for (const t of ['pointermove', 'mousedown', 'mousemove', 'mouseup', 'click', 'contextmenu']) window.addEventListener(t, eatTwin, true);
+  for (const t of ['touchstart', 'touchmove', 'touchend']) window.addEventListener(t, eatTwin, { capture: true, passive: false });
   window.addEventListener('touchstart', tStart, { capture: true, passive: true });
   window.addEventListener('touchend', tEnd, { capture: true, passive: true });
   window.addEventListener('touchcancel', () => { _touch = null; }, { capture: true, passive: true });
@@ -187,6 +268,8 @@ export function startMenus3() {
     shape: () => menus3ShapeNow(),
     panel: (menu, section) => menus3Bus.open(menu, section),
     panelState: () => _panel,
+    back: () => menus3Bus.back(),
+    top: () => menus3Bus.top(),
     go: (entry) => menus3Go(entry),
     route: () => _lastRoute,
     why: () => _lastWhy,
@@ -194,3 +277,11 @@ export function startMenus3() {
 }
 
 export function menus3Active() { return _on; }
+
+/** v2.3.6861 (card MN step 4): the camera's shift while the new panel is open
+    upright, in the world's px for a world `H` tall (src/game/menus3Panel.js
+    menus3CamOffset): the bro stays in view above the panel.  0 otherwise. */
+export function menus3CamShift(H) {
+  if (!_on || !_panel.open) return 0;
+  return menus3CamOffset(true, menus3ShapeNow(), H);
+}
