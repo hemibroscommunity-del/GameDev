@@ -30,7 +30,6 @@
 import React from 'react';
 import { Ui2Stat, Ui2Facts, Ui2Fact, Ui2Tile } from '@/ui/kit/index.js';
 import { SAY } from '@/data/say/combatHub.js';
-import { SAY as SAY_V17 } from '@/data/say/combatV17.js';
 import { say } from '@/game/say.js';
 
 /** stat   { v, k, aria, onClick, data }: the number that leads (data: its data-* marks)
@@ -100,7 +99,7 @@ export function AttrGrid({ line, attrs, mark, plus, onOpen, grid }) {
  * tile is a way to get something ready (V17:41's "Power +": the go role): its tap opens today's preview
  * (statWindow.jsx: the real before and after, the cost, and Spend, the commit). */
 /** line   AttrLine's props (the count first: V17's "3 points available" at the line's right)
-    attrs  [{ key, label, art, value, pts }] in order
+    attrs  [{ key, label, art, value, pts, aria }] in order (aria: today's words, "Max HP: 25 placed. Open its preview")
     mark   'weapon' | 'shared': the tiles' data-<mark>-attr marks (the phone tests and mp-v17fit read them)
     plus   combatHub.js attrPlus(pool, self)
     onOpen (key) => the page opens that attribute's preview
@@ -116,7 +115,7 @@ export function UpgradeGrid({ line, attrs, mark, plus, onOpen, art, grid }) {
             label={a.label} sub={a.value} className={'u2-cv-up' + (plus ? ' is-cue' : '')}
             {...{ ['data-' + mark + '-attr']: a.key, ['data-' + mark + '-attr-pts']: a.pts }}
             data-attr-plus={plus ? '1' : '0'}
-            aria-label={say(SAY_V17, plus ? 'combatV17.upAriaPlus' : 'combatV17.upAria', { stat: a.label, pts: a.value })}
+            aria-label={plus ? say(SAY, 'combatHub.plusAria', { text: a.aria }) : a.aria}
             onClick={() => onOpen(a.key)} />
         ))}
       </span>

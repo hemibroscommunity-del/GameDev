@@ -6,14 +6,10 @@
    these are only the new ones: where shared points come from, told as the
    GAME does it (the best weapon's level while `onelevel` is on, every
    weapon's level under the old sum; never V17's "three a weapon level": flag
-   Q1), and what a tap on a tile opens, for a screen reader. */
+   Q1), and the Shared door's words for a screen reader. */
 export const SAY = Object.freeze({
   'combatV17.ruleBest': '+{n} each level of your best weapon',
   'combatV17.ruleEvery': '+{n} each weapon level',
   'combatV17.ruleK': 'Shared points',
-  'combatV17.upAria': '{stat}, {pts}: see what a point does',
-  'combatV17.upAriaPlus': '{stat}, {pts}, points to spend: see what a point does and spend',
-  'combatV17.lineAria': '{count}. {rule}',
-  'combatV17.levelAria': 'Lv {n}, {xp}',
   'combatV17.sharedDoorAria': 'Shared Attributes: Max HP, Defense and five more{pts}: open them',
 });
