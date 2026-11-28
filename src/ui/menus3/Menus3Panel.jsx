@@ -15,7 +15,8 @@
  * the header where the tabs were (src/game/menus3Nav.js: its history, the
  * rail and the scroll of the page under it given back).  Power and Skills
  * still open today's screens (menus3Wire.js menus3Bus.section).  Nothing is
- * drawn while it is shut. */
+ * drawn while it is shut.  v2.3.6865 (card MN step 6): + Skills (Menus3Skills.jsx):
+ * all three of Bro's sections are the panel's. */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { menus3Bus, menus3Close, menus3ShapeNow } from './menus3Wire.js';
@@ -32,6 +33,10 @@ import { Menus3Bag } from './Menus3Bag.jsx';
 import { Menus3Power, powerDot } from './Menus3Power.jsx';   /* v2.3.6862: Bro · Power (card MN step 5) */
 import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 7) */
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
+import { Menus3SkillsLazy } from '../lazyPanels.js';   /* v2.3.6865 (card MN step 6): Skills, its own script (as Settings) */
+import { hasUnseenLevelUps } from '@/ui/mobile/sheet/skillsModel.js';
+import { lifeSkillOf, lifeRoadmap } from '@/game/lifeProfile.js';
+import { SAY as SAY_L } from '@/data/say/lifePage.js';
 import { Menus3Codex, codexTitle } from './Menus3Codex.jsx';   /* v2.3.6867 (card MN step 8): World · Codex */
 import { codex3Body, isCodex3Page } from '@/game/menus3Codex.js';
 import { Menus3Feats } from './Menus3Feats.jsx';   /* v2.3.6868 (card MN step 9) */
@@ -112,9 +117,22 @@ function pageTitle(top, getS) {
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
+  if (top.section === 'skills') return skillsTitle(top) || sectionWord('skills');   /* v2.3.6865: the skill's name */
   if (top.section === 'feats' && top.page === 'ap') return say(SAY_F, 'menus3Feats.apOpen');   /* v2.3.6868 */
   if (top.section === 'feats' && top.page === 'medal') return say(SAY_FT, 'feats.medal');
   return sectionWord(top.section);
+}
+
+/* v2.3.6865 (card MN step 6): Skills' two marks in the header, here (its page is its own script):
+   the tab's dot, today's reading (a level-up not yet looked at), and a skill's page's title, its name */
+function skillsDot(R) {
+  try { return hasUnseenLevelUps(R || {}); } catch (e) { return false; }
+}
+function skillsTitle(top) {
+  const sd = top && typeof top.arg === 'string' ? lifeSkillOf(top.arg) : null;
+  if (!sd) return '';
+  if (top.page === 'unlocks') return say(SAY_L, 'lifePage.allUnlocks', { n: (lifeRoadmap(top.arg, 1) || []).length });
+  return sd.name;
 }
 
 /* the page's scroll, read at the top of the next frame (docs/specs/layout-reads.md way 3), once a frame */
@@ -169,6 +187,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
               data-menus3-tab={s} aria-pressed={s === st.section} {...frameTap(() => menus3Bus.section(s))}>
               {sectionWord(s)}
               {s === 'power' && powerDot(rpgState, getS()) ? <i className="m3-dot" data-menus3-dot="power" aria-hidden="true" /> : null}
+              {s === 'skills' && skillsDot(rpgState) ? <i className="m3-dot" data-menus3-dot="skills" aria-hidden="true" /> : null}
               {s === 'chat' && st.section !== 'chat' && chatPeopleDot(getS()).dock ? <i className="m3-dot" data-menus3-dot="chat" aria-hidden="true" /> : null}
             </button>
           ))}
@@ -185,6 +204,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {body === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
           {body === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {body === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'skills' ? <Menus3SkillsLazy R={rpgState} getS={getS} top={top} /> : null}
           {body === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
           {body === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
           {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}

@@ -56,6 +56,8 @@ export const DashFeedbackPanel = lazyPanel(() => import('./mobile/dash/FeedbackP
 export const DashSettingsPanel = lazyPanel(() => import('./mobile/dash/SettingsPanel.jsx'), 'SettingsPanel');
 /* v2.3.6869 (card MN step 12): the new menus' Settings, the rail of five (with today's Settings page's shared part, settingsParts.jsx) */
 export const Menus3SettingsLazy = lazyPanel(() => import('./menus3/Menus3Settings.jsx'), 'Menus3Settings');
+/* v2.3.6865 (card MN step 6): the new menus' Skills, the ten and a skill's page with its guild */
+export const Menus3SkillsLazy = lazyPanel(() => import('./menus3/Menus3Skills.jsx'), 'Menus3Skills');
 export const Menus3CounterLazy = lazyPanel(() => import('./menus3/Menus3Counter.jsx'), 'Menus3Counter');   /* v2.3.6872 (card MN step 13): the Counter, its own script */
 
 /* the debug overlay (?dev=1 only), GameApp.jsx */
