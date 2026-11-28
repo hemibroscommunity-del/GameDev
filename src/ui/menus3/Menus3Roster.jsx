@@ -14,9 +14,9 @@
  * (PartyHUD.jsx), the player card's invite, trade, duel, add friend, mute,
  * block and report (InspectPlayerPanel.jsx), the Friends page's accept,
  * decline and remove (dash/SocialPanel.jsx), all through the action door
- * (actions.js act).  "Message" is today's chat box with its whisper lane aimed
- * at the player (chatChannel.js); when it shuts, the panel comes back on the
- * player's page (menus3Wire.js menus3AwayChat).  "Player card" opens today's
+ * (actions.js act).  "Message" opens People · Chat in the panel on Whispers,
+ * aimed at the player (v2.3.6870, card MN step 11; before it today's chat box);
+ * Back returns to the player's page.  "Player card" opens today's
  * card, whose portrait opens the Inspect card (the gear, the points, the
  * kills: what the phone is sent about a player in the world).
  *
@@ -34,7 +34,6 @@ import { shareInvite } from '@/ui/mobile/dash/SocialPanel.jsx';
 import { useClock } from '@/ui/mobile/sheet/CharacterPage.jsx';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { setMuted, reportPlayer, readMutedIds, isBlockedId } from '@/game/chatMute.js';
-import { chatChannelBus } from '@/game/chatChannel.js';
 import { allyCapsOn, allyTagShown } from '@/game/alliance.js';
 import { act } from '@/game/actions.js';
 import { ZONES } from '@/data/index.js';
@@ -42,7 +41,7 @@ import { MENUS3_ROSTER_SEGS, MENUS3_REPORT_REASONS, rosterSeg, partyBar, allianc
 import { deskWords } from '@/game/deskWords.js';
 import { Ui2Empty } from '@/ui/kit/EmptyState.jsx';
 import { Ui2Action } from '@/ui/kit/Action.jsx';
-import { menus3Bus, menus3Away, menus3AwayChat } from './menus3Wire.js';
+import { menus3Bus, menus3Away } from './menus3Wire.js';
 import { SAY } from '@/data/say/menus3Roster.js';
 import { SAY as SAY_S } from '@/data/say/socialDash.js';
 import { say } from '@/game/say.js';
@@ -117,12 +116,31 @@ function ChevIcon() {
 /** Open the Player page on `id`, from any section (the Chat and Ranks steps
     call this): over the page showing when the panel is open, else People ·
     Roster with the player's page on it (its Back the Roster). */
-export function menus3OpenPlayer(id) {
+export function menus3OpenPlayer(id, hint) {
   if (id == null || id === '') return false;
+  menus3PlayerHint(id, hint);   /* v2.3.6870: what a chat line or a ranks row knows of them */
   const st = menus3Bus.state;
   if (!st.open) menus3Bus.open('people', 'roster');
   menus3Bus.push('player', String(id));
   return true;
+}
+
+/* ═══ v2.3.6870 (card MN step 11): WHAT A CHAT LINE OR A RANKS ROW KNOWS OF A PLAYER ═══
+   A player the phone does not hold (not near, no friend, no party) is only
+   an id to the page's facts: the line's or the row's name is kept here, and
+   a ranks row's own card (today's Character page, fed only by the row:
+   ranksPage.js ranksOpens `who`), which the page's "Player card" opens when
+   they are not here.  A few kept (a Map, the oldest first out). */
+const _hints = new Map();
+export function menus3PlayerHint(id, hint) {
+  const k = String(id == null ? '' : id);
+  if (!k || !hint || typeof hint !== 'object') return;
+  const name = typeof hint.name === 'string' ? hint.name.slice(0, 48) : '';
+  const who = hint.who && typeof hint.who === 'object' ? hint.who : null;
+  const was = _hints.get(k) || null;
+  _hints.delete(k);
+  _hints.set(k, { name: name || (was && was.name) || '', who: who || (was && was.who) || null });
+  while (_hints.size > 40) _hints.delete(_hints.keys().next().value);
 }
 
 function segWord(id, n) {
@@ -212,15 +230,12 @@ function friendSub(r) {
   return seen ? say(SAY_S, 'socialDash.offlineSeen', { seen }) : say(SAY_S, 'socialDash.offline');
 }
 const canWhisper = (S, name) => !!caps(S).whisper && !!name && !/\s/.test(String(name).trim());
+/* v2.3.6870 (card MN step 11): "Message" opens People · Chat in the panel, on Whispers with the whisper
+   aimed at them (decided 7), over the page it came from: Back returns there (src/game/menus3Chat.js) */
 function whisper(name) {
-  return menus3AwayChat(() => {
-    const ui = typeof window !== 'undefined' ? window.__broLegacyUI : null;
-    if (!ui || typeof ui.chatOpen !== 'function') return false;
-    chatChannelBus.setMode('whisper');
-    chatChannelBus.setTo(String(name).trim());
-    ui.chatOpen();
-    return true;
-  });
+  if (!menus3Bus.state.open) return false;
+  menus3Bus.push('whisper', String(name).trim());
+  return true;
 }
 
 function rosterOf(S) {
@@ -361,6 +376,8 @@ function factsOf(S, id) {
     for (const k of Object.keys(doc.reqOut || {})) if (doc.reqOut[k] && doc.reqOut[k].name) names[k] = doc.reqOut[k].name;
   }
   for (const b of getBlocked(S)) if (b && typeof b === 'object' && b.id != null && b.name) names[String(b.id)] = b.name;
+  const h = _hints.get(String(id));   /* v2.3.6870: a chat line's or a ranks row's name, last */
+  if (h && h.name && !(String(id) in names)) names[String(id)] = h.name;
   return playerFacts(id, { others: (S && S.others) || null, party: S && S._party && S._party.state === 'open' ? S._party : null, friends: getFriendRows(S), names });
 }
 function factsSub(f) {
@@ -391,7 +408,8 @@ export function Menus3Player({ getS, id }) {
   const muted = readMutedIds().indexOf(f.id) >= 0;
   const lawless = !!(ZONES[S && S.currentZone] && ZONES[S && S.currentZone].lawless);
   const acts = playerActs({ me: !!S && String(S.myId) === f.id, here: f.where === 'here', caps: c, name: f.name, inMyParty, iLead: bar.kind === 'party' && bar.iLead,
-    friend: !!friendRow, friendSrv: !!(friendRow && friendRow.srv), muted, blocked, lawless });
+    friend: !!friendRow, friendSrv: !!(friendRow && friendRow.srv), muted, blocked, lawless,
+    rowCard: !!(_hints.get(f.id) && _hints.get(f.id).who) });   /* v2.3.6870: a ranks row's card */
   useClock(() => [f.where, f.level, f.name, inMyParty ? 1 : 0, friendRow ? 1 : 0, blocked ? 1 : 0, muted ? 1 : 0, acts.map((a) => a.id).join(',')].join('|'), 1000);
   useEffect(() => {
     try { window.__btMenus3Player = { id: f.id, name: f.name, level: f.level, where: f.where, acts: acts.map((a) => a.id), note }; } catch (e) { /* no window */ }
@@ -402,7 +420,10 @@ export function Menus3Player({ getS, id }) {
     noteT.current = setTimeout(() => setNote(''), 4000);
     force((v) => (v + 1) % 1e9);
   };
+  const hint = _hints.get(f.id) || null;
   const openCard = () => {
+    /* v2.3.6870: a player not here, from a ranks row: today's Character page fed by the row, its Back the panel */
+    if (f.where !== 'here' && hint && hint.who) { menus3Away(() => dashboardPanelBus.push('broCharacter', { who: hint.who })); return; }
     menus3Bus.close();
     try { if (window.__broInspectPlayer) window.__broInspectPlayer(f.id); } catch (e) { /* no card */ }
   };
@@ -483,5 +504,6 @@ export function menus3PlayerTitle(getS, id) {
 export function Menus3Roster({ getS, top }) {
   if (!top) return null;
   if (top.page === 'player') return <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} />;
+  if (top.page === 'whisper') return null;   /* v2.3.6870: a Message's whisper is Chat's (Menus3Panel.jsx) */
   return <RosterRoot getS={getS} top={top} />;
 }

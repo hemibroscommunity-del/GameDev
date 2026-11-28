@@ -1169,6 +1169,37 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6870 (card MN step 11, `?menus3`): People · Chat and People · Ranks in the new panel */
+  { id: 'menus3-chat', group: 'Dashboard', title: 'The new menus: People, Chat', about: 'The owner\'s new menus, step 11 (docs/design/menus3/): ONE chat box for a phone and a computer, People · Chat in the panel (the chat lines on the play screen, a tap on your own bro and the Chat tab open it). Its channels are the game\'s real lanes: All (the log whole, as the play screen\'s lines), Area, Party (in a party) and Whispers only where the worker carries them, News (the game\'s own lines, read only, opening it marks them seen; Show on screen for the play screen\'s feed). The log newest at the foot; a player\'s name opens their Player page. The composer: the Emotes smiley (today\'s picker; the panel comes back when it shuts), the box, the microphone where the browser has speech, Send: every line through the game\'s one sender. Whispers adds the whisper\'s name box and the friends\' threads (moved from the Social page), each its own page with Back. The People button\'s dot says why: a friend\'s message, then news.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('hud.chatLines'); });
+      await wait(P, 1500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  { id: 'menus3-ranks', group: 'Dashboard', title: 'The new menus: People, Ranks', about: 'The owner\'s new menus, step 11: People · Ranks in the panel, today\'s boards: a rail of the kinds the game keeps (Combat, Life Skills, Feats: the records, the spin, the flip and the fish, are Feats\' own), the kind\'s boards as a second rail (the stat boards at the end of Combat\'s), and today\'s standings under them (your row marked, pinned at the foot when out of view; the record boards\' choices). A row opens that player\'s one Player page (Message, Add friend, the row\'s own card), your own row Bro · Power.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.people'); setTimeout(() => { const t = document.querySelector('[data-menus3-tab="ranks"]'); if (t) t.click(); }, 400); });
+      await wait(P, 1500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6842 (card UI4, PR 3): a computer's open band, V17's 840 block (game/v17Wide.js; ?v17wide=0 the 480 one) */
   { id: 'v17wide-bro', group: 'Dashboard', title: 'A computer\'s open band, 840 wide (V17)', views: ['desktop'], about: 'On a computer (or a tablet) the open band\'s block -- the header row, the open page and the resting columns -- is 840 px wide and centred, as the owner\'s V17 handoff draws it (2026-11-27: "840 x 243 centered"; "use extra horizontal space for additional entries, not larger art, text or gameplay view"). The band\'s height (243), the header (52), the world above it and the camera are the same as before; the words and pictures keep their phone sizes, and the pages that lay out from their box (the Menu\'s tiles, Bro\'s doors, Gear\'s bag) use the room for more in a row. A phone is unchanged (its band is its own width). ?v17wide=0 (remembered) gives the 480 px block of 2026-11-05 ("Simply make the container areas smaller"): the owner\'s choice (card UI4, Q9).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },

@@ -298,3 +298,33 @@ html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visi
 .m3-pacts > * { min-height: 44px; min-width: 0; }
 .m3-roster .m3-door { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .m3-roster .m3-qlink { justify-content: space-between; }
+/* v2.3.6870 (card MN step 11): People · Chat -- the wireframe's channels' rail, its log (lines 5 apart,
+   13.5 px, the name gold and bold before the words) and its composer (the smiley at the left, the box
+   44 tall, Send at the right); the page fills the panel and only the log scrolls, drawn bottom up so the
+   newest stays in view with nothing measured.  People · Ranks: the groups' rail, the group's boards'
+   rail, today's standings (ranksUi2.css) filling the rest */
+.m3-body:has(> .m3-chat, > .m3-ranks) { display: flex; flex-direction: column; overflow: hidden; }
+.m3-chat, .m3-ranks { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.m3-clog { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; flex-direction: column-reverse; gap: 5px;
+  padding: 4px 6px; border-radius: 8px; background: var(--ui2-well, rgba(0,0,0,.18)); font-size: 13.5px; line-height: 1.35; }
+.m3-cline { word-break: break-word; }
+.m3-cname { display: inline; padding: 0 3px 0 0; margin: 0; border: none; background: none; font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+button.m3-cname { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; vertical-align: middle; padding: 0 4px 0 0; }
+.m3-clane { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; margin-right: 3px; pointer-events: none; }
+.m3-ctext { color: var(--ui2-text-ivory, #F1F0E9); }
+.m3-ctext.is-muted { color: var(--ui2-text-muted, #BCC8CC); }
+.m3-ctext.is-news { color: var(--ui2-gold, #E7C46A); }
+.m3-composer { flex: none; display: flex; gap: 6px; align-items: center; }
+.m3-composer > * { min-height: 44px; }
+.m3-cinput { flex: 1 1 auto; min-width: 0; width: auto; }
+.m3-cicon { flex: 0 0 44px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+.m3-cto { flex: none; }
+.m3-cfriends { flex: none; display: flex; flex-direction: column; gap: 2px; }
+.m3-cnews { flex: none; display: flex; align-items: center; gap: 8px; }
+.m3-cnews > .m3-muted { flex: 1 1 auto; min-width: 0; }
+.m3-dmline { display: flex; justify-content: flex-start; }
+.m3-dmline.is-mine { justify-content: flex-end; }
+.m3-dmline > span { max-width: 80%; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--ui2-line, #4B6275); word-break: break-word; }
+.m3-dmline.is-mine > span { border-color: var(--ui2-gold, #E4BA68); }
+.m3-pill.is-small { font-size: 12px; padding: 3px 10px; }
+.m3-rstand { flex: 1 1 auto; min-height: 0; display: flex; }

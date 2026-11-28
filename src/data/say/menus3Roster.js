@@ -32,7 +32,7 @@ export const SAY = Object.freeze({
   'menus3Roster.message': 'Message',
   'menus3Roster.unblock': 'Unblock',
   'menus3Roster.addFriend': 'Add friend',
-  'menus3Roster.oldSocial': 'Friends’ messages and Guilds',
+  'menus3Roster.oldSocial': 'Guilds and the old Friends page',   /* v2.3.6870: friends' messages are People · Chat · Whispers now */
   'menus3Roster.here': 'Nearby',
   'menus3Roster.away': 'Not nearby',
   'menus3Roster.player': 'Player',

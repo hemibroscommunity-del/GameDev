@@ -11058,7 +11058,8 @@ export var BroTown = function BroTown(_ref0) {
         var _busC = window.__broDashPanelBus;
         if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
       } catch (_e3) {}
-      try { chatBubbleBus.setOpen(true); } catch (_e4) {}
+      /* v2.3.6870 (card MN step 11): under ?menus3 the one chat box is People · Chat (SPEC: "tapping own bro opens it") */
+      try { if (menus3Active()) menus3Go('hud.chatLines'); else chatBubbleBus.setOpen(true); } catch (_e4) {}
       /* v2.3.3434: the chat box is a menu, so it opens with the menu click --
          a tap on your bro reaches no <button> (ui/uiSfxDelegate.js) */
       try { BT_AUDIO.uiClickNow(); } catch (_e5) { /* sound only */ }

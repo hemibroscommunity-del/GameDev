@@ -262,7 +262,10 @@ export function menus3Away(go) {
    is kept; when the chat box shuts (its close, Esc, or a line sent: the box
    shuts itself as it always did) the panel opens again where it was, on the
    player's page.  BroTown tells it (menus3ChatShut, its chatOpen's effect).
-   Any other road drops it (menus3Go). */
+   Any other road drops it (menus3Go).
+   v2.3.6870 (card MN step 11): "Message" opens People · Chat in the panel now; this way is the
+   Chat's smiley's: today's emote picker over the world, the panel back on Chat when it shuts
+   (EmotePanel.jsx tells it, as ChatPanel.jsx does). */
 let _chatTicket = null;
 export function menus3AwayChat(go) {
   if (!_panel.open || typeof go !== 'function') return false;
