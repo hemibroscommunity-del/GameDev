@@ -209,12 +209,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   try {
     await H.enterWorld(D);
     await ready(D);
+    await H.waitMutualSight(A, D).catch(() => null);   /* a newcomer's line reaches a player once both see each other (joinPair's way) */
     let ps = await openChat(D);
     rec.ok('computer: Chat in the drawer', ps.open && ps.section === 'chat' && (await D.page.evaluate(() => window.__btMenus3.shape())) === 'drawer', ps);
-    await D.page.click('[data-m3-cinput]').catch(() => {});
+    /* a click by its place (the Roster's way): this box draws a few frames a second and page.click's own wait never ends */
+    await D.page.waitForSelector('[data-m3-cinput]', { timeout: 30000 }).catch(() => {});
+    await tap(D, '[data-m3-cinput]', false);
     await D.page.keyboard.type('typed on a computer');
     await D.page.keyboard.press('Enter');
-    rec.ok('computer: Enter sends the line (it reaches another player)', await logHas(A, 'typed on a computer'), null);
+    rec.ok('computer: Enter sends the line (the sender\'s log)', await logHas(D, 'typed on a computer'), null);
+    rec.ok('computer: ...and it reaches another player', await logHas(A, 'typed on a computer'), null);
     await shot(D, 'computer-chat');
     await D.page.evaluate(() => { const i = document.querySelector('[data-m3-cinput]'); if (i) i.blur(); });
     await D.page.keyboard.press('Escape');
