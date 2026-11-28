@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "015b3d006dea6445a6787f651e73e1bb2621cbf7",
+  "tree": "6ef24c731d6a4904307ff4a6f8db32be2c16ddbc",
+  "committedAt": "2026-11-28T09:58:37-08:00",
+  "subject": "Merge pull request #2449 from hemibroscommunity-del/claude/mn-map",
+  "files": 9540,
+  "bytes": 1132393591,
+  "listingSha256": "2be07a93fd3cc9643fb718ff4b8eed65feb5e7ea5abd8574b0ab3aa4cc1c049d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
