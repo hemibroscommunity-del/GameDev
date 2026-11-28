@@ -34,6 +34,7 @@ import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
 import { Menus3Codex, codexTitle } from './Menus3Codex.jsx';   /* v2.3.6867 (card MN step 8): World · Codex */
 import { codex3Body, isCodex3Page } from '@/game/menus3Codex.js';
+import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.jsx';   /* v2.3.6864 (card MN step 10) */
 import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
@@ -75,6 +76,7 @@ function BackIcon() {
 function pageTitle(top, getS) {
   if (!top) return '';
   if (isCodex3Page(top.page)) return codexTitle(top, getS);   /* v2.3.6867: a Codex page, wherever it opened */
+  if (top.page === 'player') return menus3PlayerTitle(getS, top.arg);   /* v2.3.6864: the player's name, from any section */
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
@@ -141,6 +143,8 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {body === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
           {body === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {body === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
+          {body !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
         </div>
       </section>
     </div>,
