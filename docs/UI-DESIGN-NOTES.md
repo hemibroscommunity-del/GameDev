@@ -2931,7 +2931,7 @@ Screens: menus3-chat, menus3-ranks
 - The wireframe's rails say Combat, Skills, Feats, Records; the game's Ranks keeps three kinds (Combat, Life Skills, Feats) with the records inside Feats: the game's are shown.
 - The wireframe's Whispers has no name box; the game needs one (a whisper goes to one name).
 - A chat name 44 tall makes a player's line taller than the wireframe's.
-- C (Chat), U (Ranks), B (Emotes): the keys wait for Bro · Skills' deskKeys.js; until then C opens today's chat box and B today's picker, as yesterday.
+- The keys (v2.3.6876, after Bro · Skills landed): C opens People · Chat (C again shuts it; the box takes the typing), U People · Ranks, K World · Codex, each in the panel, as each opened today's screen of the same thing; B still opens today's emote picker (the Chat's smiley's), the panel stepping aside for it and coming back. R (Roster) stays Whirlwind's and F (Feats) the Element Burst's: no key.
 
 Sources: src/game/menus3Chat.js, menus3Router.js (MENUS3_BUILT), menus3Roster.js (`rowCard`); src/ui/menus3/Menus3Chat.jsx, Menus3Ranks.jsx, menus3People.js, Menus3Panel.jsx, Menus3Dock.jsx, Menus3Roster.jsx (Message, menus3PlayerHint), menus3Wire.js, menus3.css; src/ui/mobile/dash/RankStandings.jsx (`nav`), LeaderboardPanel.jsx (ui2RankParts); src/ui/panels/EmotePanel.jsx; src/ui/BroTown.jsx (openSelfChat); src/data/say/menus3Chat.js; server/test/menus3-chat.test.mjs; tools/qa/mp/mp-menus3chat.mjs.
 ## The new menus' Feats: the AP line, Medals | Titles | Records, a medal's page (v2.3.6868, card MN step 9)

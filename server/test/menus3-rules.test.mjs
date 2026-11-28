@@ -150,7 +150,8 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
   }
   check('4c M is the map\'s', /MAP_KEY = 'M'/.test(dk));
   const dc = src('src/game/desktopControls.js');
-  check('4d C opens the chat box today', /e\.code === 'KeyC'[\s\S]{0,80}setChatOpen\(true\)/.test(dc));
+  /* v2.3.6876 (card MN's keys): C opens People · Chat under ?menus3 first, today's chat box otherwise */
+  check('4d C opens the chat box today (People · Chat under ?menus3)', /e\.code === 'KeyC'[\s\S]{0,80}if \(menus3ChatKey\(\)\) return;[\s\S]{0,160}setChatOpen\(true\)/.test(dc));
   check('4e B the emotes', /e\.code === 'KeyB'/.test(dc));
   for (const k of ['F', 'R']) {
     check('4f ' + k + ' is the game\'s already: marked taken', !!MENUS3_KEYS[k].taken && new RegExp("e\\.code === 'Key" + k + "'").test(dc));
