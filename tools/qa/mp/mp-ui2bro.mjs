@@ -115,7 +115,7 @@ function landing() {
       const c = document.querySelector('[data-char-page]');
       if (!c) return null;
       const w = c.querySelector('[data-bro-whose]');
-      return { who: c.getAttribute('data-char-page'), whose: w ? w.textContent.trim() : null, face: !!c.querySelector('[data-char-portrait] img'),
+      return { who: c.getAttribute('data-char-page'), whose: w ? w.textContent.trim() : null, face: !!c.querySelector('[data-char-portrait] [data-board-face]'),   /* v2.3.6843: their bust from their look, else their initial (v2.3.6692's OtherCharacter) */
         journey: !!c.querySelector('[data-char-door="journey"]'), equip: !!document.querySelector('[data-u2-action="equip"]') };
     })(),
     nav: nv ? { ws: nv.ws, shown: nv.shown, menu: nv.menu.map((e) => e.id) } : null,
@@ -154,7 +154,9 @@ const valOf = (L, id) => (L.strip.find((x) => x.id === id) || {}).v;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   fs.mkdirSync(SHOTS, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'Landbro', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
+  /* v2.3.6843 (card UI4 PR 4): this scenario plays the six tiles and the strip, ?v17bro=0's Bro (V17's Bro, the
+     default since, is mp-v17bro's) */
+  const P = await H.newPlayer(browser, { name: 'Landbro', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'v17bro=0' });
   try {
     if (!(await inWorld(P, rec, 'phone'))) return;
     /* the character seeded on the worker first (its levels by /dev/combat, Blooded earned by /dev/achv: the
@@ -258,12 +260,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('8b. Back: Feats\' Titles door reads the new title, "Wearing: Blooded"', L8.title === 'achievements' && L8.worn === 'Wearing: Blooded', L8);
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 1200);
     /* 9. another player's Character page (Ranks' tap, step 9: nothing opens it yet, so the bus's own push) */
-    await P.page.evaluate(() => window.__broDashPanelBus.go({ type: 'push', id: 'broCharacter', who: { name: 'Sunburn', portrait: '/icons/ui/panel-self.webp' } }));
+    /* v2.3.6843 (card UI4 PR 4): the test was STALE since v2.3.6692 (card UI2-ranks): another player's page is
+       drawn from what its caller hands (a board's row: its name and `look`), never a portrait address, and
+       its label is the frame's "Sunburn's Bro" (dashFrame.whose), so this asks those, not the bare name and
+       an <img> of v2.3.6684 */
+    await P.page.evaluate(() => window.__broDashPanelBus.go({ type: 'push', id: 'broCharacter', who: { name: 'Sunburn' } }));
     await P.page.waitForTimeout(1000);
     const O9 = await read(P);
     await bandShot(P, 'ui2-bro-other.png');
     rec.ok('9. another player\'s Character (a push of broCharacter with a who): their name and face, no Equip, no Journey',
-      O9.title === 'broCharacter' && !!O9.char && O9.char.who === 'other' && O9.char.whose === 'Sunburn' && O9.char.face && !O9.char.journey && !O9.char.equip && O9.tiles.length === 0, O9.char);
+      O9.title === 'broCharacter' && !!O9.char && O9.char.who === 'other' && O9.char.whose === "Sunburn's Bro" && O9.char.face && !O9.char.journey && !O9.char.equip && O9.tiles.length === 0, O9.char);
     await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', 900);
     /* 10. a push of broCharacter with no who: the one Bro page, never the old passport */
     await P.page.evaluate(() => window.__broDashPanelBus.go({ type: 'push', id: 'broCharacter' }));
@@ -286,7 +292,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
   }
   /* a computer */
-  const D = await H.newPlayer(browser, { name: 'Landdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, dpr: 2 });
+  const D = await H.newPlayer(browser, { name: 'Landdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, dpr: 2, query: 'v17bro=0' });
   try {
     if (await inWorld(D, rec, 'computer')) {
       await H.dashOpen(D, 'hero');

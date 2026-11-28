@@ -338,6 +338,7 @@ const FORMS = {
   'ui2shine': '0',
   'uikit': '1',
   'uploadicons': '0',
+  'v17bro': '0',
   'v17gear': '0',
   'v17look': '0',
   'v17wide': '0',

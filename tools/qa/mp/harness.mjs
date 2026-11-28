@@ -1371,6 +1371,19 @@ const COMBAT_OF = { broSword: 'sword', broBow: 'bow', broStaff: 'staff' };   /* 
 const FEATS_OF = { broTitles: 'titles', featsMedals: 'achievements', featsQuests: 'quests' };   /* v2.3.6695 (card UI2-feats): doors of Feats (sheet/FeatsPage.jsx) */
 /* v2.3.6694 (card UI2-life): a life skill's page, a door of the Life Skills landing */
 const LIFE_OF = { lifeWoodcutting: 'woodcutting', lifeFishing: 'fishing', lifeMining: 'mining', lifeFarming: 'farming', lifeTrapping: 'trapping', lifeCooking: 'cooking', lifeBlacksmithing: 'blacksmithing', lifeWoodworking: 'woodworking', lifeGemCutting: 'gemCutting', lifeEnchanting: 'enchanting' };
+/* v2.3.6843 (card UI4 PR 4): an entry of V17's Bro (?v17bro, the default) may be on a later page of its quiet
+   strip, which pages by whole entries: press its "more" until `sel` (inside the Bro page) is drawn.  On the
+   old Bro (?v17bro=0) every door is drawn, so this does nothing.  Returns whether it is there. */
+export async function broReveal(P, sel, { timeout = 6000 } = {}) {
+  const q = `[data-bro-landing] ${sel}`;
+  for (let i = 0; i < 6; i++) {
+    if (await P.page.locator(q).count().catch(() => 0)) return true;
+    if (!(await P.page.locator('[data-bro-landing] [data-u2-strip-more]').count().catch(() => 0))) return false;
+    await tapTop(P.page, '[data-bro-landing] [data-u2-strip-more]', timeout);
+    await P.page.waitForTimeout(250);
+  }
+  return (await P.page.locator(q).count().catch(() => 0)) > 0;
+}
 async function frameUp(P) {
   return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
 }
@@ -1419,6 +1432,27 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
     if (STRIP_OF[id]) {
       await tapTop(P.page, `[data-bro-strip] [data-bro-fact="${STRIP_OF[id]}"]`, timeout);
       await P.page.waitForTimeout(350);
+      return true;
+    }
+    /* v2.3.6843 (card UI4 PR 4): V17's Bro (?v17bro, on by default) leads with the weapons: a weapon's page
+       is one tap; the Combat hub's road is the HUD's weapon bar (Bro, the hub, the held weapon) and its Back;
+       the other doors are on the page or its quiet strip, which pages by whole entries (its "more") */
+    if (await P.page.locator('[data-bro-v17]').count().catch(() => 0)) {
+      if (COMBAT_OF[id]) { await tapTop(P.page, `[data-bro-weapon="${COMBAT_OF[id]}"]`, timeout); await P.page.waitForTimeout(350); return true; }
+      if (bro === 'combat') {
+        await tapTop(P.page, '[data-hudart-bar]', timeout);
+        await P.page.waitForTimeout(500);
+        await tapTop(P.page, '[data-dash-frame] [data-dash-ctl="back"]', timeout);
+        await P.page.waitForTimeout(350);
+        return true;
+      }
+      for (let i = 0; i < 6 && !(await P.page.locator(`[data-bro-v17] [data-dest="${bro}"]`).count().catch(() => 0)); i++) {
+        await tapTop(P.page, '[data-bro-v17] [data-u2-strip-more]', timeout);
+        await P.page.waitForTimeout(250);
+      }
+      await tapTop(P.page, `[data-bro-v17] [data-dest="${bro}"]`, timeout);
+      await P.page.waitForTimeout(350);
+      if (FEATS_OF[id]) { await tapTop(P.page, `[data-feats-page] [data-feats-door="${FEATS_OF[id]}"]`, timeout); await P.page.waitForTimeout(350); }
       return true;
     }
     await tapTop(P.page, `[data-dash-grid="bro"] [data-dest="${bro}"]`, timeout);

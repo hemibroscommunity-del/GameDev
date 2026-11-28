@@ -37,7 +37,13 @@ import {
   Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm, Ui2Facts, Ui2Fact, ui2LookWas, v17LookOn,
   Ui2Collection, Ui2CollectionCard, Ui2Showcase,
   Ui2Tabs, Ui2Tab, Ui2Stepper, Ui2InspectStat, Ui2Comparison, Ui2Overlay,
+  Ui2LevelTile, Ui2Strip,   /* v2.3.6843 (card UI4 PR 4): Bro's weapon door and its quiet strip */
 } from './index.js';
+import { COMBAT_DOORS } from '@/game/combatHub.js';   /* v2.3.6843: the level tile's plate wears the game's pictures */
+import { SAY as SAY_CH } from '@/data/say/combatHub.js';
+import { SAY as SAY_BV } from '@/data/say/broV17.js';
+import { SAY as SAY_DF } from '@/data/say/dashFrame.js';
+import { say } from '@/game/say.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
 import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/sheet/sheetGeometry.js';
 import { computerFrame } from '@/game/deviceProfile.js';   /* a computer's window: the band is one block, 480 px at most */
@@ -413,6 +419,30 @@ function InspectPlate({ room }) {
   if (room.wide) return <div style={row({ alignItems: 'center', height: '100%' })}>{a}{b}{c}</div>;
   return <div style={col({ height: '100%', justifyContent: 'space-between' })}>{a}{b}{c}</div>;
 }
+/* v2.3.6843 (card UI4 PR 4): the level tile (a weapon's door: in hand and framed, worn, not worn; points drawn only
+   while some) and the strip that pages by whole entries (its "more" an adjust control) */
+function LevelTilePlate({ room }) {
+  /* the game's own pictures and words (combatHub.js COMBAT_DOORS; the say tables), sample levels and points */
+  const art = (c) => (COMBAT_DOORS.find((d) => d.id === c) || {}).art;
+  const t = [
+    <Ui2LevelTile key="s" intent="go" art={art('sword')} label={say(SAY_CH, 'combatHub.sword')} level={say(SAY_CH, 'combatHub.lv', { n: 12 })} frac={0.4} mark={say(SAY_BV, 'broV17.inHand')} held cue={say(SAY_CH, 'combatHub.points', { n: 2 })} onClick={kitTap('level tile Sword')} data-u4-piece="leveltile" />,
+    <Ui2LevelTile key="b" intent="go" art={art('bow')} label={say(SAY_CH, 'combatHub.bow')} level={say(SAY_CH, 'combatHub.lv', { n: 5 })} frac={0.75} mark={say(SAY_BV, 'broV17.worn')} onClick={kitTap('level tile Bow')} />,
+    <Ui2LevelTile key="m" intent="go" art={art('staff')} label={say(SAY_CH, 'combatHub.staff')} level={say(SAY_CH, 'combatHub.lv', { n: 1 })} frac={0} mark={say(SAY_BV, 'broV17.notWorn')} onClick={kitTap('level tile Staff')} />,
+  ];
+  return <div style={row({ height: room.wide ? 96 : 92, alignItems: 'stretch' })}>{t}</div>;
+}
+function StripPlate({ room }) {
+  const [page, setPage] = React.useState(0);
+  const all = [say(SAY_DF, 'dashFrame.equipment'), say(SAY_DF, 'dashFrame.lifeSkills'), say(SAY_DF, 'dashFrame.feats'), say(SAY_DF, 'dashFrame.journey'), say(SAY_DF, 'dashFrame.pets')];
+  const per = room.wide ? all.length : 2;
+  const pages = Math.ceil(all.length / per);
+  const shown = all.slice(page * per, page * per + per);
+  return (
+    <Ui2Strip page={page} pages={pages} onPage={setPage} more={say(SAY_BV, 'broV17.more', { i: page + 1, n: pages })} count={say(SAY_BV, 'broV17.pageN', { i: page + 1, n: pages })} data-u4-piece="strip">
+      {shown.map((w) => <Ui2Tile key={w} intent="go" size="compact" label={w} onClick={kitTap('strip ' + w)} style={{ flex: '1 1 0', minWidth: 0, minHeight: 44 }} />)}
+    </Ui2Strip>
+  );
+}
 function ComparisonPlate({ room }) {
   const rows = [
     <Ui2Comparison key="dmg" k="Damage" before={26} after={31} data-u4-piece="compare" data-u4-cmp="up" />,
@@ -527,6 +557,8 @@ export function UiKitPage() {
         <Plate id="stepper" room={room} title="Bag" caption="The stepper (the trade window's): one fewer, the number with what you have, one more; off at each end"><StepperPlate room={room} /></Plate>
         <Plate id="inspect" room={room} title="Sword" caption="The stat you inspect: it always opens (its chevron; or the word Details), beside a stat that does not"><InspectPlate room={room} /></Plate>
         <Plate id="compare" room={room} title="Compare" caption="The comparison: before, after, the difference signed AND in words (better, worse, no change); the colour only repeats them"><ComparisonPlate room={room} /></Plate>
+        <Plate id="leveltile" room={room} title="Bro" caption="The level tile (a weapon's door): its picture, level and bar; its state in words, the one in hand framed; its points only while it has some"><LevelTilePlate room={room} /></Plate>
+        <Plate id="strip" room={room} title="Bro" caption="The quiet strip: whole entries only, never a word cut at its edge; where they do not all fit, a more control turns to the next"><StripPlate room={room} /></Plate>
         <OverlaySample room={room} />
       </div>
     </div>

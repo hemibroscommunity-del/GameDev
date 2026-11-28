@@ -153,10 +153,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 3. the task's pet half, from Bro's landing ── */
     await H.dashMenuRoot(P).catch(() => null);
     await tap(P, '[data-dash-grid="menu"] [data-dest="hero"]', 600);
-    await tap(P, '[data-dash-grid="bro"] [data-dest="journey"]', 800);
+    /* v2.3.6843 (card UI4 PR 4): either Bro (V17's quiet strip, or the six tiles of ?v17bro=0) */ await H.broReveal(P, '[data-dest="journey"]');
+    await tap(P, '[data-bro-landing] [data-dest="journey"]', 800);
     const journey = await P.page.evaluate(() => (document.querySelector('[data-dash-frame] [data-u2="title"]') || {}).innerText || '');
     await back(P);
-    await tap(P, '[data-dash-grid="bro"] [data-dest="pets"]', 800);
+    await H.broReveal(P, '[data-dest="pets"]');
+    await tap(P, '[data-bro-landing] [data-dest="pets"]', 800);
     const v3 = await L(P);
     rec.ok(`3. Bro: Journey ("${journey.trim()}"), Back, Pets: the companion ("${v3.name}"), Back says ${v3.back}`,
       /journey/i.test(journey) && v3.page === 'pets' && v3.state === 'pet' && v3.figure === ids.a && /Bro/.test(v3.back), { journey, v3 });

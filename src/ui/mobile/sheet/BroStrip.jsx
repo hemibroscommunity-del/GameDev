@@ -69,27 +69,33 @@ export function BroStrip({ read, who, side, narrow }) {
   const whose = who == null ? null : who;
   useClock(() => stripKey(read, whose), 500);
   const strip = broStrip(readOf(read), whose);
+  return (
+    <Ui2Facts dir="row" className={'u2-bro-strip' + (side ? ' is-side' : '')} data-bro-strip={who == null ? 'self' : 'other'} role="group" aria-label={say(SAY, 'charPage.stripAria')}>
+      {strip.map((s) => <BroStripFact key={s.id} s={s} who={who} narrow={narrow} />)}
+    </Ui2Facts>
+  );
+}
+
+/* v2.3.6843 (card UI4 PR 4): one entry of the strip, its own piece so V17's Bro (sheet/BroV17.jsx) draws the
+   same entries in its quiet strip (the same words, doors and placeholders); this strip's output is unchanged */
+export function stripEntries(read, who) { return broStrip(readOf(read), who == null ? null : who); }
+export function stripEntriesKey(read, who) { return stripKey(read, who == null ? null : who); }
+export function BroStripFact({ s, who, narrow, style }) {
   const go = (opens) => {
     const o = broHubOpen(opens);
     if (o && o.kind === 'page') dashboardPanelBus.go({ type: 'push', id: o.page, who: who == null ? undefined : who });
   };
+  const icon = !!(narrow && ART[s.id]);
+  const words = valueOf(s);
+  const aria = say(SAY, 'charPage.factAria', { k: s.id === 'ap' ? say(SAY, 'charPage.apAria') : word(s.k), v: s.loading ? '…' : words });
+  const v = s.loading ? <span className="u2-pass-wait" data-u2-loading="" aria-hidden="true" /> : (icon ? null : words);
+  const tap = s.opens ? frameTap(() => go(s.opens)) : {};
   return (
-    <Ui2Facts dir="row" className={'u2-bro-strip' + (side ? ' is-side' : '')} data-bro-strip={who == null ? 'self' : 'other'} role="group" aria-label={say(SAY, 'charPage.stripAria')}>
-      {strip.map((s) => {
-        const icon = !!(narrow && ART[s.id]);
-        const words = valueOf(s);
-        const aria = say(SAY, 'charPage.factAria', { k: s.id === 'ap' ? say(SAY, 'charPage.apAria') : word(s.k), v: s.loading ? '…' : words });
-        const v = s.loading ? <span className="u2-pass-wait" data-u2-loading="" aria-hidden="true" /> : (icon ? null : words);
-        const tap = s.opens ? frameTap(() => go(s.opens)) : {};
-        return (
-          <Ui2Fact key={s.id} k={icon ? null : word(s.k)} v={v} none={s.none} art={icon ? ART[s.id] : undefined}
-            className={icon ? 'is-icon' : undefined}
-            data-bro-fact={s.id} data-bro-v={s.loading ? '' : words} data-bro-loading={s.loading ? 1 : undefined}
-            aria-label={aria} aria-busy={s.loading ? 'true' : undefined}
-            {...tap} />
-        );
-      })}
-    </Ui2Facts>
+    <Ui2Fact k={icon ? null : word(s.k)} v={v} none={s.none} art={icon ? ART[s.id] : undefined}
+      className={icon ? 'is-icon' : undefined} style={style}
+      data-bro-fact={s.id} data-bro-v={s.loading ? '' : words} data-bro-loading={s.loading ? 1 : undefined}
+      aria-label={aria} aria-busy={s.loading ? 'true' : undefined}
+      {...tap} />
   );
 }
 

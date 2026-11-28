@@ -120,7 +120,7 @@ async function onePhone(browser, wsPort, webPort, rec, side) {
   const vp = side ? { width: 844, height: 390 } : { width: 390, height: 844 };
   const tag = side ? '844 x 390' : '390 x 844';
   const sfx = side ? '-side' : '';
-  const P = await H.newPlayer(browser, { name: side ? 'Lookside' : 'Lookbro', wsPort, webPort, world: 'wheel', viewport: vp, touch: true, dpr: 2, query: BASE ? 'v17look=0' : '' });
+  const P = await H.newPlayer(browser, { name: side ? 'Lookside' : 'Lookbro', wsPort, webPort, world: 'wheel', viewport: vp, touch: true, dpr: 2, query: BASE ? 'v17look=0&v17bro=0' : 'v17bro=0' });   /* v2.3.6843: the look measured on the six tiles' Bro (?v17bro=0; V17's Bro is mp-v17bro's) */
   try {
     await H.enterWorld(P);
     const w = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 150000, label: 'in the world' }).catch(() => null);

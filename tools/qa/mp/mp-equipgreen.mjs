@@ -92,7 +92,8 @@ async function toShowcase(P) {
   await P.page.evaluate(() => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); });
   const settled = () => H.waitFor(P, () => !document.querySelector('[data-dash-grow]'), (v) => v === true, { timeout: 15000, label: 'the growing motion ends' }).catch(() => null);
   await settled();
-  await tap(P, '[data-dash-grid="bro"] [data-dest="equipment"]', 1200);
+  /* v2.3.6843 (card UI4 PR 4): either Bro (V17's quiet strip, or the six tiles of ?v17bro=0) */ await H.broReveal(P, '[data-dest="equipment"]');
+  await tap(P, '[data-bro-landing] [data-dest="equipment"]', 1200);
   await H.waitFor(P, () => !!document.querySelector('[data-gear-showcase] [data-gear-cell]'), (v) => !!v, { timeout: 15000, label: 'the showcase' }).catch(() => null);
   await P.page.waitForTimeout(800);
   await settled();
