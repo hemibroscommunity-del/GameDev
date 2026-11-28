@@ -183,14 +183,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await closeBand(P);
 
       /* the shortcuts that were there: the face, the weapon's bar, the minimap */
-      if (await press(P, '[data-hudart-face]', true)) rec.ok('upright: the face opens Bro (Power)', (await topId(P)) === 'hero', await nav(P));
+      /* v2.3.6862 (card MN step 5): Power is built: the face and the bar open the new panel on Power */
+      const p3 = () => P.page.evaluate(() => { const s = window.__btMenus3.panelState(); return { open: s.open, section: s.section, rail: s.nav && s.nav[0] ? s.nav[0].rail : null }; });
+      if (await press(P, '[data-hudart-face]', true)) rec.ok('upright: the face opens Bro (Power)', (await p3()).section === 'power' && (await p3()).open, await p3());
       else rec.ok('LISTED upright: no face on the HUD (hudart off)', true, null);
       await closeBand(P);
+      await P.page.evaluate(() => { try { document.querySelector('[data-menus3-x]').click(); } catch (e) { /* shut */ } });
       if (await press(P, '[data-hudart-bar]', true)) {
-        const t = await topId(P);
-        rec.ok('upright: the weapon\'s bar opens its weapon\'s page', /^bro(Sword|Bow|Staff)$/.test(String(t)), t);
+        const t = await p3();
+        rec.ok('upright: the weapon\'s bar opens Power on its weapon\'s lane', t.open && t.section === 'power' && /^(sword|bow|staff)$/.test(String(t.rail)), t);
       } else rec.ok('LISTED upright: no weapon bar on the HUD', true, null);
       await closeBand(P);
+      await P.page.evaluate(() => { try { document.querySelector('[data-menus3-x]').click(); } catch (e) { /* shut */ } });
       await press(P, '[data-world-map-open]', true);
       const mapOpen = !!(await box(P, '[data-world-map-close]'));
       rec.ok('upright: the minimap opens the world map', mapOpen, null);

@@ -44,6 +44,9 @@ import { canvasCssW, canvasCssH } from '@/game/renderRes.js';
 import { playVw, winVh } from '@/ui/mobile/playViewport.js';
 import { fineInput } from '@/game/deviceProfile.js';
 import './hudArt.css';
+import { menus3On } from '@/ui/menus3/menus3Switch.js';   /* v2.3.6862 (card MN step 5): the face and the bar open the new Power */
+import { menus3Go } from '@/ui/menus3/menus3Wire.js';
+import { MENUS3_BUILT } from '@/game/menus3Router.js';
 
 /* a length of the module's, drawn at the group's scale (sideways .92) */
 const k = (n) => 'calc(' + n + 'px * var(--ha-k, 1))';
@@ -135,11 +138,15 @@ export default function HudArt({ live, rpg, hud, xb }) {
   const stop = (e) => e.stopPropagation();
   const openBro = (e) => {
     e.stopPropagation();
+    /* v2.3.6862 (card MN step 5): under ?menus3 the face opens the new Bro · Power (decided 3) */
+    if (menus3On()) { menus3Go('hud.face'); return; }
     try { dashboardPanelBus.open('hero'); } catch (e2) { /* the dashboard not mounted yet */ }
   };
   const cat = art.cat;
   const openWeapon = (e) => {
     e.stopPropagation();
+    /* v2.3.6862: ...and the weapon bar, on the weapon in hand's lane */
+    if (menus3On()) { menus3Go('hud.weaponBar', { built: MENUS3_BUILT, held: cat }); return; }
     try {
       /* Bro's own road (BroCard.jsx onWeapon), from the world: Bro, Combat, the weapon */
       dashboardPanelBus.open('hero');

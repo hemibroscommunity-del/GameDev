@@ -48,7 +48,8 @@ let _panel = SHUT;
 const isBuilt = (s) => MENUS3_BUILT.indexOf(s) >= 0;
 export const menus3Bus = {
   get state() { return _panel; },
-  open(menu, section, rail) {   /* v2.3.6864: + rail, the page's first filter (the Roster's segment an entry names) */
+  /* v2.3.6862: `rail` the section's own page's place to open on (Power's lane, from the weapon bar) */
+  open(menu, section, rail) {
     const sec = section || null;
     _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec, rail == null ? null : rail) });
     stamp(); emit();
@@ -159,7 +160,7 @@ export function menus3Go(entry, ctx) {
         return false;
       }
       case 'panel':
-        menus3Bus.open(r.menu, r.section, r.seg || null);
+        menus3Bus.open(r.menu, r.section, r.lane != null ? r.lane : (r.seg || null));   /* v2.3.6862: Power's lane from the weapon bar; v2.3.6864: the Roster's segment an entry names */
         /* v2.3.6863: the quest line opens THAT quest's page, its Back the Quests' own page */
         if (r.section === 'quests' && ctx && typeof ctx.quest === 'string' && ctx.quest) menus3Bus.push('quest', ctx.quest);
         return true;
