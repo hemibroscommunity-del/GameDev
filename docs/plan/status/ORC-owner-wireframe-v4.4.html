@@ -1,0 +1,1432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BroTown · v4.4 wireframe (Fixed 48%)</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  color-scheme:dark;
+  --ink:#fff0d8;--muted:#d1c3ae;--gold:#f5cf83;--line:#716047;
+  --panel:#29251e;--tile:#393229;--green:#477346;--dark:#201d18;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+}
+body{margin:0;background:#161a19;color:var(--ink);font:14px/1.28 system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation;min-height:44px;font-size:14px;border:1px solid var(--line);border-radius:7px;background:#383128;padding:6px 9px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #eec979;outline-offset:-2px}
+button:disabled{opacity:.55;cursor:default}
+button.primary{background:linear-gradient(#537f4c,#385e37);border-color:#9cbc82;box-shadow:inset 0 1px #a4b88b66;font-weight:750;color:#fff5df}
+button.warn{background:#783c32;border-color:#c98267;font-weight:700;color:#fff0dc}
+button.selected{background:#665234;border-color:#efc87e;box-shadow:inset 0 -2px #d7ad67}
+button.quiet{background:transparent;border-color:#8e795b}
+button.link{background:none;border:0;color:#f0cd8c;text-align:left;padding:4px 6px;min-height:44px}
+button.iconbtn{min-width:44px;min-height:44px;padding:4px;display:inline-flex;align-items:center;justify-content:center}
+button.compact,button.link.compact{min-height:44px;padding:3px 9px;font-size:13px}
+button.tile{
+  min-width:0;padding:4px 2px;position:relative;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;
+  min-height:66px;border-color:#514635;background:#383126;box-shadow:none
+}
+button.tile.mini{min-height:50px;padding:3px 2px}
+button.tile.selected{border:2px solid #b6d391;background:#40583b;box-shadow:none}
+button.tile.locked{border-style:dashed;background:#302c27;color:#c1b6a5}
+.tile .qty{position:absolute;right:4px;top:2px;font-size:12px;font-weight:750;background:#201d18b8;padding:0 3px;border-radius:3px}
+.tile .tick{position:absolute;left:4px;top:2px;color:#c8e6a5;font-weight:900;font-size:12px}
+.tile .name{font-weight:650;font-size:12.5px;color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile small{font-size:11.5px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .rare{color:#b4d9ff}
+.tile:has(.rare){border-color:#6c9bc5}
+
+.icon{display:inline-block;width:20px;height:20px;vertical-align:middle;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.art{width:30px;height:30px;color:#e2bd79;filter:drop-shadow(1px 2px 0 #18160f)}
+.art.big{width:48px;height:48px}
+.art.sm{width:24px;height:24px}
+.tile.mini .art{width:22px;height:22px}
+.art.blue{color:#9dc6e6}.art.green{color:#9fc58a}.art.red{color:#e8a084}
+
+.muted{color:var(--muted)}.small{font-size:12px}.gold{color:var(--gold)}.good{color:#b5dfa0}.bad{color:#f0a194}.bold{font-weight:750}.num{font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;gap:8px;min-width:0}
+.row>*{min-width:0}
+.spread{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.stack{display:flex;flex-direction:column;gap:6px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.grid.actions button{min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px}
+
+/* Horizontal filter rail with explicit scroll chevron hint */
+.railwrap{display:flex;gap:4px;min-width:0;align-items:center}
+.railwrap>.rail{flex:1;min-width:0}
+.railwrap>.railhint[hidden]{display:none}
+.railhint{font-size:12px;color:var(--gold);flex:none;align-self:center;pointer-events:none}
+.rail{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:none;padding:1px 0;-webkit-overflow-scrolling:touch}
+.rail::-webkit-scrollbar{display:none}
+.rail button{white-space:nowrap;flex:none;min-height:44px;padding:3px 10px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.rail .icon{width:16px;height:16px;color:var(--gold)}
+
+.hstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.hstrip::-webkit-scrollbar{display:none}
+.hstrip>.tile{flex:0 0 82px}
+
+.line{border-bottom:1px solid #4c4032;padding:5px 0;min-height:42px}
+.line:last-child{border-bottom:0;padding-bottom:2px}
+.line.tight{padding:4px 0;min-height:38px}
+.progress{height:7px;border-radius:7px;overflow:hidden;background:#171813;border:1px solid #695b42}
+.progress i{display:block;height:100%;background:#9aaa63}
+.padded{padding:6px 8px;background:#342e25;border-radius:6px}
+.panelnote{border-left:3px solid #bda068;padding:5px 8px;background:#3b3024;border-radius:0 5px 5px 0}
+
+/* Power lanes & Tap-to-Add 2x2 stat cards (zero-scroll, roomy targets, 8px separation) */
+.skilllane{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.skilllane button{padding:3px 2px;min-height:44px;font-size:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.05}
+.skilllane .lanehead{display:flex;align-items:center;gap:3px}
+.skilllane .icon{width:15px;height:15px}
+.skilllane small{font-size:11px;color:var(--muted)}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.statcard{
+  display:flex;align-items:stretch;gap:8px;min-width:0;
+}
+.statcard .stat-add{
+  flex:1;min-width:0;min-height:52px;padding:6px 8px;
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  text-align:left;background:#342e25;border-color:#5a4d3b;border-radius:7px
+}
+.statcard .stat-add.staged{border-color:#9cbc82;background:#354430}
+.statcard .stat-add:disabled{opacity:.72}
+.statcard .statmeta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.statcard .statmeta b{font-size:13px;white-space:nowrap}
+.statcard .statmeta .num{font-size:12.5px;white-space:nowrap;color:var(--muted)}
+.statcard .statmeta .progress{display:none;margin-top:2px}
+.statcard .addchip{
+  font-size:18px;font-weight:800;line-height:1;color:#b5dfa0;flex:none;
+  width:22px;text-align:center
+}
+.statcard .stat-add:disabled .addchip{color:var(--muted);opacity:.45}
+.statcard .stat-sub{
+  flex:0 0 44px;min-width:44px;min-height:44px;padding:0;font-size:21px;line-height:1
+}
+
+.power-summary{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-start;gap:2px;padding:2px 4px;background:none;border:0;text-align:left}
+.power-summary .small{font-size:11.5px;white-space:nowrap}
+.power-summary strong{font-size:17.5px;line-height:1.05;font-variant-numeric:tabular-nums}
+.footer .power-reset{flex:none;min-width:44px;width:44px;padding:0}
+.footer .power-apply{flex:1;min-width:98px;padding:4px 8px;font-size:13px}
+
+/* Bag & Gear (single rail + compact zero-scroll 3x3 gear grid) */
+.geargrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.pet-row{border-top:1px solid #61513b;padding-top:4px}
+
+/* Quests */
+.quest-ready{background:#37442c;border-left:3px solid #a8c383;padding:6px 8px;border-radius:6px}
+.quest-entry{padding:6px 2px;border-bottom:1px solid #534637}
+.quest-entry button{flex:none}
+
+/* Diego & Shops (single counter toolbar, inspect border indicator) */
+.counter-tools{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
+.counter-tools .railwrap{flex:1;min-width:0}
+.counter-tools button{white-space:nowrap;flex:none}
+.counter-tools .tool-icon{min-width:44px;width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.counter-tools .tool-icon .icon{width:18px;height:18px}
+.diego-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;border-radius:8px;transition:box-shadow .15s ease,background .15s ease}
+.diego-grid.inspecting{padding:4px;background:#44372366;box-shadow:inset 0 0 0 2px #efc87e}
+.diego-grid .tile{min-height:66px}
+.diego-grid .tile .art{width:28px;height:28px}
+.footer .count{min-width:0;flex:0 1 auto;font-size:12px;white-space:nowrap}
+.footer .sale-review{flex:.85;white-space:nowrap}
+.footer .sale-total{font-size:14px;flex:1.15;white-space:nowrap}
+.item-compare{border-left:3px solid #91ac76;padding:5px 8px;background:#343b2b;border-radius:4px}
+
+/* Codex single-row rail + expand-on-tap search */
+.codex-bar{display:flex;align-items:center;gap:6px;min-width:0}
+.codex-bar .railwrap{flex:1;min-width:0}
+
+/* Player trade side-by-side even in portrait */
+.trade-split{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:stretch}
+.trade-pane{background:#312c24;border:1px solid #554838;border-radius:6px;padding:5px 6px;display:flex;flex-direction:column;gap:4px;min-width:0}
+
+/* Prototype Toolbar */
+.toolbar{max-width:1040px;margin:0 auto;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:9px 14px;flex-wrap:wrap}
+.toolbar h1{font-size:16px;margin:0}
+.toolbar .meta{font-size:12px;color:#bdb9ae}
+.tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tools button,.tools select{font-size:12px;min-height:34px;padding:4px 8px;background:#292e2b;border:1px solid #576057;border-radius:5px}
+.tools button.active{background:#52462d;border-color:#d5b473;color:#fff4dc}
+.sizechip{font-size:12px;padding:5px 8px;border-radius:5px;background:#2a251c;border:1px solid #8a7248;color:var(--gold);font-weight:700}
+
+/* Stage & Game Viewport */
+.stage{display:flex;justify-content:center;padding:0 12px 10px}
+.game{
+  position:relative;width:390px;height:780px;max-height:calc(100dvh - 96px);min-height:540px;
+  overflow:hidden;isolation:isolate;border:2px solid #6a5b47;border-radius:14px;background:#747d51;
+  --panelHeight:clamp(318px,48%,410px);--sideWidth:40%;--dockHeight:50px;--controlsHeight:70px;--kbHeight:0px;
+}
+.game.w360{width:360px;height:660px;min-height:520px}
+.game.landscape{width:850px;height:410px;min-height:360px;--dockHeight:46px;--controlsHeight:64px}
+.game.desktop{width:1000px;height:680px;--controlsHeight:68px}
+
+.scene{position:absolute;inset:0;background:linear-gradient(150deg,#687a45,#7e8c5c 45%,#6f8151);overflow:hidden}
+.scene svg.world{position:absolute;inset:0;width:100%;height:100%;opacity:.85;transition:transform .2s ease}
+/* Subtle upward camera offset in portrait when panel opens so character centers in the visible upper band */
+.game.open:not(.landscape):not(.desktop) .scene svg.world{transform:translateY(-14%)}
+.scene .location{
+  position:absolute;top:calc(9px + var(--sat));left:50%;transform:translateX(-50%);
+  padding:4px 9px;background:#28291ee8;border:1px solid #baaa74;border-radius:16px;
+  font-size:11.5px;white-space:nowrap;transition:left .15s ease
+}
+.hud{
+  position:absolute;z-index:2;top:calc(9px + var(--sat));left:9px;right:9px;
+  display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;
+  transition:right .15s ease
+}
+.hud button{pointer-events:auto;background:#2e2d23e8;border-color:#c2a774}
+.hudright{display:flex;align-items:center;gap:8px;pointer-events:none}
+.portrait{width:46px;height:46px;padding:3px!important;position:relative;border-radius:11px}
+.portrait .icon{width:29px;height:29px;color:#e9ce9e}
+.lvl{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#5c4527;border:1px solid #d2ae69;border-radius:5px;padding:1px 4px;font-size:10.5px;font-weight:800}
+.settingshud{width:44px;height:44px;border-radius:50%;padding:0!important;display:grid;place-items:center;color:#e7c587}
+.settingshud.selected{background:#5a482e;border-color:#efc87e}
+.minimap{width:46px;height:46px;border-radius:50%;padding:0!important;display:grid;place-items:center;color:#b9d49d}
+.weaponhud{position:absolute;top:calc(64px + var(--sat));left:9px;z-index:3;width:132px;display:flex;align-items:center;gap:5px;padding:4px 7px;min-height:34px;background:#272b22e8;border:1px solid #b4a273;border-radius:20px}
+.weaponhud .progress{flex:1;height:6px}
+.questhud{position:absolute;top:calc(106px + var(--sat));left:9px;z-index:3;background:#282b21dc;border:1px solid #b1a06a;border-radius:7px;padding:6px 8px;text-align:left;max-width:176px;font-size:11.5px;min-height:38px}
+.balance{position:absolute;top:calc(62px + var(--sat));right:9px;z-index:2;background:#2b2b22dc;border-radius:12px;padding:3px 8px;color:#ffe19e;font-size:12.5px;transition:right .15s ease}
+
+/* Controls stay grounded at bottom when closed; hidden in portrait when panel opens so world stays unobstructed and joystick never teleports mid-screen */
+.controls{
+  position:absolute;bottom:calc(var(--dockHeight) + var(--sab));left:0;right:0;
+  height:var(--controlsHeight);display:flex;align-items:center;justify-content:space-between;
+  padding:4px 12px;background:linear-gradient(transparent,#322d23d9);z-index:3;pointer-events:none;
+  transition:opacity .15s ease
+}
+.game.open:not(.landscape) .controls{display:none}
+.joystick{width:56px;height:56px;border-radius:50%;background:#343c35a8;border:2px solid #b7ae8e;display:grid;place-items:center;pointer-events:auto;touch-action:none}
+.joystick:after{content:'';width:25px;height:25px;border-radius:50%;background:#9b9e8b;border:1px solid #d6c8a4}
+.combat{display:flex;align-items:center;gap:8px}
+.combat button{border-radius:50%;width:44px;height:44px;min-height:44px;padding:0;background:#37423bdb;pointer-events:auto;border:1px solid #c0b28d;display:grid;place-items:center}
+.combat button.attack{width:52px;height:52px;min-height:52px;background:#76563d}
+
+/* Bottom Dock: 3 equal generous thumb targets + safe area */
+.dock{
+  position:absolute;bottom:0;left:0;right:0;
+  height:calc(var(--dockHeight) + var(--sab));
+  padding:0 2px var(--sab);
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  background:#25211b;border-top:2px solid #a88b59;z-index:6
+}
+.dock button{
+  border-radius:0;border:0;border-right:1px solid #4e4131;background:none;
+  padding:3px 4px;display:flex;justify-content:center;align-items:center;gap:6px;
+  font-size:14px;font-weight:700;min-height:44px
+}
+.dock button.selected{background:#5a482e;box-shadow:inset 0 3px #d8b275}
+.dock .icon{width:20px;height:20px;color:#e7c587}
+.dock button:last-child{border:0}
+
+/* Fixed 48% (clamped 318-410px) Dashboard Panel */
+.panel{
+  position:absolute;bottom:calc(var(--dockHeight) + var(--sab));height:var(--panelHeight);left:0;right:0;
+  z-index:5;background:linear-gradient(#322a21,#27231d);border-top:2px solid #b89b63;
+  display:flex;flex-direction:column;box-shadow:0 -5px 16px #18181377
+}
+.panel[hidden]{display:none}
+.panelheader{
+  position:relative;min-height:45px;display:flex;gap:6px;align-items:center;padding:3px 5px 0;
+  border-bottom:1px solid #6c573d;background:#302820;flex:none;touch-action:pan-x
+}
+/* Discoverable swipe-down handle pill (zero extra height) */
+.game:not(.landscape) .panelheader::before{
+  content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);
+  width:34px;height:3px;border-radius:3px;background:#b89b6388;pointer-events:none
+}
+.panelheader button{min-height:44px;padding:4px 8px;font-size:14px}
+.panelheader .section{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:14.5px}
+.panelheader .close{margin-left:auto;flex:none;width:44px;min-width:44px}
+.panelheader .back{flex:none}
+.panelheader .tabs{display:flex;flex:1;gap:5px;min-width:0}
+.panelheader .tabs button{flex:1;min-width:0;white-space:nowrap;font-weight:650}
+.content{overflow:auto;overscroll-behavior:contain;min-height:0;flex:1;padding:6px 8px;scrollbar-color:#8d7653 #2a241c;scrollbar-width:thin}
+.footer{display:flex;gap:8px;align-items:center;padding:5px 8px;border-top:1px solid #6c573d;background:#2a251e;flex:none}
+.footer:empty{display:none}
+.footer button{flex:1;min-width:0;min-height:44px;padding:5px 8px;font-size:14px}
+.footer .stepper{display:flex;align-items:center;gap:8px;flex:none}
+.footer .stepper button{flex:none;width:44px;min-width:44px;min-height:44px;padding:0;font-size:20px}
+.footer .stepper b{min-width:20px;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+
+/* Compact 360px portrait tuning (zero sub-44px fallbacks) */
+.game.w360 .counter-tools{gap:4px}
+.game.w360 .counter-tools .rail button{padding:3px 7px;font-size:12.5px}
+.game.w360 .counter-tools .all-btn{padding:3px 7px;font-size:12.5px}
+.game.w360 .statcard{gap:6px}
+.game.w360 .statcard .stat-add{padding:5px 6px}
+.game.w360 .statcard .statmeta b,.game.w360 .statcard .statmeta .num{font-size:12px}
+
+/* Landscape: 40% WIDTH right side drawer (zero HUD/controls collision, full 44px+ combat buttons) */
+.game.landscape .panel{
+  top:0;bottom:calc(var(--dockHeight) + var(--sab));left:auto;right:0;
+  width:var(--sideWidth);height:auto;border-top:0;border-left:2px solid #b89b63;
+  box-shadow:-5px 0 16px #18181377
+}
+.game.landscape .panelheader{padding-top:0}
+.game.landscape.open .hud{right:calc(var(--sideWidth) + 9px)}
+.game.landscape.open .balance{right:calc(var(--sideWidth) + 9px)}
+.game.landscape.open .scene .location{left:30%}
+.game.landscape.open .controls{right:var(--sideWidth)}
+.game.landscape .controls .joystick{width:50px;height:50px}
+.game.landscape .controls .combat button{width:44px;height:44px;min-height:44px}
+.game.landscape .controls .attack{width:50px;height:50px;min-height:50px}
+.game.landscape .questhud{top:96px}
+.game.landscape .counterpick{top:96px}
+/* In landscape side drawer, Power uses 1-col with inline progress bar */
+.game.landscape .statgrid{grid-template-columns:1fr}
+.game.landscape .statcard .statmeta .progress{display:block}
+.game.landscape .diego-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.game.landscape .counter-tools .rail button,.game.landscape .counter-tools .all-btn{padding:3px 7px;font-size:12.5px}
+
+/* Desktop: clamped 48% bottom strip with wide multi-column grids */
+.game.desktop .content .grid{grid-template-columns:repeat(8,minmax(0,1fr))}
+.game.desktop .content .diego-grid{grid-template-columns:repeat(8,minmax(0,1fr))}
+.game.desktop .content .grid.three{grid-template-columns:repeat(6,minmax(0,1fr))}
+.game.desktop .content .geargrid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:480px}
+.game.desktop .content .statgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.game.desktop .content .grid.actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+.game.desktop .content .craft-desktop{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+
+/* Mobile Soft-Keyboard Mode with double-compression height guard */
+.sim-kb{
+  position:absolute;left:0;right:0;bottom:0;height:var(--kbHeight);z-index:8;
+  background:#1c1e21;border-top:1px solid #494e56;display:none;
+  flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:8px;color:#9ea6b2;font-size:12px
+}
+.sim-kb .kbrows{display:flex;flex-direction:column;gap:5px;width:100%;max-width:360px}
+.sim-kb .kbrow{display:flex;gap:4px;justify-content:center}
+.sim-kb span{flex:1;height:28px;background:#31353c;border-radius:4px;display:grid;place-items:center;font-size:11px;color:#d6dce6}
+.game.kb-open .dock,.game.kb-open .controls{display:none}
+.game.kb-open:not(.landscape) .panel{
+  bottom:var(--kbHeight);
+  height:min(var(--panelHeight),calc(100% - var(--kbHeight) - 56px))
+}
+.game.kb-open.landscape .panel{bottom:var(--kbHeight)}
+.game.kb-sim{--kbHeight:190px}
+.game.kb-sim.landscape{--kbHeight:140px}
+.game.kb-sim .sim-kb{display:flex}
+
+/* Re-anchored notice toasts: hug top of panel or controls, never block center character */
+.notice{
+  position:absolute;z-index:12;left:12px;right:12px;
+  bottom:calc(var(--dockHeight) + var(--controlsHeight) + var(--sab) + 8px);
+  background:#252e21f2;border:1px solid #b5ca91;border-radius:7px;padding:8px 11px;
+  box-shadow:0 3px 10px #2228;display:none;font-size:13px
+}
+.game.open:not(.landscape) .notice{bottom:calc(var(--dockHeight) + var(--panelHeight) + var(--sab) + 8px)}
+.game.landscape.open .notice{right:calc(var(--sideWidth) + 12px)}
+.game.kb-open:not(.landscape) .notice{bottom:calc(var(--kbHeight) + min(var(--panelHeight),calc(100% - var(--kbHeight) - 56px)) + 8px)}
+.notice.show{display:block}
+
+.mapoverlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;background:#263a31;border:2px solid #b79a65;padding-top:var(--sat);padding-bottom:var(--sab)}
+.mapoverlay[hidden]{display:none}
+.mapoverlay .maparea{flex:1;display:grid;place-items:center;position:relative;background:radial-gradient(ellipse at 40% 45%,#969763,#637b50 45%,#345f64 46%,#345f64 50%,#6b814f 51%);overflow:hidden}
+.maparea:after{content:'';position:absolute;inset:12% 20%;border:3px dashed #e0ca92;border-radius:50%;transform:rotate(-25deg);pointer-events:none}
+.marker{position:absolute;z-index:1;min-height:44px;background:#382f20;border-color:#c7b178}
+.counterpick{position:absolute;right:9px;top:calc(98px + var(--sat));z-index:3;display:flex;flex-direction:column;gap:6px}
+.counterpick button{font-size:12px;min-height:40px;background:#453c2be8;padding:4px 9px}
+.game.open .counterpick{display:none}
+.modal{position:absolute;inset:0;display:grid;place-items:center;z-index:11;background:#15171380;padding:15px}
+.modal[hidden]{display:none}
+.modalcard{background:#332b21;border:2px solid #b89b63;border-radius:10px;padding:12px;width:100%;max-width:330px;box-shadow:0 8px 25px #17150e99}
+
+.chatlog{display:flex;flex-direction:column;gap:5px;font-size:13.5px}
+.composer{width:100%;display:flex;gap:6px;align-items:center}
+.composer input,.search{flex:1;min-width:0;min-height:44px;background:#201d18;border:1px solid #7a6547;border-radius:6px;padding:6px 10px;color:var(--ink)}
+.composer button{flex:none;min-height:44px}
+.searchwrap{position:relative;display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.searchwrap .search{padding-right:40px}
+.searchwrap .clearbtn{position:absolute;right:4px;min-height:36px;min-width:36px;padding:0;border:0;background:transparent;color:var(--muted)}
+.badgeDot{width:7px;height:7px;display:inline-block;background:#f0bf66;border-radius:50%;margin-left:3px;vertical-align:middle}
+.legend{max-width:1020px;margin:0 auto;padding:0 14px 12px;font-size:12px;color:#bfb9ac;text-align:center}
+.prototype-label{position:absolute;bottom:4px;right:4px;z-index:1;color:#e7ead0;font-size:10px;opacity:.75}
+.game:not(.open) .scene:before{content:'Tap a dock tab or town counter to open';position:absolute;top:49%;left:50%;transform:translate(-50%,-50%);background:#25281ddd;padding:8px 12px;border-radius:7px;text-align:center;font-size:13px;width:68%;z-index:1}
+
+@media(max-width:380px){
+  .counter-tools{gap:4px}
+  .counter-tools .rail button,.counter-tools .all-btn{padding:3px 7px;font-size:12.5px}
+  .statcard{gap:6px}
+  .statcard .stat-add{padding:5px 6px}
+  .statcard .statmeta b,.statcard .statmeta .num{font-size:12px}
+}
+@media(max-width:550px){
+  .toolbar{padding:6px 7px;gap:3px}
+  .toolbar h1{font-size:14px}
+  .toolbar .meta{display:none}
+  .tools{gap:4px}
+  .tools button,.tools select,.sizechip{min-height:31px;font-size:11px;padding:3px 6px}
+  .stage{padding:0}
+  .game{max-width:100vw;max-height:none;height:calc(100dvh - 86px);min-height:480px;border-radius:0;border-left:0;border-right:0}
+  .game.landscape,.game.desktop,.game.w360{max-width:100vw}
+  .legend{font-size:10px;padding:3px 4px}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div>
+    <h1>BroTown / Menu prototype</h1>
+    <div class="meta">v4.4 · fixed 48% (clamped 318–410px) · single-toolbar views · tap-to-add stats · grounded controls</div>
+  </div>
+  <div class="tools">
+    <select id="device" aria-label="Preview device">
+      <option value="">390×780 portrait</option>
+      <option value="w360">360×660 compact</option>
+      <option value="landscape">Landscape (40% side)</option>
+      <option value="desktop">Desktop (48% bottom)</option>
+    </select>
+    <span class="sizechip" title="Locked single dashboard height: clamp(318px, 48%, 410px)">Fixed 48%</span>
+    <select id="station" aria-label="Open town counter">
+      <option value="">Town counter…</option>
+      <option>Diego</option>
+      <option>Blacksmith</option>
+      <option>Woodworker</option>
+      <option>Gem Works</option>
+      <option>Cookhouse</option>
+      <option>General Store</option>
+      <option>Feed &amp; Seed</option>
+      <option>Auction House</option>
+      <option>Bank</option>
+      <option>Post Office</option>
+      <option>Pet House</option>
+      <option>Gambling Den</option>
+      <option>Arena</option>
+      <option>Ace</option>
+      <option>Player Trade</option>
+    </select>
+    <button id="kbToggle" type="button" title="Simulate mobile soft keyboard">Keyboard</button>
+    <button id="reset" type="button">Reset</button>
+  </div>
+</div>
+
+<div class="stage">
+  <main id="game" class="game open" aria-label="BroTown prototype">
+    <div class="scene" id="scene">
+      <svg class="world" viewBox="0 0 390 780" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <pattern id="grass" width="37" height="27" patternUnits="userSpaceOnUse">
+            <path d="M4 12l3 -3 1 4m18 9 2 -4 2 3" stroke="#425e39" opacity=".36" fill="none"/>
+            <circle cx="18" cy="7" r="1" fill="#cad08b" opacity=".5"/>
+          </pattern>
+          <pattern id="roof" width="12" height="8" patternUnits="userSpaceOnUse">
+            <path d="M0 7H12M6 0v7" stroke="#583e2b" opacity=".45"/>
+          </pattern>
+        </defs>
+        <rect width="390" height="780" fill="url(#grass)"/>
+        <path d="M-30 330 Q110 240 190 350T420 290 L420 430Q310 465 190 415T-30 430Z" fill="#b6a47a" stroke="#94835e" stroke-width="5"/>
+        <path d="M183 100L245 780" stroke="#b6a47a" stroke-width="65"/>
+        <g transform="translate(56 189)">
+          <path d="M0 48H112V112H0Z" fill="#a48b62" stroke="#574c37" stroke-width="4"/>
+          <path d="M-12 50L56 0 124 50Z" fill="#81583c" stroke="#4d3b2c" stroke-width="4"/>
+          <path d="M-12 50L56 0 124 50Z" fill="url(#roof)"/>
+          <rect x="45" y="75" width="25" height="37" fill="#51402e"/>
+          <rect x="12" y="65" width="20" height="20" fill="#e6c681" stroke="#4e4834" stroke-width="3"/>
+          <rect x="81" y="65" width="20" height="20" fill="#e6c681" stroke="#4e4834" stroke-width="3"/>
+        </g>
+        <g fill="#45633f" stroke="#344a32" stroke-width="3">
+          <circle cx="32" cy="163" r="29"/><circle cx="333" cy="210" r="40"/>
+          <circle cx="350" cy="493" r="30"/><circle cx="25" cy="507" r="39"/>
+        </g>
+        <g transform="translate(195 351)">
+          <ellipse cx="0" cy="22" rx="14" ry="6" fill="#514b36" opacity=".7"/>
+          <path d="M-8 5L-8 20M8 5L8 20" stroke="#383a30" stroke-width="7"/>
+          <path d="M-10 -11L-10 7H10V-11Z" fill="#78a8ac" stroke="#3b5557" stroke-width="2"/>
+          <circle cy="-19" r="9" fill="#dfb68c" stroke="#69513d" stroke-width="2"/>
+        </g>
+      </svg>
+      <div class="location">BRO TOWN · SAFE</div>
+      <div class="prototype-label">SAMPLE WORLD</div>
+    </div>
+
+    <div class="hud">
+      <button class="portrait" id="portrait" aria-label="Open Power">
+        <span id="portraitIcon"></span>
+        <span class="lvl">Lvl 23</span>
+      </button>
+      <div class="hudright">
+        <button class="settingshud" id="settingshud" aria-label="Open Settings"></button>
+        <button class="minimap" id="minimap" aria-label="Open map"></button>
+      </div>
+    </div>
+
+    <button class="weaponhud" id="weaponhud" aria-label="Weapon progression"></button>
+    <button class="questhud" id="questhud">Slime trouble<br><b>Defeat slimes · 6/10</b></button>
+    <div class="balance" id="balance"></div>
+
+    <div class="counterpick">
+      <button onclick="openCounter('Diego')">Visit Diego</button>
+      <button onclick="openCounter('Blacksmith')">Visit Blacksmith</button>
+      <button onclick="openCounter('Bank')">Visit Bank</button>
+    </div>
+
+    <div class="controls">
+      <div class="joystick" role="img" aria-label="Movement control placeholder"></div>
+      <div class="combat" id="combat"></div>
+    </div>
+
+    <section class="panel" id="panel">
+      <div class="panelheader" id="header"></div>
+      <div class="content" id="content"></div>
+      <div class="footer" id="footer"></div>
+    </section>
+
+    <nav class="dock" id="dock" aria-label="Main menus"></nav>
+
+    <div class="sim-kb" id="simKb" aria-hidden="true">
+      <div>Simulated Mobile Soft Keyboard (dock hidden, drawer height-guarded)</div>
+      <div class="kbrows">
+        <div class="kbrow"><span>Q</span><span>W</span><span>E</span><span>R</span><span>T</span><span>Y</span><span>U</span><span>I</span><span>O</span><span>P</span></div>
+        <div class="kbrow"><span>A</span><span>S</span><span>D</span><span>F</span><span>G</span><span>H</span><span>J</span><span>K</span><span>L</span></div>
+        <div class="kbrow"><span>⇧</span><span>Z</span><span>X</span><span>C</span><span>V</span><span>B</span><span>N</span><span>M</span><span>⌫</span></div>
+      </div>
+    </div>
+
+    <div class="notice" role="status" id="notice"></div>
+    <section class="mapoverlay" id="map" hidden></section>
+    <div class="modal" id="modal" hidden></div>
+  </main>
+</div>
+
+<div class="legend">v4.4 prototype · single fixed 48% dashboard (clamped 318–410px; 40% side drawer in landscape) · swipe header down or tap world to close · sample data only.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const shapes={
+  sword:'<path d="M5 19l3-3m-2-4 6 6M9 15 20 4l1 1-2 8-7 5"/><path d="M3 21l3-3"/>',
+  bow:'<path d="M5 3Q22 6 19 21M5 3 19 21M5 19 20 4m-5 0h5v5"/>',
+  staff:'<path d="M5 21 16 8M15 7l-1-4 4-2 4 3-2 5-4-1"/>',
+  shield:'<path d="M12 2 21 6v6q-1 6-9 10Q4 18 3 12V6Z"/><path d="M12 6v12m-5-6h10"/>',
+  body:'<circle cx="12" cy="5" r="3"/><path d="M5 21v-4l3-4V9l4 2 4-2v4l3 4v4M8 15h8"/>',
+  bag:'<path d="M7 7V4q5-4 10 0v3M4 7h16l2 15H2Z"/><path d="M9 12h6v4H9Z"/>',
+  world:'<circle cx="12" cy="12" r="9"/><path d="m15 9-2 5-5 2 2-5Z"/>',
+  people:'<circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 21v-4q0-5 7-5t7 5v4m2-8q5 0 5 5v3"/>',
+  gear:'<circle cx="12" cy="12" r="4"/><path d="M10 2h4l1 3 3 1 3-1 2 4-2 3 2 3-2 4-3-1-3 1-1 3h-4l-1-3-3-1-3 1-2-4 2-3-2-3 2-4 3 1 3-1Z"/>',
+  map:'<path d="m2 5 6-3 8 3 6-3v17l-6 3-8-3-6 3Zm6-3v17m8-14v17"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><path d="M15 7h-4q-4 0-4 3t4 3h2q4 0 4 3t-4 3H9m3-14v16"/>',
+  potion:'<path d="M9 2h6v5l5 9q2 6-8 6T4 16l5-9ZM6 14h12M8 2h8"/>',
+  ore:'<path d="m2 16 3-9 8-5 8 7 1 9-10 4Z M5 7l7 15 9-13M2 16l10-4 10 6"/>',
+  gem:'<path d="m2 8 5-5h10l5 5-10 14Zm0 0h20M7 3l5 19 5-19"/>',
+  log:'<path d="m4 8 13-5 5 8-13 7M4 8q-5 5 1 11t5-6q-2-5-6-5Z M9 8l8-3"/>',
+  food:'<path d="M12 7q-6-7-9 1-3 9 5 13 4 2 4-1 7 4 9-7 2-8-9-6Zm0 0q0-4 5-5"/>',
+  hide:'<path d="m7 2 5 4 5-4 4 5-4 5 4 6-5 4-4-3-4 3-5-4 4-6-4-5Z"/>',
+  gel:'<path d="M12 2Q8 8 4 13q-5 9 8 9t8-9Q16 8 12 2Z"/><path d="M7 15v2m4 2h4"/>',
+  pet:'<circle cx="5" cy="8" r="2.5"/><circle cx="10" cy="5" r="2.5"/><circle cx="16" cy="5" r="2.5"/><circle cx="20" cy="9" r="2.5"/><path d="M6 16q6-10 12 0t-6 4q-10 4-6-4Z"/>',
+  armor:'<path d="m4 4 5-2 3 3 3-3 5 2 3 7-5 2v9H6v-9l-5-2Z"/>',
+  cape:'<path d="M8 2h8l5 20-9-3-9 3Z"/>',
+  legs:'<path d="M5 2h14l2 20h-7l-2-12-2 12H3Z"/>',
+  ring:'<circle cx="12" cy="15" r="7"/><path d="m7 7 2-5h6l2 5"/>',
+  hammer:'<path d="m4 21 11-11M10 4l5-3 7 7-5 5Z"/>',
+  fish:'<path d="M2 12q8-12 15 0l5-5v10l-5-5Q10 24 2 12Z"/><circle cx="6" cy="11" r="1"/>',
+  plant:'<path d="M12 22V6M12 15Q2 17 2 7q10-1 10 8Zm0-5Q13 0 22 2q0 9-10 8Z"/>',
+  monster:'<path d="M3 18V11a9 9 0 0 1 18 0v7l-4 3-5-3-5 3Z"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/>',
+  book:'<path d="M12 5Q7 1 2 3v17q5-2 10 2 5-4 10-2V3q-5-2-10 2Zm0 0v17"/>',
+  quest:'<path d="M6 3h13v18H6q-4 0-4-4V3Zm3 5h7m-7 4h7m-7 4h4"/>',
+  medal:'<circle cx="12" cy="16" r="6"/><path d="m9 10-5-8h5l3 5 3-5h5l-5 8M12 13v6"/>',
+  chat:'<path d="M2 3h20v14H9l-6 5v-5H2Zm5 6h10M7 13h7"/>',
+  rank:'<path d="M2 21V13h6v8m1 0V5h6v16m1 0V9h6v12M1 22h22"/>',
+  lock:'<rect x="5" y="10" width="14" height="12" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/>',
+  pin:'<path d="m9 3 12 12-5 1-4 4-2-6-6-2 4-4Zm1 11-8 8"/>',
+  check:'<path d="m4 12 5 5L20 6"/>',
+  smile:'<circle cx="12" cy="12" r="10"/><path d="M7 15q5 6 10 0M8 8v2m8-2v2"/>',
+  jump:'<circle cx="13" cy="4" r="2"/><path d="m4 11 7-3 5 4 5-3M11 8l-2 8-6 4m6-4 7 2 2 4"/>',
+  bank:'<path d="m2 8 10-6 10 6ZM4 21V10m5 11V10m6 11V10m5 11V10M2 22h20"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 5 10 9L22 5"/>',
+  dice:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 7h.01M17 7h.01M12 12h.01M7 17h.01M17 17h.01" stroke-width="3"/>',
+  heart:'<path d="M12 21 3 12q-5-9 3-9 4 0 6 4 2-4 6-4 8 0 3 9Z"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 10v6m0-10v1"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4.2-4.2"/>'
+};
+
+function icon(n,cls=''){return `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${shapes[n]||shapes.book}</svg>`}
+const spriteShapes={
+ sword:'<path d="M3 20l4-4 2 2-4 4Z" fill="#8c613c" stroke="#392b20"/><path d="M8 14 19 3l3-1-1 5L11 17Z" fill="#bdc9d3" stroke="#526575"/><path d="m11 14 9-10" stroke="#f5eee0"/><path d="m5 13 7 7 2-2-7-7Z" fill="#d4ab59" stroke="#795331"/>',
+ shield:'<path d="m12 2 9 4v6q-1 6-9 10Q4 18 3 12V6Z" fill="#9c7147" stroke="#e5b768"/><path d="M12 4v15M6 9l6-3 6 3" stroke="#e5c17e"/><circle cx="12" cy="12" r="3" fill="#bac5cc" stroke="#626b71"/>',
+ potion:'<path d="M9 2h6v5l5 9q2 6-8 6T4 16l5-9Z" fill="#d6e4db" stroke="#65776a"/><path d="M5 14h14l1 4q-3 4-8 4t-8-4Z" fill="#c95d52" stroke="#97483b"/><path d="M8 2h8v4H8Z" fill="#b68a54" stroke="#654a30"/>',
+ ore:'<path d="m2 16 3-9 8-5 8 7 1 9-10 4Z" fill="#79838a" stroke="#424a4d"/><path d="m5 7 7 15 9-13-8-7Z" fill="#a7afb1" stroke="#667379"/><path d="m7 10 5-3 3 5-4 3Z" fill="#c8a36b" stroke="#92754e"/>',
+ gem:'<path d="m2 8 5-5h10l5 5-10 14Z" fill="#69b8d9" stroke="#315e91"/><path d="M2 8h20L12 22 7 3m5 19 5-19" fill="none" stroke="#c6ecff"/>',
+ log:'<path d="m4 8 13-5 5 8-13 7Z" fill="#95663f" stroke="#4e3724"/><path d="M4 8q-5 5 1 11t5-6q-2-5-6-5Z" fill="#d6ab70" stroke="#6e4b2d"/><path d="m9 8 8-3m-5 7 7-4" stroke="#c38b4f"/>',
+ gel:'<path d="M12 2Q8 8 4 13q-5 9 8 9t8-9Q16 8 12 2Z" fill="#7cb56b" stroke="#345a37"/><path d="m7 14 2-4m-1 8 5 1" stroke="#c4e6a1"/>',
+ hide:'<path d="m7 2 5 4 5-4 4 5-4 5 4 6-5 4-4-3-4 3-5-4 4-6-4-5Z" fill="#b4895a" stroke="#68482d"/><path d="m8 7 3 3-3 5m8-8-2 4 3 5" stroke="#e0bc85"/>',
+ food:'<path d="M12 7q-6-7-9 1-3 9 5 13 4 2 4-1 7 4 9-7 2-8-9-6Z" fill="#c86348" stroke="#7b392d"/><path d="M12 7q0-4 5-5" stroke="#9fc571"/><path d="m6 9-1 4" stroke="#f0bd83"/>',
+ monster:'<path d="M3 18V11a9 9 0 0 1 18 0v7l-4 3-5-3-5 3Z" fill="#7ba867" stroke="#36543a"/><circle cx="8" cy="12" r="1.5" fill="#20291e"/><circle cx="16" cy="12" r="1.5" fill="#20291e"/>',
+ armor:'<path d="m4 4 5-2 3 3 3-3 5 2 3 7-5 2v9H6v-9l-5-2Z" fill="#a48a69" stroke="#58442f"/><path d="M8 6v13m8-13v13M6 14h12" stroke="#dfbf8a"/>',
+ bow:'<path d="M5 3Q22 6 19 21" fill="none" stroke="#cb9b61" stroke-width="3"/><path d="M5 3 19 21M5 19 20 4m-5 0h5v5" stroke="#e5e0c7"/>',
+ staff:'<path d="M5 21 16 8" stroke="#bd8850" stroke-width="4"/><path d="m15 7-1-4 4-2 4 3-2 5-4-1Z" fill="#a6bce8" stroke="#6275a7"/>'
+};
+function art(n,cls=''){return spriteShapes[n]?`<svg class="icon art ${cls}" viewBox="0 0 24 24" aria-hidden="true">${spriteShapes[n]}</svg>`:icon(n,'art '+cls)}
+function btn(label,action,cls='',disabled=false,ariaOverride=''){
+  const labels={'↺':'Reset staged points','−':'Decrease quantity or attribute','+':'Increase quantity or attribute','✕':'Close panel','›':'View details'};
+  const aria=ariaOverride||labels[label]||(action==='toggleInspect()'?'Toggle item inspection':action==='toggleProtected()'?'Show or hide protected items':'');
+  return `<button type="button" class="${cls}" onclick="${action}" ${disabled?'disabled':''} ${aria?`aria-label="${esc(aria)}"`:''}>${label}</button>`;
+}
+function prog(p){return `<div class="progress"><i style="width:${Math.max(0,Math.min(100,p))}%"></i></div>`}
+function row(a,b,cl='line'){return `<div class="row spread ${cl}"><div class="grow">${a}</div>${b}</div>`}
+function rail(options,active,handler){
+  return `<div class="railwrap"><div class="rail" data-rail="${handler}">${options.map(x=>{
+    const val=typeof x==='string'?x:x.value;
+    const lbl=typeof x==='string'?esc(x):x.label;
+    const aria=typeof x==='object'&&x.aria?x.aria:'';
+    return btn(lbl,`${handler}('${val.replaceAll("'","\\'")}')`,val===active?'selected':'quiet',false,aria);
+  }).join('')}</div><span class="railhint" hidden aria-hidden="true">›</span></div>`;
+}
+
+const initialItems=[
+  {id:'sword',name:'Iron sword',type:'Weapons',art:'sword',qty:1,rarity:'Common',value:90,action:'Equip',slot:'Sword'},
+  {id:'shield',name:'Oak shield',type:'Armor',art:'shield',qty:1,rarity:'Common',value:35,action:'Equip',slot:'Shield'},
+  {id:'potion',name:'Health potion',type:'Consumables',art:'potion',qty:3,value:8,action:'Drink'},
+  {id:'ore',name:'Iron ore',type:'Materials',art:'ore',qty:2,value:12},
+  {id:'gem',name:'Azure gem',type:'Materials',art:'gem',qty:1,value:500,rarity:'Rare'},
+  {id:'logs',name:'Pine logs',type:'Materials',art:'log',qty:8,value:3},
+  {id:'food',name:'Apple',type:'Consumables',art:'food',qty:5,value:4,action:'Eat'},
+  {id:'hide',name:'Hide',type:'Materials',art:'hide',qty:3,value:5},
+  {id:'gel',name:'Slime gel',type:'Materials',art:'gel',qty:4,value:20},
+  {id:'questgem',name:'Quest crystal',type:'Materials',art:'gem',qty:1,value:80,quest:true},
+  {id:'pinned',name:'Hardwood',type:'Materials',art:'log',qty:2,value:15,pinned:true},
+  {id:'pet',name:'Fox',type:'Pets',art:'pet',qty:1,action:'Equip'}
+];
+
+const groups={Bro:['Bag','Power','Skills'],World:['Quests','Codex','Feats'],People:['Roster','Chat','Ranks']};
+const slotNames=['Sword','Bow','Staff','Torso','Greaves','Cape','Shield','Amulet','Jewel'];
+const slotArt=['sword','bow','staff','armor','legs','cape','shield','ring','gem'];
+const modes={
+  Diego:'Trade',Blacksmith:'Make',Woodworker:'Make','Gem Works':'Make',Cookhouse:'Make',
+  'General Store':'Trade','Feed & Seed':'Trade','Auction House':'Trade',
+  Bank:'Keep','Post Office':'Keep','Pet House':'Keep',
+  'Gambling Den':'Play',Arena:'Play',Ace:'Play','Player Trade':'Trade'
+};
+const defaults={Bro:'Bag',World:'Quests',People:'Roster'};
+
+let items,gold,equipped,points,base,staged,selected,chatMessages,party,bank,claimed,activeTitle,questTracked,
+    settings,route,history,filter,lane,codexFilter,codexQuery,codexSearchOpen,featFilter,rosterFilter,chatChannel,rankFilter,
+    questFilter,settingsTab,counterTab,recipeQty,recipeIndex,tradeQty,noticeTimer,mapSource,reviewKind,
+    inspectMode,mailRecipient,protectedVisible=false,open=true,kbSim=false;
+let chatDrafts={};
+
+function resetState(){
+  items=structuredClone(initialItems);
+  gold=4210;
+  equipped={Sword:'Bronze sword',Bow:'Hunting bow',Staff:'Oak staff',Torso:'Leather vest',Greaves:'Leather legs',Cape:'Trail cape',Shield:'Wood shield',Amulet:'Copper amulet',Jewel:'Green gem',Pet:'Fox'};
+  points={Sword:2,Bow:1,Staff:0,Body:3};
+  base={Sword:[6,4,3,2],Bow:[5,3,4,2],Staff:[4,3,2,5],Body:[20,5,10,8]};
+  staged={};selected={};
+  chatMessages={
+    All:[['Mira','Anyone heading to Goo Grotto?'],['OakBro','Meet at the bridge.'],['System','Welcome to BroTown!']],
+    Area:[['OakBro','At the bridge.']],
+    Party:[],
+    Whispers:[],
+    News:[['Town notice','Daily spin is ready.']]
+  };
+  party=false;bank={};claimed=false;activeTitle='Explorer';questTracked=true;
+  settings={Music:70,Effects:85,Notifications:true};
+  route={group:'Bro',section:'Bag'};history=[];
+  filter='All';lane='Sword';codexFilter='Monsters';codexQuery='';codexSearchOpen=false;
+  featFilter='Medals';rosterFilter='Nearby';chatChannel='All';rankFilter='Combat';
+  questFilter='Active';settingsTab='Sound';counterTab='Sell';
+  recipeQty=1;recipeIndex=0;tradeQty=1;reviewKind='';inspectMode=false;protectedVisible=false;mailRecipient='';
+  open=true;kbSim=false;
+  $('game').classList.remove('kb-open','kb-sim');
+  $('kbToggle').classList.remove('active');
+  $('map').hidden=true;$('modal').hidden=true;$('notice').classList.remove('show');clearTimeout(noticeTimer);
+  render();
+}
+
+function getItem(id){return items.find(i=>i.id===id)}
+function toast(s){
+  $('notice').textContent=s;
+  $('notice').classList.add('show');
+  clearTimeout(noticeTimer);
+  noticeTimer=setTimeout(()=>$('notice').classList.remove('show'),2500);
+}
+
+function setRoute(g,s){route={group:g,section:s};history=[];open=true;render()}
+function dock(g){if(open&&route.group===g){closePanel();return}setRoute(g,defaults[g]||'Settings')}
+function toggleSettings(){if(open&&route.group==='Settings'){closePanel();return}setRoute('Settings','Settings')}
+function closePanel(){open=false;history=[];render()}
+function section(s){route={group:route.group,section:s};history=[];render()}
+function detail(kind,id){
+  history.push({route:{...route},scroll:$('content').scrollTop,rails:Object.fromEntries([...document.querySelectorAll('.rail')].map(el=>[el.dataset.rail,el.scrollLeft]))});
+  route={...route,detail:kind,id};
+  render();
+}
+function back(){
+  if(!history.length){closePanel();return}
+  const h=history.pop();
+  route=h.route;
+  render();
+  $('content').scrollTop=h.scroll;
+  document.querySelectorAll('.rail').forEach(el=>{el.scrollLeft=h.rails?.[el.dataset.rail]||0;el.dispatchEvent(new Event('scroll'))});
+}
+function redraw(){
+  const top=$('content').scrollTop, rails=Object.fromEntries([...document.querySelectorAll('.rail')].map(el=>[el.dataset.rail,el.scrollLeft]));
+  render();
+  $('content').scrollTop=top;
+  document.querySelectorAll('.rail').forEach(el=>{
+    el.scrollLeft=rails[el.dataset.rail]||0;
+    const b=el.querySelector('.selected');
+    if(b){
+      const a=el.getBoundingClientRect(),r=b.getBoundingClientRect();
+      if(r.right>a.right)el.scrollLeft+=r.right-a.right;
+      else if(r.left<a.left)el.scrollLeft-=a.left-r.left;
+    }
+    el.dispatchEvent(new Event('scroll'));
+  });
+}
+
+function setFilter(v){filter=v;redraw()}
+function setLane(v){lane=v;redraw()}
+function setQuest(v){questFilter=v;redraw()}
+function setCodex(v){codexFilter=v;redraw()}
+function setFeat(v){featFilter=v;redraw()}
+function setRoster(v){rosterFilter=v;redraw()}
+function setChat(v){chatChannel=v;redraw();$('content').scrollTop=$('content').scrollHeight}
+function setRank(v){rankFilter=v;redraw()}
+function setSettingsTab(v){settingsTab=v;redraw()}
+
+function openCounter(name){
+  selected={};recipeQty=1;recipeIndex=0;tradeQty=1;inspectMode=false;protectedVisible=false;
+  counterTab=name==='Diego'?'Sell':modes[name]==='Keep'?(name==='Post Office'?'Send':name==='Pet House'?'Keep':'Deposit'):modes[name]==='Trade'?(name==='Auction House'?'Browse':name==='Player Trade'?'Offer':'Buy'):'Make';
+  setRoute('Counter',name);
+}
+function setCounter(v){counterTab=v;selected={};recipeIndex=0;tradeQty=1;inspectMode=false;redraw()}
+
+function titleFor(){
+  return {
+    item:getItem(route.id)?.name,
+    codexItem:getItem(route.id)?.name,
+    slot:route.id,
+    gear:'Equipped gear',
+    skill:route.id,
+    quest:route.id,
+    monster:route.id,
+    player:route.id,
+    review:reviewKind==='sale'?'Review sale':reviewKind==='drop'?'Review drop':'Review action',
+    stats:'Stat details'
+  }[route.detail]||route.id||'';
+}
+
+function updateRails(){
+  document.querySelectorAll('.rail').forEach(el=>{
+    const update=()=>{
+      const max=el.scrollWidth-el.clientWidth;
+      const l=el.scrollLeft>2,r=el.scrollLeft<max-2;
+      const hint=el.parentElement.querySelector('.railhint');
+      if(hint){hint.hidden=max<=2;hint.textContent=l&&r?'‹ ›':r?'›':'‹'}
+    };
+    update();
+    el.addEventListener('scroll',update,{passive:true});
+  });
+}
+
+function render(){
+  const game=$('game');
+  game.classList.toggle('open',open);
+  $('panel').hidden=!open;
+  $('balance').innerHTML=icon('coin')+' '+gold.toLocaleString();
+  $('portraitIcon').innerHTML=icon('body');
+  $('settingshud').innerHTML=icon('gear');
+  $('settingshud').classList.toggle('selected',open&&route.group==='Settings');
+  $('minimap').innerHTML=icon('map','art green');
+  $('weaponhud').innerHTML=icon('sword')+`<b class="small">Lvl 14</b>`+prog(62);
+  $('combat').innerHTML=btn(icon('jump'),"toast('Jump control placeholder')",'iconbtn',false,'Jump')
+    +btn(icon('shield'),"toast('Defense control placeholder')",'iconbtn',false,'Defend')
+    +btn(icon('sword'),'simulateDamage()','attack',false,'Attack');
+
+  const hasPoints=Object.values(points).some(x=>x>0);
+  $('dock').innerHTML=[['Bro','bag'],['World','world'],['People','people']].map(([g,i])=>
+    btn(icon(i)+g+(g==='Bro'&&hasPoints?'<i class="badgeDot"></i>':''),`dock('${g}')`,open&&route.group===g?'selected':'')
+  ).join('');
+
+  if(!open)return;
+
+  let h='';
+  if(route.detail){
+    h=btn('‹ Back','back()','back quiet')+`<b class="section">${esc(titleFor())}</b>`;
+  }else if(groups[route.group]){
+    h=`<div class="tabs">`+groups[route.group].map(s=>
+      btn(s+(s==='Power'&&hasPoints?'<i class="badgeDot"></i>':''),`section('${s}')`,s===route.section?'selected':'')
+    ).join('')+'</div>';
+  }else{
+    h=`<b class="section" style="padding-left:6px">${esc(route.section)}</b>`;
+    if(route.group==='Counter')h+=`<span class="gold small" style="white-space:nowrap">${icon('coin')} ${gold.toLocaleString()}</span>`;
+  }
+  h+=btn('✕','closePanel()','close quiet');
+  $('header').innerHTML=h;
+
+  const res=route.detail?detailView():route.group==='Counter'?counterView():views[route.section]();
+  $('content').innerHTML=res.body;
+  $('footer').innerHTML=res.footer||'';
+  $('content').scrollTop=0;
+
+  const input=$('chatInput');
+  if(input)input.value=chatDrafts[chatChannel]||'';
+  if(route.section==='Chat'&&!route.detail)$('content').scrollTop=$('content').scrollHeight;
+  updateRails();
+}
+
+function tile(i,action,extra='',sel=false,locked=false,extraCls='',attrs=''){
+  return `<button type="button" class="tile ${extraCls} ${sel?'selected':''} ${locked?'locked':''}" onclick="${action}" ${attrs} aria-label="${esc(i.name)}${sel?', selected':''}">${i.qty>1?`<span class="qty">×${i.qty}</span>`:''}${sel?'<span class="tick">✓</span>':locked?'<span class="tick">⌑</span>':''}${art(i.art,i.rarity==='Rare'?'blue':'')}<span class="name ${i.rarity==='Rare'?'rare':''}">${esc(i.name)}</span>${extra?`<small>${extra}</small>`:''}</button>`;
+}
+function result(body,footer=''){return {body:`<div class="stack">${body}</div>`,footer}}
+
+function gearGridHtml(){
+  return `<div class="geargrid">${slotNames.map((n,i)=>tile({name:n,art:slotArt[i],qty:1},`detail('slot','${n}')`,equipped[n],false,false,'mini')).join('')}</div><div class="row pet-row">${art('pet','sm')}<div class="grow"><b>Active pet</b> <span class="small muted">· ${equipped.Pet||'None'}</span></div>${btn('Inspect',"detail('item','pet')",'quiet compact')}</div>`;
+}
+
+const views={
+  /* Single-rail Bag: merges Equipped Gear into the category rail, reclaiming 50px */
+  Bag:()=>{
+    const bagCount=items.filter(i=>i.qty>0&&i.type!=='Pets').length;
+    const bagTabs=[
+      {value:'All',label:icon('bag')+`All (${bagCount}/40)`,aria:'All bag items'},
+      {value:'Gear',label:icon('shield')+'Gear (9)',aria:'Equipped gear'},
+      {value:'Weapons',label:icon('sword')+'Wpns',aria:'Weapons'},
+      {value:'Armor',label:icon('armor')+'Armor',aria:'Armor'},
+      {value:'Consumables',label:icon('potion')+'Use',aria:'Consumables'},
+      {value:'Materials',label:icon('ore')+'Mats',aria:'Materials'},
+      {value:'Pets',label:icon('pet')+'Pets',aria:'Pets'}
+    ];
+    const bar=rail(bagTabs,filter,'setFilter');
+    if(filter==='Gear')return result(bar+gearGridHtml());
+    const list=items.filter(i=>i.qty>0&&(filter==='All'?i.type!=='Pets':i.type===filter));
+    return result(bar+`<div class="grid">${list.map(i=>tile(i,`detail('item','${i.id}')`,i.pinned?'Pinned':i.quest?'Quest':'')).join('')||'<span class="muted">Nothing here yet.</span>'}</div>`);
+  },
+
+  /* Tap-to-add 2x2 Power cards: tap card body to +1, single 44px minus button with 8px separation */
+  Power:()=>{
+    const ss=staged[lane]||[0,0,0,0];
+    const n=ss.reduce((a,b)=>a+b,0), left=points[lane]-n;
+    const names=lane==='Body'?['Health','Defense','Mana','Stamina']:['Power','Speed','Range','Luck'];
+    const lvls={Sword:'Lvl 14',Bow:'Lvl 9',Staff:'Lvl 5',Body:'Shared'};
+    // Display fixture only: actual derived stats must be connected to verified game calculations.
+    const fixture=lane==='Body'?base.Body[0]:({Sword:142,Bow:98,Staff:76}[lane]+(base[lane][0]-({Sword:6,Bow:5,Staff:4}[lane]))*8+(base[lane][1]-({Sword:4,Bow:3,Staff:3}[lane]))*5);
+    const projected=fixture+(lane==='Body'?ss[0]:ss[0]*8+ss[1]*5);
+    return result(
+      `<div class="skilllane">${['Sword','Bow','Staff','Body'].map(x=>
+        btn(`<span class="lanehead">${icon(x.toLowerCase())}<b>${x}</b></span><small>${lvls[x]}${x===lane?' · '+left+' left':points[x]?' · '+points[x]+' pts':''}</small>`,`setLane('${x}')`,lane===x?'selected':'')
+      ).join('')}</div>`
+      +`<div class="statgrid">${names.map((s,i)=>{
+        const canAdd=n<points[lane];
+        const addLbl=`<span class="statmeta"><b>${s}</b><span class="num">${base[lane][i]}${ss[i]?` <b class="good">→ ${base[lane][i]+ss[i]}</b>`:''}</span>${prog(base[lane][i]+ss[i])}</span><span class="addchip" aria-hidden="true">+</span>`;
+        return `<div class="statcard">${btn(addLbl,`changePoint(${i},1)`,'stat-add'+(ss[i]?' staged':''),!canAdd,`Add 1 point to ${s}`)}${btn('−',`changePoint(${i},-1)`,'quiet stat-sub',!ss[i],`Remove 1 staged point from ${s}`)}</div>`;
+      }).join('')}</div>`,
+      `<button class="power-summary" type="button" onclick="detail('stats','')"><div><div class="small muted">${lane==='Body'?'Health attribute':'Damage/sec · demo'}</div><strong>${fixture}${projected!==fixture?` <span class="good">→ ${projected}</span>`:''}</strong></div></button>`
+      +btn('↺','clearPoints()','quiet power-reset',!n)
+      +btn(n?`Apply ${n} point${n===1?'':'s'}`:'Tap stat to add','applyPoints()','primary power-apply',!n)
+    );
+  },
+
+  Skills:()=>result(
+    `<div class="row spread padded"><div class="grow"><b>Mining guild</b> <span class="small muted">· ${claimed?'Complete':'Reward ready'}</span></div>${btn(claimed?'Claimed':'Claim','claimReward()','primary compact',claimed)}</div>`
+    +`<div class="grid three">${[['Mining','ore',12,75],['Woodcutting','log',8,45],['Fishing','fish',6,32],['Farming','plant',10,82],['Cooking','food',4,60],['Smithing','hammer',7,35]].map(([n,a,l,p])=>
+      `<button type="button" class="tile" onclick="detail('skill','${n}')">${art(a)}<span class="name">${n}</span><small>Lvl ${l}</small><div style="width:82%">${prog(p)}</div></button>`
+    ).join('')}</div>`
+  ),
+
+  Quests:()=>{
+    const pills=['Active',{value:'Daily',label:'Daily · 1'},'On offer','Done'];
+    let body=rail(pills,questFilter,'setQuest');
+    if(questFilter==='Active'){
+      body+=`<div class="row quest-ready">${art('check')}<div class="grow"><b>Harvest delivery</b><div class="small good">Ready to turn in</div></div>${btn('Go',"showMap('Feed & Seed')",'primary')}</div>`
+        +`<div class="row quest-entry">${art('monster')}<div class="grow"><div class="row spread"><b>Slime trouble</b><span class="small">6/10</span></div><div class="small muted">${questTracked?'Tracked · ':''}Defeat slimes</div>${prog(60)}</div>${btn('Map',"showMap('Goo Grotto')",'quiet')}${btn('›',"detail('quest','Slime trouble')",'quiet iconbtn')}</div>`
+        +row(art('ore','sm')+' <b>A miner’s request</b><div class="small muted">Gather resources</div>',btn('Details ›',"detail('quest','Mining request')",'quiet'));
+    }else if(questFilter==='Daily'){
+      body+=row('<b>Daily spin</b><div class="small gold">Free spin ready</div>',btn('Go',"showMap('Gambling Den')",'primary compact'))
+        +row('<b>Farm orders</b><div class="small muted">0/3 complete today</div>',btn('Map',"showMap('Feed & Seed')",'quiet compact'));
+    }else if(questFilter==='On offer'){
+      body+=row('<b>Meet the woodworker</b><div class="small muted">Available in town</div>',btn('Details ›',"detail('quest','Woodworker')",'quiet compact'));
+    }else{
+      body+=row('<b>Welcome to town</b><div class="small good">Completed</div>',btn('Details ›',"detail('quest','Welcome to town')",'quiet compact'));
+    }
+    return result(body);
+  },
+
+  /* Single-row Codex: expand-on-tap search swaps cleanly with the category rail */
+  Codex:()=>{
+    const data={
+      Monsters:[['Slime','monster'],['Water frog','monster'],['Rock monster','ore'],['Electric eye','gem']],
+      Items:items.filter(i=>i.type!=='Pets').map(i=>[i.name,i.art,i.id]),
+      Resources:[['Iron ore','ore','ore'],['Pine logs','log','logs']],
+      Townsfolk:[['Diego','people'],['Blacksmith','hammer']],
+      Lands:[['Goo Grotto','map'],['Frozen Shore','map']],
+      Pets:[['Fox','pet','pet']],
+      'How it works':[['Combat rules','shield'],['Trading','coin']]
+    };
+    const arr=data[codexFilter].filter(x=>x[0].toLowerCase().includes(codexQuery.toLowerCase()));
+    const topBar=(codexSearchOpen||codexQuery)
+      ?`<div class="codex-bar"><div class="searchwrap"><input id="codexSearch" class="search" aria-label="Search codex" placeholder="Search ${esc(codexFilter.toLowerCase())}…" value="${esc(codexQuery)}" oninput="searchCodex(this.value)"><button type="button" id="codexClear" class="clearbtn" ${codexQuery?'':'hidden'} onclick="clearCodexQuery()" aria-label="Clear search">✕</button></div>${btn('Done','closeCodexSearch()','quiet compact')}</div>`
+      :`<div class="codex-bar">${btn(icon('search'),'openCodexSearch()','quiet iconbtn',false,'Search codex')}${rail(Object.keys(data),codexFilter,'setCodex')}</div>`;
+    return result(
+      topBar
+      +`<div id="codexGrid" class="grid">${arr.map(([n,a,id])=>tile({name:n,art:a,qty:1},id?`detail('codexItem','${id}')`:`detail('monster','${n}')`)).join('')||'<span class="muted">No matches.</span>'}</div>`
+    );
+  },
+
+  Feats:()=>result(
+    `<div class="row spread padded"><div class="grow"><b>Slime hunter</b> <span class="small muted">80/100</span>${prog(80)}</div><span class="gold bold small">120 AP</span>${btn('Ranks ›',"setRoute('People','Ranks')",'quiet compact')}</div>`
+    +rail(['Medals','Titles','Records'],featFilter,'setFeat')
+    +(featFilter==='Titles'
+      ?['Explorer','Slime Hunter','Trailblazer'].map(t=>row(`<b>${t}</b>${t===activeTitle?' <span class="good small">· Active</span>':''}`,btn(t===activeTitle?'Equipped':'Equip',`equipTitle('${t}')`,'quiet compact',t===activeTitle),'line tight')).join('')
+      :featFilter==='Records'
+      ?row('Monsters defeated','<b>382</b>','line tight')+row('Gold earned','<b class="gold">12,580g</b>','line tight')
+      :row(icon('medal')+' <b>First steps</b>','<span class="good small">Earned</span>','line tight')+row(icon('medal')+' <b>Slime hunter</b>','<b>80/100</b>','line tight'))
+  ),
+
+  Roster:()=>result(
+    `<div class="row spread padded"><div class="grow"><b>${party?'Your party':'No party'}</b> <span class="small muted">· ${party?'Leader':'Play together'}</span></div>${btn(party?'Leave':'Create party','toggleParty()',party?'quiet compact':'primary compact')}</div>`
+    +rail(['Nearby','Friends','Requests','Blocked'],rosterFilter,'setRoster')
+    +((rosterFilter==='Nearby'?['Mira','OakBro','River']:rosterFilter==='Friends'?['Mira']:[]).map((n,i)=>
+      row(`<button type="button" class="link" onclick="detail('player','${n}')">${art('body','sm')} <b>${n}</b> <span class="small muted">Lvl ${19+i*3}</span></button>`,
+          btn(rosterFilter==='Friends'?'Message':'Invite',rosterFilter==='Friends'?`messagePlayer('${n}')`:`toast('Invite sent to ${n} (demo)')`,'primary compact'),'line tight')
+    ).join('')||'<div class="muted small">No players here.</div>')
+  ),
+
+  Chat:()=>result(
+    rail(['All','Area','Party','Whispers','News'],chatChannel,'setChat')
+    +`<div class="chatlog" id="chatLog">${chatMessages[chatChannel].map(([n,m])=>`<div><b class="gold">${esc(n)}</b> ${esc(m)}</div>`).join('')||'<div class="muted small">No messages yet.</div>'}</div>`,
+    chatChannel==='News'
+      ?'<span class="muted small">News is read-only.</span>'
+      :`<form class="composer" onsubmit="event.preventDefault();sendChat()">${btn(icon('smile'),"toast('Emote picker (demo)')",'iconbtn quiet',false,'Emotes')}<input id="chatInput" placeholder="Message ${esc(chatChannel)}…" aria-label="Message" autocomplete="off"><button type="submit" class="primary">Send</button></form>`
+  ),
+
+  Ranks:()=>result(
+    rail(['Combat','Skills','Feats','Records'],rankFilter,'setRank')
+    +`<div class="row spread padded small"><b>Your rank · #42</b><b class="gold">${rankFilter==='Combat'?'Lvl 23':'120 pts'}</b></div>`
+    +['OakBro','Mira','River','Ash'].map((n,i)=>
+      row(`<button type="button" class="link" onclick="detail('player','${n}')"><b>${i+1}.</b> ${art('body','sm')} ${n}</button>`,
+          `<b class="small">${rankFilter==='Combat'?'Lvl '+(80-i*7):(820-i*95)+' pts'}</b>`,'line tight')
+    ).join('')
+  ),
+
+  Settings:()=>{
+    let body=rail(['Sound','Screen','Alerts','Account','Help'],settingsTab,'setSettingsTab');
+    if(settingsTab==='Sound'){
+      body+=['Music','Effects'].map(s=>row(`<label for="vol${s}"><b>${s}</b></label>`,`<div class="row"><input id="vol${s}" type="range" min="0" max="100" value="${settings[s]}" oninput="settings.${s}=+this.value;this.nextElementSibling.textContent=this.value+'%'" style="width:110px"><span class="small num" style="width:34px;text-align:right">${settings[s]}%</span></div>`)).join('');
+    }else if(settingsTab==='Screen'){
+      body+=row('<b>Control layout</b><div class="small muted">Grounded joystick &amp; 44px+ combat</div>',btn('Default',"toast('Control settings placeholder')",'quiet compact'))
+        +row('<b>Dashboard size</b><div class="small muted">Locked single height</div>','<span class="gold small bold">48% (318–410px)</span>');
+    }else if(settingsTab==='Alerts'){
+      body+=row('<b>Game notifications</b><div class="small muted">Quest &amp; trade notices</div>',btn(settings.Notifications?'On':'Off','settings.Notifications=!settings.Notifications;redraw()',settings.Notifications?'primary compact':'quiet compact'));
+    }else if(settingsTab==='Account'){
+      body+=row('<b>Session</b><div class="small muted">Return to title screen</div>',btn('Log out',"showCard('Log out','Return to login?','Log out')",'warn compact'));
+    }else{
+      body+=row('<b>Feedback</b><div class="small muted">Report a bug or idea</div>',btn('Open',"toast('Feedback placeholder')",'quiet compact'));
+    }
+    return result(body);
+  }
+};
+
+function detailView(){
+  const id=route.id;
+  switch(route.detail){
+    case 'gear':
+      return result(gearGridHtml());
+
+    case 'slot':{
+      const name=equipped[id];
+      const i=slotNames.indexOf(id);
+      const candidates=items.filter(x=>x.slot===id&&x.qty>0);
+      return result(
+        `<div class="row">${art(slotArt[i],'big')}<div><b>${esc(name||'Empty')}</b><div class="small muted">Equipped · ${esc(id)}</div></div></div>`
+        +(candidates.length?'<div class="small muted">Available equipment</div><div class="grid">'+candidates.map(x=>tile(x,`detail('item','${x.id}')`)).join('')+'</div>':'<div class="small muted">No alternatives in this sample bag.</div>'),
+        btn('Browse bag',"setRoute('Bro','Bag');setFilter('All')",'quiet')
+      );
+    }
+
+    case 'codexItem':{
+      const i=getItem(id);if(!i)return result('Entry unavailable.');
+      return result(
+        `<div class="row">${art(i.art,'big')}<div class="grow"><b>${esc(i.name)}</b><div class="small muted">${i.rarity||'Common'} · ${i.type}</div></div></div>`
+        +`<div class="row spread"><span>Reference value</span><b class="gold">${i.value||0}g</b></div>`
+        +`<div class="small muted">Reference entry · sample source and values.</div>`,
+        btn('Find source',"showMap('Goo Grotto')",'quiet')
+      );
+    }
+
+    case 'item':{
+      const i=getItem(id);
+      if(!i)return result('Item no longer available.');
+      return result(
+        `<div class="row">${art(i.art,'big '+(i.rarity==='Rare'?'blue':''))}<div class="grow"><b>${esc(i.name)}</b><div class="small muted">${i.rarity||'Common'} · ${i.qty} owned · <span class="gold bold">${i.value||0}g</span>${i.pinned?' · Pinned':''}${i.quest?' · Quest-locked':''}</div>${i.slot?`<div class="small">Equipped: ${equipped[i.slot]}</div>`:''}</div></div>`
+        +(i.slot?'<div class="item-compare"><b>Equipment comparison</b><div class="small muted">Projected damage and defense: live values unavailable.</div></div>':'')
+        +`<div class="row">${btn(icon('pin')+' '+(i.pinned?'Unpin':'Pin'),`togglePin('${id}')`,'quiet grow',i.quest)}${btn('Drop 1',`startDrop('${id}')`,'warn grow',i.quest||i.pinned||i.qty<1)}</div>`,
+        i.action?btn(i.action,`useItem('${id}')`,'primary',i.qty<1):btn('Find source',"showMap('Goo Grotto')",'quiet')
+      );
+    }
+
+    case 'stats':
+      return result('<div class="stack"><b>Performance preview · sample only</b><div class="small muted">The damage preview is a layout fixture, not BroTown’s formula. Live damage, effective health (if supported), and all actual attributes must come from verified game calculations. Body shows its sample health attribute directly.</div></div>');
+
+    case 'skill':
+      return result(
+        `<div class="row">${art('hammer','big')}<div class="grow"><b>${esc(id)}</b><div class="muted small">Progress toward next level</div>${prog(75)}</div></div>`
+        +`<div class="row spread padded"><div class="grow"><b>Next unlock</b><div class="small muted">Guild task · gather 10 resources</div></div>${btn('Map',"showMap('Guild Hall')",'quiet compact')}</div>`
+        +`<div class="small muted">Unlocks: sample layout; actual unlocks require repository audit.</div>`
+      );
+
+    case 'quest':
+      return result(
+        `<div class="row">${art('quest','big')}<div class="grow"><b>${esc(id)}</b><div class="small muted">${id==='Slime trouble'?'Defeat slimes · 6/10':'Visit the quest giver'}</div>${prog(60)}</div></div>`
+        +row('<b>Reward</b> <span class="gold bold">100g</span> <span class="small muted">(sample)</span>',btn('Slime in Codex ›',"detail('monster','Slime')",'quiet compact'),'padded'),
+        btn(questTracked?'Untrack':'Track','questTracked=!questTracked;redraw()','quiet')+btn('Show on map',"showMap('Goo Grotto')",'primary')
+      );
+
+    case 'monster':
+      return result(
+        `<div class="row spread"><div class="row">${art('monster','big')}<div><b>${esc(id)}</b><div class="small muted">Habitat · Goo Grotto</div></div></div>${btn('Map',"showMap('Goo Grotto')",'quiet compact')}</div>`
+        +(codexFilter==='Monsters'||id==='Slime'
+          ?`<div class="small muted bold">Drops · illustrative odds</div>`
+            +row(art('gel','sm')+' Slime gel','<b>90%</b>','line tight')
+            +row(art('gem','sm blue')+' Azure gem','<b>9%</b>','line tight')
+            +row('Undiscovered drop','<span class="muted">Unknown</span>','line tight')
+          :'<div class="padded small muted">Example codex entry.</div>')
+      );
+
+    case 'player':
+      return result(
+        `<div class="row">${art('body','big')}<div class="grow"><b>${esc(id)}</b><div class="small muted">Lvl 19 · Nearby</div></div></div>`
+        +`<div class="grid actions">`
+          +btn(icon('chat')+' Message',`messagePlayer('${id}')`,'primary')
+          +btn(icon('people')+' Invite',`toast('Invite sent to ${id} (demo)')`,'quiet')
+          +btn(icon('coin')+' Trade',"openCounter('Player Trade')",'quiet')
+          +btn(icon('sword')+' Duel',`showCard('Challenge ${id}','Send a duel challenge?','Send challenge')`,'quiet')
+          +btn(icon('heart')+' Add friend',"toast('Friend request sent (demo)')",'quiet')
+          +btn(icon('lock')+' Safety',"toast('Mute / Block / Report placeholder')",'quiet')
+        +`</div>`
+      );
+
+    case 'review':
+      return reviewView();
+
+    default:
+      return result('Details placeholder.');
+  }
+}
+
+function changePoint(i,d){
+  const a=staged[lane]||[0,0,0,0];
+  if(d>0&&a.reduce((x,y)=>x+y,0)>=points[lane]||d<0&&!a[i])return;
+  a[i]+=d;staged[lane]=a;redraw();
+}
+function clearPoints(){delete staged[lane];redraw()}
+function applyPoints(){
+  const a=staged[lane]||[0,0,0,0],n=a.reduce((x,y)=>x+y,0);
+  if(n>points[lane])return;
+  base[lane]=base[lane].map((x,i)=>x+a[i]);
+  points[lane]-=n;delete staged[lane];redraw();
+  toast(`Applied ${n} ${lane==='Body'?'shared':'weapon'} pt${n===1?'':'s'} (demo)`);
+}
+function togglePin(id){const i=getItem(id);if(i&&!i.quest){i.pinned=!i.pinned;if(i.pinned)delete selected[id]}redraw()}
+function useItem(id){
+  const i=getItem(id);if(!i||i.qty<1)return;
+  if(i.action==='Equip'){equipped[i.slot||'Pet']=i.name;toast('Equipped '+i.name+' (demo)')}
+  else{i.qty--;toast(i.action+' '+i.name+' (demo)')}
+  redraw();
+}
+function startDrop(id){const i=getItem(id);if(!i||i.pinned||i.quest||i.qty<1)return;reviewKind='drop';detail('review',id)}
+function commitDrop(id){const i=getItem(id);if(!i||i.pinned||i.quest||i.qty<1){toast('Item is protected or unavailable');back();return}i.qty--;delete selected[id];back();toast('Item dropped (demo)')}
+function claimReward(){claimed=true;redraw();toast('Guild reward claimed (demo)')}
+function equipTitle(t){activeTitle=t;redraw();toast('Title equipped (demo)')}
+function toggleParty(){party=!party;redraw()}
+function messagePlayer(n){setRoute('People','Chat');setChat('Whispers');$('chatInput')?.focus();toast('Whisper to '+n+' (demo)')}
+
+document.addEventListener('input',e=>{
+  if(e.target.id==='chatInput')chatDrafts[chatChannel]=e.target.value;
+  if(e.target.id==='recipient')mailRecipient=e.target.value;
+});
+
+/* Preserve keyboard focus on mobile: append directly to #chatLog without rebuilding footer */
+function sendChat(){
+  const input=$('chatInput');
+  const v=input?.value.trim();
+  if(!v||chatChannel==='News')return;
+  chatMessages[chatChannel].push(['You',v]);
+  chatDrafts[chatChannel]='';
+  const log=$('chatLog');
+  if(log){
+    if(chatMessages[chatChannel].length===1)log.innerHTML='';
+    const line=document.createElement('div');
+    line.innerHTML=`<b class="gold">You</b> ${esc(v)}`;
+    log.appendChild(line);
+  }
+  input.value='';
+  $('content').scrollTop=$('content').scrollHeight;
+  input.focus();
+}
+
+function openCodexSearch(){
+  codexSearchOpen=true;
+  redraw();
+  $('codexSearch')?.focus();
+}
+function closeCodexSearch(){
+  codexSearchOpen=false;
+  codexQuery='';
+  redraw();
+}
+function searchCodex(v){
+  codexQuery=v;
+  const clear=$('codexClear');
+  if(clear)clear.hidden=!v;
+  const d=document.createElement('div');
+  d.innerHTML=views.Codex().body;
+  const grid=$('codexGrid');
+  if(grid)grid.innerHTML=d.querySelector('#codexGrid').innerHTML;
+}
+function clearCodexQuery(){
+  codexQuery='';
+  const inp=$('codexSearch');
+  if(inp){inp.value='';inp.focus()}
+  searchCodex('');
+}
+
+function eligible(){return items.filter(i=>i.type==='Materials'&&i.qty>0&&!i.quest&&!i.pinned)}
+function selection(){return Object.entries(selected).map(([id,q])=>({i:getItem(id),q})).filter(x=>x.i&&x.q>0)}
+function totals(){
+  const a=selection();
+  return {n:a.reduce((s,x)=>s+x.q,0),value:a.reduce((s,x)=>s+x.q*x.i.value,0),rare:a.some(x=>x.i.rarity==='Rare')};
+}
+
+/* Long-press with 8px scroll-cancel guard so scrolling never triggers accidental inspection */
+let holdTimer=null,didHold=false,holdOrigin=null;
+function startTileHold(id,e){
+  didHold=false;
+  holdOrigin=e?[e.clientX,e.clientY]:null;
+  clearTimeout(holdTimer);
+  holdTimer=setTimeout(()=>{didHold=true;detail('item',id)},440);
+}
+function moveTileHold(e){
+  if(!holdTimer||!holdOrigin)return;
+  if(Math.hypot(e.clientX-holdOrigin[0],e.clientY-holdOrigin[1])>8){
+    clearTimeout(holdTimer);holdTimer=null;
+  }
+}
+function endTileHold(){clearTimeout(holdTimer);holdTimer=null;holdOrigin=null}
+function tapDiegoTile(id){
+  if(didHold){didHold=false;return}
+  if(inspectMode){detail('item',id);return}
+  toggleSell(id);
+}
+function toggleInspect(){inspectMode=!inspectMode;redraw()}
+function toggleProtected(){protectedVisible=!protectedVisible;redraw()}
+
+function toggleSell(id){
+  const i=getItem(id);
+  if(!i||i.type!=='Materials'||i.qty<1)return;
+  if(i.quest||i.pinned){toast(i.quest?'Protected: needed for a quest':'Protected: pinned');return}
+  if(selected[id])delete selected[id];
+  else selected[id]=i.qty;
+  redraw();
+}
+function selectAll(){
+  const e=eligible().filter(i=>!i.rarity||i.rarity==='Common');
+  const all=e.length&&e.every(i=>selected[i.id]===i.qty);
+  for(const i of e){if(all)delete selected[i.id];else selected[i.id]=i.qty}
+  redraw();
+}
+function validateSale(){
+  const stale=selection().some(({i,q})=>i.type!=='Materials'||i.quest||i.pinned||q>i.qty||!Number.isInteger(q));
+  if(stale){
+    for(const {i,q} of selection())if(i.quest||i.pinned||i.type!=='Materials'||q>i.qty||!Number.isInteger(q))delete selected[i.id];
+    redraw();
+    toast('Selection changed. Review before selling.');
+    return false;
+  }
+  return true;
+}
+function reviewSale(){reviewKind='sale';detail('review','')}
+function sell(){
+  if(!validateSale())return;
+  const t=totals();
+  if(!t.n)return;
+  if(t.value>1000||t.rare){reviewSale();return}
+  commitSale();
+}
+function commitSale(){
+  if(!validateSale())return;
+  const t=totals();
+  if(!t.n)return;
+  if((t.rare||t.value>1000)&&route.detail!=='review'){reviewSale();return}
+  for(const {i,q} of selection())i.qty-=q;
+  gold+=t.value;selected={};
+  if(route.detail==='review')back();
+  else redraw();
+  toast(`Sold ${t.n} items · +${t.value}g (demo)`);
+}
+function adjustSelected(id,d){
+  const i=getItem(id);
+  selected[id]=Math.max(0,Math.min(i.qty,(selected[id]||0)+d));
+  redraw();
+}
+
+function reviewView(){
+  if(reviewKind==='sale'){
+    const t=totals();
+    return result(
+      (t.rare||t.value>1000?`<div class="panelnote small">Review required · ${t.rare?'Rare item selected':'Sale above 1,000g'}</div>`:'')
+      +selection().map(({i,q})=>
+        `<div class="row line tight">${art(i.art,'sm')}<div class="grow"><b>${esc(i.name)}</b><div class="small muted">${q} × ${i.value}g · ${i.rarity||'Common'}</div></div>${btn('−',`adjustSelected('${i.id}',-1)`,'iconbtn quiet')}${btn('+',`adjustSelected('${i.id}',1)`,'iconbtn quiet',q>=i.qty)}</div>`
+      ).join('')
+      +`<div class="row spread small"><b>${t.n} items</b><b class="gold">${t.value}g total</b></div>`,
+      btn('Cancel','back()','quiet')+btn(`Confirm · ${t.value}g`,'commitSale()','primary',!t.n)
+    );
+  }
+  if(reviewKind==='drop'){
+    const i=getItem(route.id);
+    return result(
+      `<div class="panelnote">Drop 1 ${esc(i.name)}? This permanently removes it from your bag.</div>`,
+      btn('Cancel','back()','quiet')+btn('Drop 1 item',`commitDrop('${i.id}')`,'warn')
+    );
+  }
+  return result('Review unavailable.');
+}
+
+function counterView(){
+  const name=route.section,mode=modes[name];
+
+  /* Single-toolbar Diego: Sell/Buy back + All common + Protected lock toggle + Inspect toggle */
+  if(name==='Diego'){
+    if(counterTab==='Buy back'){
+      return result(
+        `<div class="row spread">${rail(['Sell','Buy back'],counterTab,'setCounter')}</div>`
+        +`<div class="padded small muted">Buy-back offers appear here after a sale. Live offer rules not simulated.</div>`
+      );
+    }
+    const t=totals(),e=eligible().filter(i=>!i.rarity||i.rarity==='Common');
+    const allSel=e.length&&e.every(i=>selected[i.id]===i.qty);
+    return result(
+      `<div class="counter-tools">${rail(['Sell','Buy back'],counterTab,'setCounter')}${btn(allSel?'Clear':'All common','selectAll()','quiet all-btn',!e.length)}${btn(icon('lock'),'toggleProtected()',protectedVisible?'selected tool-icon':'quiet tool-icon')}${btn(icon('info'),'toggleInspect()',inspectMode?'selected tool-icon':'quiet tool-icon')}</div>`
+      +`<div class="grid diego-grid${inspectMode?' inspecting':''}">${items.filter(i=>i.type==='Materials'&&i.qty>0&&(protectedVisible||(!i.quest&&!i.pinned))).map(i=>
+        tile(i,`tapDiegoTile('${i.id}')`,i.quest?'Quest':i.pinned?'Pinned':selected[i.id]?`${selected[i.id]}/${i.qty} · ${i.value}g`:`${i.value}g`,!!selected[i.id],i.quest||i.pinned,'',
+          `onpointerdown="startTileHold('${i.id}',event)" onpointermove="moveTileHold(event)" onpointerup="endTileHold()" onpointercancel="endTileHold()" onpointerleave="endTileHold()"`)
+      ).join('')||'<span class="muted">No sellable materials.</span>'}</div>`,
+      inspectMode
+        ?`<span class="gold small grow">Inspect mode · tap any item</span>`+btn('Done','toggleInspect()','quiet')
+        :t.n
+          ?`<span class="count small"><b>${t.n}</b></span>`+btn('Review / qty','reviewSale()','quiet sale-review')+btn(`${t.rare||t.value>1000?'Review':'Sell'} · ${t.value}g`,'sell()','primary sale-total')
+          :'<span class="muted small grow">Tap to select · hold to inspect</span>'+btn('Sell · 0g','sell()','primary sale-total',true)
+    );
+  }
+
+  if(mode==='Make'){
+    const recipes={
+      Blacksmith:[['Iron sword','sword','ore',2],['Iron shield','shield','ore',3]],
+      Woodworker:[['Wooden bow','bow','logs',3],['Oak shield','shield','logs',4]],
+      'Gem Works':[['Cut gem','gem','gem',1]],
+      Cookhouse:[['Apple meal','food','food',2]]
+    }[name];
+    const [n,a,id,need]=recipes[recipeIndex]||recipes[0];
+    const ingredient=getItem(id),required=need*recipeQty,can=ingredient.qty>=required;
+    return result(
+      `<div class="craft-desktop"><div class="stack"><div class="row spread"><b class="small muted">Recipes</b>${btn('Repeat last','recipeIndex=0;recipeQty=1;redraw()','quiet compact')}</div><div class="hstrip">${recipes.map(([r,ar],i)=>tile({name:r,art:ar,qty:1},`recipeIndex=${i};recipeQty=1;redraw()`,'',recipeIndex===i,false,'mini')).join('')}</div></div>`
+      +`<div class="padded stack"><div class="row">${art(a)}<div class="grow"><b>${n}</b><div class="small muted">Output ×${recipeQty}</div></div><div class="row">${btn('−','recipeQty=Math.max(1,recipeQty-1);redraw()','iconbtn quiet',recipeQty<=1)}${btn('+','recipeQty++;redraw()','iconbtn quiet')}</div></div>`
+      +`<div class="row spread small"><span>${art(ingredient.art,'sm')} ${ingredient.name}</span><b class="${can?'good':'bad'}">${ingredient.qty}/${required}${!can?` (need ${required-ingredient.qty})`:''}</b></div></div></div>`,
+      btn('Bag',"setRoute('Bro','Bag')",'quiet')+btn(`Craft ${recipeQty} ${n}`,`craft('${id}',${required},'${n}')`,'primary',!can)
+    );
+  }
+
+  if(mode==='Keep'){
+    if(name==='Bank'){
+      const list=counterTab==='Deposit'
+        ?items.filter(i=>i.qty>0&&i.type!=='Pets'&&!i.pinned&&!i.quest)
+        :Object.entries(bank).filter(x=>x[1]>0).map(([id,qty])=>({...getItem(id),qty}));
+      const count=Object.values(selected).reduce((s,v)=>s+(v||0),0);
+      return result(
+        `<div class="row spread">${rail(['Deposit','Withdraw'],counterTab,'setCounter')}<span class="small muted">${counterTab==='Deposit'?'Bag':'Vault'} · ${list.length}</span></div>`
+        +`<div class="grid">${list.map(i=>tile(i,`selected['${i.id}']=selected['${i.id}']?0:${i.qty};redraw()`,'',!!selected[i.id])).join('')||'<span class="muted small">Vault is empty.</span>'}</div>`,
+        count?btn('Clear','selected={};redraw()','quiet')+btn(`${counterTab} (${count})`,'bankTransfer()','primary'):''
+      );
+    }
+
+    if(name==='Post Office'){
+      const selCount=Object.values(selected).filter(Boolean).length;
+      return result(
+        `<div class="row spread">${rail(['Send','Receive'],counterTab,'setCounter')}${counterTab==='Send'?'<span class="small gold">Fee: 10g</span>':''}</div>`
+        +(counterTab==='Send'
+          ?`<input class="search" id="recipient" placeholder="Recipient player name…" aria-label="Recipient" value="${esc(mailRecipient)}">`
+            +`<div class="hstrip">${items.filter(i=>i.type==='Materials'&&i.qty>0&&!i.quest&&!i.pinned).map(i=>tile(i,`selected['${i.id}']=selected['${i.id}']?0:1;redraw()`,'',!!selected[i.id],false,'mini')).join('')}</div>`
+          :'<div class="padded small muted">No mail waiting.</div>'),
+        counterTab==='Send'&&selCount
+          ?btn('Clear','selected={};redraw()','quiet')+btn(`Review mail (${selCount})`,"showCard('Review mail','Demo only: verify recipient, contents and 10g fee in live game.','Send mail')",'primary')
+          :''
+      );
+    }
+
+    return result(
+      `<div class="row spread"><b class="small muted">Active companion</b><span class="small muted">1/4 slots</span></div>`
+      +`<div class="grid">${tile(getItem('pet'),"detail('item','pet')",'Equipped')}</div>`
+      +`<span class="small muted">Pet storage layout only.</span>`
+    );
+  }
+
+  if(mode==='Play'){
+    const label=name==='Gambling Den'?'Daily spin':name==='Arena'?'Join arena':'Coin flip';
+    return result(
+      `<div class="row">${art(name==='Arena'?'shield':'dice','big')}<div class="grow"><b>${label}</b><div class="small muted">${name==='Gambling Den'?'Free daily spin available':name==='Arena'?'Entry: free (sample)':'Example stake: 50g'}</div></div></div>`
+      +`<div class="padded small">${name==='Gambling Den'?'See possible rewards before starting.':name==='Arena'?'Match rules and entry requirements appear here.':'Heads or tails · sample 50/50 odds.'}</div>`,
+      btn(name==='Arena'?'Join arena':name==='Gambling Den'?'Start free spin':'Review 50g stake',`showCard('${label}','Sample interaction only; no live stake or game action.','${name==='Ace'?'Confirm 50g stake':'Start'}')`,'primary')
+    );
+  }
+
+  if(name==='Player Trade'){
+    const t=totals();
+    return result(
+      `<div class="trade-split">`
+        +`<div class="trade-pane"><div class="row spread"><b class="small">Your offer</b><span class="small gold">${t.n}</span></div><div class="grid two">${eligible().map(i=>tile(i,`toggleSell('${i.id}')`,'',!!selected[i.id],false,'mini')).join('')}</div></div>`
+        +`<div class="trade-pane"><b class="small">Their offer</b><div class="grow small muted" style="display:grid;place-items:center;text-align:center">Waiting for other player</div></div>`
+      +`</div>`
+      +`<div class="small muted">Mutual readiness / revision protocol not simulated.</div>`,
+      (t.n?btn('Clear','selected={};redraw()','quiet'):'')+btn(`Ready${t.n?' ('+t.n+')':''}`,"toast('Readiness is a placeholder, no real trade')",'primary',!t.n)
+    );
+  }
+
+  /* General Store, Feed & Seed, Auction House */
+  const auction=name==='Auction House';
+  const tabs=auction?['Browse','Sell/List']:['Buy','Sell'];
+  const products=[
+    {name:'Wheat seed',art:'plant',value:5,qty:1},
+    {name:'Health potion',art:'potion',value:15,qty:1},
+    {name:'Iron ore',art:'ore',value:12,qty:1}
+  ];
+  const list=counterTab==='Buy'||counterTab==='Browse'?products:eligible();
+  const safeIdx=Math.min(recipeIndex,Math.max(0,list.length-1));
+  const picked=list[safeIdx];
+  const maxQty=counterTab==='Sell'||counterTab==='Sell/List'?(picked?.qty||1):99;
+  const clampedQty=Math.max(1,Math.min(tradeQty,maxQty));
+  if(clampedQty!==tradeQty)tradeQty=clampedQty;
+  const estTotal=picked?picked.value*tradeQty:0;
+  return result(
+    `<div class="row spread">${rail(tabs,counterTab,'setCounter')}<span class="small muted">${list.length} items</span></div>`
+    +(auction?'<div class="panelnote small">Listing fees, duration &amp; bid rules require live values.</div>':'')
+    +`<div class="grid">${list.map((i,k)=>tile(i,`recipeIndex=${k};tradeQty=1;redraw()`,`${i.value}g`,safeIdx===k)).join('')||'<span class="muted small">No eligible items.</span>'}</div>`,
+    list.length
+      ?`<div class="stepper">${btn('−','tradeQty=Math.max(1,tradeQty-1);redraw()','quiet',tradeQty<=1)}<b>${tradeQty}</b>${btn('+',`tradeQty=Math.min(${maxQty},tradeQty+1);redraw()`,'quiet',tradeQty>=maxQty)}</div>`
+        +btn('Review '+(counterTab==='Sell/List'?'listing':counterTab==='Browse'?'offer':counterTab.toLowerCase())+` · ${estTotal}g`,`showCard('${name}','Example review: ${tradeQty} × ${esc(picked.name)} (${estTotal}g sample). Actual cost and fees require live data.','Confirm')`,'primary')
+      :''
+  );
+}
+
+function craft(id,q,n){
+  const i=getItem(id);
+  if(i.qty<q)return;
+  i.qty-=q;recipeQty=1;redraw();
+  toast('Crafted '+n+' (simulated receipt)');
+}
+function bankTransfer(){
+  for(const [id,q] of Object.entries(selected)){
+    if(!q)continue;
+    const i=getItem(id);
+    if(counterTab==='Deposit'){if(!i||i.quest||i.pinned||i.type==='Pets')continue;const v=Math.min(q,i.qty);i.qty-=v;bank[id]=(bank[id]||0)+v}
+    else{const v=Math.min(q,bank[id]||0);bank[id]-=v;i.qty+=v}
+  }
+  selected={};redraw();
+  toast('Transfer complete (demo)');
+}
+
+function showMap(target='You'){
+  mapSource={...route};
+  $('map').hidden=false;
+  $('map').innerHTML=`<div class="panelheader"><b class="grow" style="padding-left:8px">Map · ${esc(target)}</b>${btn('Places',"mapTab('Places')",'quiet compact')}${btn('Pins',"mapTab('Pins')",'quiet compact')}${btn('✕','closeMap()','close quiet')}</div>`
+    +`<div class="maparea"><button type="button" class="marker" style="top:23%;left:18%" onclick="toast('Town center selected')">Town</button><button type="button" class="marker" style="top:45%;right:12%" onclick="toast('Goo Grotto selected')">Goo Grotto</button><button type="button" class="marker" style="bottom:20%;left:32%" onclick="toast('Farm selected')">Farm</button><div style="position:absolute;bottom:8px;left:8px;z-index:2" class="padded small">Sample map · not actual coordinates</div></div>`
+    +`<div class="footer" id="mapInfo">${btn('Simulate damage','simulateDamage()','warn')}</div>`;
+}
+function mapTab(v){
+  $('mapInfo').innerHTML=v==='Places'
+    ?btn('Diego',"closeMap();openCounter('Diego')",'quiet')+btn('Blacksmith',"closeMap();openCounter('Blacksmith')",'quiet')
+    :btn('Add sample pin',"toast('Pin added (demo)')",'quiet')+btn('Remove pin',"toast('Pin removed (demo)')",'quiet');
+}
+function closeMap(){$('map').hidden=true}
+function simulateDamage(){if(!$('map').hidden)closeMap();toast('Damage simulated · combat remains available')}
+function showCard(title,body,action){
+  $('modal').hidden=false;
+  $('modal').innerHTML=`<div class="modalcard stack"><b>${esc(title)}</b><div class="muted small">${esc(body)}</div><div class="row">${btn('Cancel',"$('modal').hidden=true",'quiet grow')}${btn(esc(action),"$('modal').hidden=true;toast('Demo action confirmed')",'primary grow')}</div></div>`;
+}
+
+/* Swipe down in portrait (or swipe right in landscape) on panel header to dismiss */
+let swipeStart=null;
+$('header').addEventListener('touchstart',e=>{swipeStart=[e.touches[0].clientX,e.touches[0].clientY]},{passive:true});
+$('header').addEventListener('touchend',e=>{
+  if(!swipeStart)return;
+  const dx=e.changedTouches[0].clientX-swipeStart[0];
+  const dy=e.changedTouches[0].clientY-swipeStart[1];
+  swipeStart=null;
+  const isLand=$('game').classList.contains('landscape');
+  if((!isLand&&dy>36)||(isLand&&dx>42))closePanel();
+},{passive:true});
+
+/* Real mobile keyboard focus handling */
+$('panel').addEventListener('focusin',e=>{
+  if(e.target.matches('input,textarea'))$('game').classList.add('kb-open');
+});
+$('panel').addEventListener('focusout',e=>{
+  if(e.target.matches('input,textarea')&&!kbSim){
+    setTimeout(()=>{if(!$('panel').contains(document.activeElement)||!document.activeElement.matches('input,textarea'))$('game').classList.remove('kb-open')},60);
+  }
+});
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    if(kbSim)return;
+    const diff=Math.max(0,window.innerHeight-window.visualViewport.height);
+    $('game').style.setProperty('--kbHeight',diff>100?diff+'px':'0px');
+    if(diff>100)$('game').classList.add('kb-open');
+    else if(!kbSim)$('game').classList.remove('kb-open');
+  });
+}
+
+$('portrait').onclick=()=>setRoute('Bro','Power');
+$('settingshud').onclick=()=>toggleSettings();
+$('weaponhud').onclick=()=>{lane='Sword';setRoute('Bro','Power')};
+$('questhud').onclick=()=>{setRoute('World','Quests');detail('quest','Slime trouble')};
+$('minimap').onclick=()=>showMap();
+let sceneDown=null;
+$('scene').addEventListener('pointerdown',e=>{sceneDown=[e.clientX,e.clientY]});
+$('scene').onclick=e=>{
+  if(open&&sceneDown&&Math.hypot(e.clientX-sceneDown[0],e.clientY-sceneDown[1])<10)closePanel();
+  sceneDown=null;
+};
+$('reset').onclick=()=>{chatDrafts={};resetState();toast('Prototype reset')};
+$('kbToggle').onclick=()=>{
+  kbSim=!kbSim;
+  $('game').classList.toggle('kb-sim',kbSim);
+  $('game').classList.toggle('kb-open',kbSim);
+  $('kbToggle').classList.toggle('active',kbSim);
+};
+$('device').onchange=e=>{
+  const g=$('game');
+  g.classList.remove('w360','landscape','desktop');
+  if(e.target.value)g.classList.add(e.target.value);
+  updateRails();
+};
+$('station').onchange=e=>{if(e.target.value)openCounter(e.target.value);e.target.value=''};
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.activeElement?.matches('input,textarea,select')){document.activeElement.blur();return}
+    if(!$('modal').hidden){$('modal').hidden=true;return}
+    if(!$('map').hidden){closeMap();return}
+    if(open)history.length?back():closePanel();
+    return;
+  }
+  if(e.target.matches('input,textarea,select')||e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
+  const keys={i:['Bro','Bag'],p:['Bro','Power'],l:['Bro','Skills'],j:['World','Quests'],k:['World','Codex'],f:['World','Feats'],r:['People','Roster'],u:['People','Ranks'],c:['People','Chat']};
+  const k=e.key.toLowerCase();
+  if(keys[k])setRoute(...keys[k]);
+  else if(k==='m')$('map').hidden?showMap():closeMap();
+  else if(k==='b')toast('Emotes (demo)');
+});
+
+resetState();
+</script>
+</body>
+</html>
