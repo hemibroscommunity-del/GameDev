@@ -136,6 +136,32 @@
    they stand aside (visibility: never hit, their rects kept); with no panel open nothing
    moves.  The map itself (z 9200) still opens OVER the panel from a quest's Show on map. */
 html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visibility: hidden !important; pointer-events: none !important; }
+/* ═══ v2.3.6869: SETTINGS, THE RAIL OF FIVE (card MN step 12) ═══
+   The wireframe v4.4's Settings: the rail's pills under the header (the Bag's, 44 tall), rows of a
+   name and its line on the left and the control on the right, 44 or more; the wireframe's 16 px
+   sliders MENDED to 44 (decided 10) with their percent; On / Off a 44 button, lit when on (the
+   kit's selected state).  Today's Account page is drawn as it is under the rows. */
+.m3-settings { display: flex; flex-direction: column; gap: 2px; }
+.m3-set-list { display: flex; flex-direction: column; }
+.m3-set-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 4px 4px; border-bottom: 1px solid var(--ui2-line, #4B6275); }
+.m3-set-words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.m3-set-name { font-size: 14px; font-weight: 650; }
+.m3-set-sub { font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-set-btn { flex: none; min-height: 44px; min-width: 64px; padding: 0 12px; font-size: 13px; font-weight: 700; border-radius: 8px; }
+.m3-set-btn.is-danger { color: #F2B8A8; border-color: #C98267; }
+.m3-set-level .m3-set-name { flex: 0 0 76px; }
+.m3-set-level input[type=range] { flex: 1 1 auto; min-width: 0; height: 44px; margin: 0; accent-color: var(--ui2-gold, #E4BA68); touch-action: manipulation; }
+.m3-set-level.is-off { opacity: .45; }
+.m3-set-pct { flex: 0 0 40px; text-align: right; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-set-chips { display: flex; flex-direction: column; gap: 6px; padding: 8px 4px; border-bottom: 1px solid var(--ui2-line, #4B6275); }
+.m3-set-chiprow { display: flex; flex-wrap: wrap; gap: 6px; }
+.m3-set-chip { flex: 1 1 0; min-width: 56px; min-height: 44px; font-size: 13px; border-radius: 8px; }
+.m3-set-account { padding: 4px 0 8px; border-bottom: 1px solid var(--ui2-line, #4B6275); }
+/* today's page box (dash/common.js panelStyle) fades its foot with a mask, and a mask is a
+   CONTAINING BLOCK for position: fixed: Log out's confirm (AccountPanel.jsx, fixed, inset 0)
+   was held inside the page, as tall as its content here, so it opened below the fold.  In the
+   panel the page does not scroll (the panel's body does): no mask, the confirm over the screen */
+.m3-set-account > div { -webkit-mask-image: none !important; mask-image: none !important; overflow: visible !important; }
 /* v2.3.6864 (card MN step 10): People · Roster -- the party bar pinned at the top (the wireframe's
    party row, 56 tall), the rail of four segments, a row its name (the Player page) and one action
    (44 tall: the wireframe's 52-row with a 44 button); the Player page's actions two across (its grid,

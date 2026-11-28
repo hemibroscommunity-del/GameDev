@@ -951,6 +951,22 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6869 (card MN step 12, `?menus3`): Settings in the new panel, the rail of five */
+  { id: 'menus3-settings', group: 'Dashboard', title: 'The new menus: Settings', about: 'The owner\'s new menus, step 12 (docs/design/menus3/): the gear left of the minimap opens the new panel on Settings, always on Sound. A rail of five under the title: Sound (the switch, Music and Effects sliders 44 tall), Screen (the landscape menu side, the controls lesson, full screen in iPhone Safari), Alerts (silence them, chat on screen, the chat and news lines), Account (today\'s Account: Log out or Switch Bro, the Login Key, continue a character; Restart under it), Help (Feedback, About). Each writes what today\'s Settings writes.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('hud.gear'); });
+      await wait(P, 1500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6861 (card MN step 4, `?menus3`): Bro · Bag in the new panel, and its Item page */
   { id: 'menus3-bag', group: 'Dashboard', title: 'The new menus: Bro, the Bag', about: 'The owner\'s new menus, step 4 (docs/design/menus3/): the Bro button opens the new panel on the Bag, always. The rail (All with the bag\'s count, Gear (9), Weapons with the weapon bag\'s fill, Armor, Consumables, Materials, Pets) over a grid four across, a tile its picture, name and count. Upright the panel is 48% of the screen above the dock, the fight controls hidden and the world\'s view moved up; sideways and on a computer a right drawer 40% wide with the fight controls left of it.',
     run: async ({ P }) => {

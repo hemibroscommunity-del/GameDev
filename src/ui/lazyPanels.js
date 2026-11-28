@@ -54,6 +54,8 @@ export const DashLeaderboardPanel = lazyPanel(() => import('./mobile/dash/Leader
 export const DashClanPanel = lazyPanel(() => import('./mobile/dash/ClanPanel.jsx'), 'ClanPanel');
 export const DashFeedbackPanel = lazyPanel(() => import('./mobile/dash/FeedbackPanel.jsx'), 'FeedbackPanel');
 export const DashSettingsPanel = lazyPanel(() => import('./mobile/dash/SettingsPanel.jsx'), 'SettingsPanel');
+/* v2.3.6869 (card MN step 12): the new menus' Settings, the rail of five (with today's Settings page's shared part, settingsParts.jsx) */
+export const Menus3SettingsLazy = lazyPanel(() => import('./menus3/Menus3Settings.jsx'), 'Menus3Settings');
 
 /* the debug overlay (?dev=1 only), GameApp.jsx */
 export const DebugOverlay = lazyPanel(() => import('../debug/DebugOverlay.jsx'), 'DebugOverlay');
