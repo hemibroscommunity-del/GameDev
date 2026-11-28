@@ -961,6 +961,14 @@ export const STATES = [
       await wait(P, 400);
       return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
     } },
+  /* v2.3.6845 (card UI4 PR 6, `?v17gear`): a look at a thing with no action to wear it (a material): Details keeps its
+     half of the row, in the place it has beside an Equip (V17:57 "fixed buttons") */
+  { id: 'dash-gear-look-thing', group: 'Dashboard', title: 'Gear: a look at a thing you cannot wear', about: 'A material or a fish tapped in the bag: the Equipped panel becomes its summary (its name, how many, what it does), Details in the left half of the button row where it stands beside Equip for a piece you could wear (the right half its own action, or empty): the buttons never move (V17:57). The reason an action is off sits above the buttons.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); });
+      await wait(P, 400);
+      return tapSel(P, '[data-gear-bag] [data-bag-key*="ore"], [data-gear-bag] [data-bag-key*="fish"], [data-gear-bag] [data-bag-key]');
+    } },
   /* v2.3.6689: Bro's Equipment door, a showcase (card UI2-gear PR 3) */
   { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line. Tag 6698: a worn picture 94% of its slot (as Gear\'s); its own ground, not Gear\'s green.',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); b.go({ type: 'push', id: 'broEquip' }); }); } },

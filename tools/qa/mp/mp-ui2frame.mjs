@@ -91,8 +91,13 @@ async function growWatch(P) {
 }
 const growOff = (P) => P.page.waitForFunction(() => !document.querySelector('[data-dash-grow]'), null, { timeout: 15000 }).then(() => true).catch(() => false);
 const growLog = (P) => P.page.evaluate(() => ({ log: window.__u2grow.log.slice(), taps: window.__u2grow.taps.slice() }));
-const tap = async (P, sel, ms = 450) => { await P.page.locator(sel).first().tap({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
-const click = async (P, sel, ms = 450) => { await P.page.locator(sel).first().click({ timeout: 6000 }); await P.page.waitForTimeout(ms); };
+/* v2.3.6845 (card UI4 PR 6): the test was stale, not the game.  On the test box the world draws about two frames a
+   second (long tasks of ~500 ms back to back, measured with a longtask observer), and a touch tap waits on the page's
+   frames: the tap on the closed Gear tile took 6.3 s and the 6 s limit timed it out on main's own build; Gear opened
+   every time.  The limit is the renderer's clock's (TRAPS 200), not a 60 fps window's: 20 s */
+const TAP_MS = 20000;
+const tap = async (P, sel, ms = 450) => { await P.page.locator(sel).first().tap({ timeout: TAP_MS }); await P.page.waitForTimeout(ms); };
+const click = async (P, sel, ms = 450) => { await P.page.locator(sel).first().click({ timeout: TAP_MS }); await P.page.waitForTimeout(ms); };
 async function bandShot(P, file) {
   try {
     const r = await P.page.evaluate(() => { const b = document.querySelector('.bt-dashboard').getBoundingClientRect(); return { x: b.left, y: Math.max(0, b.top - 120), w: b.width, h: Math.min(innerHeight, b.bottom) - Math.max(0, b.top - 120) }; });

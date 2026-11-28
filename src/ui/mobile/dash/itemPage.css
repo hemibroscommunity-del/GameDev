@@ -84,3 +84,6 @@
 }
 /* v2.3.6688 (the mends): a "?" piece's "Rare or better" (itemInspect's hidden line), in the rare blue, as today's card */
 .ui2 .u2-item-line.is-hidden { color: var(--ui2-grade-rare); font-weight: 700; }
+/* v2.3.6845 (card UI4 PR 6, `?v17gear`): V17:57 "Full name in details": the item page is where a name the quick
+   look cut at two lines is read whole, so here it is never clamped (it wraps; the page's body scrolls) */
+.ui2[data-v17-gear] .u2-item-name { display: block; -webkit-line-clamp: unset; overflow: visible; }

@@ -2518,6 +2518,27 @@ Screens: dash-gear-panels, dash-gear-look-bag, dash-gear-look-worn
 
 Sources: src/game/workspace.js, compare.js, equipProject.js, itemInspect.js (itemSummary), src/data/say/compare.js, gearPanels.js, src/ui/mobile/dash/GearPanels.jsx, gearPanels.css, gearTabBus.js (`ws`), GearFilterMenu.jsx, gearBag.js, src/ui/kit/TwoPanel.jsx, ItemGrid.jsx; tools/guards/compare.test.mjs, workspace.test.mjs, equip-look.test.mjs; src/game/equipLook.js; tools/qa/mp/mp-ui2gear.mjs, mp-equipgreen.mjs.
 
+## Gear, kept, and measured against V17 (v2.3.6845, card UI4 PR 6)
+Screens: dash-gear-panels, dash-gear-look-bag, dash-gear-look-worn, dash-gear-look-thing
+
+**What it is for:** the same as Gear's two panels above. The owner, 2026-11-27, with the V17 handoff: *"Some things may be better designed as already in the game like probably the bag menu and character design but maybe not"*; of Gear's side-by-side, 2026-11-26: *"one of your better layouts"*. So Gear is NOT redrawn: V17:57 described what was built. This pass names the roles, mends what V17's small rules and `mp-v17fit` found, and shows the owner V17's landscape idea beside the game's. All of it behind `?v17gear` (on; `=0` the day before, remembered; `src/game/v17Gear.js`, its suite `tools/guards/ui4-gear.test.mjs`).
+
+**Decisions, and why:**
+- **The roles, named where the pieces are made** (V17:37-49; `src/game/uiRoles.js`): an item's action by its id (Equip, Unequip, Eat... commit; **Drop is the danger**), Show all adjusts the filter, the gold pill is a fact, the item page's doors go. Each is the role its colour already wore, so naming it changes no look. **Details** is the one that changes: V17:40 calls an explicit Details *inspection*, but the kit's Action has no inspect role, so it is `go` (it opens the item page): V17's raised navigation slate instead of the neutral one.
+- **The comparison through the kit's Comparison** (V17:49 *"Positive/negative deltas use signed text and color; never color alone"*): each row its number before and after and the difference SIGNED with its word ("+0.4 better"); Gear's rows were an arrow and a number, the word only in a title. The headline keeps the game's own words under it ("25% more damage per second"). The words stay the size Gear's rows shipped (11 px).
+- **Full name in Details** (V17:57): the quick look cuts a long name at two lines (V17's "two-line quick-look max"); the item page, where it is read whole, no longer cuts it.
+- **Fixed buttons** (V17:57): a disabled action's reason sat UNDER the buttons and pushed them up; it sits above them now. A thing with no action (a material) drew Details across the whole row; Details keeps its half.
+- **The place kept on return** (V17:57): already held (`workspace.js`: the pick, its look, the bag's scroll and the filter survive Details and Close). Checked, nothing to mend.
+- **The fits `mp-v17fit` found on main:** sideways the Equipped row was 12 px wider than its pane (the three groups' own padding was never counted), so the Gem cell was cut at 667 x 375 and touched the edge at 844: its true width now. On a 320 x 568 phone the body's three rows of 44 cannot fit under the Equipped label row, nor "INVENTORY" beside the filter and the gold: there the two words give way (the panels keep their names for a screen reader) and the controls and cells stay whole. The quick look gives way, in order, the tradeoff line, a fact row, the headline fact, then its picture (the picked cell beside it shows the picture with its selected mark): its name, its buttons and its ✕ never.
+- **A computer's 840** (V17:31 *"use extra horizontal space for additional entries, not larger art, text or gameplay view"*): the bag takes as many WHOLE columns as its panel holds, at the square the height already gives (the same rule as its whole rows): 8 across at 1440 x 900, 24 squares in view against 9, never a larger square. Every phone keeps its 3 across.
+- **The owner's "labels ... centered"** (2026-11-27 about 22:20 UTC, *"I'd prefer centered"*): the filter's word, alone in its box, is centred. LEFT AS IS, and listed: the panels' names in their label rows ("INVENTORY" beside its controls; "EQUIPPED" alone over its body) are a pane's heading, not a word in a box; a summary's fact rows (the word left, the number right) are not plainly meant.
+
+**What the real size could not hold:** at 667 x 375 and 740 x 360 the sideways quick look of a WORN piece stands where the bag was, 122 and 240 px wide beside the nine cells: its name, Details, Unequip and ✕ need about 262. Mending it would drop a control or shrink the cells or words, so it is LISTED (pictures in the PR); V17's own answer, the bag strip with an Equipped switch, would give it the whole row: the owner's choice.
+
+**Flagged to the owner (not built):** sideways, the game's two panels in one row against V17's bag strip with an Equipped switch (pictures of both at 844 x 390; the switch costs a tap, the strip shows more of the bag); the Jewel against the Gem cell (Q2: kept); Details as navigation rather than inspection; on a computer the Equipped panel keeps half the block, with room to spare beside its body.
+
+Sources: src/game/v17Gear.js, gearGeometry.js, compare.js (a row's `dec` and `unit`), src/ui/mobile/dash/GearPanels.jsx, gearPanels.css, ItemPage.jsx, itemPage.css, src/ui/kit/TwoPanel.jsx (`name`), tools/guards/ui4-gear.test.mjs, tools/qa/mp/mp-v17fit.mjs.
+
 ## Bro's Equipment, a showcase; the roads into the one item page (v2.3.6689, card UI2-gear PR 3)
 Screens: ui2-bro-equipment
 

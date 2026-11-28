@@ -92,3 +92,23 @@
 /* a worn item's picture 94% of its slot, as a bag cell's (BagTile); the worn cells only (Gear's and the showcase's:
    both draw WornCell, which marks the picture `is-fill`), never every kit slot (`?uikit=1` keeps its 72%) */
 .ui2 .u2-gp-worn .u2-slot-art.is-fill { width: 94%; height: 94%; }
+/* ═══ v2.3.6845: GEAR UNDER `?v17gear` (card UI4 PR 6; src/game/v17Gear.js), the root wearing data-v17-gear ═══
+   The owner, 2026-11-27 about 22:20 UTC: "sometimes the labels are left aligned inside text boxes instead of
+   centered I'd prefer centered": the filter's word is alone in its box, so it is centred (upright and sideways). */
+.ui2.u2-gp[data-v17-gear] .u2-gp-ctl { justify-content: center; }
+.ui2.u2-gp[data-v17-gear] .u2-gp-ctl-word { text-align: center; }
+/* V17:57 "fixed buttons": Details keeps its half of the row when the item has no action */
+.ui2.u2-gp[data-v17-gear] .u2-gp-act-gap { flex: 1 1 0; min-width: 0; }
+.ui2.u2-gp[data-v17-gear] .u2-gp-sum.is-row .u2-gp-act-gap { display: none; }
+/* the kit's Comparison in Gear's room: its words the size Gear's rows have shipped (11 px; the headline's number
+   the body size, as the game's headline), each row the width of the panel */
+.ui2.u2-gp[data-v17-gear] .u2-cmp { gap: 4px; padding: 0 4px; font-size: var(--ui2-fs-small); }
+.ui2.u2-gp[data-v17-gear] .u2-cmp-end { gap: 3px; }
+.ui2.u2-gp[data-v17-gear] .u2-cmp-now { font-size: var(--ui2-fs-small); }
+.ui2.u2-gp[data-v17-gear] .u2-gp-head.is-v17 { display: block; padding: 2px 0; }
+.ui2.u2-gp[data-v17-gear] .u2-gp-head.is-v17 .u2-cmp-now, .ui2.u2-gp[data-v17-gear] .u2-gp-head.is-v17 .u2-cmp-d { font-size: var(--ui2-fs-body); }
+.ui2.u2-gp[data-v17-gear] .u2-gp-head.is-v17 > .u2-gp-sub { display: block; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* sideways, the quick look's name takes the room the facts do not (it was a third of the row whatever the facts,
+   so at 844 x 390 "Copper Greatsword" had 42 px and was cut): the name and its ✕ grow, the facts keep their size */
+.ui2.u2-gp[data-v17-gear] .u2-gp-sum.is-row .u2-gp-id { flex: 1 1 auto; }
+.ui2.u2-gp[data-v17-gear] .u2-gp-sum.is-row .u2-gp-facts { flex: 0 1 auto; }
