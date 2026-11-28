@@ -81,7 +81,8 @@ const actionBtn = (_danger) => ({
   fontWeight: 700,
 });
 
-const shareInvite = async () => {
+/* v2.3.6864: exported for the new Roster's invite link (menus3/Menus3Roster.jsx), the same share */
+export const shareInvite = async () => {
   const url = (typeof location !== 'undefined' && location.origin) || 'https://brotown.pages.dev';
   try {
     if (navigator.share) { await navigator.share({ title: say(SAY, 'socialDash.shareTitle'), url }); return true; }

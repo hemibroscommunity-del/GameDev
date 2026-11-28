@@ -169,3 +169,31 @@ html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visi
 .m3f-medal-art { width: 56px; height: 56px; flex: none; object-fit: contain; pointer-events: none; }
 .m3f-medal-art.is-locked { filter: grayscale(1); opacity: .55; }
 .m3f-link { border: 1px solid var(--ui2-line, #4B6275); }
+/* v2.3.6864 (card MN step 10): People · Roster -- the party bar pinned at the top (the wireframe's
+   party row, 56 tall), the rail of four segments, a row its name (the Player page) and one action
+   (44 tall: the wireframe's 52-row with a 44 button); the Player page's actions two across (its grid,
+   each 44); a player a drawn disc (no art loads) */
+.m3-roster { display: flex; flex-direction: column; gap: 4px; }
+.m3-partybar { position: sticky; top: -6px; z-index: 1; display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; margin: -6px -8px 2px;
+  background: var(--ui2-page, #193145); border-bottom: 1px solid var(--ui2-line, #4B6275); }
+.m3-party-line { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.m3-party-words { flex: 1 1 auto; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+.m3-muted { font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-party-members { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.m3-member { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 8px; font-size: 13px; max-width: 100%; }
+.m3-member.is-me { opacity: 1; }
+.m3-ally { font-size: 12px; color: var(--ui2-text-gold, #E7C46A); padding: 0 2px; }
+.m3-plist { display: flex; flex-direction: column; gap: 4px; }
+.m3-prow { display: flex; align-items: center; gap: 6px; }
+.m3-prow > .m3-row { min-height: 52px; }
+.m3-prow-words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.m3-face { flex: none; color: var(--ui2-text-ivory, #F1F0E9); }
+.m3-chev { flex: none; opacity: .7; }
+.m3-req { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; background: var(--ui2-well, rgba(0,0,0,.18)); }
+.m3-sent { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.m3-search { width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 10px; border-radius: 8px; font: inherit; font-size: 13px;
+  color: var(--ui2-text-ivory, #F1F0E9); background: var(--ui2-well, rgba(0,0,0,.18)); border: 1px solid var(--ui2-line, #4B6275); touch-action: manipulation; }
+.m3-pacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.m3-pacts > * { min-height: 44px; min-width: 0; }
+.m3-roster .m3-door { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.m3-roster .m3-qlink { justify-content: space-between; }

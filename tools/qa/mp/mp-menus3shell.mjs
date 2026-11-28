@@ -9,7 +9,7 @@
  *      tall) where the Gear and Menu buttons sat; the gear (44 x 44) left of
  *      the minimap; Bro opens the new panel on the Bag (v2.3.6861, card MN
  *      step 4: mp-menus3bag plays it), World the Quests, People the
- *      Social hub, the gear the Settings hub; the fight controls step aside
+ *      Social hub (v2.3.6864: the new panel on Roster), the gear the Settings hub; the fight controls step aside
  *      while a menu is open and come back on its close; the closes: the X,
  *      a tap on the world, a swipe down on the header, a hit outside a safe
  *      place (and not inside one); the face, the weapon's bar and the
@@ -155,13 +155,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
 
       await press(P, '[data-menus3-dock="people"]', true);
-      rec.ok('upright: People opens the Roster (today\'s Social hub)', (await topId(P)) === 'socialHub', await nav(P));
-      /* a swipe down on the header closes */
-      const hd = await box(P, '[data-dash-frame="page"]');
+      /* v2.3.6864 (card MN step 10): People opens the NEW panel on Roster (mp-menus3roster plays it) */
+      const pps = await P.page.evaluate(() => window.__btMenus3.panelState());
+      rec.ok('upright: People opens the new panel on Roster', pps.open && pps.menu === 'people' && pps.section === 'roster' && (await shown(P)) === false, pps);
+      /* a swipe down on the header closes (the new panel's own header).  It starts on the lit
+         Roster tab: the synthetic touch ends in a pointerup, and on the Chat tab (the header's
+         middle) that pointerup is a tap that goes to today's chat before the swipe is read */
+      const hd = await box(P, '[data-menus3-tab="roster"]');
       if (hd) {
         await swipe(P, hd.x + Math.round(hd.w / 2), hd.y + Math.round(hd.h / 2), hd.y + Math.round(hd.h / 2) + 90);
-        rec.ok('upright: a swipe down on the header closes it', (await shown(P)) === false && (await why(P)) === 'swipe', { why: await why(P), nav: await nav(P) });
-      } else rec.ok('upright: the open page\'s header found', false, await nav(P));
+        rec.ok('upright: a swipe down on the header closes it', (await P.page.evaluate(() => window.__btMenus3.panelState().open)) === false && (await why(P)) === 'swipe', { why: await why(P), nav: await nav(P) });
+      } else rec.ok('upright: the open panel\'s header found', false, await nav(P));
       await closeBand(P);
 
       await press(P, '[data-menus3-gear]', true);
