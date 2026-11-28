@@ -1034,7 +1034,7 @@ export const STATES = [
       await wait(P, 1500);
     } },
   /* v2.3.6867 (card MN step 8, `?menus3`): World, the Codex in the new panel, and a monster's page */
-  { id: 'menus3-codex', group: 'Dashboard', title: 'The new menus: World, the Codex', about: 'The owner\'s new menus, step 8 (docs/design/menus3/): World\'s Codex tab (and K, and the NEW MONSTER card) opens the Codex in the new panel. Today\'s Codex is what it holds: the six kinds on a rail of pills (Monsters, Items, Resources, Townsfolk, Lands, Pets; Monsters chosen), how many are met, and the monsters as tiles four across (the picture, the name, the land; a monster not met dimmed as ???, NEW in the corner). A kind with no pages yet says so; Pets has its door to the pet journal.',
+  { id: 'menus3-codex', group: 'Dashboard', title: 'The new menus: World, the Codex', about: 'The owner\'s new menus, step 8 (docs/design/menus3/): World\'s Codex tab (and the NEW MONSTER card) opens the Codex in the new panel. Today\'s Codex is what it holds: the six kinds on a rail of pills (Monsters, Items, Resources, Townsfolk, Lands, Pets; Monsters chosen), how many are met, and the monsters as tiles four across (the picture, the name, the land; a monster not met dimmed as ???, NEW in the corner). A kind with no pages yet says so; Pets has its door to the pet journal.',
     run: async ({ P }) => {
       const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });

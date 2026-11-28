@@ -1,6 +1,6 @@
 /* ═══ v2.3.6867: WORLD · CODEX IN THE NEW PANEL (card MN step 8) ═══
  *
- * The header's Codex tab of World, the K key and the NEW MONSTER card open
+ * The header's Codex tab of World and the NEW MONSTER card open
  * it; a quest's links (World · Quests) open its pages on the quest's own
  * history, so the one Back returns to the quest.  WHAT IT HOLDS IS TODAY'S
  * CODEX (dash/CodexPage.jsx, src/game/codexView.js): the six kinds on a rail

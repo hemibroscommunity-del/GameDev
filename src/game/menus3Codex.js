@@ -1,7 +1,7 @@
 /* ═══ v2.3.6867: WORLD · CODEX IN THE NEW PANEL -- ITS PAGES AND ITS LINKS (card MN step 8) ═══
  *
  * The owner's World menu (docs/design/menus3/SPEC.md: "Quests, Codex,
- * Feats"): the header's Codex tab, the K key and the NEW MONSTER card open
+ * Feats"): the header's Codex tab and the NEW MONSTER card open
  * the Codex in the panel; today's Codex is what it holds (dash/CodexPage.jsx,
  * src/game/codexView.js: the six kinds Monsters, Items, Resources,
  * Townsfolk, Lands, Pets -- only Monsters has pages today, the others their
