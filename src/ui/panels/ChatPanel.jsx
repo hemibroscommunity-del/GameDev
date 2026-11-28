@@ -1,4 +1,5 @@
 import React from 'react';
+import { menus3ChatShut } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6864: a Player page's Message (card MN step 10) */
 /* v2.3.2139: the channel picker, shared with the mobile composer.  A
    picker on only one of the two surfaces is one a player learns and then
    loses. */
@@ -30,6 +31,9 @@ export function ChatPanel(props) {
     sendChat = props.sendChat,
     setChatInput = props.setChatInput,
     setChatOpen = props.setChatOpen;
+  /* v2.3.6864 (card MN step 10): the chat box going away (however it shut) hands the new panel back
+     to the Player page whose "Message" opened it (menus3Wire.js menus3AwayChat; a no-op otherwise) */
+  React.useEffect(function () { return function () { menus3ChatShut(); }; }, []);
   return React.createElement("div", {
     style: {
       position: 'fixed',

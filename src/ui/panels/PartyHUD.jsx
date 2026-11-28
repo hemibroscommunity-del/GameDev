@@ -10,6 +10,7 @@ import { deskWords } from '@/game/deskWords.js';   /* v2.3.3768: "tap" reads "cl
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/partyHud.js';   /* v2.3.6342: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { menus3Active, menus3Go } from '../menus3/menus3Wire.js';   /* v2.3.6864: under ?menus3 the chip opens People · Roster (card MN step 10) */
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -247,7 +248,7 @@ export function PartyHUD(props) {
       'aria-expanded': 'false',
       'aria-label': say(SAY, 'partyHud.chipLabel', { count: party.members.length, max: maxN }),   /* v2.3.6342: was deskWords on the built line; say() puts its "tap" right the same way */
       title: deskWords('Tap to see your party'),
-      onClick: function (e) { e.stopPropagation(); writePinned(true); setPinned(true); },
+      onClick: function (e) { e.stopPropagation(); if (menus3Active() && menus3Go('hud.partyChip')) return; writePinned(true); setPinned(true); },
       style: Object.assign({}, _btnBase, {
         position: 'absolute', top: 'var(--bt-party-top, 92px)', left: 'var(--bt-party-left, 8px)', zIndex: 16, height: 32, padding: '0 9px 0 7px', /* v2.3.6781: under the character HUD's stack (game.css --bt-party-top and, sideways, --bt-party-left beside the HUD; 92 and 8 as before under ?hud=0) */
         display: 'flex', alignItems: 'center', gap: 5, touchAction: 'manipulation',

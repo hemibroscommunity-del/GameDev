@@ -134,6 +134,7 @@ export function menus3Go(entry, ctx) {
   _lastRoute = r;
   if (!r) return false;
   _ticket = null;   /* v2.3.6863: another road: a deep link's way back is dropped */
+  _chatTicket = null;   /* v2.3.6864: and the chat box's */
   /* one menu at a time: today's band goes when the panel opens, the panel when a road opens the band */
   if (r.road === 'panel') {
     if (_panel.open && _panel.menu === r.menu && entry.indexOf('dock.') === 0) { menus3Close('dock'); return true; }
@@ -159,7 +160,7 @@ export function menus3Go(entry, ctx) {
         return false;
       }
       case 'panel':
-        menus3Bus.open(r.menu, r.section, r.lane);   /* v2.3.6862: Power's lane from the weapon bar */
+        menus3Bus.open(r.menu, r.section, r.lane != null ? r.lane : (r.seg || null));   /* v2.3.6862: Power's lane from the weapon bar; v2.3.6864: the Roster's segment an entry names */
         /* v2.3.6863: the quest line opens THAT quest's page, its Back the Quests' own page */
         if (r.section === 'quests' && ctx && typeof ctx.quest === 'string' && ctx.quest) menus3Bus.push('quest', ctx.quest);
         return true;
@@ -228,6 +229,33 @@ export function menus3Away(go) {
   _ticket = Object.assign(keep, { at });
   if (!_ticketOff) { try { _ticketOff = dashboardPanelBus.subscribe(onBandChange); } catch (e) { _ticketOff = null; } }
   return true;
+}
+
+/* ═══ v2.3.6864: THE PLAYER PAGE'S "MESSAGE", AND THE WAY BACK (card MN step 10, People · Roster) ═══
+   "Message" opens TODAY's chat box with the whisper aimed at the player (the
+   new Chat is card MN step 11).  The chat box is no page of the band, so its
+   way back is its own: the panel shuts (one menu at a time) and its history
+   is kept; when the chat box shuts (its close, Esc, or a line sent: the box
+   shuts itself as it always did) the panel opens again where it was, on the
+   player's page.  BroTown tells it (menus3ChatShut, its chatOpen's effect).
+   Any other road drops it (menus3Go). */
+let _chatTicket = null;
+export function menus3AwayChat(go) {
+  if (!_panel.open || typeof go !== 'function') return false;
+  const keep = { menu: _panel.menu, section: _panel.section, nav: _panel.nav };
+  menus3Bus.close();
+  try { if (go() === false) { _panel = Object.freeze(Object.assign({ open: true }, keep)); stamp(); emit(); return false; } } catch (e) { return false; }
+  _chatTicket = keep;
+  return true;
+}
+/** BroTown: the chat box shut (its `chatOpen` went false). */
+export function menus3ChatShut() {
+  const tk = _chatTicket;
+  if (!tk) return;
+  _chatTicket = null;
+  if (_panel.open) return;
+  _panel = Object.freeze({ open: true, menu: tk.menu, section: tk.section, nav: tk.nav });
+  stamp(); emit();
 }
 
 /* the one class block game.css reads */

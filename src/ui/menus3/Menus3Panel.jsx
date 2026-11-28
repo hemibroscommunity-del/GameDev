@@ -34,6 +34,7 @@ import { Menus3Power, powerDot } from './Menus3Power.jsx';   /* v2.3.6862: Bro Â
 import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 7) */
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
 import { Menus3Skills, skillsDot, skillsTitle } from './Menus3Skills.jsx';   /* v2.3.6865 (card MN step 6) */
+import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.jsx';   /* v2.3.6864 (card MN step 10) */
 import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
@@ -72,8 +73,9 @@ function BackIcon() {
   );
 }
 /* a page's title in the header (the item's own name is on its page) */
-function pageTitle(top) {
+function pageTitle(top, getS) {
   if (!top) return '';
+  if (top.page === 'player') return menus3PlayerTitle(getS, top.arg);   /* v2.3.6864: the player's name, from any section */
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
@@ -118,7 +120,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
                 aria-label={say(SAY, 'menus3.back')} {...frameTap(() => menus3Bus.back())}>
                 <BackIcon /><span>{say(SAY, 'menus3.back')}</span>
               </button>
-              <span className="m3-title" data-menus3-title="">{pageTitle(top)}</span>
+              <span className="m3-title" data-menus3-title="">{pageTitle(top, getS)}</span>
             </>
           ) : sections.map((s) => (
             <button key={s} type="button" className={'u2-raised u2-ctl' + (s === st.section ? ' is-selected' : '')} style={TAB}
@@ -140,6 +142,8 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
           {st.section === 'skills' ? <Menus3Skills R={rpgState} getS={getS} top={top} /> : null}
+          {st.section === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
+          {st.section !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
         </div>
       </section>
     </div>,
