@@ -2804,6 +2804,21 @@ Screens: menus3-power
 
 Sources: src/game/menus3Power.js, menus3Router.js; src/ui/menus3/Menus3Power.jsx, Menus3Panel.jsx, menus3Wire.js, menus3.css; src/ui/mobile/sheet/StatTree.jsx (`at`); src/ui/hud/HudArt.jsx, CharacterHud.jsx; server/test/menus3-power.test.mjs; tools/qa/mp/mp-menus3power.mjs.
 
+## The new menus' Skills: the ten, a skill's page, its guild inline (v2.3.6865, card MN step 6)
+Screens: menus3-skills, menus3-skill
+
+**What it is for:** your life skills and their guilds, in the third of Bro's sections (the owner's document, "You": *"10 life skills (level, XP, unlocks, how it works): Bro · Skills -> skill"*; *"Skill guilds (rank, next reward, quests): Bro · Skills -> inline on that skill's page"*; the Guild Hall's own card and the Guilds page are gone in their placement map). After this step the Bag, Power and Skills are all the new panel's.
+
+**Decisions, and why:**
+- **The game's ten, not the wireframe's six**: in the roster's order (the gather five, then the craft five; never resorted), three across in both shapes as the wireframe draws them; a tile its picture (30), its name, "Lv N" and a thin XP bar at the worker's price; "Total level" (today's landing's headline) over them. The brass dot of a level-up not yet looked at is read as the section opens, then marked seen, as today's page does; the Skills tab wears the same dot (decided 7: the game lights Bro for it today). Rules: `src/game/menus3Skills.js` (from `lifeProfile.js`).
+- **A guild with its reward waiting is a row over the grid** (the wireframe's "Mining guild · Reward ready" with Claim): one row a guild whose quest is done; its name opens the skill; its Claim is the game's one request (`guild_quest_turn_in` through the action door), quiet until the worker's answer moves the guild's step (6 s at most), "Not open yet" against a worker without `caps.guilds` (today's words; never a mint).
+- **A skill's page** (Back and the skill's name in the header): its level and XP to the next; the next and latest unlock with "All unlocks (n)" (the whole real ladder, a page of its own with Back; trapping and enchanting say they unlock nothing by level); its GUILD inline as today's guild window tells it (the guild and its master, the rank and the bar to the next with its AP, the guild quest with its reward and the same Claim, the seven ranks reached or not by a drawn mark, the guildmaster's line, the titles earned); then "How it works", today's lines (`sheet/SkillHow.jsx`, the one piece: the hit ladder, the XP fade, the benefit, where, how it is earned).
+- **Keys**: L opens Skills, P Power, I the Bag (the Bro button's own toggle) under `?menus3`; each again with its section showing closes it.
+- **No deep links on a skill's page**: its unlocks are names in the game's tables (no item id), "Found at" and the earn line are words; nothing is parsed out of them (World · Quests' rule).
+
+**Flagged to the owner:** nothing in today's game lights a button for a guild reward waiting (no badge reads the guild quests), so the row over the grid says it and no dot is added; the skill pictures are today's `<img>` (as every skills page draws them), not preloaded today either; "Found at" names old places ("Frost Ridge", "Starting Meadow": today's words, unverified on the Wheel); the Guild Hall's door still opens its card (Clans and Guilds: a building's card, not a router line; the Counter steps); the wireframe's "Map" on a skill's page is its sample (the game has no place for a skill's unlock).
+
+Sources: src/game/menus3Skills.js, menus3Router.js (MENUS3_BUILT), deskKeys.js (I, P, L); src/ui/menus3/Menus3Skills.jsx, Menus3Panel.jsx, menus3Wire.js (menus3Key), menus3.css; src/data/say/menus3Skills.js; server/test/menus3-skills.test.mjs; tools/qa/mp/mp-menus3skills.mjs.
 ## The new menus' Map and World · Codex (v2.3.6867, card MN step 8)
 Screens: menus3-codex, menus3-cxmonster
 
