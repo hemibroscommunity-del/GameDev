@@ -84,7 +84,10 @@ export const SAY = Object.freeze({
   'menus3.kindWeapon': '{w}',
   'menus3.kindShared': 'shared',
   'menus3.applied': '{n} applied.',
-  'menus3.refused': 'The game did not take the point for {stat}. {n} applied; nothing more was sent.',
+  'menus3.refused': 'No answer from the game yet for {stat}. {n} applied; nothing more was sent.',   /* v2.3.6866: it may still land (it is watched) */
+  /* v2.3.6866: a point that lands after the wait counts; its stage is held meanwhile */
+  'menus3.lateLanded': 'The game took the point for {stat} after all. {n} applied.',
+  'menus3.held': '{n} staged waiting for the game\u2019s answer: not sent again.',
   'menus3.offline': 'Reconnecting to the server. {n} applied; nothing more was sent.',
   'menus3.dropped': 'Draft dropped: points not applied',
   'menus3.focus': '{stat}: {now} \u2192 {after}',

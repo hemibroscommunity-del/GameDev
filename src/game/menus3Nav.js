@@ -94,3 +94,27 @@ export function navPrune(h, alive) {
   }
   return out.length === h.length ? h : Object.freeze(out);
 }
+
+/* ═══ v2.3.6866: A DEEP LINK'S TICKET (the gatekeeper's sitting 75 on #2441) ═══
+ * menus3Away (menus3Wire.js) keeps the panel's place while a quest's link
+ * shows today's page in the band; it read only "the band shut and the
+ * arrival is off its stack", so the band's Menu (menuRoot wipes the stack),
+ * then X, Esc or a world tap, opened the Quests panel again.  The ticket is
+ * now asked at EVERY change of the band: `tk` { ws, key, top } (the
+ * arrival's place and whether it is the page on top), `nav` the band's state
+ * (src/game/dashNav.js: shown, ws, its stacks).  { tk, verdict }:
+ *   'keep'  the band shows and the arrival is still on its stack;
+ *   'back'  the band shut in the very step that took the arrival off, while
+ *           it was the page on top: its own Back -- the panel opens again;
+ *   'drop'  anything else (a Close, the Menu's root, a wipe, no band). */
+export function awayStep(tk, nav) {
+  if (!tk || !nav || typeof tk.ws !== 'string') return { tk: null, verdict: 'drop' };
+  const st = Array.isArray(nav[tk.ws]) ? nav[tk.ws] : [];
+  let i = -1;
+  for (let k = 0; k < st.length; k++) if (st[k] && st[k].key === tk.key) { i = k; break; }
+  if (nav.shown) {
+    if (i < 0) return { tk: null, verdict: 'drop' };
+    return { tk: Object.freeze({ ws: tk.ws, key: tk.key, top: nav.ws === tk.ws && i === st.length - 1 }), verdict: 'keep' };
+  }
+  return { tk: null, verdict: i < 0 && tk.top === true ? 'back' : 'drop' };
+}
