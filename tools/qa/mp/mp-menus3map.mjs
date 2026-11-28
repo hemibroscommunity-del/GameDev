@@ -20,9 +20,9 @@
  *      tracked star lit, its light over in seconds; the map's X;
  *   2. SIDEWAYS (844 x 390): the Codex in the drawer, a monster's page in
  *      it; 44+; the minimap's box stands aside while the drawer is open;
- *   3. A COMPUTER (1280 x 800, `wide: true`): the drawer; K the Codex in
- *      the panel, K again closes; M the map (the panel shut first), M again
- *      closes it; Esc closes the panel.
+ *   3. A COMPUTER (1280 x 800, `wide: true`): the drawer; Esc closes the
+ *      panel; M the map (the panel shut first), M again closes it; K the
+ *      Codex (listed: it comes with Bro · Skills, which owns the page keys).
  *
  * Measured from OUTSIDE the game (this test's evaluate).  Pictures
  * (deviceScaleFactor 1): tools/qa/out/menus3map-*.png. */
@@ -206,15 +206,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await D.page.keyboard.press('Escape');
       await D.page.waitForTimeout(600);
       rec.ok('computer: Esc closes it', (await pstate(D)).open === false, null);
-      await D.page.keyboard.press('KeyK');
-      await D.page.waitForTimeout(700);
-      ps = await pstate(D);
-      rec.ok('computer: K opens the Codex in the new panel', ps.open && ps.menu === 'world' && ps.section === 'codex', ps);
-      await D.page.keyboard.press('KeyK');
-      await D.page.waitForTimeout(600);
-      rec.ok('computer: K again closes it', (await pstate(D)).open === false, null);
-      await D.page.keyboard.press('KeyK');
-      await D.page.waitForTimeout(600);
+      /* K (the Codex's key) waits for Bro · Skills (claude/mn-skills), which owns deskKeys.js's page keys:
+         its checks come with it (the card's step 8, flagged in the PR) */
+      rec.ok('LISTED computer: K opens the Codex in the panel once Bro · Skills lands (deskKeys.js)', true, null);
+      await openCodex(D, false);
       await D.page.keyboard.press('KeyM');
       await D.page.waitForTimeout(900);
       ps = await pstate(D);
