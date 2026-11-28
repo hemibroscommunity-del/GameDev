@@ -48,9 +48,10 @@ let _panel = SHUT;
 const isBuilt = (s) => MENUS3_BUILT.indexOf(s) >= 0;
 export const menus3Bus = {
   get state() { return _panel; },
-  open(menu, section) {
+  /* v2.3.6862: `rail` the section's own page's place to open on (Power's lane, from the weapon bar) */
+  open(menu, section, rail) {
     const sec = section || null;
-    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec) });
+    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec, rail == null ? null : rail) });
     stamp(); emit();
   },
   /* a header tab: a built section starts its own page; one not built yet goes
@@ -158,7 +159,7 @@ export function menus3Go(entry, ctx) {
         return false;
       }
       case 'panel':
-        menus3Bus.open(r.menu, r.section);
+        menus3Bus.open(r.menu, r.section, r.lane);   /* v2.3.6862: Power's lane from the weapon bar */
         /* v2.3.6863: the quest line opens THAT quest's page, its Back the Quests' own page */
         if (r.section === 'quests' && ctx && typeof ctx.quest === 'string' && ctx.quest) menus3Bus.push('quest', ctx.quest);
         return true;

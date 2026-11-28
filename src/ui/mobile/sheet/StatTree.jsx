@@ -139,16 +139,21 @@ function sourceWords(src, cat, wpn) {
  * S     the game's state (handed by BroCard)
  * page  this layer's frame page (combatHub.js TREE_PAGES)
  */
-export function StatTree({ S, page, live }) {
+/* v2.3.6862 (card MN step 5): `at` { cat, path, onOpen(path) } draws a layer for a host that keeps
+   its own history (the new menus' Power, its one Back: src/game/menus3Nav.js): the weapon and the
+   path are the host's, and a row that opens asks the host instead of pushing the band's page.
+   Without it, today's frame pages exactly. */
+export function StatTree({ S, page, live, at }) {
+  const host = at && typeof at.cat === 'string' ? at : null;
   /* the numbers follow the game: a new key (a placed point, a new weapon) draws the layer again */
   useClock(() => {
     const L = live ? live() : S;
-    const t = weaponDpsTree((L && L.rpg) || {}, cat0(page));
+    const t = weaponDpsTree((L && L.rpg) || {}, host ? host.cat : cat0(page));
     return t.tree ? String(t.tree.value) + '|' + (t.wpn && t.wpn.name) : '';
   }, 400);
   const [ref, room] = useRoom();
-  const depth = Math.max(0, treeDepthOf(page));
-  const sel = selOf(page);
+  const sel = host ? { cat: host.cat, path: Array.isArray(host.path) ? host.path : [] } : selOf(page);
+  const depth = host ? sel.path.length : Math.max(0, treeDepthOf(page));
   const cat = sel ? sel.cat : 'sword';
   const R = (S && S.rpg) || {};
   const T = weaponDpsTree(R, cat);
@@ -182,6 +187,7 @@ export function StatTree({ S, page, live }) {
   }
 
   const open = (k) => {
+    if (host) { if (typeof host.onOpen === 'function') host.onOpen(path.concat(k.id)); return; }
     const id = TREE_PAGES[depth + 1];
     if (!id) return;
     dashboardPanelBus.go({ type: 'push', id, sel: treeSel(cat, path.concat(k.id)) });

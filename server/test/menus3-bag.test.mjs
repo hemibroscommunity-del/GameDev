@@ -25,7 +25,7 @@
  *      shut or as the drawer; followCamera's aim moves by it, and without it
  *      is exactly yesterday's;
  *   7. THE ROAD: the Bro button and the I key's Bag are built (the panel),
- *      Power and Skills still today's screens. */
+ *      Skills still today's screen (Power is built: menus3-power.test). */
 import { MENUS3_NAV, navStart, navTop, navCanBack, navPush, navBack, navKeep, navPrune } from '../../src/game/menus3Nav.js';
 import { readFileSync } from 'node:fs';
 import { MENUS3_COUNTERS, MENUS3_RAIL, MENUS3_RAIL_KINDS, MENUS3_SLOTS, railId, railEntries, railCounts, gridCols, slotCandidates, counterActions } from '../../src/game/menus3Bag.js';
@@ -138,7 +138,8 @@ function check(name, cond, detail) {
   check('7a the Bag is built', MENUS3_BUILT.includes('bag'));
   const r = menus3Route('dock.bro', { built: MENUS3_BUILT });
   check('7b the Bro button opens the panel on the Bag, always', r.road === 'panel' && r.section === 'bag' && r.menu === 'bro');
-  check('7c Power and Skills still today\'s', menus3Route('hud.face', { built: MENUS3_BUILT }).road !== 'panel' && !MENUS3_BUILT.includes('skills'));
+  /* v2.3.6862 (card MN step 5): Power is built now (menus3-power.test 7); Skills still today's */
+  check('7c Skills still today\'s', !MENUS3_BUILT.includes('skills'));
 }
 
 console.log(`menus3-bag: ${passes} passed, ${failures} failed`);

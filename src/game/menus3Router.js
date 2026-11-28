@@ -51,6 +51,7 @@ export const MENUS3_TODAY = Object.freeze({
    v2.3.6863 (card MN step 7): + World's Quests (Codex and Feats still today's). */
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
+  'power',   /* v2.3.6862 (card MN step 5): + Power */
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */
@@ -83,6 +84,8 @@ export const MENUS3_KEYS = Object.freeze({
 
 /* The weapon in hand's page under today's Bro (src/game/dashDests.js FRAME_PAGES) */
 const WEAPON_PAGE = Object.freeze({ melee: 'broSword', sword: 'broSword', ranged: 'broBow', bow: 'broBow', staff: 'broStaff' });
+/* v2.3.6862: ...and its lane in the new Power (src/game/menus3Power.js POWER_LANES) */
+const WEAPON_LANE = Object.freeze({ melee: 'sword', sword: 'sword', ranged: 'bow', bow: 'bow', staff: 'staff' });
 
 /** Where an entry opens: { entry, menu, section, road, page?, built }, or
  *  null for an id that is no entry.  `ctx.held` the weapon in hand (melee,
@@ -92,7 +95,12 @@ export function menus3Route(entry, ctx) {
   if (!e) return null;
   const c = ctx || {};
   const built = c.built ? (Array.isArray(c.built) ? c.built.indexOf(e.section) >= 0 : !!(c.built.has && c.built.has(e.section))) : false;
-  if (built) return { entry, menu: e.menu, section: e.section, road: 'panel', built: true };
+  if (built) {
+    const o = { entry, menu: e.menu, section: e.section, road: 'panel', built: true };
+    /* v2.3.6862 (card MN step 5): the weapon bar opens Power on the weapon in hand's lane (decided 3) */
+    if (e.lane === 'held') o.lane = Object.prototype.hasOwnProperty.call(WEAPON_LANE, c.held) ? WEAPON_LANE[c.held] : 'sword';
+    return o;
+  }
   const t = MENUS3_TODAY[e.section];
   const out = { entry, menu: e.menu, section: e.section, road: t.road, built: false };
   if (t.page) out.page = t.page;
