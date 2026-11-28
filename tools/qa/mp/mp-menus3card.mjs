@@ -130,9 +130,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       got = await waitCard(D, 'party.invite');
       rec.ok('computer: the party invite is the Card', got, null);
       await D.page.keyboard.press('Enter');
-      const p3 = await H.waitFor(A, (S) => (S._party && S._party.state === 'open' ? S._party.members.length : 0), (n) => n === 2 || n === 3, { timeout: 15000, label: 'the computer joined' }).catch(() => null);
-      const dIn = await H.readState(D, (S) => !!(S._party && S._party.state === 'open'));
-      rec.ok('computer: Enter presses Join: the computer is in the party, the Card gone', dIn && (await gone(D)), { p3, dIn });
+      const cardGone = await gone(D);
+      /* the computer's own party (A's already counts B, who has left: wait on D's) */
+      const dIn = await H.waitFor(D, (S) => !!(S._party && S._party.state === 'open'), (v) => v === true, { timeout: 15000, label: 'the computer joined' }).catch(() => false);
+      rec.ok('computer: Enter presses Join: the Card goes, the computer is in the party', cardGone && dIn === true, { cardGone, dIn });
     } finally { await D.page.context().close().catch(() => {}); }
   } finally {
     await B.page.context().close().catch(() => {});
