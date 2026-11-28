@@ -221,7 +221,7 @@ function SkillPage({ R, getS, skill }) {
         <div className="m3-skill-block m3-guild" data-m3-guild={skill}>
           <div className="m3-guild-head">
             <b className="m3-guild-name">{g.name}</b>
-            <span className="m3-guild-sub">{say(SAY, 'menus3Skills.master', { name: g.master })}</span>
+            <span className="m3-guild-sub">{g.master}</span>
           </div>
           <div className="m3-guild-rank" data-m3-guild-rank={g.rank.title}>
             <b>{g.rank.title}</b>

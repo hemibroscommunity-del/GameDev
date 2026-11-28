@@ -5,7 +5,6 @@
    (ui/panels/GuildPanel.jsx), moved here as they read. */
 export const SAY = Object.freeze({
   'menus3Skills.guildLine': 'Progress through guild ranks to earn titles and AP',
-  'menus3Skills.master': 'Guildmaster: {name}',
   'menus3Skills.nextRank': 'Next: {title} (Lv {lvl})',
   'menus3Skills.maxRank': 'Max rank',
   'menus3Skills.ranks': 'Guild ranks',

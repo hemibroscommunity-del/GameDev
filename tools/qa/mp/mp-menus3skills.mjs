@@ -37,7 +37,12 @@ const probe = (P) => P.page.evaluate(() => window.__btMenus3Skills || null);
 const small = (P) => P.page.evaluate(() => Array.from(document.querySelectorAll('[data-menus3-panel] button')).map((el) => { const r = el.getBoundingClientRect(); return { t: (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((b) => b.w > 0 && (b.w < 44 || b.h < 44)));
 const title = (P) => P.page.evaluate(() => (document.querySelector('[data-menus3-title]') || {}).textContent || '');
 
+/* what is under a point (a tap that missed says what took it) */
+const under = (P, b) => (b ? P.page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); return el ? (el.tagName + '.' + String(el.className || '').slice(0, 60) + (el.closest('[data-menus3-panel]') ? ' (in panel)' : '')) : null; }, [b.x + b.w / 2, b.y + b.h / 2]) : null);
 async function tap(P, sel, touch) {
+  /* the panel's page scrolls: the target into view first (a tap on a point below it lands on the dock) */
+  await P.page.evaluate((s) => { const el = document.querySelector(s); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }, sel).catch(() => {});
+  await P.page.waitForTimeout(150);
   const b = await box(P, sel);
   if (!b) return false;
   const x = b.x + b.w / 2, y = b.y + b.h / 2;
@@ -153,9 +158,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const sm = await small(Q);
       rec.ok('sideways: every tappable thing 44+', sm.length === 0, sm);
       await shot(Q, 'sideways');
+      const at = await under(Q, await box(Q, '[data-m3-skill="mining"]'));
       await tap(Q, '[data-m3-skill="mining"]', true);
       const st = await pstate(Q);
-      rec.ok('sideways: a skill\'s page in the drawer', st.page === 'skill' && st.arg === 'mining', st);
+      rec.ok('sideways: a skill\'s page in the drawer', st.page === 'skill' && st.arg === 'mining', { st, at });
       await shot(Q, 'sideways-skill');
     }
   } finally { await Q.page.context().close().catch(() => {}); }
