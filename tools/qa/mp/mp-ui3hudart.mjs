@@ -155,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const listen = (P, id) => P.page.on('request', (q) => { if (q.url().indexOf('/ui/hud/') >= 0) hudReqs.push({ id, at: Date.now(), url: q.url() }); });
 
   /* ── the phone, upright ── */
-  const A = await H.newPlayer(browser, { name: 'Artbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel' });
+  const A = await H.newPlayer(browser, { name: 'Artbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel', query: 'bighud=0' });   /* tag 6847: the pictures at their own size (the bigger HUD: mp-bighud) */
   watch(A, 'phone');
   listen(A, 'phone');
   await H.enterWorld(A);
