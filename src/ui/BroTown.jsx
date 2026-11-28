@@ -2144,7 +2144,7 @@ export var BroTown = function BroTown(_ref0) {
   var _useState133 = useState(null),
     _useState134 = _slicedToArray(_useState133, 2),
     buildingPanel = _useState134[0],
-    setBuildingPanel = menus3StationGate(_useState134[1]); /* v2.3.6872: the Blacksmith's window is the Counter under ?menus3 (menus3Wire.js; the same function every render) */ /* 'shop'|'bank'|'enchant'|'cook'|'farm'|'party'|'exchange'|'forge'|'gemcut'|'woodwork' */
+    setBuildingPanel = menus3StationGate(_useState134[1], function () { return stateRef.current && stateRef.current._serverCaps; }); /* v2.3.6872: the Blacksmith's window is the Counter under ?menus3 (menus3Wire.js; the same function every render); v2.3.6877: + the worker's caps (the Gem Works) */ /* 'shop'|'bank'|'enchant'|'cook'|'farm'|'party'|'exchange'|'forge'|'gemcut'|'woodwork' */
   /* v2.3.3481: the Cookhouse's fish game is gone (the owner: "Remove
      cookhouse fish game"; CookPanel.jsx, NO FISH ARE COOKED HERE), and with
      it its state here -- cookMinigame, and the 20 fps cookTick re-render that

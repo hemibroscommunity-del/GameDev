@@ -44,4 +44,10 @@ export const SAY = Object.freeze({
   'menus3Counter.cookLock': 'Unlocks at Cooking Lv{lvl}',
   'menus3Counter.cook': 'Cook',
   'menus3Counter.cookFail': 'Could not cook it',
+  /* v2.3.6877 (card MN step 13c): the Gem Works' few words of its own (today's buttons were a pill
+     and an element's name); the rest are today's (data/say/shardCrack.js, enchant.js, gemWorks.js) */
+  'menus3Counter.stationGemWorks': 'Gem Works',
+  'menus3Counter.gemCut': 'Cut',
+  'menus3Counter.gemSet': 'Set gem',
+  'menus3Counter.gemFail': 'No answer from the Gem Works',
 });

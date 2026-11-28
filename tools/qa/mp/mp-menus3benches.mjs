@@ -11,8 +11,8 @@
  *      counted request (3 traps, 3 logs); the Cookhouse the same way,
  *      "Cookhouse · Make", today's campfire line, Herb Bread with Max and
  *      minus, cooked one after another, each the worker's; 44+ throughout;
- *   2. SIDEWAYS (844 x 390): the drawer, 44+; the Gem Works (not built yet)
- *      still opens today's window;
+ *   2. SIDEWAYS (844 x 390): the drawer, 44+; the Gem Works opens the
+ *      Counter too (v2.3.6877: built, mp-menus3gems);
  *   3. A COMPUTER (1280 x 800, `wide: true`): the drawer; Esc closes it;
  *      `?menus3=0`: the same setter opens TODAY's two windows.
  *
@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   } finally { await P.page.context().close().catch(() => {}); }
 
-  /* ── 2. sideways: the Woodworker in the drawer; the Gem Works still today's ── */
+  /* ── 2. sideways: the Woodworker in the drawer; the Gem Works' Counter too (v2.3.6877) ── */
   const S2 = await H.newPlayer(browser, { name: 'Benchside', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true, query: 'menus3=1' });
   try {
     if (await inWorld(S2, rec, 'sideways')) {
@@ -154,10 +154,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('sideways: every tappable thing 44 x 44 or more', sm.length === 0, sm);
       await shot(S2, 'sideways');
       await tap(S2, '[data-menus3-x]', true);
+      /* v2.3.6877 (card MN step 13c): the Gem Works is built now (mp-menus3gems plays it) */
       await S2.page.evaluate(() => { window._uiPanels.building('gemcut'); });
-      const gw = await S2.page.waitForSelector('[data-gem-works]', { timeout: 10000 }).then(() => true).catch(() => false);
-      rec.ok('sideways: the Gem Works still opens today\'s window (not built yet)', gw && !(await pstate(S2)).open, gw);
-      await S2.page.evaluate(() => { window._uiPanels.building(null); }).catch(() => {});
+      const gw = await S2.page.waitForSelector('[data-menus3-make="gemworks"]', { timeout: 10000 }).then(() => true).catch(() => false);
+      rec.ok('sideways: the Gem Works opens the Counter too (v2.3.6877)', gw && (await pstate(S2)).station === 'gemcut', gw);
+      await tap(S2, '[data-menus3-x]', true);
     }
   } finally { await S2.page.context().close().catch(() => {}); }
 

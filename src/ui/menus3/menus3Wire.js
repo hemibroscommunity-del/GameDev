@@ -443,18 +443,23 @@ export function menus3Active() { return _on; }
    id, and everything under ?menus3=0, goes to today's setter untouched.  The
    wrapper is kept per setter, so it is the same function every render. */
 const _gates = new WeakMap();
-export function menus3StationGate(set) {
+/* v2.3.6877 (card MN step 13c): `caps` reads the worker's caps when a door opens (the Gem
+   Works' Counter only against a worker that settles every gem ask; counterStation) */
+export function menus3StationGate(set, caps) {
   if (typeof set !== 'function') return set;
   let g = _gates.get(set);
   if (!g) {
     g = (p) => {
-      const st = typeof p === 'string' ? counterStation(p, _on) : null;
+      let c = null;
+      try { c = typeof g.caps === 'function' ? g.caps() : null; } catch (e) { c = null; }
+      const st = typeof p === 'string' ? counterStation(p, _on, c) : null;
       if (!st) { set(p); return; }
       set(null);
       menus3Bus.counter(st);
     };
     _gates.set(set, g);
   }
+  if (typeof caps === 'function') g.caps = caps;
   return g;
 }
 

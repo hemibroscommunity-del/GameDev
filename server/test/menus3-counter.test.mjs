@@ -30,6 +30,7 @@ import {
   COUNTER_MODES, COUNTER_STATIONS, counterStation, SMITH_TABS, smithTabs, smithTab,
   makePlan, makeIdle, makeBegin, makeSend, makeRead, makeRefused, makeCut, SMELT_PER_REQUEST,
   WOOD_TABS, woodTabs, cookCarries, cookShown, cookHave,
+  GEM_NEEDS, gemWorksReady, GEM_TABS, gemFirstTab, weaponGemSlotsRead,
 } from '../../src/game/menus3Counter.js';
 
 let failures = 0, passes = 0;
@@ -63,8 +64,18 @@ const read = (rel) => readFileSync(fileURLToPath(new URL('../../' + rel, import.
   check('2a four modes', COUNTER_MODES.join() === 'make,trade,keep,play');
   const f = counterStation('forge', true);
   check('2b the Blacksmith opens the Counter, in Make', !!f && f.mode === 'make' && f.bench === 'blacksmith' && f.id === 'forge');
-  /* v2.3.6873 (card MN step 13b): the Woodworker and the Cookhouse are built; the Gem Works waits */
-  check('2c the Gem Works: today\'s window until built', ['gemcut', 'enchant'].every((k) => COUNTER_STATIONS[k] && COUNTER_STATIONS[k].mode === 'make' && counterStation(k, true) === null));
+  /* v2.3.6873 (card MN step 13b): the Woodworker and the Cookhouse are built; v2.3.6877 (13c) the
+     Gem Works, only against a worker that settles every gem ask (its kill switches bring back
+     today's window, with its old local paths) */
+  const ALLGEM = { shardcrack: true, weapongem: true, shieldgem: true, amuletForge: true };
+  check('2c the Gem Works: the Counter against a worker that settles every gem ask', ['gemcut', 'enchant'].every((k) => {
+    const st = counterStation(k, true, ALLGEM);
+    return COUNTER_STATIONS[k].mode === 'make' && !!st && st.bench === 'gemworks' && st.id === k;
+  }));
+  check('2d any gem ask switched off: today\'s window', GEM_NEEDS.every((c) => counterStation('gemcut', true, Object.assign({}, ALLGEM, { [c]: false })) === null
+    && counterStation('enchant', true, Object.assign({}, ALLGEM, { [c]: false })) === null)
+    && counterStation('gemcut', true) === null && counterStation('enchant', true, null) === null && counterStation('gemcut', false, ALLGEM) === null);
+  check('2e the other benches read no caps', counterStation('forge', true, {}) !== null && counterStation('cook', true, null) !== null);
   const w = counterStation('woodwork', true), ck = counterStation('cook', true);
   check('2f the Woodworker and the Cookhouse open the Counter, in Make', !!w && w.bench === 'woodworker' && w.mode === 'make' && !!ck && ck.bench === 'cookhouse' && ck.mode === 'make'
     && counterStation('woodwork', false) === null && counterStation('cook', false) === null);
@@ -188,6 +199,51 @@ const keysOf = (src, type) => {
     && /act\('cook_recipe', carry \? \{ recipeIdx: ri, carry: true \} : \{ recipeIdx: ri \}\)/.test(mine) && [...reqs(mine)].join() === 'cook_recipe');
   check('7i a number only where the dish is carried', /multi: carry,/.test(mine));
   check('7j the Eat list is gone (Decided 11): no eat here, the bag eats', !/eat_request/.test(mine) && /if \(a\.eat\) add\('eat'/.test(read('src/ui/mobile/dash/itemActions.js')));
+}
+
+/* ── 8. v2.3.6877 (card MN step 13c): the Gem Works ── */
+{
+  check('8a every gem ask the Counter sends is the worker\'s, each with its kill switch', GEM_NEEDS.join() === 'shardcrack,weapongem,shieldgem,amuletForge'
+    && gemWorksReady({ shardcrack: 1, weapongem: 1, shieldgem: 1, amuletForge: 1 }) && !gemWorksReady({}) && !gemWorksReady(null));
+  const join = read('server/src/join.js');
+  check('8b the worker advertises the four', GEM_NEEDS.every((c) => new RegExp('\\b' + c + ': true').test(join)));
+  const panelG = read('src/ui/panels/buildings/GemWorksPanel.jsx');
+  check('8c today\'s two tabs, in today\'s order; each door its own', GEM_TABS.join() === 'gemcut,enchant' && /key: 'gemcut'[\s\S]*key: 'enchant'/.test(panelG)
+    && gemFirstTab('enchant') === 'enchant' && gemFirstTab('gemcut') === 'gemcut' && gemFirstTab(null) === 'gemcut');
+  /* a weapon's slots, as today's Enchanter reads them */
+  const els = ['flame', 'frost', 'water', 'venom', 'light'];
+  const base = { lvl: 1, second: 20, elements: els, offers: (e) => e !== 'light', have: (e) => ({ flame: 2, water: 1, light: 3 })[e] || 0, volatile: (a, b) => a === 'flame' && b === 'water' };
+  const bare = weaponGemSlotsRead({}, Object.assign({}, base, { max: 2 }));
+  check('8d a bare weapon: the first slot, the gems it takes that you hold', bare.state === 'pick' && bare.pickable && !bare.second && bare.picks.map((p) => p.e).join() === 'flame,water' && bare.open === 2);
+  const one = { element1: 'flame' };
+  const low = weaponGemSlotsRead(one, Object.assign({}, base, { max: 2 }));
+  check('8e the second slot waits on Enchanting 20', low.state === 'locked' && !low.pickable && low.picks.length === 0 && low.used === 1);
+  const hi = weaponGemSlotsRead(one, Object.assign({}, base, { max: 2, lvl: 20 }));
+  check('8f at 20: another element, a volatile pair blocked off Fusion gear', hi.state === 'pick' && hi.second && hi.picks.map((p) => p.e + (p.blocked ? '!' : '')).join() === 'water!');
+  const fus = weaponGemSlotsRead(one, Object.assign({}, base, { max: 2, lvl: 20, fusion: true }));
+  check('8g on Fusion gear the pair is allowed', fus.picks.length === 1 && !fus.picks[0].blocked);
+  check('8h no open slot, no weapon, no gems', weaponGemSlotsRead({ element1: 'flame' }, Object.assign({}, base, { max: 1 })).state === 'noSlot'
+    && weaponGemSlotsRead(null, Object.assign({}, base, { max: 2 })).state === 'noSlot' && weaponGemSlotsRead({}, Object.assign({}, base, { max: 0 })).state === 'noSlot'
+    && weaponGemSlotsRead({}, Object.assign({}, base, { max: 1, have: () => 0 })).state === 'noGems');
+  const ench = read('src/ui/panels/buildings/EnchantPanel.jsx');
+  check('8i today\'s Enchanter reads the slots so', /var canAddSecond = enchLvl >= SECOND_SLOT_LVL && maxSlots >= 2;/.test(ench)
+    && /var slotPickable = !!\(wpn && openSlots > 0 && \(!wpn\.element1 \|\| wpn\.element1 && !wpn\.element2 && canAddSecond\)\);/.test(ench)
+    && /var blockedVolatile = wouldBeVolatile && !isFusionReady;/.test(ench) && /'enchant\.locked' : 'enchant\.noSlot'/.test(ench));
+  /* the asks: today's functions, the same ones; the amulet's request with today's payload */
+  const mine = read('src/ui/menus3/Menus3Gems.jsx');
+  const crack = read('src/ui/panels/buildings/ShardCrackPanel.jsx');
+  const asks = (src) => ['askShardCrack(', 'askGemCombine(', 'askWeaponGem(', 'askWeaponGemOut(', 'askShieldGem('].filter((f) => src.indexOf(f) >= 0).join();
+  check('8j the Counter asks with today\'s functions', asks(mine) === asks(crack + ench) && asks(mine) === 'askShardCrack(,askGemCombine(,askWeaponGem(,askWeaponGemOut(,askShieldGem(');
+  check('8k the amulet\'s gem: today\'s request and payload, and no other', /act\('amulet_forge_request', \{ op: 'gem', gem: elem \}\)/.test(ench)
+    && /act\('amulet_forge_request', \{ op: 'gem', gem: e \}\)/.test(mine) && [...reqs(mine)].join() === 'amulet_forge_request');
+  check('8l a crack is today\'s count, in pieces of the worker\'s 50', /SHARD_CRACK_MAX = 50\b/.test(read('src/data/shards.js')) && /per: SHARD_CRACK_MAX/.test(mine)
+    && /Math\.min\(50,/.test(read('src/game/shardCrack.js')));
+  check('8m a set and a take-out one at a time (a slot; a gem replaced): three weapons\' sets, Take out, the amulet, the shield', (mine.match(/multi: false/g) || []).length === 4
+    && (mine.match(/multi: true/g) || []).length === 3);
+  check('8n every ask through the action door or today\'s own function', !/channel\.send|\.postMessage|sendMessage\(/.test(mine) && /from '@\/game\/actions\.js'/.test(mine));
+  check('8o the reveal is today\'s very one', /export function Reveal/.test(crack) && /export function useCrackSounds/.test(crack) && /useCrackSounds\(crackRes\)/.test(crack)
+    && /import \{ Reveal, useCrackSounds \} from '\.\.\/panels\/buildings\/ShardCrackPanel\.jsx'/.test(mine));
+  check('8p no old local path rides in the new menu', !/gemTakeLocal|addLifeSkillXp|Math\.random/.test(mine));
 }
 
 console.log(`menus3-counter: ${passes} passed, ${failures} failed`);

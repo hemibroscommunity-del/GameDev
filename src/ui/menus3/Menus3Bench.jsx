@@ -28,7 +28,16 @@
  * (one make), room (an extra cap), ok (the locks today's row checks), lock
  * (its words), chips (facts), none (nothing to do), multi (takes a number),
  * per (one request holds), verb, send(count), sig(), kind, workMs(n), done,
- * fail, landed() (what today's page did when one landed) }. */
+ * fail, landed() (what today's page did when one landed) }.
+ *
+ * v2.3.6877 (card MN step 13c, the Gem Works): a bench's `skill` and its
+ * `level(lvl, tab)` may be the tab's (its two tabs are two skills); a row may
+ * carry a `head` (a section's words drawn before it), be a `note` (its head
+ * only: the empty lines, the crack's reveal, a refusal under what it was
+ * about), say `refused()` (the worker's own answer said no: the queue stops
+ * at once, its words already shown), or have no `kind` (no work at the
+ * bench: today's gem windows play no hammer); `first` opens a tab (the
+ * station's own: the Gem Works' two doors). */
 import React from 'react';
 import { LIFE_SKILL_XP } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -52,7 +61,7 @@ function rowMax(r) {
 }
 
 /* ── the queue, one for the bench (the page's; the rule's verbs, menus3Counter.js) ── */
-function useMakeQueue(S, lvl, bench) {
+function useMakeQueue(S, lvl, bench, skill) {
   const [q, setQ] = React.useState(makeIdle);
   const job = React.useRef(null);
   const timer = React.useRef(0);
@@ -69,7 +78,7 @@ function useMakeQueue(S, lvl, bench) {
     if (r.count == null) { put(r.q); return; }
     try { j.row.send(r.count); } catch (e) { put(makeRefused(r.q)); return; }
     put(r.q);
-    startSmithing(S, j.row.workMs(r.count), j.row.kind);
+    if (j.row.kind) startSmithing(S, j.row.workMs(r.count), j.row.kind);   /* v2.3.6877: a row with no kind works no hammer (the gems) */
     clear();
     timer.current = setTimeout(() => {
       timer.current = 0;
@@ -87,6 +96,8 @@ function useMakeQueue(S, lvl, bench) {
     const cur = qRef.current;
     const j = job.current;
     if (!(cur.on && cur.waiting && j)) return;
+    /* v2.3.6877: the worker's own answer said no: stop now (its words are on the page already) */
+    if (typeof j.row.refused === 'function' && j.row.refused()) { clear(); put(makeRefused(cur)); return; }
     const r = makeRead(cur, j.row.sig());
     if (r.then === 'wait') return;
     clear();
@@ -99,7 +110,7 @@ function useMakeQueue(S, lvl, bench) {
     check();
     const j = job.current;
     if (lvl > lvlSeen.current && j && bench.celebrates(j.row)) {
-      try { celebrateLifeSkillLevel(S, bench.skill, lvl, lvlSeen.current); } catch (e) { /* visual */ }
+      try { celebrateLifeSkillLevel(S, skill, lvl, lvlSeen.current); } catch (e) { /* visual */ }
     }
     lvlSeen.current = lvl;
   });
@@ -120,20 +131,21 @@ function useMakeQueue(S, lvl, bench) {
 
 /* the tab each bench was last on, for the load, as today's benches remember their own */
 const _tabKept = Object.create(null);
-export function Menus3Bench({ R, getS, bench }) {
+export function Menus3Bench({ R, getS, bench, first }) {
   const S = getS() || {};
   const Rr = R || {};
-  const sk = (Rr.lifeSkills && Rr.lifeSkills[bench.skill]) || { level: 1, xp: 0 };
-  const lvl = sk.level || 1;
   const tabs = bench.tabs(S, Rr);
-  const [want, setWant] = React.useState(() => (Object.prototype.hasOwnProperty.call(_tabKept, bench.id) ? _tabKept[bench.id] : null));
+  const [want, setWant] = React.useState(() => (first || (Object.prototype.hasOwnProperty.call(_tabKept, bench.id) ? _tabKept[bench.id] : null)));
   const tab = tabs.indexOf(want) >= 0 ? want : tabs[0];
+  const skill = typeof bench.skill === 'function' ? bench.skill(tab) : bench.skill;   /* v2.3.6877: the tab's skill */
+  const sk = (Rr.lifeSkills && Rr.lifeSkills[skill]) || { level: 1, xp: 0 };
+  const lvl = sk.level || 1;
   const [pick, setPick] = React.useState(null);
   const [n, setN] = React.useState(1);
-  const { q, start, job } = useMakeQueue(S, lvl, bench);
+  const { q, start, job } = useMakeQueue(S, lvl, bench, skill);
   const special = bench.body ? bench.body(tab, S, Rr) : null;
   const rows = special ? [] : bench.rows(tab, S, Rr, lvl);
-  const sel = rows.find((r) => r.key === pick) || null;
+  const sel = rows.find((r) => r.key === pick && !r.note) || null;
   const busy = q.on;
   const need = LIFE_SKILL_XP(lvl);
   const pct = Math.max(0, Math.min(1, (sk.xp || 0) / need));
@@ -155,8 +167,8 @@ export function Menus3Bench({ R, getS, bench }) {
   return (
     <div className="m3-page m3-make" data-menus3-make={bench.id} {...(bench.rootProps || {})}>
       <div className="m3-make-level">
-        <Icon src={bench.skillIcon} size={22} />
-        <span {...bench.levelProps(lvl)}>{bench.level(lvl)}</span>
+        <Icon src={typeof bench.skillIcon === 'function' ? bench.skillIcon(tab) : bench.skillIcon} size={22} />
+        <span {...bench.levelProps(lvl, tab)}>{bench.level(lvl, tab)}</span>
         <i className="m3-make-bar"><i style={{ width: `${pct * 100}%` }} /></i>
       </div>
       {tabs.length > 1 || bench.railAlways ? (
@@ -177,9 +189,14 @@ export function Menus3Bench({ R, getS, bench }) {
         <>
           {bench.above ? bench.above(tab, S, Rr, rows) : null}
           {rows.map((r) => {
+            /* v2.3.6877: a section's words before a row; a note is only its words */
+            const head = r.head ? <div className="m3-make-head" data-menus3-head={r.key}>{r.head}</div> : null;
+            if (r.note) return <React.Fragment key={r.key}>{head}</React.Fragment>;
             const m = rowMax(r);
             return (
-              <button key={r.key} type="button" className={'u2-raised u2-ctl m3-make-row' + (r.key === pick ? ' is-selected' : '') + (m > 0 ? '' : ' is-dim')}
+              <React.Fragment key={r.key}>
+              {head}
+              <button type="button" className={'u2-raised u2-ctl m3-make-row' + (r.key === pick ? ' is-selected' : '') + (m > 0 ? '' : ' is-dim')}
                 aria-pressed={r.key === pick} data-menus3-recipe={tab + ':' + r.key} data-menus3-can={m}
                 {...frameTap(() => { setPick(r.key); setN(1); })}>
                 <span className="m3-make-art">
@@ -196,6 +213,7 @@ export function Menus3Bench({ R, getS, bench }) {
                   </span>
                 </span>
               </button>
+              </React.Fragment>
             );
           })}
           <div className="m3-foot m3-make-foot" data-menus3-make-foot={sel ? sel.key : ''}>

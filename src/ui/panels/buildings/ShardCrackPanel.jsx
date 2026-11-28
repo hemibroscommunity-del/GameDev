@@ -81,7 +81,7 @@ function Header({ lvl, chance }) {
 
 /* the worker's rolls, a tile a shard -- drawn under the row that was cracked
    and brought into view: below eight lands' rows it was off the screen */
-function Reveal({ res }) {
+export function Reveal({ res }) {   /* v2.3.6877: + the Counter's Gem Works (menus3/Menus3Gems.jsx) */
   const box = React.useRef(null);
   React.useEffect(() => {
     try { if (box.current && box.current.scrollIntoView) box.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* a look only */ }
@@ -112,6 +112,23 @@ function Reveal({ res }) {
   );
 }
 
+/* the crack heard as it is seen: the gem's ring on each find, the shard
+   breaking on the first few that held none (v2.3.6877: a hook, shared with
+   the Counter's Gem Works, menus3/Menus3Gems.jsx) */
+export function useCrackSounds(crackRes) {
+  React.useEffect(() => {
+    if (!crackRes) return undefined;
+    const timers = [];
+    let misses = 0;
+    crackRes.rolls.forEach((r, i) => {
+      const hit = r <= crackRes.chance;
+      if (!hit && misses++ >= MISS_SOUNDS) return;
+      timers.push(setTimeout(() => { try { cue(hit ? 'gemCut' : 'gemShatter', hit ? 1 : 0.4); } catch (e) { /* sound only */ } }, i * TILE_MS + (hit ? 320 : 240)));
+    });
+    return () => { for (const t of timers) clearTimeout(t); };
+  }, [crackRes && crackRes.seq]);
+}
+
 export function ShardCrackPanel({ rpgState, stateRef }) {
   const S = (stateRef && stateRef.current) || {};
   const R = rpgState || {};
@@ -136,19 +153,7 @@ export function ShardCrackPanel({ rpgState, stateRef }) {
   const last = shardCrackBus.get();
   const fresh = last && last.at >= openedAt.current ? last : null;
   const crackRes = fresh && fresh.kind === 'crack' && fresh.ok && fresh.rolls.length ? fresh : null;
-  /* the crack heard as it is seen: the gem's ring on each find, the shard
-     breaking on the first few that held none */
-  React.useEffect(() => {
-    if (!crackRes) return undefined;
-    const timers = [];
-    let misses = 0;
-    crackRes.rolls.forEach((r, i) => {
-      const hit = r <= crackRes.chance;
-      if (!hit && misses++ >= MISS_SOUNDS) return;
-      timers.push(setTimeout(() => { try { cue(hit ? 'gemCut' : 'gemShatter', hit ? 1 : 0.4); } catch (e) { /* sound only */ } }, i * TILE_MS + (hit ? 320 : 240)));
-    });
-    return () => { for (const t of timers) clearTimeout(t); };
-  }, [crackRes && crackRes.seq]);
+  useCrackSounds(crackRes);
 
   const busy = !!pending;
   /* a land's row stays while its crack is playing, its last shard gone */

@@ -17,6 +17,7 @@
 import { Menus3Make } from './Menus3Make.jsx';
 import { Menus3Wood } from './Menus3Wood.jsx';   /* v2.3.6873: the Woodworker (card MN step 13b) */
 import { Menus3Cook } from './Menus3Cook.jsx';   /* v2.3.6873: the Cookhouse (card MN step 13b) */
+import { Menus3Gems } from './Menus3Gems.jsx';   /* v2.3.6877: the Gem Works (card MN step 13c) */
 
 export function Menus3Counter({ R, getS, station }) {
   const s = station || null;
@@ -24,5 +25,7 @@ export function Menus3Counter({ R, getS, station }) {
   if (s.mode === 'make' && s.bench === 'blacksmith') return <Menus3Make R={R} getS={getS} />;
   if (s.mode === 'make' && s.bench === 'woodworker') return <Menus3Wood R={R} getS={getS} />;
   if (s.mode === 'make' && s.bench === 'cookhouse') return <Menus3Cook R={R} getS={getS} />;
+  /* v2.3.6877: one bench, two doors: each opens its own tab (a new Counter for each, so the door's tab wins) */
+  if (s.mode === 'make' && s.bench === 'gemworks') return <Menus3Gems key={s.id} R={R} getS={getS} station={s} />;
   return null;   /* a mode not built yet never reaches here: its window opens as today (counterStation) */
 }

@@ -10,8 +10,8 @@
  *     `buildingPanel` id, data/buildings.js `action`) is which station, in
  *     which mode, and whether its Counter is built.  Step 13 builds Make for
  *     the Blacksmith (`forge`); v2.3.6873 the Woodworker (`woodwork`) and
- *     the Cookhouse (`cook`); the Gem Works (`gemcut`, `enchant`) is listed
- *     and still opens today's window until it is built; Trade, Keep and Play
+ *     the Cookhouse (`cook`); v2.3.6877 the Gem Works (`gemcut`,
+ *     `enchant`), against a worker that settles every gem ask; Trade, Keep and Play
  *     (card MN steps 14 and 15) add their rows.
  *   - THE BLACKSMITH'S TABS.  Today's six (SmithyPanel.jsx), each shown only
  *     against a worker that settles it, read off the same caps; the Amulet
@@ -33,17 +33,72 @@ export const COUNTER_MODES = Object.freeze(['make', 'trade', 'keep', 'play']);
 export const COUNTER_STATIONS = Object.freeze({
   forge: Object.freeze({ mode: 'make', bench: 'blacksmith', built: true }),
   woodwork: Object.freeze({ mode: 'make', bench: 'woodworker', built: true }),   /* v2.3.6873: built (card MN step 13b) */
-  gemcut: Object.freeze({ mode: 'make', bench: 'gemworks', built: false }),
-  enchant: Object.freeze({ mode: 'make', bench: 'gemworks', built: false }),
+  /* v2.3.6877: built (card MN step 13c) -- against a worker that settles every gem ask (GEM_NEEDS) */
+  gemcut: Object.freeze({ mode: 'make', bench: 'gemworks', built: true, needs: 'gems' }),
+  enchant: Object.freeze({ mode: 'make', bench: 'gemworks', built: true, needs: 'gems' }),
   cook: Object.freeze({ mode: 'make', bench: 'cookhouse', built: true }),   /* v2.3.6873: built (card MN step 13b) */
 });
 
-/** Does today's window `id` open the Counter (under ?menus3, `on`)?  Its
- *  station { id, mode, bench }, or null: today's window opens as it did. */
-export function counterStation(id, on) {
+/** Does today's window `id` open the Counter (under ?menus3, `on`; `caps`
+ *  the worker's)?  Its station { id, mode, bench }, or null: today's window
+ *  opens as it did. */
+export function counterStation(id, on, caps) {
   if (!on || typeof id !== 'string' || !Object.prototype.hasOwnProperty.call(COUNTER_STATIONS, id)) return null;
   const s = COUNTER_STATIONS[id];
-  return s.built ? Object.freeze({ id, mode: s.mode, bench: s.bench }) : null;
+  if (!s.built) return null;
+  if (s.needs === 'gems' && !gemWorksReady(caps)) return null;   /* v2.3.6877 */
+  return Object.freeze({ id, mode: s.mode, bench: s.bench });
+}
+
+/* ═══ v2.3.6877: THE GEM WORKS (card MN step 13c) ═══
+   Today's Gem Works (panels/buildings/GemWorksPanel.jsx): two tabs, Cut gems
+   and Set gems, each door opening its own (`gemcut`, `enchant`).  Every one of
+   today's asks is the worker's only behind its cap, each with a live kill
+   switch that brings the phone's OLD local path back (shardcrack: the
+   one-raw-gem cut; weapongem and shieldgem: the local slot; amuletForge: the
+   local amulet slot).  Those old paths are the single-player leftovers the
+   new menus do not carry, so the Counter is built only against a worker that
+   settles all four; with any one off, today's window opens as it does. */
+export const GEM_NEEDS = Object.freeze(['shardcrack', 'weapongem', 'shieldgem', 'amuletForge']);
+export function gemWorksReady(caps) {
+  const c = caps || {};
+  return GEM_NEEDS.every((k) => !!c[k]);
+}
+export const GEM_TABS = Object.freeze(['gemcut', 'enchant']);
+/** The tab a door opens: its own (today's `buildingPanel` id). */
+export function gemFirstTab(id) { return id === 'enchant' ? 'enchant' : 'gemcut'; }
+
+/** A weapon's gem slots, as today's Enchanter reads them (EnchantPanel.jsx):
+ *  `w` the weapon ({ element1, element2 }), `max` its slots (the worker's
+ *  count, weaponGemSlots), `lvl` the Enchanting level, `second` the level a
+ *  second gem asks (SECOND_SLOT_LVL), `fusion` a Fusion-ready base,
+ *  `elements` the gems in today's order, `offers(e)` a gem a weapon takes,
+ *  `have(e)` how many polished, `volatile(a, b)` the worker's pairs.
+ *  { used, max, open, pickable, state, picks: [{ e, have, blocked }] };
+ *  state 'pick' (gems to choose), 'noGems' (a slot and none to put in it),
+ *  'locked' (the second slot waits on the level), 'noSlot'. */
+export function weaponGemSlotsRead(w, o) {
+  const x = o || {};
+  const max = w ? Math.max(0, Math.floor(Number(x.max) || 0)) : 0;
+  const used = (w && w.element1 ? 1 : 0) + (w && w.element2 ? 1 : 0);
+  const open = Math.max(0, max - used);
+  const canSecond = (Number(x.lvl) || 1) >= (Number(x.second) || 20) && max >= 2;
+  const pickable = !!(w && open > 0 && (!w.element1 || (w.element1 && !w.element2 && canSecond)));
+  const offers = typeof x.offers === 'function' ? x.offers : () => true;
+  const have = typeof x.have === 'function' ? x.have : () => 0;
+  const vol = typeof x.volatile === 'function' ? x.volatile : () => false;
+  const e1 = w ? w.element1 : null;
+  const picks = [];
+  if (pickable) {
+    for (const e of (Array.isArray(x.elements) ? x.elements : [])) {
+      if (!offers(e) || e === e1) continue;
+      const n = Math.max(0, Math.floor(Number(have(e)) || 0));
+      if (n <= 0) continue;
+      picks.push(Object.freeze({ e, have: n, blocked: !!(e1 && vol(e1, e) && !x.fusion) }));
+    }
+  }
+  const state = pickable ? (picks.length ? 'pick' : 'noGems') : (w && open > 0 ? 'locked' : 'noSlot');
+  return Object.freeze({ used, max, open, pickable, state, picks: Object.freeze(picks), second: !!(e1 && pickable) });
 }
 
 /* ── the Blacksmith's tabs, in today's order ── */
