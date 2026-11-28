@@ -286,8 +286,10 @@ export function Menus3Power({ R, getS, top, root }) {
   /* the QA probe (tools/qa/mp/mp-menus3power.mjs) */
   useEffect(() => {
     try {
+      /* read now, not the render's: a queue may have moved the draft in an effect above this one */
+      const rNow = draftReplay(_draft, ctx);
       window.__btMenus3Power = {
-        lane, page, draft: replay.map((s) => ({ lane: s.lane, stat: s.stat, from: s.from })), total,
+        lane, page, draft: rNow.map((s) => ({ lane: s.lane, stat: s.stat, from: s.from })), total: rNow.filter((s) => s.from).length,
         waiting: { ...waitingNow }, left: { by: { ...left.by }, shared: left.shared, spare: left.spare },
         queue: { on: Q.on, i: Q.i, n: Q.items.length, placed: Q.placed }, note: _note ? { ..._note } : null,
       };

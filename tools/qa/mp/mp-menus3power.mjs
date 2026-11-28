@@ -62,6 +62,11 @@ async function inWorld(P, rec, who) {
 /* points waiting: the worker's own lever deals Sword to level 5 (its points, sword's and shared) */
 async function seed(P, wsPort, rec, who) {
   const id = await H.readState(P, (S) => S.myId);
+  /* a sword in hand (the Bag test's way: the worker's kit, else the harness's equip), so DPS has its breakdown */
+  await H.devOp(wsPort, 'kit', id, { what: 'weapons' }).catch(() => null);
+  await P.page.waitForTimeout(1200);
+  const hasW = await P.page.evaluate(() => !!(window._gameState.current.rpg || {}).weapon);
+  if (!hasW) { await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null); await P.page.waitForTimeout(1500); }
   const dealt = await H.devOp(wsPort, 'combat', id, { skill: 'sword', level: 5, deal: true }).catch(() => null);
   let p = null;
   for (let i = 0; i < 20; i++) { p = await pts(P); if (p.sword > 0 && p.shared > 0) break; await P.page.waitForTimeout(300); }
@@ -127,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
       /* Apply: one at a time, both land */
       await tap(P, '[data-m3-apply]', true);
-      const done = await until(P, () => { const p = window.__btMenus3Power; return p ? { on: p.queue.on, placed: p.queue.placed, total: p.total, note: p.note && p.note.kind } : null; }, (v) => v && !v.on && v.note === 'applied', 20000, 'applied');
+      const done = await until(P, () => { const p = window.__btMenus3Power; return p ? { on: p.queue.on, placed: p.queue.placed, total: p.total, note: p.note && p.note.kind, draft: p.draft } : null; }, (v) => v && !v.on && v.note === 'applied' && v.total === 0, 20000, 'applied');
       const p3 = await pts(P);
       rec.ok('upright: Apply lands both, one after another (the worker\'s numbers)', !!done && done.placed === 2 && done.total === 0 && p3.range === p0.range + 1 && p3.hp === p0.hp + 1 && p3.sword === p0.sword - 1 && p3.shared === p0.shared - 1, { done, p0, p3 });
       await shot(P, 'upright-applied');
