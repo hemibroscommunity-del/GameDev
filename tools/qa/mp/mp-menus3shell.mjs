@@ -39,6 +39,8 @@ const OUT = path.join(ROOT, 'tools', 'qa', 'out');
 const nav = (P) => P.page.evaluate(() => { try { const n = window.__broDashPanelBus.nav(); const st = n[n.ws] || []; const t = st.length ? st[st.length - 1] : null; return { shown: !!n.shown, ws: n.ws, top: t ? t.id : null }; } catch (e) { return { err: String(e) }; } });
 const topId = (P) => P.page.evaluate(() => { try { const b = window.__broDashPanelBus; return b.current(); } catch (e) { return 'err'; } });
 const shown = (P) => P.page.evaluate(() => { try { return !!window.__broDashPanelBus.nav().shown; } catch (e) { return null; } });
+/* v2.3.6863: either menu open (World opens the new panel now, card MN step 7) */
+const anyOpen = (P) => P.page.evaluate(() => { try { return !!window.__btMenus3.open(); } catch (e) { return null; } });
 const why = (P) => P.page.evaluate(() => (window.__btMenus3 ? window.__btMenus3.why() : 'no-probe'));
 const hidCtl = (P) => P.page.evaluate(() => document.documentElement.classList.contains('bt-menus3-hide-ctl'));
 const box = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; }, sel);
@@ -170,12 +172,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await press(P, '[data-menus3-dock="world"]', true);
       await H.readState(P, (S) => { S.lastDamageTaken = Date.now(); return 1; });
       await P.page.waitForTimeout(1200);
-      rec.ok('upright: a hit on safe ground leaves it open', (await shown(P)) === true, await why(P));
+      rec.ok('upright: a hit on safe ground leaves it open', (await anyOpen(P)) === true, await why(P));
       let hit = false;
       for (let i = 0; i < 3 && !hit; i++) {
         await H.readState(P, (S) => { S.player.x += 4000; S.player.y += 4000; S.lastDamageTaken = Date.now(); return 1; });
         await P.page.waitForTimeout(1500);
-        hit = (await shown(P)) === false && (await why(P)) === 'hit';
+        hit = (await anyOpen(P)) === false && (await why(P)) === 'hit';
       }
       rec.ok('upright: a hit outside a safe place closes it', hit, { why: await why(P), nav: await nav(P) });
       await closeBand(P);
