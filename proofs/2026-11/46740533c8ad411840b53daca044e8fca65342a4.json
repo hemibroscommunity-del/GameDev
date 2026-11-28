@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "46740533c8ad411840b53daca044e8fca65342a4",
+  "tree": "0d1dfc83e67345d78c5ada44b4c83335b837c357",
+  "committedAt": "2026-11-28T06:41:11-08:00",
+  "subject": "Merge pull request #2442 from hemibroscommunity-del/claude/mn-power",
+  "files": 9519,
+  "bytes": 1132107575,
+  "listingSha256": "67b688cf953ba88f0676b97e62980a229cad39ed9079659adc4c62c0d64dee82",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
