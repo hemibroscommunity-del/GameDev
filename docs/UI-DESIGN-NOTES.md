@@ -2864,11 +2864,36 @@ Screens: menus3-roster, menus3-player
 
 **Flagged to the owner:**
 - There is no "Create party" request; Create lights Nearby (see above).
-- A friend's private messages (the Friends page's thread, `friend_dm`) and the Guilds door live on today's Social page, reached from the Roster's last row until the Chat step (Whispers) and the Skills step (Guilds) carry them; Chat and Ranks keep their today's screens.
+- (v2.3.6870: the thread moved to People · Chat · Whispers.) A friend's private messages (the Friends page's thread, `friend_dm`) and the Guilds door live on today's Social page, reached from the Roster's last row until the Chat step (Whispers) and the Skills step (Guilds) carry them; Chat and Ranks keep their today's screens.
 - Clans: the clan windows already turn into the party; a former clan's tag still rides on its party (the chip, the name plates, the card, the Alliance line here). Nothing of it is deleted.
 - R (Roster in the owner's keys) is Whirlwind in the game: no key was added.
 
 Sources: src/game/menus3Roster.js, menus3Router.js (MENUS3_BUILT, `hud.partyChip`, `game.players`), src/ui/menus3/Menus3Roster.jsx, Menus3Panel.jsx, menus3Wire.js (menus3AwayChat, menus3ChatShut), menus3.css, src/ui/panels/PartyHUD.jsx (the chip), src/ui/BroTown.jsx (playersOpen, the Saloon's and the Hall's doors, the chat's shutting), src/ui/mobile/sheet/friendsModel.js (addFriend), src/data/say/menus3Roster.js; server/test/menus3-roster.test.mjs; tools/qa/mp/mp-menus3roster.mjs.
+
+## The new menus' Chat and Ranks (v2.3.6870, card MN step 11)
+Screens: menus3-chat, menus3-ranks
+
+**What it is for:** talking and comparing, in the owner's People menu (their document: *"Chat (All, Area, Party, Whisper): People · Chat (HUD chat lines or tapping own bro opens it; unified single chat box across mobile & desktop)"*, *"Friend messages: People · Chat · Whispers"*, *"Game news & unread count: People · Chat · News (badge on People dock button)"*, *"Ranks (combat, life skills, feats, records): People · Ranks (row opens that player's Player Page)"*).
+
+**Decisions, and why:**
+- **ONE chat box** for a phone and a computer: People · Chat in the panel. The play screen's chat lines, a tap on your own bro (today's ChatBubble) and the Chat tab open it. The play screen's lines STAY (decided 3). The old boxes are still in the code for `?menus3=0` (the cleanup step removes them); the computer's C and Enter keys wait for the keys commit (deskKeys.js is Bro · Skills' until it lands).
+- **The channels are the game's real lanes** (`src/game/menus3Chat.js` chatTabs): All (the log whole, exactly what the play screen's lines show, the game's own lines included), Area, Party and Whispers only where the worker carries the lane (Party also only in a party: chatChannel.js's own rule), News always (the game's own lines: a line with no name, gold in the feed). A forged or vanished tab is All.
+- **A line leaves through the game's one sender** (chat.js sendChatMessage, the one both of today's composers use): the tab sets the lane (chatChannel.js setMode, setTo) and the sender spells it, refuses a party line with no party or a whisper with no name, and sends the game's own request by act(). No chat rule, mute, block or moderation changed.
+- **The log is the wireframe's**: lines 5 apart at 13.5 px, the name bold in the player's own colour (chatColor.js) with the lane's picture, then the words; the newest at the foot, drawn bottom up (CSS column-reverse) so nothing measures the page to keep it in view. A player's name is a door to their Player page (44 tall: the wireframe's inline name mended), keeping the line's name for a player the phone does not hold.
+- **The composer is the wireframe's**: the Emotes smiley at the left (today's picker; the panel steps aside for it and comes back on Chat when it shuts, the Roster's old "Message" way), the box (44 tall), today's microphone where the browser has speech to text (never drawn where it has not), Send at the right. Drafts are kept per channel while the page is up.
+- **Whispers** (the wireframe draws no "to" box; the game's whisper goes to ONE NAME, so the tab has it): the whisper lines, the name box, and the friends' threads (friend_dm, moved from the Social page: a rail of mutual friends, unread first with their counts; a thread is its own page with Back, today's archive, its send and its unread bookkeeping).
+- **"Message" on a Player page** (decided 7) opens Chat on Whispers with the name set, over the Player page: Back returns to it.
+- **News is read only**: opening it marks the game's lines seen (the mark the Notifications page and the play screen's feed share), and it carries the Notifications page's "Show on screen" for the play screen's feed.
+- **The dots say why** (decided 7): People lights for a friend's message waiting, else for news unseen; the panel's Chat tab lights the same; inside Chat the tab with the reason (Whispers, News). The dock redraws only when the answer changes.
+- **Ranks is the wireframe's rail over the standings**, from today's boards: the kinds the game keeps (Combat, Life Skills, Feats: today's groups; the records, the spin, the flip and the fish, are Feats' own there), the kind's boards as a second rail (the stat boards at the end of Combat's, one tap instead of today's "Points placed" door), today's standings under them (dash/RankStandings.jsx: your row marked and pinned when out of view, the record boards' choices), the pick and scroll kept for Back. A row opens the one Player page (its name and the row's own card, today's Character page, for a player the phone does not hold); your own row opens Bro · Power, as today's opened Bro's page.
+
+**Flagged to the owner:**
+- The wireframe's rails say Combat, Skills, Feats, Records; the game's Ranks keeps three kinds (Combat, Life Skills, Feats) with the records inside Feats: the game's are shown.
+- The wireframe's Whispers has no name box; the game needs one (a whisper goes to one name).
+- A chat name 44 tall makes a player's line taller than the wireframe's.
+- C (Chat), U (Ranks), B (Emotes): the keys wait for Bro · Skills' deskKeys.js; until then C opens today's chat box and B today's picker, as yesterday.
+
+Sources: src/game/menus3Chat.js, menus3Router.js (MENUS3_BUILT), menus3Roster.js (`rowCard`); src/ui/menus3/Menus3Chat.jsx, Menus3Ranks.jsx, menus3People.js, Menus3Panel.jsx, Menus3Dock.jsx, Menus3Roster.jsx (Message, menus3PlayerHint), menus3Wire.js, menus3.css; src/ui/mobile/dash/RankStandings.jsx (`nav`), LeaderboardPanel.jsx (ui2RankParts); src/ui/panels/EmotePanel.jsx; src/ui/BroTown.jsx (openSelfChat); src/data/say/menus3Chat.js; server/test/menus3-chat.test.mjs; tools/qa/mp/mp-menus3chat.mjs.
 ## The new menus' Feats: the AP line, Medals | Titles | Records, a medal's page (v2.3.6868, card MN step 9)
 Screens: menus3-feats
 
