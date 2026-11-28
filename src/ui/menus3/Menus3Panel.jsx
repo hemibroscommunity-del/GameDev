@@ -44,6 +44,9 @@ import { SAY as SAY_F } from '@/data/say/menus3Feats.js';
 import { SAY as SAY_FT } from '@/data/say/feats.js';
 import { Menus3SettingsLazy } from '../lazyPanels.js';   /* v2.3.6869 (card MN step 12): Settings, its own script */
 import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.jsx';   /* v2.3.6864 (card MN step 10) */
+import { Menus3CounterLazy } from '../lazyPanels.js';   /* v2.3.6872 (card MN step 13): the Counter, its own script */
+import { SAY as SAY_C } from '@/data/say/menus3Counter.js';
+import { SAY as SAY_SM } from '@/data/say/smithy.js';
 import { lazyPanel } from '@/ui/lazyPanel.js';   /* v2.3.6870 (card MN step 11): People · Chat and Ranks, loaded when first opened */
 import { chatPeopleDot, chatPageTitle } from './menus3People.js';
 import './menus3.css';
@@ -68,6 +71,22 @@ const SECTION_WORD = {
   roster: () => say(SAY, 'menus3.roster'), chat: () => say(SAY, 'menus3.chat'), ranks: () => say(SAY, 'menus3.ranks'),
 };
 function sectionWord(s) { return Object.prototype.hasOwnProperty.call(SECTION_WORD, s) ? SECTION_WORD[s]() : ''; }
+
+/* v2.3.6872 (card MN step 13): the Counter's header -- the station, its mode, the gold (the card's Decided 6) */
+function counterTitle(st) {
+  const s = st.station;
+  const station = s && s.bench === 'blacksmith' ? say(SAY_SM, 'smithy.title') : '';
+  return say(SAY_C, 'menus3Counter.title', { station, mode: say(SAY_C, 'menus3Counter.make') });
+}
+function CounterGold({ n }) {
+  const v = Math.max(0, Math.floor(Number(n) || 0));
+  return (
+    <span className="m3-gold" data-menus3-gold={v} aria-label={say(SAY_C, 'menus3Counter.gold', { n: v.toLocaleString() })}>
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="#E7C46A" stroke="#9A7426" strokeWidth="1.5" /></svg>
+      {v.toLocaleString()}
+    </span>
+  );
+}
 
 /* the X, drawn (CLAUDE.md: no text glyph) */
 function XIcon() {
@@ -143,7 +162,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
   const body = codex3Body(top, st.section);   /* v2.3.6867 */
   return createPortal(
     <div className="bt-menus3-layer" data-menus3-layer="">
-      <section className={ui2RootClass()} style={box} data-menus3-panel={shape} data-menus3-menu={st.menu} role="dialog" aria-label={st.section === 'settings' ? say(SAY, 'menus3.settings') : menuWord(st.menu)}>
+      <section className={ui2RootClass()} style={box} data-menus3-panel={shape} data-menus3-menu={st.menu} role="dialog" aria-label={st.section === 'settings' ? say(SAY, 'menus3.settings') : st.section === 'counter' ? counterTitle(st) : menuWord(st.menu)}>
         <div style={HEAD} data-menus3-head="">
           {deep ? (
             <>
@@ -152,6 +171,11 @@ export function Menus3Panel({ rpgState, stateRef }) {
                 <BackIcon /><span>{say(SAY, 'menus3.back')}</span>
               </button>
               <span className="m3-title" data-menus3-title="">{pageTitle(top, getS)}</span>
+            </>
+          ) : st.section === 'counter' ? (
+            <>
+              <span className="m3-title" data-menus3-title="">{counterTitle(st)}</span>
+              <CounterGold n={rpgState && rpgState.coins} />
             </>
           ) : st.section === 'settings' ? (
             <span className="m3-title" data-menus3-title="">{say(SAY, 'menus3.settings')}</span>   /* v2.3.6869: the wireframe's header, its title and X */
@@ -181,6 +205,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {body === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
           {body === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
           {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
+          {body === 'counter' ? <Menus3CounterLazy R={rpgState} getS={getS} station={st.station} /> : null}
           {body === 'chat' || (top && top.page === 'whisper') ? <Menus3Chat top={top} getS={getS} /> : null}
           {body === 'ranks' ? <Menus3Ranks top={top} getS={getS} /> : null}
           {body !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
