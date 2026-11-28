@@ -26,6 +26,7 @@ import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL
 import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z rides the skateboard */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
+import { menus3MapKey } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6867: M under ?menus3 (card MN step 8) */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
 import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3994: E (or the right stick's tap) at the lagoon's chest */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -486,7 +487,8 @@ export function setupDesktopControls(S, deps) {
           return;
         }
         if (e.code === 'Key' + MAP_KEY) {
-          if (toggleWorldMap()) {
+          /* v2.3.6867 (card MN step 8): under ?menus3 the new panel shuts as the map opens */
+          if (menus3MapKey(toggleWorldMap)) {
             e.preventDefault();
             BT_AUDIO.uiClickNow();
           }
