@@ -51,7 +51,7 @@ const CARD_TODAY = Object.freeze([
   { what: 'death', file: 'src/ui/mobile/DeathCard.jsx', home: 'today', why: 'no answers today: the way back is automatic' },
   { what: 'Hotel rest', file: 'src/ui/panels/buildings/WheelHallPanel.jsx', home: 'today', why: 'a row inside the hall\'s window (next card PR)' },
   { what: 'Land Office travel', file: 'src/ui/panels/buildings/LandOfficePanel.jsx', home: 'today', why: 'inside the building\'s window (next card PR)' },
-  { what: 'dungeon entry', file: 'src/ui/BroTown.jsx', home: 'today', why: 'one interact button at the mouth, no prompt' },
+  { what: 'dungeon entry', file: 'src/game/wheelDungeons.js', home: 'today', why: 'one interact button at the mouth (enterWheelDungeon), no prompt' },
   { what: 'dungeon exit', file: 'src/game/zoneTransitions.js', home: 'today', why: 'no prompt (a step on the way out); cleared: a countdown and the loot' },
   { what: 'townsfolk talk', file: 'src/ui/panels/NpcDialogue.jsx', home: 'today', why: 'pages of words (Next) and an action' },
   { what: 'quest offer', file: 'src/ui/panels/QuestOfferPanel.jsx', home: 'today', why: 'a list (the rewards)' },
