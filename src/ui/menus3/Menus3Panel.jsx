@@ -170,16 +170,6 @@ export function Menus3Panel({ rpgState, stateRef }) {
         <div ref={(el) => { bodyRef.current = el; _bodyEl = el; }} className="m3-body" style={{ flex: '1 1 auto', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
           data-menus3-body={st.section || ''} data-menus3-page={top ? top.page : ''}
           onScroll={keepScroll}>
-<<<<<<< HEAD
-          {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
-          {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
-          {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
-          {st.section === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
-          {st.section === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
-          {st.section === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
-          {st.section === 'counter' ? <Menus3CounterLazy R={rpgState} getS={getS} station={st.station} /> : null}
-          {st.section !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
-=======
           {/* v2.3.6867: a Codex page is the Codex's wherever it opened (a quest's link opens it on the quest's history) */}
           {body === 'codex' ? <Menus3Codex R={rpgState} getS={getS} top={top} /> : null}
           {body === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
@@ -188,8 +178,8 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {body === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
           {body === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
           {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
+          {body === 'counter' ? <Menus3CounterLazy R={rpgState} getS={getS} station={st.station} /> : null}
           {body !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
->>>>>>> origin/main
         </div>
       </section>
     </div>,
