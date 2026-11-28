@@ -32,6 +32,11 @@ import { Menus3Bag } from './Menus3Bag.jsx';
 import { Menus3Power, powerDot } from './Menus3Power.jsx';   /* v2.3.6862: Bro · Power (card MN step 5) */
 import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 7) */
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
+import { Menus3Codex, codexTitle } from './Menus3Codex.jsx';   /* v2.3.6867 (card MN step 8): World · Codex */
+import { codex3Body, isCodex3Page } from '@/game/menus3Codex.js';
+import { Menus3Feats } from './Menus3Feats.jsx';   /* v2.3.6868 (card MN step 9) */
+import { SAY as SAY_F } from '@/data/say/menus3Feats.js';
+import { SAY as SAY_FT } from '@/data/say/feats.js';
 import { Menus3SettingsLazy } from '../lazyPanels.js';   /* v2.3.6869 (card MN step 12): Settings, its own script */
 import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.jsx';   /* v2.3.6864 (card MN step 10) */
 import './menus3.css';
@@ -74,10 +79,13 @@ function BackIcon() {
 /* a page's title in the header (the item's own name is on its page) */
 function pageTitle(top, getS) {
   if (!top) return '';
+  if (isCodex3Page(top.page)) return codexTitle(top, getS);   /* v2.3.6867: a Codex page, wherever it opened */
   if (top.page === 'player') return menus3PlayerTitle(getS, top.arg);   /* v2.3.6864: the player's name, from any section */
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
+  if (top.section === 'feats' && top.page === 'ap') return say(SAY_F, 'menus3Feats.apOpen');   /* v2.3.6868 */
+  if (top.section === 'feats' && top.page === 'medal') return say(SAY_FT, 'feats.medal');
   return sectionWord(top.section);
 }
 
@@ -108,6 +116,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
   const box = Object.assign({}, BOX, panelCss(shape));
   if (shape === 'drawer') { box.borderTop = 'none'; box.borderLeft = BOX.borderTop; }
   const sections = MENUS3[st.menu] || [];
+  const body = codex3Body(top, st.section);   /* v2.3.6867 */
   return createPortal(
     <div className="bt-menus3-layer" data-menus3-layer="">
       <section className={ui2RootClass()} style={box} data-menus3-panel={shape} data-menus3-menu={st.menu} role="dialog" aria-label={st.section === 'settings' ? say(SAY, 'menus3.settings') : menuWord(st.menu)}>
@@ -137,12 +146,15 @@ export function Menus3Panel({ rpgState, stateRef }) {
         <div ref={(el) => { bodyRef.current = el; _bodyEl = el; }} className="m3-body" style={{ flex: '1 1 auto', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
           data-menus3-body={st.section || ''} data-menus3-page={top ? top.page : ''}
           onScroll={keepScroll}>
-          {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
-          {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
-          {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
-          {st.section === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
-          {st.section === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
-          {st.section !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
+          {/* v2.3.6867: a Codex page is the Codex's wherever it opened (a quest's link opens it on the quest's history) */}
+          {body === 'codex' ? <Menus3Codex R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
+          {body === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'feats' ? <Menus3Feats R={rpgState} getS={getS} top={top} /> : null}
+          {body === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
+          {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
+          {body !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
         </div>
       </section>
     </div>,

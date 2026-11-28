@@ -53,6 +53,8 @@ export const MENUS3_TODAY = Object.freeze({
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
+  'codex',   /* v2.3.6867 (card MN step 8): + World's Codex (Feats still today's) */
+  'feats',   /* v2.3.6868 (card MN step 9): + World's Feats (F stays the Element Burst: no key) */
   'settings',   /* v2.3.6869 (card MN step 12): + Settings, from the gear (no menu of the dock's) */
   'roster',
 ]);
@@ -68,6 +70,8 @@ export const MENUS3_ENTRIES = Object.freeze({
   'hud.gear': Object.freeze({ menu: null, section: 'settings' }),
   'hud.questLine': Object.freeze({ menu: 'world', section: 'quests', quest: 'line' }),
   'hud.chatLines': Object.freeze({ menu: 'people', section: 'chat' }),
+  /* v2.3.6867 (card MN step 8): the NEW MONSTER card's tap, the Codex on that monster (SPEC.md: "deep-links directly to Codex entry") */
+  'card.newMonster': Object.freeze({ menu: 'world', section: 'codex' }),
   /* v2.3.6864 (card MN step 10): the party chip (SPEC "HUD party chip opens it"), and every door
      that opened the old top-left player list (the Saloon's "Invite a player", the Sheriff's "Duel a
      player", the Party page's button: BroTown's playersOpen) -- People · Roster on Nearby */

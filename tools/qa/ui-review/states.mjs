@@ -1017,6 +1017,24 @@ export const STATES = [
       await wait(P, 1500);
     } },
   /* v2.3.6863 (card MN step 7, `?menus3`): World, the Quests in the new panel, and a quest's page */
+  /* v2.3.6868 (card MN step 9, `?menus3`): World · Feats in the new panel */
+  { id: 'menus3-feats', group: 'Dashboard', title: 'The new menus: World, the Feats', about: 'The owner\'s new menus, step 9 (docs/design/menus3/): World\'s Feats tab opens the new panel on Feats. At the top the AP line: the worker\'s total, how many medals of how many, its split (medals; quests, guilds and the arena together) where the parts add up; a press opens where the AP came from; Ranks opens today\'s leaderboards. Then the rail Medals | Titles | Records: the four tiers\' medals as rows (a drawn medal, Earned, its progress or Not yet), every earned title with Equip (Remove on the worn one), the counters the game keeps with the accuracy of the three weapons. No claim and no dot: the game has no feat reward to claim.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.world'); });
+      await wait(P, 800);
+      await evalIn(P, () => { try { const t = document.querySelector('[data-menus3-tab="feats"]'); if (t) t.click(); } catch (e) { /* shut */ } });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   { id: 'menus3-quests', group: 'Dashboard', title: 'The new menus: World, the Quests', about: 'The owner\'s new menus, step 7 (docs/design/menus3/): the World button opens the new panel on Quests, always. At the top the Today strip, only what the game has today: the free daily spin (lit while it waits; Spin opens the wheel as the top bar does), the login streak with its freezes and the Gambling Den\'s spin, the farm\'s three orders (read; delivered at Feed & Seed); a place\'s words open under it. Then the rail Active | On offer | Done (no Daily: the daily quests are off) over the rows: the giver\'s face, the name, its count, Ready, the star of the tracked one (first), and Map where the game can show the place.',
     run: async ({ P }) => {
       const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
@@ -1042,6 +1060,39 @@ export const STATES = [
       await wait(P, 1200);
       await evalIn(P, () => { const t = document.querySelector('[data-m3-quest]'); if (t) t.click(); });
       await wait(P, 1000);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6867 (card MN step 8, `?menus3`): World, the Codex in the new panel, and a monster's page */
+  { id: 'menus3-codex', group: 'Dashboard', title: 'The new menus: World, the Codex', about: 'The owner\'s new menus, step 8 (docs/design/menus3/): World\'s Codex tab (and the NEW MONSTER card) opens the Codex in the new panel. Today\'s Codex is what it holds: the six kinds on a rail of pills (Monsters, Items, Resources, Townsfolk, Lands, Pets; Monsters chosen), how many are met, and the monsters as tiles four across (the picture, the name, the land; a monster not met dimmed as ???, NEW in the corner). A kind with no pages yet says so; Pets has its door to the pet journal.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.panel('world', 'codex'); });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  { id: 'menus3-cxmonster', group: 'Dashboard', title: 'The new menus: a monster\'s Codex page', about: 'The owner\'s new menus, step 8: a monster\'s tile opens its page inside the panel, Back top left: today\'s showcase (the monster in its idle strip, its essentials) and its four doors, Combat, Loot, Habitat and Story, each a page of the panel; a drop on Loot opens its item\'s page (Drops from, Found from). A quest\'s links open the same pages over the quest, Back the quest.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.panel('world', 'codex'); });
+      await wait(P, 1200);
+      await evalIn(P, () => { const t = document.querySelector('[data-m3-cx]'); if (t) t.click(); });
+      await wait(P, 1500);
     },
     after: async ({ P }) => {
       await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });

@@ -56,7 +56,7 @@ const CARD_TODAY = Object.freeze([
   { what: 'townsfolk talk', file: 'src/ui/panels/NpcDialogue.jsx', home: 'today', why: 'pages of words (Next) and an action' },
   { what: 'quest offer', file: 'src/ui/panels/QuestOfferPanel.jsx', home: 'today', why: 'a list (the rewards)' },
   { what: 'quest reward', file: 'src/ui/panels/QuestOfferPanel.jsx', home: 'today', why: 'a list and a chooser' },
-  { what: 'New monster', file: 'src/ui/panels/NewMonsterCard.jsx', home: 'today', why: 'no answers: the whole card is a tap, timed (next card PR)' },
+  { what: 'New monster', file: 'src/ui/panels/NewMonsterCard.jsx', home: 'today', why: 'no answers: the whole card is a tap, timed; under ?menus3 its tap opens World · Codex (step 8, v2.3.6867)' },
 ]);
 
 let failures = 0, passes = 0;

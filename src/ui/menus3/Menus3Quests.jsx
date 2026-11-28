@@ -15,10 +15,10 @@
  * rules (questPages.js journeyToNow, questActions); Show on map is today's
  * (QuestJournalPage.jsx showQuestOnMap: the world map, the gold road on the
  * quest) and the panel stays open UNDER the map, so closing the map is back
- * on the quest.  A quest's links (a monster's Codex page, an item's page) are
- * TODAY's pages in today's band until the new Codex is built (card MN step
- * 8); the panel is handed back when their Back leaves (menus3Wire.js
- * menus3Away).
+ * on the quest.  A quest's links (a monster's Codex page, an item's page)
+ * open the NEW Codex's pages in the panel, on the quest's history, the one
+ * Back returning to the quest (v2.3.6867, card MN step 8: step 7 sent them to
+ * today's pages through menus3Wire.js menus3Away).
  *
  * THE TODAY STRIP (menus3Quests.js todayStrip): the free daily spin (its
  * button opens the login wheel exactly as the top bar's does: the wheel's own
@@ -36,8 +36,8 @@ import { npcPortrait, showQuestOnMap } from '@/ui/mobile/dash/QuestJournalPage.j
 import { thumbFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { QuestRow, QuestPageView, QuestRewardsView } from '@/ui/mobile/dash/questViews.jsx';
 import { useClock } from '@/ui/mobile/sheet/CharacterPage.jsx';
-import { openCodexMonster } from '@/ui/mobile/dash/codexPageOpen.js';
-import { openItemPage, codexItemName } from '@/ui/mobile/dash/itemPageOpen.js';
+import { codexItemName } from '@/ui/mobile/dash/itemPageOpen.js';
+import { codex3Link } from '@/game/menus3Codex.js';   /* v2.3.6867: a link opens the new Codex's page */
 import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { journeyToNow, questActions } from '@/game/questPages.js';
 import { dailyRewardsBus, spinLive, questsLive, seasonLive, askRewards, untilText, coinsShort } from '@/game/dailyRewards.js';
@@ -48,7 +48,7 @@ import { CODEX_ENTRIES } from '@/data/monsterCodex.js';
 import { MENUS3_QUEST_RAIL, questRailId, questRails, questRailStart, questLinks, todayStrip, todayTap } from '@/game/menus3Quests.js';
 import { deskWords } from '@/game/deskWords.js';
 import { Ui2Empty } from '@/ui/kit/EmptyState.jsx';
-import { menus3Bus, menus3Away } from './menus3Wire.js';
+import { menus3Bus } from './menus3Wire.js';
 import { SAY } from '@/data/say/menus3Quests.js';
 import { SAY as SAY_DR } from '@/data/say/dailyRewards.js';
 import { SAY as SAY_J } from '@/data/say/questJournal.js';
@@ -291,9 +291,9 @@ function QuestOne({ R, getS, qid }) {
   const onRewards = () => menus3Bus.push('rewards', qid);
   const follow = (l) => {
     if (l.kind === 'place') { onMap(); return; }
-    if (l.kind === 'monster') { menus3Away(() => openCodexMonster(l.id, getS)); return; }
-    const from = (CODEX_ENTRIES[l.from] || {}).name || '';
-    menus3Away(() => openItemPage({ from: 'codex', R: R || (S && S.rpg) || {}, key: l.key, kind: l.from, monster: from, drop: { key: l.key, name: ITEM_NAMES[l.key] } }));
+    /* v2.3.6867 (card MN step 8): the NEW Codex's pages, in the panel on this quest's history: the one Back is the quest */
+    const to = codex3Link(l);
+    if (to) menus3Bus.push(to.page, to.arg);
   };
   return (
     <div className="m3-quest" data-m3-quest-page={qid}>
