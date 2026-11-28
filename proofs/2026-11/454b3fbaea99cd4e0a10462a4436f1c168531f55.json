@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "454b3fbaea99cd4e0a10462a4436f1c168531f55",
+  "tree": "4b9709cec9d2e1bf938a5b6173c42322392e4df3",
+  "committedAt": "2026-11-28T07:52:04-08:00",
+  "subject": "Merge pull request #2446 from hemibroscommunity-del/claude/ui4-bighud-needs",
+  "files": 9519,
+  "bytes": 1132136758,
+  "listingSha256": "614109862d3254f75b7215ebd878b2d12b21bb0a8f2c668c5d0e95d2215f1adb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
