@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5b99948964956c42c97e3361d30b69bd90e3d55b",
+  "tree": "b0921eaa78b42bd7bf8dbedbca891390b1c5611b",
+  "committedAt": "2026-11-28T09:06:13-08:00",
+  "subject": "Merge pull request #2450 from hemibroscommunity-del/claude/mn-settings",
+  "files": 9530,
+  "bytes": 1132278291,
+  "listingSha256": "5fdde0a0f939dd47cb543246943e77c476ea6a5654e436477f78e2ae64b2799f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
