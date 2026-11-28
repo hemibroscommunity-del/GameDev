@@ -15,10 +15,14 @@
  * script (lazyPanels.js Menus3CounterLazy): the page's first script does not
  * grow. */
 import { Menus3Make } from './Menus3Make.jsx';
+import { Menus3Wood } from './Menus3Wood.jsx';   /* v2.3.6873: the Woodworker (card MN step 13b) */
+import { Menus3Cook } from './Menus3Cook.jsx';   /* v2.3.6873: the Cookhouse (card MN step 13b) */
 
 export function Menus3Counter({ R, getS, station }) {
   const s = station || null;
   if (!s) return null;
   if (s.mode === 'make' && s.bench === 'blacksmith') return <Menus3Make R={R} getS={getS} />;
+  if (s.mode === 'make' && s.bench === 'woodworker') return <Menus3Wood R={R} getS={getS} />;
+  if (s.mode === 'make' && s.bench === 'cookhouse') return <Menus3Cook R={R} getS={getS} />;
   return null;   /* a mode not built yet never reaches here: its window opens as today (counterStation) */
 }

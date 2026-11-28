@@ -29,6 +29,7 @@ import { qtyMax, qtyClamp, qtyPress, qtyView, qtyTimes } from '../../src/game/me
 import {
   COUNTER_MODES, COUNTER_STATIONS, counterStation, SMITH_TABS, smithTabs, smithTab,
   makePlan, makeIdle, makeBegin, makeSend, makeRead, makeRefused, makeCut, SMELT_PER_REQUEST,
+  WOOD_TABS, woodTabs, cookCarries, cookShown, cookHave,
 } from '../../src/game/menus3Counter.js';
 
 let failures = 0, passes = 0;
@@ -62,7 +63,11 @@ const read = (rel) => readFileSync(fileURLToPath(new URL('../../' + rel, import.
   check('2a four modes', COUNTER_MODES.join() === 'make,trade,keep,play');
   const f = counterStation('forge', true);
   check('2b the Blacksmith opens the Counter, in Make', !!f && f.mode === 'make' && f.bench === 'blacksmith' && f.id === 'forge');
-  check('2c the other benches: today\'s windows until built', ['woodwork', 'gemcut', 'enchant', 'cook'].every((k) => COUNTER_STATIONS[k] && COUNTER_STATIONS[k].mode === 'make' && counterStation(k, true) === null));
+  /* v2.3.6873 (card MN step 13b): the Woodworker and the Cookhouse are built; the Gem Works waits */
+  check('2c the Gem Works: today\'s window until built', ['gemcut', 'enchant'].every((k) => COUNTER_STATIONS[k] && COUNTER_STATIONS[k].mode === 'make' && counterStation(k, true) === null));
+  const w = counterStation('woodwork', true), ck = counterStation('cook', true);
+  check('2f the Woodworker and the Cookhouse open the Counter, in Make', !!w && w.bench === 'woodworker' && w.mode === 'make' && !!ck && ck.bench === 'cookhouse' && ck.mode === 'make'
+    && counterStation('woodwork', false) === null && counterStation('cook', false) === null);
   check('2d off: nothing opens the Counter', counterStation('forge', false) === null);
   check('2e a forged id is no station', ['__proto__', 'constructor', 'bank', '', null, 7].every((k) => counterStation(k, true) === null));
 }
@@ -107,27 +112,28 @@ const read = (rel) => readFileSync(fileURLToPath(new URL('../../' + rel, import.
   check('4l idle reads nothing', makeRead(makeIdle(), 'x').then === 'wait' && makeSend(makeIdle(), 'x').count === null);
 }
 
+/* every request today's bench writes: `type: 'x'` (its ask), `event: 'x'` (a broadcast), and act('x' (Salvage) */
+const reqs = (src) => {
+  const out = new Set();
+  for (const m of src.matchAll(/(?:type|event):\s*'([a-z_]+)'/g)) if (m[1] !== 'broadcast') out.add(m[1]);
+  for (const m of src.matchAll(/act\('([a-z_]+)'/g)) out.add(m[1]);
+  return out;
+};
+/* each request's payload keys, as written in both */
+const keysOf = (src, type) => {
+  const m = src.match(new RegExp("(?:type|event):\\s*'" + type + "',\\s*payload:\\s*\\{([^}]*)\\}")) || src.match(new RegExp("act\\('" + type + "',\\s*\\{([^}]*)\\}"));
+  return m ? m[1].split(',').map((p) => p.split(':')[0].trim()).filter(Boolean).sort().join() : null;
+};
+
 /* ── 5. nothing lost: today's requests, the same ones ── */
 {
   const today = read('src/ui/panels/buildings/SmithyPanel.jsx');
   const mine = read('src/ui/menus3/Menus3Make.jsx');
-  /* every request today's bench writes: `type: 'x'` (its ask), `event: 'x'` (a broadcast), and act('x' (Salvage) */
-  const reqs = (src) => {
-    const out = new Set();
-    for (const m of src.matchAll(/(?:type|event):\s*'([a-z_]+)'/g)) if (m[1] !== 'broadcast') out.add(m[1]);
-    for (const m of src.matchAll(/act\('([a-z_]+)'/g)) out.add(m[1]);
-    return out;
-  };
   const salvageOnly = new Set(['smith_salvage', 'essence_apply']);
   const T = [...reqs(today)].filter((x) => !salvageOnly.has(x)).sort();
   const M = [...reqs(mine)].sort();
   check('5a the Counter sends today\'s requests, and no other', T.join() === M.join(), { today: T, mine: M });
   check('5b today\'s are the six', T.join() === 'amulet_forge_request,forge_armor,forge_weapon,harden_weapon,smelt_bar');
-  /* each request's payload keys, as written in both */
-  const keysOf = (src, type) => {
-    const m = src.match(new RegExp("(?:type|event):\\s*'" + type + "',\\s*payload:\\s*\\{([^}]*)\\}")) || src.match(new RegExp("act\\('" + type + "',\\s*\\{([^}]*)\\}"));
-    return m ? m[1].split(',').map((p) => p.split(':')[0].trim()).filter(Boolean).sort().join() : null;
-  };
   for (const t of ['smelt_bar', 'forge_weapon', 'forge_armor', 'harden_weapon']) {
     check('5c ' + t + ' carries today\'s payload', keysOf(today, t) !== null && keysOf(today, t) === keysOf(mine, t), { today: keysOf(today, t), mine: keysOf(mine, t) });
   }
@@ -136,6 +142,52 @@ const read = (rel) => readFileSync(fileURLToPath(new URL('../../' + rel, import.
   check('5e Salvage is today\'s very tab', /export function SalvageTab/.test(today) && /SalvageTab\b.*from '\.\.\/panels\/buildings\/SmithyPanel\.jsx'/.test(mine) && /<SalvageTab /.test(mine));
   check('5f every request leaves through the action door', !/channel\.send|\.postMessage|sendMessage\(/.test(mine) && /from '@\/game\/actions\.js'/.test(mine));
   check('5g one at a time where one is today\'s: harden, the gem, the amulet', (mine.match(/multi: false/g) || []).length === 3);
+}
+
+/* ── 6. v2.3.6873 (card MN step 13b): the Woodworker ── */
+{
+  check('6a today\'s five tabs, in today\'s order', WOOD_TABS.join() === 'bow,staff,hardwood,upgrade,traps');
+  check('6b an older worker: Bow and Staff', woodTabs({}).join() === 'bow,staff' && woodTabs(null).join() === 'bow,staff');
+  check('6c each tab on its cap', woodTabs({ hardenedwood: true, harden: true, trapcraft: true }).join() === WOOD_TABS.join()
+    && woodTabs({ trapcraft: true }).join() === 'bow,staff,traps' && woodTabs({ harden: true }).join() === 'bow,staff,upgrade');
+  const today = ['WoodworkPanel', 'HardenedWoodTab', 'TrapsTab'].map((f) => read('src/ui/panels/buildings/' + f + '.jsx')).join('\n');
+  const panel = read('src/ui/panels/buildings/WoodworkPanel.jsx');
+  /* the caps today's window reads for its tabs, the same as the rule's */
+  check('6d the rule reads today\'s caps', ['hardenedwood', 'harden', 'trapcraft'].every((c) => new RegExp('_serverCaps\\.' + c + '\\)\\s*&&\\s*\\{\\s*id:').test(panel)));
+  const mine = read('src/ui/menus3/Menus3Wood.jsx');
+  const T = [...reqs(today)].sort(), M = [...reqs(mine)].sort();
+  check('6e the Woodworker sends today\'s requests, and no other', T.join() === M.join() && T.join() === 'forge_weapon,harden_weapon,make_hardened_wood,make_traps', { today: T, mine: M });
+  for (const t of ['forge_weapon', 'harden_weapon', 'make_hardened_wood', 'make_traps']) {
+    check('6f ' + t + ' carries today\'s payload', keysOf(today, t) !== null && keysOf(today, t) === keysOf(mine, t), { today: keysOf(today, t), mine: keysOf(mine, t) });
+  }
+  check('6g a bow or a staff is the woodworker\'s', /isWoodwork: true/.test(mine) && /isWoodwork: true/.test(panel));
+  /* a count today's tab sends whole: in pieces of the worker's own 50 */
+  const hw = read('src/data/hardenedWood.js'), tr = read('src/data/trapping.js');
+  check('6h the hardened wood\'s 50 is the worker\'s own', /HARDENED_WOOD_MAX_PER_REQUEST = 50\b/.test(hw) && /MAX_PER_REQUEST:\s*50\b/.test(read('server/src/hardenedwood.js'))
+    && /per: HARDENED_WOOD_MAX_PER_REQUEST/.test(mine));
+  check('6i the traps\' 50 is the worker\'s own', /MAX_PER_REQUEST:\s*50\b/.test(tr) && /MAX_PER_REQUEST:\s*50\b/.test(read('server/src/trapping.js')) && /per: TRAPPING\.MAX_PER_REQUEST/.test(mine));
+  check('6j a hardening one at a time, as today', (mine.match(/multi: false/g) || []).length === 1 && /harden_weapon[\s\S]{0,200}/.test(mine));
+  check('6k every request through the action door', !/channel\.send|\.postMessage|sendMessage\(/.test(mine) && /from '@\/game\/actions\.js'/.test(mine));
+}
+
+/* ── 7. v2.3.6873 (card MN step 13b): the Cookhouse ── */
+{
+  const R = [{ buff: 'heal' }, { buff: 'all' }, { buff: 'damage' }, { buff: null }, { buff: null }];
+  check('7a a worker with meals: the first cookRows', cookShown(R, { meals: true, cookRows: 4 }).join() === '0,1,2,3');
+  check('7b cookRows unsaid: three', cookShown(R, { meals: true }).join() === '0,1,2');
+  check('7c an older worker: the instant buffs only', cookShown(R, {}).join() === '0,1,2' && cookShown([{ buff: 'heal' }, {}, { buff: 'x' }], null).join() === '0,2');
+  check('7d carried only with meals', cookCarries({ meals: true }) && !cookCarries({}) && !cookCarries(null));
+  check('7e an herb counted in any bag key that names it', cookHave({ herb_firebloom: 2, seed_herb_firebloom: 1, herb_rock_vine: 4, x: -3 }, 'herb_firebloom') === 3
+    && cookHave({ herb_firebloom: 0 }, 'herb_firebloom') === 0 && cookHave(null, 'herb') === 0 && cookHave({ a: 1 }, '') === 0);
+  const today = read('src/ui/panels/buildings/CookPanel.jsx');
+  const mine = read('src/ui/menus3/Menus3Cook.jsx');
+  check('7f today\'s reading of the herbs is the rule\'s', /k\.includes\(type\) && v > 0/.test(today));
+  check('7g today\'s rows rule is the rule\'s', /if \(!mealsOn && !recipe\.buff\) return null/.test(today) && /if \(mealsOn && ri >= _cookRows\(\)\) return null/.test(today)
+    && /typeof n === 'number' \? n : 3/.test(today));
+  check('7h the cook sends today\'s request with today\'s payloads', /act\('cook_recipe', carryCook \? \{ recipeIdx: ri, carry: true \} : \{ recipeIdx: ri \}\)/.test(today)
+    && /act\('cook_recipe', carry \? \{ recipeIdx: ri, carry: true \} : \{ recipeIdx: ri \}\)/.test(mine) && [...reqs(mine)].join() === 'cook_recipe');
+  check('7i a number only where the dish is carried', /multi: carry,/.test(mine));
+  check('7j the Eat list is gone (Decided 11): no eat here, the bag eats', !/eat_request/.test(mine) && /if \(a\.eat\) add\('eat'/.test(read('src/ui/mobile/dash/itemActions.js')));
 }
 
 console.log(`menus3-counter: ${passes} passed, ${failures} failed`);

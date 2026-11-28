@@ -70,7 +70,9 @@ function sectionWord(s) { return Object.prototype.hasOwnProperty.call(SECTION_WO
 /* v2.3.6872 (card MN step 13): the Counter's header -- the station, its mode, the gold (the card's Decided 6) */
 function counterTitle(st) {
   const s = st.station;
-  const station = s && s.bench === 'blacksmith' ? say(SAY_SM, 'smithy.title') : '';
+  /* v2.3.6873 (card MN step 13b): + the Woodworker and the Cookhouse */
+  const station = !s ? '' : s.bench === 'blacksmith' ? say(SAY_SM, 'smithy.title')
+    : s.bench === 'woodworker' || s.bench === 'cookhouse' ? say(SAY_C, 'menus3Counter.station.' + s.bench) : '';
   return say(SAY_C, 'menus3Counter.title', { station, mode: say(SAY_C, 'menus3Counter.make') });
 }
 function CounterGold({ n }) {

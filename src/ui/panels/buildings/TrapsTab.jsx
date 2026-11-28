@@ -19,7 +19,8 @@ const C = {
   card: '#24363C', well: '#111E23', raised: '#293B41', text: '#F4F0E7', sub: '#B6C1BE', mute: '#8D9B98',
   brass: '#D8AA58', good: '#55B98A', line: 'rgba(229,237,233,.11)',
 };
-const NAMES = { wood_pine_log: 'Pine Log', wood_softwood: 'Softwood', wood_hardwood: 'Hardwood', wood_cedar_wood: 'Cedar Wood', wood_maple_wood: 'Maple Wood' };
+/* v2.3.6873: shared with the Counter's Woodworker (menus3/Menus3Wood.jsx): one copy */
+export const NAMES = { wood_pine_log: 'Pine Log', wood_softwood: 'Softwood', wood_hardwood: 'Hardwood', wood_cedar_wood: 'Cedar Wood', wood_maple_wood: 'Maple Wood' };
 
 function Btn({ on, onClick, children, primary, ...rest }) {
   return (

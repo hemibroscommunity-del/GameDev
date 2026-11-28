@@ -9,9 +9,10 @@
  *   - THE STATIONS.  Which of today's building windows (BroTown's
  *     `buildingPanel` id, data/buildings.js `action`) is which station, in
  *     which mode, and whether its Counter is built.  Step 13 builds Make for
- *     the Blacksmith (`forge`); the Woodworker, the Gem Works and the
- *     Cookhouse are listed and still open today's windows until they are
- *     built; Trade, Keep and Play (card MN steps 14 and 15) add their rows.
+ *     the Blacksmith (`forge`); v2.3.6873 the Woodworker (`woodwork`) and
+ *     the Cookhouse (`cook`); the Gem Works (`gemcut`, `enchant`) is listed
+ *     and still opens today's window until it is built; Trade, Keep and Play
+ *     (card MN steps 14 and 15) add their rows.
  *   - THE BLACKSMITH'S TABS.  Today's six (SmithyPanel.jsx), each shown only
  *     against a worker that settles it, read off the same caps; the Amulet
  *     tab only to someone holding gold for it (forgeTabs.js).
@@ -31,10 +32,10 @@ export const COUNTER_MODES = Object.freeze(['make', 'trade', 'keep', 'play']);
 /* today's window id -> its station.  `built`: its Counter exists (step 13: the Blacksmith). */
 export const COUNTER_STATIONS = Object.freeze({
   forge: Object.freeze({ mode: 'make', bench: 'blacksmith', built: true }),
-  woodwork: Object.freeze({ mode: 'make', bench: 'woodworker', built: false }),
+  woodwork: Object.freeze({ mode: 'make', bench: 'woodworker', built: true }),   /* v2.3.6873: built (card MN step 13b) */
   gemcut: Object.freeze({ mode: 'make', bench: 'gemworks', built: false }),
   enchant: Object.freeze({ mode: 'make', bench: 'gemworks', built: false }),
-  cook: Object.freeze({ mode: 'make', bench: 'cookhouse', built: false }),
+  cook: Object.freeze({ mode: 'make', bench: 'cookhouse', built: true }),   /* v2.3.6873: built (card MN step 13b) */
 });
 
 /** Does today's window `id` open the Counter (under ?menus3, `on`)?  Its
@@ -65,6 +66,51 @@ export function smithTabs(caps, R) {
 export function smithTab(want, tabs) {
   const list = Array.isArray(tabs) && tabs.length ? tabs : ['forge'];
   return list.indexOf(want) >= 0 ? want : list[0];
+}
+
+/* ═══ v2.3.6873: THE WOODWORKER'S TABS AND THE COOKHOUSE'S RECIPES (card MN step 13b) ═══
+   Today's Woodworker (panels/buildings/WoodworkPanel.jsx): Bow and Staff
+   always, Hardened, Upgrade and Traps on their caps.  Today's Cookhouse
+   (CookPanel.jsx): one list of recipes, the rows a worker cooks -- with
+   caps.meals the first `caps.cookRows` (3 when it does not say), the dish
+   carried in the bag; an older worker cooks only the rows with an instant
+   `buff`, one at a time. */
+export const WOOD_TABS = Object.freeze(['bow', 'staff', 'hardwood', 'upgrade', 'traps']);
+export function woodTabs(caps) {
+  const c = caps || {};
+  return WOOD_TABS.filter((t) => {
+    if (t === 'bow' || t === 'staff') return true;
+    if (t === 'hardwood') return !!c.hardenedwood;
+    if (t === 'upgrade') return !!c.harden;
+    if (t === 'traps') return !!c.trapcraft;
+    return false;
+  });
+}
+/** Does the worker cook INTO THE BAG (a number of dishes makes sense)? */
+export function cookCarries(caps) { return !!(caps && caps.meals); }
+/** The recipes' indices today's Cookhouse offers (`recipes` COOKING_RECIPES; the index is the wire key). */
+export function cookShown(recipes, caps) {
+  const carry = cookCarries(caps);
+  const rows = caps && typeof caps.cookRows === 'number' ? caps.cookRows : 3;
+  const out = [];
+  (Array.isArray(recipes) ? recipes : []).forEach((r, i) => {
+    if (!r) return;
+    if (!carry && !r.buff) return;
+    if (carry && i >= rows) return;
+    out.push(i);
+  });
+  return Object.freeze(out);
+}
+/** How many of an ingredient the bag holds: today's reading, every key that
+    names it (`herb_firebloom` in any bag key), counted when above zero. */
+export function cookHave(inv, type) {
+  if (!inv || typeof type !== 'string' || !type) return 0;
+  let n = 0;
+  for (const k of Object.keys(inv)) {
+    const v = Number(inv[k]);
+    if (k.indexOf(type) >= 0 && v > 0) n += v;
+  }
+  return Math.floor(n);
 }
 
 /* ── the queue ── */
