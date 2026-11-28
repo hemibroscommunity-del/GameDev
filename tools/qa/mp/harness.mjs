@@ -1371,6 +1371,19 @@ const COMBAT_OF = { broSword: 'sword', broBow: 'bow', broStaff: 'staff' };   /* 
 const FEATS_OF = { broTitles: 'titles', featsMedals: 'achievements', featsQuests: 'quests' };   /* v2.3.6695 (card UI2-feats): doors of Feats (sheet/FeatsPage.jsx) */
 /* v2.3.6694 (card UI2-life): a life skill's page, a door of the Life Skills landing */
 const LIFE_OF = { lifeWoodcutting: 'woodcutting', lifeFishing: 'fishing', lifeMining: 'mining', lifeFarming: 'farming', lifeTrapping: 'trapping', lifeCooking: 'cooking', lifeBlacksmithing: 'blacksmithing', lifeWoodworking: 'woodworking', lifeGemCutting: 'gemCutting', lifeEnchanting: 'enchanting' };
+/* v2.3.6843 (card UI4 PR 4): an entry of V17's Bro (?v17bro, the default) may be on a later page of its quiet
+   strip, which pages by whole entries: press its "more" until `sel` (inside the Bro page) is drawn.  On the
+   old Bro (?v17bro=0) every door is drawn, so this does nothing.  Returns whether it is there. */
+export async function broReveal(P, sel, { timeout = 6000 } = {}) {
+  const q = `[data-bro-landing] ${sel}`;
+  for (let i = 0; i < 6; i++) {
+    if (await P.page.locator(q).count().catch(() => 0)) return true;
+    if (!(await P.page.locator('[data-bro-landing] [data-u2-strip-more]').count().catch(() => 0))) return false;
+    await tapTop(P.page, '[data-bro-landing] [data-u2-strip-more]', timeout);
+    await P.page.waitForTimeout(250);
+  }
+  return (await P.page.locator(q).count().catch(() => 0)) > 0;
+}
 async function frameUp(P) {
   return P.page.evaluate(() => !!document.querySelector('[data-dash-frame]')).catch(() => false);
 }

@@ -200,7 +200,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await back(P);
     const b2 = await title(P);
     await back(P);
-    const b3 = await P.page.evaluate(() => !!document.querySelector('[data-dash-grid="bro"]'));
+    const b3 = await P.page.evaluate(() => !!document.querySelector('[data-bro-landing]'));   /* v2.3.6843 (card UI4 PR 4): either Bro (V17's quiet strip, or the six tiles of ?v17bro=0) */
     rec.ok('6. Back: All unlocks to Fishing, to the landing, to Bro', b1 === 'lifeFishing' && b2 === 'skills' && b3, { b1, b2, b3 });
 
     /* 4. a skill at 101 */
