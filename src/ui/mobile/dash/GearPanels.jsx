@@ -31,7 +31,9 @@
  * its Details opens the ONE item page (openItemPage).  No figure and no
  * health, mana or energy bars here: they are on the world's own screen. */
 import React from 'react';
-import { Ui2TwoPanel, Ui2ItemGrid, Ui2ItemCell, Ui2Slot, Ui2Action, Ui2Stat, ui2RootClass } from '@/ui/kit/index.js';
+import { Ui2TwoPanel, Ui2ItemGrid, Ui2ItemCell, Ui2Slot, Ui2Action, Ui2Stat, Ui2Comparison, ui2RootClass } from '@/ui/kit/index.js';
+import { v17GearOn, GEAR_INTENT, itemActIntent, sumLayout } from '@/game/v17Gear.js';
+import { topGoldOn } from '@/game/topGold.js';   /* v2.3.6845: the purse's other place (the top bar) */   /* v2.3.6845 (card UI4 PR 6): `?v17gear` */
 import { getBagEntries } from './bagModel.js';
 import { groupSpare } from './gearBag.js';
 import { BagTile } from './InventoryPanel.jsx';
@@ -101,7 +103,7 @@ function useBox() {
 export { gearPanelsGeometry };
 
 /* ── the label rows ── */
-function InventoryHead({ fid, coins, menu }) {
+function InventoryHead({ fid, coins, menu, coinsHere = true }) {
   const word = fid === 'all' ? say(SAY, 'gearPanels.clear') : ((GEAR_FILTERS[fid] || {}).pill || say(SAY, 'gearPanels.allItems'));
   return (
     <>
@@ -115,8 +117,11 @@ function InventoryHead({ fid, coins, menu }) {
       ) : null}
       {/* v2.3.6784 (card UI3-menus, reading 6): the owner, 2026-11-26: "make the gold balance a compact pill":
           the kit's stat at pill size, recessed, the number gold, NOT a button (it opens nothing) */}
-      <Ui2Stat size="pill" className="u2-gp-coins" art={coinArtFor(coins)} v={barNumber(coins, true, 10000)}
-        data-gear-gold={coins} title={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} aria-label={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} />
+      {/* v2.3.6845 (`?v17gear`): the owner, 2026-11-28 about 02:10 UTC: "Remove the coins from bag and slide filter
+          over": the purse is on the top bar (src/game/topGold.js), so here it goes and the filter takes its place at
+          the row's end; a phone that hid the top bar's gold (`?topgold=0`) keeps it here (no screen without it) */}
+      {coinsHere ? <Ui2Stat intent={GEAR_INTENT.coins} size="pill" className="u2-gp-coins" art={coinArtFor(coins)} v={barNumber(coins, true, 10000)}
+        data-gear-gold={coins} title={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} aria-label={say(SAY, 'gearPanels.coins', { n: coins.toLocaleString() })} /> : null}
     </>
   );
 }
@@ -224,7 +229,32 @@ function Change({ row, big }) {
   );
 }
 
-function Summary({ R, ws, entry, geo }) {
+/* v2.3.6845 (card UI4 PR 6, `?v17gear`): the comparison through the kit's Comparison (V17:49 "Positive/negative
+   deltas use signed text and color; never color alone"): each row its number before and after and the difference
+   SIGNED with its word ("+2.3 better"); the colour only repeats them.  The headline keeps the game's own words
+   under it ("25% more damage per second": compare.js, the whole character's); the rows were an arrow and a number
+   (their words only in a title): now the word is on screen.  `L` (v17Gear.js sumLayout) says how many rows and
+   whether the tradeoff line fit the room: a row is never half drawn (mp-v17fit). */
+function CompareV17({ cmp, short, L }) {
+  if (short && !L.head) return null;
+  const row = (r, head) => (
+    <Ui2Comparison key={r.key} k={r.label} before={r.a.n} after={r.b.n} lower={r.goodWay === 'lower'} digits={r.dec}
+      unit={r.unit} className={head ? 'is-head' : undefined}
+      data-cmp-head={head ? r.key : undefined} data-cmp-row={head ? undefined : r.key} data-cmp-good={r.change.good} />
+  );
+  return (
+    <>
+      <div className="u2-gp-head is-v17">
+        {row(cmp.head, true)}
+        {L.words && cmp.head.change.dir !== 'none' ? <span className="u2-gp-sub" data-cmp-say="">{cmp.head.change.say}</span> : null}
+      </div>
+      {short ? null : cmp.rows.slice(0, L.rows).map((r) => row(r, false))}
+      {L.line && (cmp.restricted || cmp.tradeoff) ? <p className="u2-gp-line" data-cmp-tradeoff={cmp.restricted ? undefined : ''}>{cmp.restricted || cmp.tradeoff}</p> : null}
+    </>
+  );
+}
+
+function Summary({ R, ws, entry, geo, w, h }) {
   const fromBag = ws.from === 'left';
   const src = fromBag ? { from: 'gear', R, entry } : { from: 'gear', R, cell: ws.pick };
   const got = safe(() => itemPageInput(src), null);
@@ -243,10 +273,15 @@ function Summary({ R, ws, entry, geo }) {
   const details = () => { gearTabBus.wsDo({ type: 'details' }); openItemPage({ from: 'gear', ...(fromBag ? { R, entry } : { R, cell: ws.pick }) }); };
   const close = (e) => { if (e) e.stopPropagation(); gearTabBus.wsDo({ type: 'close' }); };
   const pic = Math.min(44, geo.short ? geo.cell - 6 : 44);
+  const on = v17GearOn();
+  /* v2.3.6845 (V17:57 "fixed buttons"): the reason an action is off sits ABOVE the buttons (it pushed them up),
+     and Details keeps its half of the row when the item has no action (it took the whole row) */
+  const why = lead && lead.off && !(cmp && cmp.restricted) ? <p className="u2-gp-why" data-u2-why="">{lead.why}</p> : null;
+  const L = on ? sumLayout(w, h, geo.short, !!why, !!cmp) : null;
   return (
     <div className={'u2-gp-sum' + (geo.short ? ' is-row' : '')} data-gear-summary={fromBag ? 'bag' : 'worn'} data-gear-kind={kind}>
       <div className="u2-gp-id">
-        <Ui2Slot grade={sum.hidden ? 'normal' : sum.grade} hidden={sum.hidden} art={sum.art} size={pic} name={sum.name} />
+        {L && !L.pic ? null : <Ui2Slot grade={sum.hidden ? 'normal' : sum.grade} hidden={sum.hidden} art={sum.art} size={pic} name={sum.name} />}
         <div className="u2-gp-name">
           <span className="u2-gp-name-t" data-gear-sum-name="">{sum.name}</span>
           <span className="u2-gp-where">{sum.where}{sum.gradeWord ? ' · ' + sum.gradeWord : ''}</span>
@@ -256,7 +291,19 @@ function Summary({ R, ws, entry, geo }) {
         <button type="button" className="u2-gp-x" data-esc="" data-ws-close="" aria-label={say(SAY, 'gearPanels.close')} onClick={close}>{'✕'}</button>
       </div>
       <div className="u2-gp-facts">
-        {cmp ? (
+        {cmp && L ? <CompareV17 cmp={cmp} short={geo.short} L={L} /> : L ? (
+          <>
+            {sum.head && L.head ? (
+              <div className="u2-gp-head" data-sum-head={sum.head.k}>
+                <span className="u2-gp-k">{sum.head.k}</span><span className="u2-gp-v">{sum.head.v}</span>
+              </div>
+            ) : null}
+            {sum.facts.slice(0, geo.short && !L.head ? 0 : L.rows + (sum.head ? 0 : 1)).map((f) => (
+              <div key={f.k} className="u2-gp-row" data-sum-fact={f.k}><span className="u2-gp-k">{f.k}</span><span className="u2-gp-v">{f.v}</span></div>
+            ))}
+            {L.line && sum.line && !sum.hidden ? <p className="u2-gp-line">{sum.line}</p> : null}
+          </>
+        ) : cmp ? (
           <>
             <div className="u2-gp-head" data-cmp-head={cmp.head.key}>
               <span className="u2-gp-k">{cmp.head.label}</span>
@@ -286,14 +333,16 @@ function Summary({ R, ws, entry, geo }) {
           </>
         )}
       </div>
-      <div className="u2-gp-acts">
-        <Ui2Action c="silver" label={say(SAY, 'gearPanels.details')} onClick={details} data-gear-details="" />
+      {on ? why : null}
+      <div className="u2-gp-acts" data-gear-acts={on ? (lead ? 'two' : 'one') : undefined}>
+        {on ? <Ui2Action intent={GEAR_INTENT.details} label={say(SAY, 'gearPanels.details')} onClick={details} data-gear-details="" />
+          : <Ui2Action intent={GEAR_INTENT.detailsWas} c="silver" label={say(SAY, 'gearPanels.details')} onClick={details} data-gear-details="" />}
         {lead ? (
-          <Ui2Action c={lead.face} label={lead.label} disabled={lead.off} onClick={() => runOne(lead.id, got)}
+          <Ui2Action intent={itemActIntent(lead.id) || undefined} c={lead.face} label={lead.label} disabled={lead.off} onClick={() => runOne(lead.id, got)}
             data-gear-act={lead.id} title={lead.off ? lead.why : undefined} {...(lead.attrs || {})} />
-        ) : null}
+        ) : on ? <span className="u2-gp-act-gap" aria-hidden="true" data-gear-act-gap="" /> : null}
       </div>
-      {lead && lead.off && !(cmp && cmp.restricted) ? <p className="u2-gp-why" data-u2-why="">{lead.why}</p> : null}
+      {on ? null : why}
     </div>
   );
 }
@@ -347,7 +396,9 @@ export function GearPanels({ R: Rin }) {
     if (top > 0) beforeDraw(() => { const el = bagRef.current; if (el) el.scrollTop = top; });
   }, [drawn]);
 
-  const geo = gearPanelsGeometry(box.w, box.h);
+  const on = v17GearOn();
+  const coinsHere = !on || !topGoldOn();   /* v2.3.6845: the bag's gold pill only where the top bar shows none */
+  const geo = gearPanelsGeometry(box.w, box.h, on ? { v17: true, coins: coinsHere } : undefined);   /* v2.3.6845: the mends of mp-v17fit */
   const coins = Number(R.coins || 0);
   const weaponsHeld = (R.weaponStash || []).filter(Boolean).length;
   const cells = entries.map((e) => ({ key: bagKeyOf(e), grade: (e.obj && e.obj.quality) || 'normal', e }));
@@ -358,7 +409,7 @@ export function GearPanels({ R: Rin }) {
   const inventory = entries.length === 0 && fid !== 'all' ? (
     <div className="u2-gp-none" data-gear-empty={fid}>
       <span>{say(SAY, 'gearPanels.noneOf', { what: (GEAR_FILTERS[fid] || {}).none || say(SAY, 'gearPanels.items') })}</span>
-      <Ui2Action c="silver" label={say(SAY, 'gearPanels.showAll')} onClick={() => gearTabBus.clearFilter()} data-gear-showall="" />
+      <Ui2Action intent={GEAR_INTENT.showAll} c="silver" label={say(SAY, 'gearPanels.showAll')} onClick={() => gearTabBus.clearFilter()} data-gear-showall="" />
     </div>
   ) : (
     <div data-gear-bag="" data-bag-rows={geo.rows} style={{ height: '100%' }}>
@@ -374,28 +425,31 @@ export function GearPanels({ R: Rin }) {
   );
   const menu = st.menu && bagShown
     ? <GearFilterMenu fid={fid} allEntries={allEntries} counts={counts} weaponsHeld={weaponsHeld} box={{ left: PAD, right: PAD, top: PAD + HEAD, bottom: PAD }} /> : null;
-  const summary = ws.mode === 'look' ? <Summary R={R} ws={ws} entry={picked} geo={geo} /> : null;
+  /* v2.3.6845: the summary's own box (the side it stands in, inside the pane's padding), for what it holds */
+  const sumW = (show.left === 'summary' ? geo.invW : geo.eqW) - 2 * PAD;
+  const summary = ws.mode === 'look' ? <Summary R={R} ws={ws} entry={picked} geo={geo} w={sumW} h={geo.H - 2 * PAD} /> : null;
 
   const side = (which) => {
     if (show[which] === 'summary') return { kind: 'summary', label: '', children: summary, style: { flex: `0 0 ${which === 'left' ? geo.invW : geo.eqW}px` } };
     if (which === 'left') {
-      return { kind: 'storage', label: geo.short ? '' : say(SAY, 'gearPanels.inventory'), headH: geo.short ? undefined : HEAD,
-        head: geo.short ? null : <InventoryHead fid={fid} coins={coins} menu={st.menu} />,
+      return { kind: 'storage', label: geo.short || !geo.invTitle ? '' : say(SAY, 'gearPanels.inventory'), name: on ? say(SAY, 'gearPanels.inventory') : undefined, headH: geo.short ? undefined : HEAD,
+        head: geo.short ? null : <InventoryHead fid={fid} coins={coins} menu={st.menu} coinsHere={coinsHere} />,
         children: geo.short ? (
           <div className="u2-gp-shortrow">
-            <div className="u2-gp-shorthead" style={{ width: SHORT_HEAD }}><InventoryHead fid={fid} coins={coins} menu={st.menu} /></div>
+            <div className="u2-gp-shorthead" style={{ width: SHORT_HEAD }}><InventoryHead fid={fid} coins={coins} menu={st.menu} coinsHere={coinsHere} /></div>
             <div style={{ flex: '1 1 auto', minWidth: 0, height: '100%' }}>{inventory}</div>{menu}
           </div>
         ) : <>{inventory}{menu}</>,
         style: { flex: `0 0 ${geo.invW}px` } };
     }
-    return { kind: 'worn', label: geo.short ? '' : say(SAY, 'gearPanels.equipped'), headH: geo.short ? undefined : HEAD,
+    return { kind: 'worn', label: geo.short || !geo.wornHead ? '' : say(SAY, 'gearPanels.equipped'), name: on ? say(SAY, 'gearPanels.equipped') : undefined, headH: geo.short || !geo.wornHead ? undefined : HEAD,
       children: <EquippedBody R={R} ws={ws} geo={geo} />, style: { flex: `0 0 ${geo.eqW}px` } };
   };
 
   return (
     <div ref={rootRef} className={ui2RootClass('u2-gp')} data-gear-ws="" data-ws-mode={ws.mode} data-ws-from={ws.from || undefined}
-      data-ws-keys={keys.length} data-gear-short={geo.short ? '1' : undefined} data-equip-look={equipLookOn() ? '1' : undefined}>
+      data-ws-keys={keys.length} data-gear-short={geo.short ? '1' : undefined} data-equip-look={equipLookOn() ? '1' : undefined}
+      data-v17-gear={on ? '1' : undefined} data-gear-cols={on ? geo.cols : undefined} data-gear-coins={on ? (coinsHere ? '1' : '0') : undefined} data-gear-box={on ? box.w + 'x' + box.h : undefined}>
       {box.w > 0 ? <Ui2TwoPanel left={side('left')} right={side('right')} /> : null}
     </div>
   );

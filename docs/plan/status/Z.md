@@ -1,27 +1,24 @@
 card: Z
-branch: claude/plan-z-sitting-73
-prs: 9 PRs listed in 5 lines; this PR (tag 5667, Z's block 5660 to 5679), the line before SHOP part 2
+branch: claude/plan-z-sitting-74
+prs: card UI4's stack in ONE line (four PRs, one merge); this PR (tag 5668, Z's block 5660 to 5679), the last line
 state: ready
 
-## Done (sitting 73, main 238fa816; 11-27's third sitting, the owner's "Yes it can" about 16:10 UTC)
-- Read on the top model, already on main by the fast lane: #2418, #2420,
-  #2421, #2419, #2423 (with #2401), #2424, #2425. Two bugs in behaviour,
-  mends owed on main: #2419 (QuestCoach.jsx:780, step 5 under `?ui2=0` /
-  `?oneband=0`), #2425 (BroTown.jsx:11801, a missed lift leaves the bow's
-  stick shooting). #2401's hold (four-lines 1b) is cured on main.
-- Reviewed on the top model: Ranks, Life, Feats (read whole), Codex, Pets,
-  Own plate, HUD art, SHOP part 2 (read whole: never takes, never doubles).
-  Every hold of sitting 72 RED on its mend; no bug in any listed PR.
-- Rehearsed gatekeeper.mjs on 19c52807: precheck, switches-thrown --whole,
-  claims-gain --whole, build, questline 187/187 PASS; heldsweep noise (6/6
-  on the rerun); membudget 12/12.
-- Written: the fast lane's rule (finish.md part 8, CLAUDE.md section 4), the
-  lean order for small requests (orchestrator.md, finish.md part 6), card
-  UI4's block (6840 to 6859).
-## The list (merge commits; each mend by the orchestrator, precheck before each push)
-1 Ranks #2412, Life #2415, Feats #2417 (retarget, unchanged). 2 Codex
-#2408, Pets #2413 (retarget, mends). 3 Own plate #2411 (mend). 4 HUD art
-#2414 (mend). 5 Z (5667). 6 SHOP part 2 #2426 alone (no deploy).
-Held: none.
+## Done (sitting 74, main 351c4be2; 11-28's first sitting)
+- Rehearsed gatekeeper.mjs on tree 2a6f1865 (main + kit, look, the shared
+  base, bro, gear, and the mend of bro and gear): precheck 0 FAIL 1 WARN,
+  switches-thrown --whole, claims-gain --whole, build, questline, heldsweep
+  PASS. Phone: ui2bro 26/26, ui2frame 34/34, membudget 12/12 (199.8 MB);
+  oneband 54/56 and deskwide 27/35, the same FAIL lines on main.
+- Reviewed on the top model: PR 1's card dodges all RED; PRs 2, 4, 6 name
+  no dodges, the review's green plants are card UI4's next jobs; no bug in
+  behaviour. mp-ui2bro 9 and mp-ui2frame's changes read honest.
+- Read (fast lane, rule 4): #2428, #2430, #2434: no bug in behaviour.
+## The list (merge commits; the mend by the orchestrator, precheck before its push)
+1 UI4: mend on `claude/plan-ui4-gear` (merge #2432's head; 7 files both
+sides, bro then gear; switches/systems --write: tree d66cd390); retarget
+#2429, #2431, #2432, #2433 to main; merge #2433 (tree 2a6f1865); GitHub
+marks the other three merged. 2 Z (5668).
+Held: none. No deploy.
 ## Found
-- debts.md: the fast lane read at 73, the PRs of 73 (next jobs).
+- debts.md: the PRs of sitting 74 (card UI4's next jobs), the fast lane
+  read at 74; QuestCoach.jsx:780 still owed on main.

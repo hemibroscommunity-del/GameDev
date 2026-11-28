@@ -6,7 +6,9 @@
  * in; this piece only draws it.  Gear is its first user; the shop, the bank,
  * a bench and a trade are the plan's step 8.  Each side: `label` (the
  * panel's name in its label row), `head` (more of the label row: gold, a
- * filter, a close), `kind` ('storage' | 'worn' | 'summary'), `children`. */
+ * filter, a close), `kind` ('storage' | 'worn' | 'summary'), `children`.
+ * v2.3.6845 (card UI4 PR 6): `name`, the panel's name for a screen reader when its label row has no room for
+ * the word (Gear on a 320 phone): the section still says what it is. */
 import React from 'react';
 
 function Side({ side, s }) {
@@ -14,7 +16,7 @@ function Side({ side, s }) {
   const summary = s.kind === 'summary';
   return (
     <section className={'u2-pane is-' + (s.kind || 'storage')} data-ws-side={side} data-ws-show={summary ? 'summary' : 'panel'}
-      aria-label={s.label || undefined} style={s.style || undefined}>
+      aria-label={s.label || s.name || undefined} style={s.style || undefined}>
       {(s.label || s.head) ? (
         <div className="u2-pane-head" style={{ height: s.headH || undefined }}>
           {s.label ? <span className="u2-pane-title">{s.label}</span> : null}

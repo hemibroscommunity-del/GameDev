@@ -54,7 +54,7 @@ import { fileURLToPath } from 'node:url';
 import * as H from './harness.mjs';
 export const lane = 'full';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SHOTS = path.join(ROOT, 'docs', 'shots');
+const SHOTS = process.env.BT_QA_V17FIT_OUT ? path.resolve(process.env.BT_QA_V17FIT_OUT) : path.join(ROOT, 'docs', 'shots');
 
 /* V17's table (MASTER-IMPLEMENTATION.md part 2): band w x h, header, page w x h, inner w x h */
 const V17 = {
@@ -71,6 +71,12 @@ const DESK = ['1440x900', '1024x768', '1280x800'];
 const ONLY = (process.env.BT_QA_V17FIT_SIZES || '').split(',').map((s) => s.trim()).filter(Boolean);
 const want = (s) => !ONLY.length || ONLY.includes(s);
 const SHOOT = process.env.BT_QA_V17FIT_SHOTS !== '0';
+/* v2.3.6845 (card UI4 PR 6): a sample while a screen's PR works (BT_QA_V17FIT_SCREENS=gear,item), a page switch on
+   every player (BT_QA_V17FIT_QUERY=v17gear=0, the "before"), and the table and pictures written somewhere else
+   (BT_QA_V17FIT_OUT, a folder): a sample never overwrites the whole run's table in docs/shots */
+const ONLY_SCREENS = (process.env.BT_QA_V17FIT_SCREENS || '').split(',').map((s) => s.trim()).filter(Boolean);
+const QUERY = process.env.BT_QA_V17FIT_QUERY || '';
+const withQuery = (q) => [q, QUERY].filter(Boolean).join('&') || undefined;
 
 /* the screens: how a player opens each, its root, and its main action (what must be in view unscrolled) */
 const SCREENS = [
@@ -295,6 +301,7 @@ async function sweep(P, rec, size, form, suffix = '') {
   await P.page.setViewportSize(sizeOf(size));
   await P.page.waitForTimeout(1800);
   for (const sc of SCREENS) {
+    if (ONLY_SCREENS.length && !ONLY_SCREENS.includes(sc.id)) continue;
     let m = null;
     try {
       await openScreen(P, sc.id);
@@ -304,6 +311,19 @@ async function sweep(P, rec, size, form, suffix = '') {
     } catch (e) { m = { missing: String(e).slice(0, 120) }; }
     const row = { size: size + suffix, form, screen: sc.id, name: sc.name, pr: sc.pr, ...m };
     ROWS.push(row);
+    /* v2.3.6845: Gear's own box and columns as the page drew them (`?v17gear` writes them), for its PR's numbers */
+    if (sc.id === 'gear' || sc.id === 'item') {
+      row.gearBox = await P.page.evaluate(() => { const g = document.querySelector('[data-gear-ws]'); return g ? [g.getAttribute('data-gear-box'), g.getAttribute('data-gear-cols')].join(' / ') : null; }).catch(() => null);
+      /* the bag's room at its two edges (the owner, 11-28: "Inventory slots are awkwardly spaced on the sides"): the
+         panel's inner edges against the first column's left and the last column's right */
+      row.bagEdges = await P.page.evaluate(() => {
+        const pane = document.querySelector('[data-ws-side="left"] .u2-pane-body'), cells = Array.from(document.querySelectorAll('[data-gear-bag] .u2-grid-in > .u2-cell'));
+        if (!pane || !cells.length) return null;
+        const p = pane.getBoundingClientRect(), xs = cells.map((c) => c.getBoundingClientRect());
+        const left = Math.min(...xs.map((r) => r.left)), right = Math.max(...xs.map((r) => r.right));
+        return { left: Math.round(left - p.left), right: Math.round(p.right - right), cell: Math.round(xs[0].width) };
+      }).catch(() => null);
+    }
     const tag = `${size}${suffix} ${sc.name}`;
     if (m.missing) { rec.ok(`${tag}: opened (guard)`, false, m.missing); continue; }
     rec.ok(`${tag}: every control 44 x 44 or more`, m.small.length === 0, m.small);
@@ -320,7 +340,7 @@ async function sweep(P, rec, size, form, suffix = '') {
       row.keys = k;
       rec.ok(`${tag}: the keys list beside the block keeps its room (220 px or more) and stands clear of it`, !k || (k.w >= 220 && k.gap >= 8), k);
     }
-    if (REF.has(size) && !suffix) await BAND_SHOT(P, `v17fit-${sc.id}-${size}.png`);
+    if ((REF.has(size) || process.env.BT_QA_V17FIT_OUT) && !suffix) await BAND_SHOT(P, `v17fit-${sc.id}-${size}.png`);   /* v2.3.6845: a sample's every size */
     if (suffix === '-480' && size === '1440x900') await BAND_SHOT(P, `v17fit-${sc.id}-${size}-480.png`);
   }
 }
@@ -366,7 +386,7 @@ function writeTable() {
 export async function run({ browser, wsPort, webPort, rec }) {
   /* 1. a phone, upright then on its side (one phone turned: TRAPS 175) */
   if (PHONE_UP.concat(PHONE_SIDE).some(want)) {
-    const P = await H.newPlayer(browser, { name: 'Fitphone', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
+    const P = await H.newPlayer(browser, { name: 'Fitphone', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: withQuery() });
     try {
       if (await inWorld(P, rec, 'phone')) {
         await seed(P, wsPort, rec, 'phone');
@@ -379,7 +399,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* 2. a computer, ?v17wide on (the default): 840, centred */
   const wide = {};
   if (DESK.some(want)) {
-    const C = await H.newPlayer(browser, { name: 'Fitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1440, height: 900 }, wide: true, dpr: 2 });
+    const C = await H.newPlayer(browser, { name: 'Fitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1440, height: 900 }, wide: true, dpr: 2, query: withQuery() });
     try {
       if (await inWorld(C, rec, 'computer')) {
         await seed(C, wsPort, rec, 'computer');
@@ -399,7 +419,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   /* 3. the same computer under ?v17wide=0: 480, and the world and the camera the same as under 840 */
   if (want('1440x900')) {
-    const O = await H.newPlayer(browser, { name: 'Fitnarrow', wsPort, webPort, world: 'wheel', viewport: { width: 1440, height: 900 }, wide: true, dpr: 2, query: 'v17wide=0' });
+    const O = await H.newPlayer(browser, { name: 'Fitnarrow', wsPort, webPort, world: 'wheel', viewport: { width: 1440, height: 900 }, wide: true, dpr: 2, query: withQuery('v17wide=0') });
     try {
       if (await inWorld(O, rec, 'computer, ?v17wide=0')) {
         await seed(O, wsPort, rec, 'computer, ?v17wide=0');
@@ -408,7 +428,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok('narrow: ?v17wide=0 is remembered on the device (bt_v17wide "0")', stored === '0', stored);
         await sweep(O, rec, '1440x900', 'computer', '-480');
         const n0 = ROWS.find((r) => r.size === '1440x900-480' && r.screen === 'bro');
-        rec.ok('narrow: the open block is 480 wide under ?v17wide=0', !!n0 && !n0.missing && n0.page[2] === 480, n0 && n0.page);
+        if (!ONLY_SCREENS.length || ONLY_SCREENS.includes('bro')) rec.ok('narrow: the open block is 480 wide under ?v17wide=0', !!n0 && !n0.missing && n0.page[2] === 480, n0 && n0.page);
         const canvas = await O.page.evaluate(() => { const c = document.querySelector('canvas'); const r = c && c.getBoundingClientRect(); return r ? [Math.round(r.width), Math.round(r.height)] : null; });
         const view = await O.page.evaluate(() => (window.__btWorldView ? window.__btWorldView('wheel') : null));
         if (wide.canvas) {

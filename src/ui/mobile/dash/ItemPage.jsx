@@ -17,6 +17,7 @@
  * one item page"). */
 import React from 'react';
 import { Ui2Slot, Ui2Group, Ui2Value, Ui2Action, Ui2Tile, ui2RootClass } from '@/ui/kit/index.js';
+import { v17GearOn, itemActIntent, GEAR_INTENT } from '@/game/v17Gear.js';   /* v2.3.6845 (card UI4 PR 6): the roles; the full name */
 import { inspectItem } from '@/game/itemInspect.js';
 import { SAY } from '@/data/say/itemInspect.js';
 import { say } from '@/game/say.js';
@@ -58,14 +59,15 @@ export function ItemPage() {
   const why = lead && lead.off ? lead.why : offRest ? offRest.label + ': ' + offRest.why : '';
   const press = (a) => { if (!a.off) runItemPageAction(a.id, got); };
   const btn = (a) => (
-    <Ui2Action key={a.id} c={a.face} label={a.label} disabled={a.off}
+    <Ui2Action key={a.id} intent={itemActIntent(a.id) || undefined} c={a.face} label={a.label} disabled={a.off}
       data-item-act={a.id} data-item-off={a.off ? '' : undefined} aria-description={a.off ? a.why : undefined}
       style={a.lead ? { flex: '1 1 auto' } : undefined}
       {...(a.attrs || {})}
       onClick={(e) => { e.stopPropagation(); press(a); }} />
   );
   return (
-    <div className={ui2RootClass('u2-item')} data-item-page="" data-item-place={got.place} data-item-grade={m.hidden ? 'hidden' : m.grade}>
+    <div className={ui2RootClass('u2-item')} data-item-page="" data-item-place={got.place} data-item-grade={m.hidden ? 'hidden' : m.grade}
+      data-v17-gear={v17GearOn() ? '1' : undefined}>
       <div className="u2-item-in">
         <div className="u2-item-id" data-item-id="">
           <span className="u2-item-pic">
@@ -100,7 +102,7 @@ export function ItemPage() {
               {m.doors.map((d) => (
                 /* v2.3.6784 (card UI3-menus): a door is RAISED, the kit's compact tile (was a stat with no label:
                    sunk with a large word, a door drawn as a stat; tools/guards/ui3-weights.test.mjs) */
-                <Ui2Tile key={d.id} size="compact" label={d.label} data-item-door={d.id}
+                <Ui2Tile key={d.id} intent={GEAR_INTENT.door} size="compact" label={d.label} data-item-door={d.id}
                   onClick={() => { try { dashboardPanelBus.push(d.id); } catch (e) { /* no frame */ } }} />
               ))}
             </div>

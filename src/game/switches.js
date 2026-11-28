@@ -340,6 +340,7 @@ const FORMS = {
   'uploadicons': '0',
   'v17bro': '0',
   'v17combat': '0',
+  'v17gear': '0',
   'v17look': '0',
   'v17wide': '0',
   'veildoor': '0',

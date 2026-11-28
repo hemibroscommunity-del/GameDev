@@ -8,8 +8,6 @@ export const ROLES_KNOWN = Object.freeze({
   'src/ui/kit/UiKitPage.jsx': 25,
   'src/ui/mobile/dash/CodexPage.jsx': 1,
   'src/ui/mobile/dash/DashHeader.jsx': 2,
-  'src/ui/mobile/dash/GearPanels.jsx': 4,
-  'src/ui/mobile/dash/ItemPage.jsx': 2,
   'src/ui/mobile/dash/MenuGrid.jsx': 1,
   'src/ui/mobile/dash/MonsterShowcase.jsx': 3,
   'src/ui/mobile/dash/PetsPage.jsx': 6,

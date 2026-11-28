@@ -94,7 +94,9 @@ export function compareRow(defOrKey, a, b) {
   if (B == null) return null;
   const A = num(a);
   const bR = round(B, def.dec);
-  const row = { key: def.key, label: def.label, goodWay: def.goodWay, a: { n: A == null ? null : round(A, def.dec), v: A == null ? say(SAY, 'compare.nothingWorn') : valueText(def, A) }, b: { n: bR, v: valueText(def, B) } };
+  /* v2.3.6845 (card UI4 PR 6): `dec` and `unit` ride on the row, so Gear's kit Comparison writes the numbers as
+     valueText does (the same decimals, '%' and 's') */
+  const row = { key: def.key, label: def.label, goodWay: def.goodWay, dec: def.dec, unit: def.unit || '', a: { n: A == null ? null : round(A, def.dec), v: A == null ? say(SAY, 'compare.nothingWorn') : valueText(def, A) }, b: { n: bR, v: valueText(def, B) } };
   if (A == null) {
     row.change = { n: null, v: '', pct: null, dir: 'none', good: 0, arrow: '', words: '', say: say(SAY, 'compare.nothingWorn') };
     return row;
