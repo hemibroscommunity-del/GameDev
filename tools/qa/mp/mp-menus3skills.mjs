@@ -18,7 +18,8 @@
  *   2. SIDEWAYS (844 x 390): the drawer 40% on the right, three across,
  *      every tappable thing 44+;
  *   3. A COMPUTER (1280 x 800, `wide: true`): L opens Skills, L again closes;
- *      P opens Power, I the Bag; Esc closes.
+ *      P opens Power, I the Bag; Esc closes; K (today's Codex) with the panel
+ *      open shuts it first.
  *
  * Pictures (deviceScaleFactor 1): tools/qa/out/menus3skills-*.png. */
 import path from 'node:path';
@@ -186,6 +187,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await D.page.waitForTimeout(600);
       st = await pstate(D);
       rec.ok('computer: Esc closes it', !st.open, st);
+      /* one menu at a time: a key that still opens today's page (K, the Codex) shuts the new panel first */
+      await D.page.keyboard.press('KeyL');
+      await D.page.waitForTimeout(600);
+      await D.page.keyboard.press('KeyK');
+      await D.page.waitForTimeout(800);
+      st = await pstate(D);
+      const band = await D.page.evaluate(() => { try { const n = window.__broDashPanelBus.nav(); return !!n.shown; } catch (e) { return null; } });
+      rec.ok('computer: K (today\'s Codex) with Skills open: the new panel shuts first, one menu at a time', !st.open && band !== false, { st, band });
     }
   } finally { await D.page.context().close().catch(() => {}); }
 }

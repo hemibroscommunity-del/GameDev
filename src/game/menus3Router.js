@@ -132,3 +132,21 @@ export function menus3MenuOf(pageId) {
   }
   return null;
 }
+
+/* ═══ v2.3.6865 (card MN step 6): WHAT A PAGE KEY DOES UNDER ?menus3 (deskKeys.js navKey) ═══
+   The owner's I Bag, P Power, L Skills open Bro's sections in the new panel
+   (J the World button's own, step 7); every other page key still opens
+   TODAY's page, and the new panel shuts first: one menu at a time (the
+   orchestrator's finding of 11-28: K, U, O opened today's page with the
+   panel still open). */
+export const MENUS3_KEY_SECTION = Object.freeze({ dashboard: 'bag', hero: 'power', skills: 'skills' });
+/** A page key's road: { road: 'panel', section } for Bro's three (built),
+ *  { road: 'world' } for J, else { road: 'today', shut: true }. */
+export function menus3KeyRoad(id, built) {
+  const b = Array.isArray(built) ? built : MENUS3_BUILT;
+  if (id === 'quests') return { road: 'world' };
+  if (typeof id === 'string' && Object.prototype.hasOwnProperty.call(MENUS3_KEY_SECTION, id) && b.indexOf(MENUS3_KEY_SECTION[id]) >= 0) {
+    return { road: 'panel', section: MENUS3_KEY_SECTION[id] };
+  }
+  return { road: 'today', shut: true };
+}

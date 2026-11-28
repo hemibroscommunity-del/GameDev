@@ -24,7 +24,7 @@
 import { MENUS3_SKILL_PAGES, isLifeSkill, skillsGrid, skillPage, skillLadder, skillGuild, guildClaim, guildStep, guildQuoteKey, guildTitles, skillsKey } from '../../src/game/menus3Skills.js';
 import { LIFE_SKILLS, LIFE_SKILL_XP } from '../../src/data/lifeSkills.js';
 import { GUILD_QUESTS } from '../../src/data/gameSystems.js';
-import { MENUS3_BUILT, MENUS3, menus3Route } from '../../src/game/menus3Router.js';
+import { MENUS3_BUILT, MENUS3, menus3Route, menus3KeyRoad } from '../../src/game/menus3Router.js';
 import { navStart, navPush, navBack, navTop } from '../../src/game/menus3Nav.js';
 
 let failures = 0, passes = 0;
@@ -114,6 +114,15 @@ const R = {
   const u = navPush(h, 'unlocks', 'fishing');
   check('5d a skill over the ten, its ladder over the skill; Back one at a time',
     navTop(u).page === 'unlocks' && navTop(navBack(u)).page === 'skill' && navTop(navBack(navBack(u))).scroll === 30);
+}
+
+/* ── 6. the keys (deskKeys.js navKey under ?menus3) ── */
+{
+  const r = (id) => menus3KeyRoad(id, MENUS3_BUILT);
+  check('6a I, P, L open Bro\'s three in the panel', r('dashboard').section === 'bag' && r('hero').section === 'power' && r('skills').section === 'skills' && r('skills').road === 'panel');
+  check('6b J is the World button\'s', r('quests').road === 'world');
+  check('6c every other page key opens today\'s page with the panel shut first', ['encyclopedia', 'leaderboard', 'more', '__proto__'].every((k) => r(k).road === 'today' && r(k).shut === true));
+  check('6d a section not built goes today\'s road, the panel shut', menus3KeyRoad('skills', ['bag']).road === 'today' && menus3KeyRoad('skills', ['bag']).shut);
 }
 
 console.log(`menus3-skills: ${passes} passed, ${failures} failed`);
