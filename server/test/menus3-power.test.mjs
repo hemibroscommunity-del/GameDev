@@ -25,10 +25,18 @@
  *   6. THE STEPS on a card: filled of the cap, staged after them; no cap, no
  *      false cap;
  *   7. THE ROAD: the face and the weapon bar open the built Power in the
- *      panel; the bar names the hand's lane. */
+ *      panel; the bar names the hand's lane;
+ *   8. v2.3.6866, THE QUEUE ITSELF (the page's one copy, the gatekeeper's
+ *      sitting 75): a run sends one point at a time and moves on when its
+ *      stat rose; a point that lands AFTER the wait counts as landed and its
+ *      stage leaves the draft (it was kept and sent twice: two spent for one
+ *      staged); while it is unanswered one stage of its kind is held from
+ *      Apply; a later landing proves an earlier silence a refusal; a reset
+ *      ends a watch; leaving sends nothing more. */
 import {
   POWER_LANES, powerLane, laneOfHeld, powerPools, powerWaiting, powerStartLane, draftOf, draftReplay, draftStage,
   draftUnstage, draftClear, draftCount, draftPrune, draftDraws, draftSends, draftLeft, sendLanded, queueStep, statSteps, POWER_DRAFT_MAX,
+  queueFresh, queueBegin, queueSend, queueRead, queueEnd, queueCut, queueSendable, queueHeld, QUEUE_LATE_MAX,
 } from '../../src/game/menus3Power.js';
 import { MENUS3_BUILT, menus3Route } from '../../src/game/menus3Router.js';
 
@@ -194,6 +202,75 @@ const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
     && menus3Route('hud.weaponBar', { built: MENUS3_BUILT, held: 'staff' }).lane === 'staff'
     && menus3Route('hud.weaponBar', { built: MENUS3_BUILT, held: '__proto__' }).lane === 'sword');
   check('7e not built (?menus3 step 1\'s road): today\'s weapon page', menus3Route('hud.weaponBar', { held: 'ranged' }).road === 'weapon');
+}
+
+/* ── 8. the queue itself (v2.3.6866) ── */
+{
+  const held = Object.create(null);   /* lane|stat -> points: the character the worker sends */
+  const pts = (l, st) => held[l + '|' + st] || 0;
+  const A = { lane: 'sword', stat: 'range', cat: 'sword' }, B = { lane: 'body', stat: 'hp', cat: 'sword' };
+  let draft = draftOf([{ lane: 'sword', stat: 'range' }, { lane: 'body', stat: 'hp' }]);
+  let q = queueBegin(queueFresh(), [A, B]);
+  check('8a a run begins on', q.on && q.i === 0 && !q.out && q.items.length === 2, q);
+  let r = queueSend(q, pts); q = r.q;
+  check('8b the first point goes, its stat\'s points kept', r.step === 'send' && r.send.stat === 'range' && r.send.cat === 'sword' && Object.keys(r.send).sort().join() === 'cat,stat' && q.out.before === 0, r);
+  check('8c ...one at a time: nothing more while it is out', queueSend(q, pts).step === 'wait');
+  r = queueRead(q, draft, pts); q = r.q;
+  check('8d a reading where it has not risen: still waiting, the draft as it was', r.step === 'wait' && r.draft === draft && !r.landed.length, r);
+  held['sword|range'] = 1;
+  r = queueRead(q, draft, pts); q = r.q; draft = r.draft;
+  check('8e it rose: landed, its stage left, the next to send', r.step === 'send' && q.placed === 1 && q.i === 1 && !q.out && draft.length === 1 && draft[0].stat === 'hp', { r, q });
+  r = queueSend(q, pts); q = r.q;
+  /* the wait runs out on the second: the point is WATCHED, never refused for good */
+  const e = queueEnd(q); q = e.q;
+  check('8f the wait ran out: the run stops, the point watched', !q.on && !q.out && q.late.length === 1 && e.held.stat === 'hp', q);
+  check('8g ...its stage is HELD: Apply does not send it again', queueSendable(draft, q).length === 0 && queueHeld(draft, q) === 1);
+  /* THE BUG (main 46740533): the worker takes it after the wait */
+  held['body|hp'] = 1;
+  r = queueRead(q, draft, pts); q = r.q; draft = r.draft;
+  check('8h a point that lands after the wait counts as landed', r.landed.length === 1 && r.landed[0].late && q.placed === 2 && q.late.length === 0, r);
+  check('8i ...and its stage leaves the draft: nothing is sent twice', draft.length === 0 && queueSendable(draft, q).length === 0, draft);
+  /* two staged on one stat, the first unanswered: one rise counts once, the earlier first */
+  held['sword|range'] = 3;
+  let d2 = draftOf([{ lane: 'sword', stat: 'range' }, { lane: 'sword', stat: 'range' }]);
+  let q2 = queueBegin(queueFresh(), [A]);
+  q2 = queueSend(q2, pts).q; q2 = queueEnd(q2).q;
+  check('8j one of two held; the other may go', queueSendable(d2, q2).length === 1 && queueHeld(d2, q2) === 1);
+  q2 = queueBegin(q2, [A]); q2 = queueSend(q2, pts).q;
+  held['sword|range'] = 4;
+  r = queueRead(q2, d2, pts); q2 = r.q; d2 = r.draft;
+  check('8k one rise, two out: the earlier lands, the later still waits', r.landed.length === 1 && r.landed[0].late && q2.out && q2.out.before === 4 && d2.length === 1 && r.step === 'wait', { r, q2 });
+  r = queueRead(q2, d2, pts);
+  check('8l ...the same reading again lands nothing', r.landed.length === 0 && r.step === 'wait', r);
+  held['sword|range'] = 5;
+  r = queueRead(q2, d2, pts); q2 = r.q; d2 = r.draft;
+  check('8m ...its own rise lands it', r.landed.length === 1 && !r.landed[0].late && r.step === 'done' && !q2.on && d2.length === 0, r);
+  /* a later send landed while a watched one never rose: the worker refused that one (it answers in order) */
+  let q3 = queueBegin(queueFresh(), [B]); q3 = queueSend(q3, pts).q; q3 = queueEnd(q3).q;
+  const d3 = draftOf([{ lane: 'body', stat: 'hp' }, { lane: 'sword', stat: 'range' }]);
+  check('8n the unanswered hp is held', queueSendable(d3, q3).length === 1 && queueSendable(d3, q3)[0].stat === 'range');
+  q3 = queueBegin(q3, [A]); q3 = queueSend(q3, pts).q;
+  held['sword|range'] = 6;
+  r = queueRead(q3, d3, pts); q3 = r.q;
+  check('8o a later point landed, the hp never rose: refused, its stage free again', q3.late.length === 0 && r.draft.length === 1 && queueSendable(r.draft, q3).length === 1 && r.draft[0].stat === 'hp', { r, q3 });
+  /* a reset under a watch ends it, nothing counted */
+  let q4 = queueBegin(queueFresh(), [B]); q4 = queueSend(q4, pts).q; q4 = queueEnd(q4).q;
+  held['body|hp'] = 0;
+  r = queueRead(q4, draftOf([{ lane: 'body', stat: 'hp' }]), pts);
+  check('8p a reset ends the watch: nothing landed, the stage free', r.q.late.length === 0 && r.landed.length === 0 && r.draft.length === 1, r);
+  /* leaving: the point out finishes, nothing more */
+  held['body|hp'] = 1;
+  let q5 = queueBegin(queueFresh(), [A, B, A]); q5 = queueSend(q5, pts).q; q5 = queueCut(q5);
+  check('8q leaving keeps only the point out', q5.items.length === 1 && q5.on);
+  held['sword|range'] = 7;
+  r = queueRead(q5, draftClear(), pts);
+  check('8r ...it lands into an empty draft: done, nothing more sent', r.step === 'done' && !r.q.on && r.q.placed === 1 && queueSend(r.q, pts).step === 'idle', r);
+  check('8s a run going: a second Apply is no change; nothing to send: none', queueBegin(q5, [B]) === q5 && queueBegin(queueFresh(), []).on === false);
+  /* the watches are bounded */
+  let q6 = queueFresh();
+  for (let i = 0; i < QUEUE_LATE_MAX + 10; i++) { q6 = queueBegin(q6, [A]); q6 = queueSend(q6, pts).q; q6 = queueEnd(q6).q; }
+  check('8t the watches are bounded', q6.late.length === QUEUE_LATE_MAX);
+  check('8u everything frozen', Object.isFrozen(q6) && Object.isFrozen(q6.late) && Object.isFrozen(q6.late[0]) && Object.isFrozen(r.draft));
 }
 
 console.log(`menus3-power: ${passes} passed, ${failures} failed`);

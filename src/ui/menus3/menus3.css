@@ -190,3 +190,10 @@
 /* the kit's `.ui2 .u2-ctl` is one row tall: these grow with their words (above the kit's two classes) */
 .ui2 .u2-ctl.m3-skilltile, .ui2 .u2-ctl.m3-skill-door, .ui2 .u2-ctl.m3-ready-claim, .ui2 .u2-ctl.m3-guild-claim { height: auto; }
 .ui2 .u2-ctl.m3-skilltile { white-space: normal; padding: 4px 2px; border-radius: 8px; }
+/* v2.3.6866 (the gatekeeper's sitting 75): the drawer open (sideways, a computer) covers the
+   minimap's corner, but the minimap's click box (WorldMapOverlay.jsx) and the gear
+   (Menus3Gear.jsx) stand at z 45 over the panel's layer (40): the gear showed over the Bag
+   and a click there opened the World map through the drawer.  While the drawer is open
+   they stand aside (visibility: never hit, their rects kept); with no panel open nothing
+   moves.  The map itself (z 9200) still opens OVER the panel from a quest's Show on map. */
+html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visibility: hidden !important; pointer-events: none !important; }
