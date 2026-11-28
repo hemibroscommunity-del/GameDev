@@ -25,12 +25,14 @@
  * Nothing loads because the page opened beyond what today's skills pages
  * load: the skill pictures are today's (/icons/ui/skill-*.webp, an <img> as
  * every skills page draws them; not preloaded today either: a flag).  The
- * marks (reached, not yet) are drawn, never a text glyph. */
+ * marks (reached, not yet) are drawn, never a text glyph.  The page is its own
+ * script (lazyPanels.js Menus3SkillsLazy, as Settings): the header's dot and
+ * title are the panel's (Menus3Panel.jsx). */
 import React, { useEffect, useState } from 'react';
 import { act } from '@/game/actions.js';
 import { skillsGrid, skillPage, skillLadder, skillGuild, guildClaim, guildStep, skillsKey, isLifeSkill } from '@/game/menus3Skills.js';
 import { lifeSkillOf } from '@/game/lifeProfile.js';
-import { unseenSkillKeys, markSkillsSeen, hasUnseenLevelUps } from '@/ui/mobile/sheet/skillsModel.js';
+import { unseenSkillKeys, markSkillsSeen } from '@/ui/mobile/sheet/skillsModel.js';
 import { SkillHow } from '@/ui/mobile/sheet/SkillHow.jsx';
 import { useClock } from '@/ui/mobile/sheet/CharacterPage.jsx';
 import { menus3Bus } from './menus3Wire.js';
@@ -48,18 +50,6 @@ const DOT = ' \u00B7 ';
 const OFFLINE = 'offline';   /* the claim's note when the request could not leave (guildClaim's own word) */
 const fmt = (n) => (Number(n) || 0).toLocaleString('en-US');
 const rungWords = (r, more) => (more > 0 ? say(SAY_L, 'lifePage.unlockAtMore', { lvl: r.lvl, name: r.name, more }) : say(SAY_L, 'lifePage.unlockAt', { lvl: r.lvl, name: r.name }));
-
-/** The Skills tab's dot (the panel's header): today's reading, a level-up not yet looked at. */
-export function skillsDot(R) {
-  try { return hasUnseenLevelUps(R || {}); } catch (e) { return false; }
-}
-
-/** The header's title over a skill's pages: the skill's name. */
-export function skillsTitle(top) {
-  if (!top || !isLifeSkill(top.arg)) return '';
-  if (top.page === 'unlocks') return say(SAY_L, 'lifePage.allUnlocks', { n: (skillLadder(null, top.arg) || []).length });
-  return lifeSkillOf(top.arg).name;
-}
 
 /* the guilds whose quest is done and waits for its Claim, in the roster's order */
 function readyOf(R) {

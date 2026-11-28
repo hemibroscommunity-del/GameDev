@@ -2819,6 +2819,23 @@ Screens: menus3-skills, menus3-skill
 **Flagged to the owner:** nothing in today's game lights a button for a guild reward waiting (no badge reads the guild quests), so the row over the grid says it and no dot is added; the skill pictures are today's `<img>` (as every skills page draws them), not preloaded today either; "Found at" names old places ("Frost Ridge", "Starting Meadow": today's words, unverified on the Wheel); the Guild Hall's door still opens its card (Clans and Guilds: a building's card, not a router line; the Counter steps); the wireframe's "Map" on a skill's page is its sample (the game has no place for a skill's unlock).
 
 Sources: src/game/menus3Skills.js, menus3Router.js (MENUS3_BUILT), deskKeys.js (I, P, L); src/ui/menus3/Menus3Skills.jsx, Menus3Panel.jsx, menus3Wire.js (menus3Key), menus3.css; src/data/say/menus3Skills.js; server/test/menus3-skills.test.mjs; tools/qa/mp/mp-menus3skills.mjs.
+## The new menus' Settings: the rail of five (v2.3.6869, card MN step 12)
+Screens: menus3-settings
+
+**What it is for:** the game's own switches, in the owner's Settings (decided 9: *"The wireframe's rail of five (Sound, Screen, Alerts, Account, Help). Log out lives in Account."*; their document's "The Game Itself": sound; the landscape drawer side, full screen, replay the controls lesson; silence alerts, show the play-screen chat feed; the Login Key, Log out / switch bro, continue another character, Restart character; Feedback, About). It replaces, under `?menus3`, the Settings hub and its five pages (Settings, Notifications, Account, Feedback, About) as the way in.
+
+**Decisions, and why:**
+- **The gear opens the new panel on Settings, always on Sound** (rule 1); a press of the gear again closes it, as the wireframe's does. Settings is no dock menu's: the header holds its title and the X, no tabs. Sideways and on a computer the gear stands aside while the drawer is open (the mends, #2445: the drawer covers its corner), so there it closes by the X, Esc or a tap on the world, and the gear opens it again once it is shut.
+- **The rail of five** under the title, the Bag's pills (44 tall); a row is its name and a line under it on the left, its control on the right (the wireframe's). Its sliders, 16 px tall there, are 44 here (decided 10), with their percent; its On / Off a 44 button lit when on.
+- **Every control is today's, with today's writer** (`src/game/menus3Settings.js` SETTINGS_TODAY says where each of today's went; the suite reads today's page's own words, so a row added there without a home fails): the sound's switch and levels, the debug overlay and the restart with its confirm screen moved VERBATIM into `dash/settingsParts.jsx`, which today's page and this one both call; the menu side, the quest path, the silence and the chat on screen call the same modules today's rows call. What a device or a switch hides today stays hidden the same way (full screen only in iPhone Safari's browser, the quest path only with `?questpath`, the debug overlay only with `?dev=1`).
+- **Account is today's Account page whole** (`AccountPanel.jsx`: Log out or Switch Bro with its confirm and its one road out, the Login Key, continue another character with its key), Restart character under it, red, its confirm screen in the rail's place. No login code is touched.
+- **Whole pages open today's pages**: Feedback, About (privacy, rules, credits, the smoothness reports) and the chat and news lines (the Notifications page, its unread count on the row) open in today's band, and their Back gives the panel back on the same rail (`menus3Away`). Settings opens only what today's Settings opens.
+- **The controls lesson and full screen shut the panel first**: the lesson teaches the fight controls, which the open panel hides upright; the install hint is drawn over the world.
+
+**Flagged to the owner:** the placement map's "desktop keys" (Screen and controls) has no page in the game today (the keys are worn by their buttons, `data-key`): nothing is built for it. The wireframe's "Control layout" and "Dashboard size" rows are its samples: the game has no such settings.
+
+Sources: src/game/menus3Settings.js, menus3Router.js (MENUS3_BUILT), src/ui/menus3/Menus3Settings.jsx, Menus3Panel.jsx, menus3Wire.js (the gear's toggle), menus3.css, src/ui/mobile/dash/settingsParts.jsx, SettingsPanel.jsx, AccountPanel.jsx, src/ui/lazyPanels.js, src/data/say/menus3Settings.js; server/test/menus3-settings.test.mjs; tools/qa/mp/mp-menus3settings.mjs.
+
 ## The new menus' Roster and the one Player page (v2.3.6864, card MN step 10)
 Screens: menus3-roster, menus3-player
 

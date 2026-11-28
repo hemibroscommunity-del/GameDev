@@ -1,17 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { SAY } from '@/data/say/settingsPanel.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
-import { say, sayPieces } from '@/game/say.js';   /* v2.3.6344: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
+import { say } from '@/game/say.js';   /* v2.3.6344: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js'; /* v2.3.2147 */
 import { COL, panelStyle } from './common.js';
-import { BT_AUDIO } from '@/data/index.js';   /* v2.3.2820: see toggleAudio */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
 import { TRAIL_STYLES, getTrailStyle, setTrailStyle, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2992 GROUND_PATH */
 import { DASH_SIDES, getDashSidePref, setDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177 */
 import { onIOS } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
-import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
-import { sw } from '@/game/switches.js';   /* v2.3.5741: the page's one reader (card T2) */
+import { DEV_MODE, useSoundSettings, useDebugSetting, useRestart, RestartScreen } from './settingsParts.jsx';   /* v2.3.6869 (card MN step 12): the controls that write, shared */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -99,191 +97,21 @@ const VolumeRow = ({ label, value, onChange, disabled, hook }) => (
     </span>
   </div>
 );
-const readLevel = (key) => {
-  try {
-    const v = localStorage.getItem(key);
-    if (v == null) return 1;
-    const n = Number(v);
-    return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-  } catch { return 1; }
-};
-/* v2.3.2820: the Debug switch only means something with ?dev=1 in the URL
-   (GameApp mounts the overlay behind the same test), so a normal player was
-   shown a switch that did nothing -- and a line about a "floating D button"
-   that is not there. */
-const DEV_MODE = sw('dev');   /* v2.3.5741: the page's one reader (card T2) */
-
 export const SettingsPanel = () => {
   const [, force] = useState(0);
-  const [musicVol, setMusicVol] = useState(() => readLevel('brotown_vol_music'));
-  const [sfxVol, setSfxVol] = useState(() => readLevel('brotown_vol_sfx'));
-  const setVol = (which, v) => {
-    if (which === 'music') setMusicVol(v); else setSfxVol(v);
-    try { localStorage.setItem(which === 'music' ? 'brotown_vol_music' : 'brotown_vol_sfx', String(v)); } catch {}
-    try {
-      const A = BT_AUDIO;
-      if (A && A.setLevels) A.setLevels(which === 'music' ? v : A.musicLevel, which === 'music' ? A.sfxLevel : v);
-    } catch {}
-  };
-  const [audio, setAudio] = useState(() => {
-    try { return localStorage.getItem('brotown_audio_off') !== '1'; } catch { return true; }
-  });
-  const [debug, setDebug] = useState(() => {
-    try { return localStorage.getItem('brotown_debug') === '1'; } catch { return false; }
-  });
+  /* v2.3.6869 (card MN step 12): the sound, the debug switch and the restart are settingsParts.jsx's,
+     shared with the new menus' Settings (one writer of each stored value) */
+  const { musicVol, sfxVol, setVol, audio, toggleAudio } = useSoundSettings();
+  const { debug, toggleDebug } = useDebugSetting();
   /* v2.3.2141: the quest path guide -- shape, or off.  The module owns the
      value and the storage; this row only names it, the same way the audio
      toggle owns nothing but the label. */
   const [trail, setTrail] = useState(() => getTrailStyle());
   const [dashSide, setDashSide] = useState(() => getDashSidePref());
-  /* v2.3.1347: self-service character restart (owner playtest).
-     'idle' -> confirm overlay -> 'sending' (waiting on the server's
-     character_reset_done, which wipes + reloads in wsClient.js) or
-     'offline' (no live connection -- the reset MUST settle server-side,
-     a local-only wipe would just restore from the server blob on the
-     next join). */
-  const [resetStage, setResetStage] = useState('idle');
-  /* v2.3.1424: retry-loop timer for the reconnect-then-reset flow;
-     cleared on unmount so closing the panel cancels the restart. */
-  const retryTimerRef = useRef(null);
-  const clearRetry = () => {
-    if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
-  };
-  useEffect(() => clearRetry, []);
-  /* v2.3.4627: the restart can be REFUSED now -- not during a fight with a player in
-     No man's land, where the wipe would leave the killer nothing (server
-     fightlock.js `fightlockreset`; wsClient's `character_reset_refused`).  The
-     8 s fallback reload is cancelled and the screen says why. */
-  const reloadTimerRef = useRef(null);
-  const [refusedWords, setRefusedWords] = useState('');
-  useEffect(() => {
-    const onRefused = (e) => {
-      if (reloadTimerRef.current) { clearTimeout(reloadTimerRef.current); reloadTimerRef.current = null; }
-      setRefusedWords((e && e.detail && e.detail.message) || say(SAY, 'settingsPanel.refusedWhy'));
-      setResetStage('refused');
-    };
-    window.addEventListener('bt-reset-refused', onRefused);
-    return () => {
-      window.removeEventListener('bt-reset-refused', onRefused);
-      if (reloadTimerRef.current) { clearTimeout(reloadTimerRef.current); reloadTimerRef.current = null; }
-    };
-  }, []);
+  const restart = useRestart();
+  const { setResetStage } = restart;
 
-  const toggleAudio = () => {
-    const next = !audio;
-    setAudio(next);
-    try { localStorage.setItem('brotown_audio_off', next ? '0' : '1'); } catch {}
-    /* v2.3.2820: BT_AUDIO directly.  This read `window.BT_AUDIO`, which
-       nothing ever assigns, so the switch only saved the choice and the
-       sound kept playing until the next reload (GameApp applies the saved
-       mute at boot).  Found while wiring the volume sliders beside it. */
-    try {
-      const S = window._gameState && window._gameState.current;
-      BT_AUDIO.setMuted(!next, S && S.currentZone);
-    } catch {}
-  };
-  const toggleDebug = () => {
-    const next = !debug;
-    setDebug(next);
-    try {
-      if (next) window.debug?.enable?.();
-      else window.debug?.disable?.();
-    } catch {}
-  };
-
-  const confirmReset = () => {
-    /* v2.3.1424 (owner: "restart button never works — says it can't
-       right now"): the gate used to trust S._realtimeStatus, a shadow
-       of the socket state that can be stale on device (a zombie
-       socket's late onclose/onerror stamps 'disconnected' after a
-       newer socket already opened; a 'superseded' session never
-       auto-reconnects while the game keeps playing locally).  Now:
-       ask the socket itself via channel.isLive(), and when it truly
-       is down, kick an immediate reconnect and keep trying for ~6 s
-       ("Connecting…") before giving up — iOS routinely kills the
-       socket on backgrounding and the auto-reconnect may still be in
-       its backoff window at tap time. */
-    const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-    if (!S || !S.channel) {
-      setResetStage('offline');
-      return;
-    }
-    const isLive = () => {
-      try { if (S.channel && S.channel.isLive) return S.channel.isLive(); } catch (e) {}
-      return S._realtimeStatus === 'connected';
-    };
-    const sendReset = () => {
-      setResetStage('sending');
-      try { act('character_reset', { confirm: true }); } catch (e) {}   /* v2.3.5191: through the action door (actions.js) */
-      /* Fallback: if the ack (or the reload it triggers) never lands --
-         dropped socket mid-flight -- reload anyway after 8s.  Whether the
-         server processed the reset decides what the rejoin loads; the
-         player is never left staring at a dead "Restarting…" screen. */
-      reloadTimerRef.current = setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 8000);
-    };
-    if (isLive()) { sendReset(); return; }
-    setResetStage('connecting');
-    try { S.channel.forceReconnect && S.channel.forceReconnect(); } catch (e) {}
-    const t0 = Date.now();
-    clearRetry();
-    retryTimerRef.current = setInterval(() => {
-      if (isLive()) {
-        clearRetry();
-        sendReset();
-      } else if (Date.now() - t0 > 6000) {
-        clearRetry();
-        setResetStage('offline');
-      } else {
-        try { S.channel.forceReconnect && S.channel.forceReconnect(); } catch (e) {}
-      }
-    }, 400);
-  };
-
-  if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'connecting' || resetStage === 'offline' || resetStage === 'refused') {
-    return (
-      <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 12px' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: COL.danger }}>{say(SAY, 'settingsPanel.restartTitle')}</div>
-        {resetStage === 'sending' ? (
-          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>{say(SAY, 'settingsPanel.restarting')}</div>
-        ) : resetStage === 'connecting' ? (
-          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>{say(SAY, 'settingsPanel.connectingServer')}</div>
-        ) : resetStage === 'refused' ? (
-          <div data-qa="reset-refused" style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
-            {say(SAY, 'settingsPanel.refused', { why: refusedWords })}
-          </div>
-        ) : resetStage === 'offline' ? (
-          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
-            {say(SAY, 'settingsPanel.offline')}
-          </div>
-        ) : (
-          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
-            {sayPieces(SAY, 'settingsPanel.confirmBody', { level: <b key="level">{say(SAY, 'settingsPanel.confirmLevel')}</b>,
-              gone: <b key="gone" style={{ color: COL.danger }}>{say(SAY, 'settingsPanel.confirmGone')}</b> })}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button
-            onPointerUp={(e) => { e.stopPropagation(); if (resetStage !== 'sending') { clearRetry(); setResetStage('idle'); } }}
-            style={{
-              flex: 1, minHeight: 44, borderRadius: 8, cursor: 'pointer',
-              background: COL.raised, color: COL.text,
-              border: `1px solid ${COL.borderStrong}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-              opacity: resetStage === 'sending' ? 0.5 : 1,
-            }}
-          >{say(SAY, 'settingsPanel.keepPlaying')}</button>
-          <button
-            onPointerUp={(e) => { e.stopPropagation(); if (resetStage === 'confirm') confirmReset(); else if (resetStage === 'refused') setResetStage('confirm'); }}
-            style={{
-              flex: 1, minHeight: 44, borderRadius: 8, cursor: 'pointer',
-              background: resetStage === 'confirm' ? COL.danger : COL.raised,
-              color: resetStage === 'confirm' ? '#fff' : COL.muted,
-              border: `1px solid ${COL.danger}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
-            }}
-          >{say(SAY, resetStage === 'sending' ? 'settingsPanel.restarting' : resetStage === 'connecting' ? 'settingsPanel.connecting' : 'settingsPanel.restartGo')}</button>
-        </div>
-      </div>
-    );
-  }
+  if (restart.showing) return <RestartScreen r={restart} />;
 
   return (
     <div style={panelStyle}>

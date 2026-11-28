@@ -54,6 +54,7 @@ export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
   'skills',   /* v2.3.6865 (card MN step 6): + Skills -- all three of Bro's sections are the panel's now */
+  'settings',   /* v2.3.6869 (card MN step 12): + Settings, from the gear (no menu of the dock's) */
   'roster',
 ]);
 
