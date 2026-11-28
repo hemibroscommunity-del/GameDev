@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d418bf4e02d792a2924d6c3db5addc84350b16da",
+  "tree": "19c9f2fb0b9f0219edb22521863e45d8dc660bbf",
+  "committedAt": "2026-11-28T09:26:19-08:00",
+  "subject": "Merge pull request #2448 from hemibroscommunity-del/claude/mn-feats",
+  "files": 9535,
+  "bytes": 1132334580,
+  "listingSha256": "b13b940934a2dc3d74f30b44de0d8b827cf71e241bc91e825e130860b1e111de",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
