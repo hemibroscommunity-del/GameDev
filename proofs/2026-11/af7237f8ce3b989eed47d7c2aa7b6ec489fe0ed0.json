@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "af7237f8ce3b989eed47d7c2aa7b6ec489fe0ed0",
+  "tree": "8e44c76067919dc5af556756e2afbe9894ecec5a",
+  "committedAt": "2026-11-28T01:38:15-08:00",
+  "subject": "Merge pull request #2438 from hemibroscommunity-del/claude/pad-comboaim",
+  "files": 9483,
+  "bytes": 1130295610,
+  "listingSha256": "ed095597b8d7ef2b9c64c9d4fd32f39cc412d313d1191371c097c9727820ede0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
