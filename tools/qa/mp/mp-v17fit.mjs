@@ -75,7 +75,8 @@ const SHOOT = process.env.BT_QA_V17FIT_SHOTS !== '0';
 /* the screens: how a player opens each, its root, and its main action (what must be in view unscrolled) */
 const SCREENS = [
   { id: 'menu', name: 'Directory (the Menu)', root: '[data-dash-grid="menu"]', main: '[data-dash-grid="menu"] [data-dest]', pr: 'the directory (not this slice: Q3)' },
-  { id: 'bro', name: 'Bro', root: '[data-bro-landing]', main: '[data-dash-grid="bro"] [data-dest]', pr: 'PR 4 (UI4-bro)' },
+  /* v2.3.6843 (card UI4 PR 4): V17's Bro leads with the weapons and the two doors (its main actions); =0 the six tiles */
+  { id: 'bro', name: 'Bro', root: '[data-bro-landing]', main: '[data-dash-grid="bro"] [data-dest], [data-bro-weapon], [data-bro-door]', pr: 'PR 4 (UI4-bro)' },
   { id: 'hub', name: 'Combat hub', root: '[data-combat-hub]', main: '[data-combat-door]', pr: 'PR 4/5 (UI4-bro, UI4-combat)' },
   { id: 'weapon', name: 'Weapon page (Sword)', root: '[data-weapon-page]', main: '[data-weapon-attr]', pr: 'PR 5 (UI4-combat)' },
   { id: 'shared', name: 'Shared', root: '[data-shared-page]', main: '[data-shared-attr]', pr: 'PR 5 (UI4-combat)' },

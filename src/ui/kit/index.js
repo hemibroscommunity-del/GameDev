@@ -38,3 +38,5 @@ export { Ui2Stepper } from './Stepper.jsx';
 export { Ui2InspectStat } from './InspectStat.jsx';
 export { Ui2Comparison } from './Comparison.jsx';
 export { Ui2Overlay } from './Overlay.jsx';
+export { Ui2LevelTile } from './LevelTile.jsx';   /* v2.3.6843: a weapon's door, its level, bar and points (card UI4 PR 4) */
+export { Ui2Strip } from './Strip.jsx';   /* v2.3.6843: a quiet strip that pages by whole entries (card UI4 PR 4) */

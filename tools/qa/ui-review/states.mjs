@@ -913,7 +913,22 @@ export const STATES = [
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
   /* v2.3.6683 (card UI2-bro): Bro's landing and its two frame pages */
   /* v2.3.6782 (card UI3-bro): Bro and Character are ONE page for yourself */
-  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: one page, six doors and the strip', about: 'The Menu\'s Bro tile (v2.3.6782, the owner 2026-11-26: "turn the Bro menu into a unified character management dashboard"): six equal tiles, three by two (one row sideways) -- Combat, Equipment, Life Skills / Feats, Pets, Journey -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close); under them (beside them sideways) ONE flat strip: AP, Quests done, Clan (or Party), Guilds and your title, each its label and value and a door with its chevron (no raised face). No portrait, no name, no combat level, no weapon doors (the HUD has who you are; Combat has the weapons). A value on its way is a placeholder, never 0. On the narrowest sideways page Quests, Clan, Guilds and the title are their pictures\' doors. Under ?ui2=0 today\'s three pages.',
+  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: one page, six doors and the strip', about: 'The Menu\'s Bro tile (v2.3.6782, the owner 2026-11-26: "turn the Bro menu into a unified character management dashboard"): six equal tiles, three by two (one row sideways) -- Combat, Equipment, Life Skills / Feats, Pets, Journey -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close); under them (beside them sideways) ONE flat strip: AP, Quests done, Clan (or Party), Guilds and your title, each its label and value and a door with its chevron (no raised face). No portrait, no name, no combat level, no weapon doors (the HUD has who you are; Combat has the weapons). A value on its way is a placeholder, never 0. On the narrowest sideways page Quests, Clan, Guilds and the title are their pictures\' doors. Under ?ui2=0 today\'s three pages. Since v2.3.6843 (card UI4 PR 4) this is ?v17bro=0\'s Bro (ui4-bro is the default).',
+    /* v2.3.6843 (card UI4 PR 4): V17's Bro is the default (ui4-bro); this is ?v17bro=0's, cleared after (it is remembered) */
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('v17bro', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!window.__broDashPanelBus, null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2500);
+      await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); });
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('v17bro', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6843 (card UI4 PR 4, the owner's V17:55): Bro leads with the three weapons (sheet/BroV17.jsx; ?v17bro=0 the six tiles) */
+  { id: 'ui4-bro', group: 'Dashboard', title: 'Bro: the three weapons first (V17)', about: 'The Menu\'s Bro tile with ?v17bro on (the default; v2.3.6843, the owner\'s V17: "Bro presents recognizable Sword/Bow/Staff artwork, levels/progress and available points first, then Character stats and Pets, with active weapon damage and health afterward"): Sword, Bow and Staff first, each the game\'s picture, its level, its XP bar, its state in words (In hand, framed; Worn; Not worn) and its points ONLY while it has some (no plus at zero); one tap opens that weapon\'s page. Under them the Shared Attributes door (its points by the same rule) and Pets, and quieter, flat, the held weapon\'s DPS and Max HP. Then ONE quiet strip: Equipment, Life Skills, Feats, Journey, AP, Quests, Clan, Guilds, whole entries only, a "more" control (1/2) where the width does not hold them all. Sideways ONE row; on a computer the weapons, the doors and the facts in one row and the strip whole. No portrait, name or combat level (the HUD has them).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },
   /* v2.3.6842 (card UI4, PR 3): a computer's open band, V17's 840 block (game/v17Wide.js; ?v17wide=0 the 480 one) */
   { id: 'v17wide-bro', group: 'Dashboard', title: 'A computer\'s open band, 840 wide (V17)', views: ['desktop'], about: 'On a computer (or a tablet) the open band\'s block -- the header row, the open page and the resting columns -- is 840 px wide and centred, as the owner\'s V17 handoff draws it (2026-11-27: "840 x 243 centered"; "use extra horizontal space for additional entries, not larger art, text or gameplay view"). The band\'s height (243), the header (52), the world above it and the camera are the same as before; the words and pictures keep their phone sizes, and the pages that lay out from their box (the Menu\'s tiles, Bro\'s doors, Gear\'s bag) use the room for more in a row. A phone is unchanged (its band is its own width). ?v17wide=0 (remembered) gives the 480 px block of 2026-11-05 ("Simply make the container areas smaller"): the owner\'s choice (card UI4, Q9).',
@@ -2262,6 +2277,9 @@ export const STATES = [
     ['inspect', 'The kit\'s stat you inspect (?uikit=1)', 'A stat that always opens (its chevron, or the word Details), beside a stat that does not.'],
     ['compare', 'The kit\'s comparison (?uikit=1)', 'Before, after, and the difference signed and in words (better, worse, no change); the colour only repeats them.'],
     ['overlay', 'The kit\'s overlay (?uikit=1)', 'A town window\'s frame as a kit piece: its header and close fixed, its body scrolling under them, at a sample size; no window uses it yet.'],
+    /* v2.3.6843 (card UI4 PR 4): Bro's two new pieces */
+    ['leveltile', 'The kit\'s level tile (?uikit=1)', 'A weapon\'s door (Bro\'s Sword, Bow, Staff): its picture, level and XP bar, its state in words (In hand, framed; Worn; Not worn), its points drawn only while it has some.'],
+    ['strip', 'The kit\'s quiet strip (?uikit=1)', 'A row of entries that never cuts a word at its edge: whole entries only, and a more control (1/3) that turns to the next where they do not all fit.'],
   ].map(([plate, title, about]) => ({
     id: 'ui4-kit-' + plate, group: 'The new dashboard (in build)', title, about,
     run: async ({ P }) => {

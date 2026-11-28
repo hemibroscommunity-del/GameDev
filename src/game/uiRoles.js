@@ -66,6 +66,10 @@ export const KIT_PIECES = Object.freeze({
   Ui2InspectStat: Object.freeze({ roles: Object.freeze(['inspect']) }),
   Ui2Comparison: Object.freeze({ roles: Object.freeze(['info']) }),
   Ui2Overlay: Object.freeze({ frame: true }),   /* its ✕ is adjust (a dismiss) */
+  /* v2.3.6843 (card UI4 PR 4, Bro): a weapon's door with its level, bar and points (V17:49's NavigationTile and
+     Progress in one); the strip that pages by whole entries (its "more" is an Action that adjusts) */
+  Ui2LevelTile: Object.freeze({ roles: Object.freeze(['go']) }),
+  Ui2Strip: Object.freeze({ frame: true }),
   /* one role each */
   Ui2Header: Object.freeze({ frame: true }),   /* Back and Menu go, Close adjusts (HEADER_ROLES) */
   Ui2Slot: Object.freeze({ roles: Object.freeze(['slot']) }),

@@ -2475,6 +2475,22 @@ Screens: ui4-look-before
 
 Sources: src/game/ui2Tokens.js (UI2_V17, UI2_V17_TYPE, UI2_V17_SMALL11), src/ui/kit/shine.js (v17LookOn), src/ui/kit/ui2.css's last block, src/ui/mobile/sheet/combatPage.css's last rules, tools/guards/ui4-look.test.mjs, tools/guards/ui2-tokens.test.mjs (15-18), tools/qa/mp/mp-v17look.mjs, tools/qa/mp/mp-uikit.mjs (12), docs/shots/ui4-look-*-pair*.png.
 
+## Bro, the three weapons first (v2.3.6843, card UI4 PR 4)
+Screens: ui4-bro, ui4-kit-leveltile, ui4-kit-strip
+
+**What it is for:** The owner's V17 (2026-11-27, `docs/design/v17/MASTER-IMPLEMENTATION.md:55`): *"HUD carries identity, do not repeat portrait and combat level unnecessarily. Bro presents recognizable Sword/Bow/Staff artwork, levels/progress and available points first, then Character stats and Pets, with active weapon damage and health afterward. Distinguish equipped weapon from in-hand weapon."* And the card's purpose in the owner's words: *"Do not compromise readability, available screen space, gameplay visibility or device fairness to accommodate a design. Flag unresolved requirements rather than inventing solutions."*
+
+**Decisions, and why:**
+- **One switch, on, remembered** (`?v17bro=0` the six tiles and the strip of 2026-11-26, `sheet/BroLanding.jsx` untouched; `=1` back; `bt_v17bro`). The rules are `src/game/broV17.js`; the page `sheet/BroV17.jsx`; the suite `tools/guards/bro-v17.test.mjs`; the phone test `mp-v17bro`.
+- **The weapons first, one tap each.** Each is the kit's new level tile (`Ui2LevelTile`, the go role): the game's picture, `Lv n` (the level keeps its gold), the XP bar, and the points to spend ONLY while there are some, in the priority colour, never commit gold and never a plus (V17:20; the owner, 2026-11-26: *"only show available points prominently when there are points to spend"*). Today a weapon's page was two taps (Bro, Combat, the weapon); now one, and its Back returns to Bro.
+- **In hand against worn, in words and a frame** (V17:49: *"color alone must not communicate meaning"*): the held lane is framed (Gear's `is-hand`) and says "In hand"; the others "Worn", or "Not worn" where nothing is in that slot.
+- **Then the Shared Attributes door and Pets.** V17 names the first "Character stats"; the game's word stays until the owner says (Q13). Its points follow the same rule as a weapon's.
+- **Then, quieter, the held weapon's DPS and Max HP**, flat facts with no button form (V17:38), the game's own numbers (the weapon page's DPS, the health bar's Max HP); no "effective health" (V17: *"Do not fabricate"*).
+- **Nothing lost: ONE quiet strip** under them: Equipment, Life Skills, Feats, Journey (the doors that left Bro's first row), then AP, Quests, Clan, Guilds (the same entries as the old strip). It never cuts a word at its edge: where the width does not hold every entry it shows the whole entries it holds and a "more" control (the adjust role, 44 x 44, "1/2") that turns to the next (the kit's new `Ui2Strip`). At 390 x 844 the first page is the four doors, the second the four facts.
+- **The Combat hub stays**, reached by its old road (the HUD's weapon bar: Bro, the hub, the held weapon; then Back) and under `=0`.
+- **The room.** Upright: the weapons' row takes what the doors' row (44) and the strip (44) leave (95 px at 390 x 844). Sideways ONE row (V17:31); on the narrowest phones on their side (667 x 375, 740 x 360) Pets heads the strip, still in view, because the row cannot hold the three weapons, both doors and a whole strip entry; the two facts lead the strip on every phone on its side. A computer (`?v17wide`'s 840): the weapons, the two doors and the facts in one row no taller than a phone's, the strip whole under it: more entries, never larger tiles or words (V17:31). Bro keeps 11 px for its smallest word (`UI2_V17_SMALL11`).
+- **What gave way against V17's own picture:** the Shared door and Pets share their row with the two facts upright (V17 stacks them); the quiet strip pages on a phone; sideways the facts, and on small phones Pets, move into the strip. Every label alone in its box is centred (the owner, 22:20 UTC 2026-11-27: *"I'd prefer centered"*).
+
 ## The one item page (v2.3.6687, card UI2-gear PR 1)
 Screens: dash-item-page
 

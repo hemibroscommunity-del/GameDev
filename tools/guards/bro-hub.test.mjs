@@ -457,7 +457,7 @@ const TPLANTS = [
   ['B1 the combat level read for a banner', 'B1', swap('strip', IMPORT_AT, IMPORT_AT + "\nimport { broCombatLevel } from './CharacterPage.jsx';\nexport const Lv = ({ R }) => <span>{broCombatLevel(R)}</span>;")],
   ['B1 the name drawn', 'B1', swap('landing', IMPORT_AT, IMPORT_AT + "\nexport const Nm = ({ S }) => <span data-char-name=\"\">{S.myName}</span>;")],
   ['B2 the three weapon doors back', 'B2', swap('landing', IMPORT_AT, IMPORT_AT + "\nimport { PASSPORT_WEAPONS } from '@/game/broHub.js';\nexport const Ws = () => PASSPORT_WEAPONS.map((w) => <button key={w.cat}>{w.cat}</button>);")],
-  ['B4 a strip entry reusing the raised tile', 'B4', swap('strip', '<Ui2Fact key', '<Ui2Tile key')],
+  ['B4 a strip entry reusing the raised tile', 'B4', swap('strip', '<Ui2Fact k={icon', '<Ui2Tile k={icon')],   /* v2.3.6843: the entry is its own piece (BroStripFact, card UI4 PR 4) */
   ['B4 a strip entry given the raised class', 'B4', swap('strip', "className={icon ? 'is-icon' : undefined}", "className={icon ? 'is-icon' : 'u2-raised'}")],
   ['B4 a strip entry given a border of its own', 'B4', swap('stripCss', '.ui2 .u2-bro-strip .u2-fact {', '.ui2 .u2-bro-strip .u2-fact { border: 1px solid var(--ui2-border);')],
   ['B7 CharacterPage no longer drawn by BroCard', 'B7', swap('card', "who != null ? <CharacterPage S={S} who={who} onWeapon={onWeapon} /> : landing", 'landing')],

@@ -1421,6 +1421,27 @@ export async function dashOpen(P, id, { timeout = 6000 } = {}) {
       await P.page.waitForTimeout(350);
       return true;
     }
+    /* v2.3.6843 (card UI4 PR 4): V17's Bro (?v17bro, on by default) leads with the weapons: a weapon's page
+       is one tap; the Combat hub's road is the HUD's weapon bar (Bro, the hub, the held weapon) and its Back;
+       the other doors are on the page or its quiet strip, which pages by whole entries (its "more") */
+    if (await P.page.locator('[data-bro-v17]').count().catch(() => 0)) {
+      if (COMBAT_OF[id]) { await tapTop(P.page, `[data-bro-weapon="${COMBAT_OF[id]}"]`, timeout); await P.page.waitForTimeout(350); return true; }
+      if (bro === 'combat') {
+        await tapTop(P.page, '[data-hudart-bar]', timeout);
+        await P.page.waitForTimeout(500);
+        await tapTop(P.page, '[data-dash-frame] [data-dash-ctl="back"]', timeout);
+        await P.page.waitForTimeout(350);
+        return true;
+      }
+      for (let i = 0; i < 6 && !(await P.page.locator(`[data-bro-v17] [data-dest="${bro}"]`).count().catch(() => 0)); i++) {
+        await tapTop(P.page, '[data-bro-v17] [data-u2-strip-more]', timeout);
+        await P.page.waitForTimeout(250);
+      }
+      await tapTop(P.page, `[data-bro-v17] [data-dest="${bro}"]`, timeout);
+      await P.page.waitForTimeout(350);
+      if (FEATS_OF[id]) { await tapTop(P.page, `[data-feats-page] [data-feats-door="${FEATS_OF[id]}"]`, timeout); await P.page.waitForTimeout(350); }
+      return true;
+    }
     await tapTop(P.page, `[data-dash-grid="bro"] [data-dest="${bro}"]`, timeout);
     await P.page.waitForTimeout(350);
     if (COMBAT_OF[id]) {
