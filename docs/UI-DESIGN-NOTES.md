@@ -422,6 +422,30 @@ Screens: charhud, charhud-side, charhud-desk, hudart, hudart-side
 
 Sources: docs/design/UI_FEEDBACK_2026-11-26.md, docs/plan/cards/UI3-hud.md (on claude/plan-orc), docs/plan/cards/UI3-hudart.md, src/ui/hud/HudArt.jsx, src/ui/hud/hudArt.css, src/game/hudArt.js, tools/art/cut-hud.mjs, tools/guards/hud-art.test.mjs, tools/qa/mp/mp-ui3hudart.mjs, src/ui/hud/CharacterHud.jsx, src/ui/hud/charHud.css, src/ui/hud/hudColumn.js, src/game/charHud.js, src/ui/QuestCard.jsx, src/ui/mobile/ZoneHeader.jsx, src/ui/panels/PartyHUD.jsx, src/ui/mobile/QuestCoach.jsx, src/styles/game.css, tools/guards/char-hud.test.mjs, tools/qa/mp/mp-charhud.mjs
 
+## The HUD and the Attack button, bigger (`?bighud=0` today's)
+Screens: bighud, bighud-side
+
+**What it is for:** The owner, about 07:05 UTC 2026-11-28, after playing the new menus on their iPhone: *"Attack button and HUD need to be about twice as big."* With the menu design of 2026-11-27 they had also set the frame: *"Do not compromise readability, available screen space, gameplay visibility or device fairness to accommodate a design. Flag unresolved requirements rather than inventing solutions."* So both grow TOWARDS twice, as far as the screen holds them, never over a neighbour, and what gave way is said here and in the PR (tag 6847, card UI4; the rule src/game/bigHud.js, its suite tools/guards/big-hud.test.mjs, the phone test tools/qa/mp/mp-bighud.mjs).
+
+**Decisions, and why:**
+- **The HUD** is the top-left character HUD in the owner's pictures (above: the face ring, the badge, the name, the weapon's bar), the only thing that corner holds. The whole group is drawn at one scale (its `--ha-k`), so its words, its numbers and its bar all grow together: up to twice today's, as wide as the room left of the minimap allows (the minimap is the world's top right, 132 px a side on a phone, with 8 px of air), and sideways as tall as the room above the controller's stick lobe allows. Never under today's. The status chips and the party chip move with it (under it; sideways the party chip beside it).
+- **Attack** is the controller's Attack (its well in the right lobe, padSkin.js): it grows from its well's centre as far as it stays clear of the big left button's box (Jump, or Block in a fight), the top row's pictures (Mobility, the middle well, Special; a box there rises off it as the controller already lifts them off the big buttons, never past its picture's foot), the column's right edge and the band's top. Its touch box is its face, so the place a thumb can press grows with it; how a press is read is unchanged. No other control moves.
+- **What fits** (measured on the test box, the real game in BroTown): upright at 390 x 844 the HUD 241 x 68 (1.31 times today's 184 x 52, the name 11 to 14.4 px) and Attack 71 px (1.20 times today's 59); at 375 x 667 the HUD 226 x 64 (1.23) and Attack 68 (1.19); at 320 x 568 the HUD stays today's (no room: today's already reaches 4 px over the minimap) and Attack 60 (1.22); sideways at 844 x 390 the HUD 339 x 96 (twice today's sideways 169 x 48, the name 10.1 to 20.2 px; its foot at 155, the controller's top at 211) and Attack 78 (1.20). Each touch box is its face.
+- **A computer keeps today's sizes**: the owner played a phone, a computer has no controller (a mouse) and its HUD has the whole wide window.
+- `?bighud=0` (remembered on the device; `?bighud=1` forgets) gives today's sizes exactly.
+
+**Still open (the owner's call):**
+- **Twice does not fit upright, either one.** The HUD at twice is 368 x 104, wider than the 242 px left of the minimap at 390 wide (the minimap from 258, 8 px of air); the ways to twice would be the minimap smaller, the HUD on two lines, or the bar shorter than the rest of it. Attack at twice is 119 px in a right lobe 119 px tall, between Jump/Block (72 px from its centre) and the top row (50 px above it); the way to twice would be the right lobe drawn taller with the top row lifted about 47 px and Jump/Block about 30 px further left: the controller's redesign.
+- At 320 wide the HUD today already reaches 4 px over the minimap's left edge (184 + 8 = 192 against 188); kept as it was.
+- "HUD" was read as the top-left character HUD. Other readings: the weapon wells on the controller's rail, the top bar (the logo, the gold, the spin). Not grown.
+- With `?padskin=0` (the older buttons) or `?hudart=0` (the drawn panel) nothing grows.
+
+**Please don't suggest:**
+- Covering the minimap, the top bar or another control to reach twice (the owner's frame of 2026-11-27).
+- Changing the band's heights, the camera or the world's scale for this.
+
+Sources: src/game/bigHud.js, src/ui/panels/padSpot.js, src/ui/hud/HudArt.jsx, src/ui/hud/hudArt.css, src/game/renderRes.js, tools/guards/big-hud.test.mjs, tools/qa/mp/mp-bighud.mjs
+
 ## Townsfolk, quest badges and the keepers
 Screens: near-mayor
 

@@ -38,6 +38,11 @@ import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { SAY } from '@/data/say/charHud.js';
 import { SAY as CH } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
+import { bigHudOn, hudScale, hudStack } from '@/game/bigHud.js';   /* v2.3.6847: about twice as big (card UI4) */
+import { usePadWidth, padGrowSeen } from '@/ui/panels/padSpot.js';
+import { canvasCssW, canvasCssH } from '@/game/renderRes.js';
+import { playVw, winVh } from '@/ui/mobile/playViewport.js';
+import { fineInput } from '@/game/deviceProfile.js';
 import './hudArt.css';
 
 /* a length of the module's, drawn at the group's scale (sideways .92) */
@@ -65,6 +70,25 @@ const S_COUNT = Object.freeze({ fontSize: k(L.count) });
 /* a gain on another weapon pops UNDER the bar's right end (over the name it hid it) */
 const S_POP = Object.freeze({ top: k(L.track.y + L.track.h + 1) });
 
+/* ═══ v2.3.6847: ABOUT TWICE AS BIG (card UI4; game/bigHud.js) ═══
+   The owner, 2026-11-28: "Attack button and HUD need to be about twice as
+   big."  The whole group is drawn at one scale (--ha-k, every length above
+   times it): up to twice today's, as far as the room left of the minimap
+   (and sideways over the stick's lobe) allows.  Read from kept sizes only
+   (the world's width and height as resize() told them, the window's
+   height): never a layout read.  Null: today's (`?bighud=0`, a computer). */
+function bigNow() {
+  if (!bigHudOn() || fineInput()) return null;
+  const col = playVw();
+  const cw = canvasCssW();
+  const worldW = cw > 0 && cw < col ? cw : col;
+  /* sideways under the one band the world sits between two bars, the HUD in the window's box */
+  const worldL = Math.max(0, (col - worldW) / 2);
+  const short = winVh() <= 480;   /* hudArt.css's own media query, max-height 480 */
+  return hudScale({ worldW, worldL, short, worldH: canvasCssH(), on: true });
+}
+let _bigSeen = null;
+
 const weaponWord = (cat) => say(CH, cat === 'bow' ? 'combatHub.bow' : cat === 'staff' ? 'combatHub.staff' : 'combatHub.sword');
 
 /* QA only: what the owner's HUD shows, for mp-ui3hudart */
@@ -72,14 +96,32 @@ function publish(art, fill, bar) {
   try {
     if (typeof window !== 'undefined') {
       window.__btHudArt = () => ({ ...art, fill: { ...fill }, innerW: L.fill.w, barLive: !!(bar && bar.live), pop: bar && bar.pop ? { ...bar.pop } : null });
+      /* v2.3.6847: the scale chosen and Attack's growth, for mp-bighud */
+      window.__btBigHud = () => ({ hud: _bigSeen ? { ..._bigSeen } : null, grow: padGrowSeen() });
     }
   } catch (e) { /* QA only */ }
 }
 
 export default function HudArt({ live, rpg, hud, xb }) {
   useEffect(() => () => {
-    try { if (typeof window !== 'undefined') delete window.__btHudArt; } catch (e) { /* QA only */ }
+    try { if (typeof window !== 'undefined') { delete window.__btHudArt; delete window.__btBigHud; } } catch (e) { /* QA only */ }
   }, []);
+  /* v2.3.6847: redrawn when the world's width moves (a turn, a fold: told, never measured) */
+  usePadWidth();
+  const big = bigNow();
+  _bigSeen = big;
+  const stackPx = big ? hudStack(big.k) : null;
+  const partyLeft = big && winVh() <= 480 ? Math.round(8 + big.w + 8) : null;
+  useEffect(() => {
+    /* the stack under the HUD moves down with it, sideways the party chip
+       beside it (game.css's --bt-charhud-h and --bt-party-left, over the
+       sheet's by the page's own style): a write, never a read */
+    let st = null;
+    try { st = document.documentElement.style; } catch (e) { return undefined; }
+    if (stackPx) st.setProperty('--bt-charhud-h', stackPx + 'px'); else st.removeProperty('--bt-charhud-h');
+    if (partyLeft) st.setProperty('--bt-party-left', partyLeft + 'px'); else st.removeProperty('--bt-party-left');
+    return () => { try { st.removeProperty('--bt-charhud-h'); st.removeProperty('--bt-party-left'); } catch (e) { /* no page */ } };
+  }, [stackPx, partyLeft]);
   const art = hudArtModel(rpg, hud);
   const got = charHudBar(hudArtBarModel(art), xb, Date.now());
   /* XpTrack re-plans on a new bar object: the still bar is kept while its
@@ -107,6 +149,7 @@ export default function HudArt({ live, rpg, hud, xb }) {
   };
   const word = cat ? weaponWord(cat) : '';
   const vars = { ...S_GROUP, '--hudart-fill': fill.width + 'px', '--hudart-clip': fill.clip + 'px' };
+  if (big) { vars['--ha-k'] = String(big.k); vars['--ha-big'] = String(Math.round(big.k / big.today * 100) / 100); }   /* v2.3.6847: over hudArt.css's 1 (sideways .92) */
 
   return (
     <div
