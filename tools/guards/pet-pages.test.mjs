@@ -239,7 +239,8 @@ for (const [id, want, what, from, to] of PLANTS) {
  * page).  So the DRAWING is read too, off Babel's tree of
  * src/ui/mobile/dash/PetsPage.jsx:
  *   W1  Release asks first: every sendPetRelease sits in the `onYes` of the
- *       kit's Ui2Confirm (imported from the kit), whose action costs
+ *       kit's Ui2Confirm (or, under ?menus3, v2.3.6871, the yes of the one
+ *       Card's `pet.release`) (imported from the kit), whose action costs
  *       'irreversible' and is labelled with the card's words (pets.releaseYes,
  *       the question pets.releaseAsk); the kit's dialog answers Enter on its
  *       yes and Esc on its no (Confirm.jsx: data-enter, data-esc); and no
@@ -329,6 +330,16 @@ function drawingVerdict(files) {
       const el = attr && attr.parentPath;
       const inConfirm = !!(el && el.isJSXOpeningElement() && nameOfEl(el) === 'Ui2Confirm');
       if (c.name === 'sendPetRelease') {
+        /* v2.3.6871 (card MN step 3): under ?menus3 the ask is the one Card (Menus3Card kind
+           "pet.release", its words and its Keep / Release held by server/test/menus3-card.test.mjs);
+           its send only on the yes */
+        const inCard = !!(el && el.isJSXOpeningElement() && nameOfEl(el) === 'Menus3Card' && attr.node.name.name === 'onAnswer');
+        if (inCard) {
+          const kind = el.node.attributes.find((x) => x.type === 'JSXAttribute' && x.name.name === 'kind');
+          const onYesOnly = !!p.findParent((x) => x.isIfStatement() && x.node.test.type === 'BinaryExpression' && x.node.test.right.type === 'StringLiteral' && x.node.test.right.value === 'yes');
+          if (!(kind && kind.value && kind.value.type === 'StringLiteral' && kind.value.value === 'pet.release' && onYesOnly)) bad.add('W1');
+          return;
+        }
         if (!(inConfirm && attr.node.name.name === 'onYes')) { bad.add('W1'); return; }
         const at = (k) => el.node.attributes.find((x) => x.type === 'JSXAttribute' && x.name.name === k);
         const act = at('action') && at('action').value && at('action').value.expression;
@@ -375,6 +386,7 @@ const DRAW_PLANTS = [
     "onPress: () => press(PET_HOLDS.active, () => sendPetActive(S, v.out ? null : id)), ask: <Ui2Confirm action={{ id: 'active', cost: 'costly' }} onYes={() => press(PET_HOLDS.active, () => sendPetActive(S, id))} /> },"],
   ['E8', 'W1', 'the ask\'s question not the card\'s words', PAGE, "words={say(SAY, 'pets.releaseAsk', { name: v.name })}", 'words={null}'],
   ['E9', 'W1', 'the ask\'s way back not "Keep"', PAGE, " no={say(SAY, 'pets.releaseKeep')} />", ' />'],
+  ['E10', 'W1', 'the Card\'s release sent on any answer (v2.3.6871)', PAGE, "onAnswer={(a) => { if (a === 'yes') press(PET_HOLDS.release(id)", "onAnswer={(a) => { press(PET_HOLDS.release(id)"],
 ];
 for (const [id, want, what, rel, from, to] of DRAW_PLANTS) {
   const t = plantText(ROOT, rel, from, to);

@@ -19,12 +19,46 @@
  *   7. THE LIST: every prompt the owner's document places on the card is
  *      listed with today's file, each 'card' row a kind this module draws,
  *      each 'today' row with its reason; the long forged arg is cut. */
-import { CARD_KINDS, CARD_TODAY, CARD_ANSWERS, CARD_MAX_ANSWERS, cardOf, cardTakes, cardAnswer } from '../../src/game/menus3Card.js';
+import { CARD_KINDS, CARD_ANSWERS, CARD_MAX_ANSWERS, cardOf, cardTakes, cardAnswer } from '../../src/game/menus3Card.js';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+/**
+ * EVERY PROMPT THE OWNER'S DOCUMENT PLACES ON THE CARD (SPEC.md section 5
+ * and its placement map), with today's file and where it is now: 'card'
+ * (moved by this step) or 'today' (today's window, and why: the owner's to
+ * decide, or a later step's).  The PR body lists the same.  (Kept here, not
+ * in the module: they are notes for the owner, never words a player reads.)
+ */
+const CARD_TODAY = Object.freeze([
+  { what: 'party invite', file: 'src/ui/panels/PartyHUD.jsx', home: 'card', kind: 'party.invite' },
+  { what: 'duel challenge, no wager', file: 'src/ui/panels/DuelRequestPanel.jsx', home: 'card', kind: 'duel.invite' },
+  { what: 'clan invite', file: 'src/ui/panels/ClanInviteCard.jsx', home: 'card', kind: 'clan.invite' },
+  { what: 'release a pet', file: 'src/ui/mobile/dash/PetsPage.jsx', home: 'card', kind: 'pet.release' },
+  { what: 'duel challenge with a wager', file: 'src/ui/panels/DuelRequestPanel.jsx', home: 'today', why: 'gold (the wager)' },
+  { what: 'trade request', file: 'src/ui/panels/IncomingTradePanel.jsx', home: 'today', why: 'a list (what they offer) and gold' },
+  { what: 'friend request', file: 'src/ui/menus3/Menus3Roster.jsx', home: 'today', why: 'no prompt today: a row in Requests (the incoming one only chimes)' },
+  { what: '"Attack?" in no man\'s land', file: 'src/ui/mobile/NmlAskCard.jsx', home: 'today', why: 'up to four answers (Attack, Party, Trade, Ignore)' },
+  { what: 'threat incoming', file: 'src/ui/panels/ThreatIncomingPanel.jsx', home: 'today', why: 'a countdown and its rules (not in the owner\'s list)' },
+  { what: 'log out / switch bro', file: 'src/ui/mobile/dash/AccountPanel.jsx', home: 'today', why: 'a login step' },
+  { what: 'leave a trade', file: 'src/ui/panels/TradeWindowPanel.jsx', home: 'today', why: 'inside the trade window (step 14, Counter · Trade)' },
+  { what: 'restart the character', file: 'src/ui/mobile/dash/settingsParts.jsx', home: 'today', why: 'a screen with its sending, offline and refused states' },
+  { what: 'drop / sell an item', file: 'src/ui/mobile/dash/ItemDetailPopup.jsx', home: 'today', why: 'a quantity picker (and a price)' },
+  { what: 'buy pet house room', file: 'src/ui/mobile/dash/PetsPage.jsx', home: 'today', why: 'gold' },
+  { what: 'create a clan', file: 'src/ui/panels/ClanPanel.jsx', home: 'today', why: 'gold' },
+  { what: 'death', file: 'src/ui/mobile/DeathCard.jsx', home: 'today', why: 'no answers today: the way back is automatic' },
+  { what: 'Hotel rest', file: 'src/ui/panels/buildings/WheelHallPanel.jsx', home: 'today', why: 'a row inside the hall\'s window (next card PR)' },
+  { what: 'Land Office travel', file: 'src/ui/panels/buildings/LandOfficePanel.jsx', home: 'today', why: 'inside the building\'s window (next card PR)' },
+  { what: 'dungeon entry', file: 'src/ui/BroTown.jsx', home: 'today', why: 'one interact button at the mouth, no prompt' },
+  { what: 'dungeon exit', file: 'src/game/zoneTransitions.js', home: 'today', why: 'no prompt (a step on the way out); cleared: a countdown and the loot' },
+  { what: 'townsfolk talk', file: 'src/ui/panels/NpcDialogue.jsx', home: 'today', why: 'pages of words (Next) and an action' },
+  { what: 'quest offer', file: 'src/ui/panels/QuestOfferPanel.jsx', home: 'today', why: 'a list (the rewards)' },
+  { what: 'quest reward', file: 'src/ui/panels/QuestOfferPanel.jsx', home: 'today', why: 'a list and a chooser' },
+  { what: 'New monster', file: 'src/ui/panels/NewMonsterCard.jsx', home: 'today', why: 'no answers: the whole card is a tap, timed (next card PR)' },
+]);
+
 let failures = 0, passes = 0;
 function check(name, ok, info) {
   if (ok) { passes++; console.log('  ok   ' + name); } else { failures++; console.log('  FAIL ' + name + (info !== undefined ? ' -- ' + JSON.stringify(info) : '')); }
