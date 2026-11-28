@@ -146,7 +146,8 @@ import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
 import { Menus3Panel } from './menus3/Menus3Panel.jsx';   /* v2.3.6860 (card MN step 1) */
 import { menus3HitTick } from './menus3/menus3Hit.js';   /* v2.3.6860 */
-import { menus3CamShift, menus3Active, menus3Go } from './menus3/menus3Wire.js';   /* v2.3.6861: the camera's shift for the open panel (card MN step 4); v2.3.6864: + the Roster's roads (step 10) */
+import { menus3CamShift, menus3Active, menus3Go } from './menus3/menus3Wire.js';
+import { menus3StationGate } from './menus3/menus3Wire.js';   /* v2.3.6872: a station's door opens its Counter under ?menus3 (card MN step 13) */   /* v2.3.6861: the camera's shift for the open panel (card MN step 4); v2.3.6864: + the Roster's roads (step 10) */
 import { WorldMapOverlay, openWorldMap } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
 import { pageIsPinchZoomed } from '@/data/joinGate.js';   /* v2.3.2388 */
@@ -2143,7 +2144,7 @@ export var BroTown = function BroTown(_ref0) {
   var _useState133 = useState(null),
     _useState134 = _slicedToArray(_useState133, 2),
     buildingPanel = _useState134[0],
-    setBuildingPanel = _useState134[1]; /* 'shop'|'bank'|'enchant'|'cook'|'farm'|'party'|'exchange'|'forge'|'gemcut'|'woodwork' */
+    setBuildingPanel = menus3StationGate(_useState134[1], function () { return stateRef.current && stateRef.current._serverCaps; }); /* v2.3.6872: the Blacksmith's window is the Counter under ?menus3 (menus3Wire.js; the same function every render); v2.3.6877: + the worker's caps (the Gem Works) */ /* 'shop'|'bank'|'enchant'|'cook'|'farm'|'party'|'exchange'|'forge'|'gemcut'|'woodwork' */
   /* v2.3.3481: the Cookhouse's fish game is gone (the owner: "Remove
      cookhouse fish game"; CookPanel.jsx, NO FISH ARE COOKED HERE), and with
      it its state here -- cookMinigame, and the 20 fps cookTick re-render that

@@ -967,6 +967,86 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6872 (card MN step 13, `?menus3`): the Counter, in Make, at the Blacksmith */
+  { id: 'menus3-counter', group: 'Dashboard', title: 'The new menus: the Counter, the Blacksmith', about: 'The owner\'s new menus, step 13 (docs/design/menus3/): the Blacksmith\'s door and keeper open the new panel as the Counter, in Make. Its header says "Blacksmith · Make" with the gold and the X. Under it the Smithing level, today\'s tabs on a rail (Smelt, Forge, Armor, Upgrade, Amulet when you hold gold for it, Salvage), and each tab\'s real recipes as rows with today\'s costs, locks and chips. A tap selects a recipe (no quick-tap); the foot shows the whole order\'s costs, the one quantity picker (minus, plus, Max, capped at what the materials allow) and one commit. A number over one sends today\'s request one after another; a refusal is said and stops the rest. Salvage is today\'s tab.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window._uiPanels.building('forge'); });
+      await wait(P, 2500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6873 (card MN step 13b, `?menus3`): the Counter, in Make, at the Counter, Woodworker */
+  { id: 'menus3-woodworker', group: 'Dashboard', title: 'The new menus: the Counter, the Woodworker', about: 'The owner\'s new menus, step 13b (docs/design/menus3/): the Woodworker\'s door and keeper open the new panel as the Counter, in Make, "Woodworker · Make" with the gold. Under it the Woodworking level and today\'s tabs on a rail (Bow, Staff, Hardened, Upgrade, Traps, each on today\'s cap) with today\'s rows, costs, locks and chips. A tap selects; the foot is the whole order, the one quantity picker and one commit. A bow or a staff is today\'s request one after another; the hardened wood and the traps are today\'s one counted request; a hardening is one at a time.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window._uiPanels.building('woodwork'); });
+      await wait(P, 2500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6873 (card MN step 13b, `?menus3`): the Counter, in Make, at the Counter, Cookhouse */
+  { id: 'menus3-cookhouse', group: 'Dashboard', title: 'The new menus: the Counter, the Cookhouse', about: 'The owner\'s new menus, step 13b (docs/design/menus3/): the Cookhouse\'s door and keeper open the new panel as the Counter, in Make, "Cookhouse · Make" with the gold. Under it the Cooking level, today\'s lines (what it cooks, where raw fish are cooked, the meals\' rule) and the recipes the worker cooks, each with its tier, what the dish does, how many you carry and its herbs have / need. A tap selects; the one quantity picker; one commit cooks them one after another, each the worker\'s. The Eat list is gone (the owner\'s document): a cooked fish is eaten from the bag.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window._uiPanels.building('cook'); });
+      await wait(P, 2500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6877 (card MN step 13c, `?menus3`): the Counter, in Make, at the Gem Works */
+  { id: 'menus3-gemcut', group: 'Dashboard', title: 'The new menus: the Counter, the Gem Works (Cut gems)', about: 'The owner\'s new menus, step 13c (docs/design/menus3/): the Gem Cutter\'s door opens the new panel as the Counter, in Make, "Gem Works · Make" with the gold, on Cut gems. Under it the Gem Cutting level and its chance a shard, today\'s two tabs on a rail, today\'s lines, and today\'s sections: Shards (a land\'s shards, its chance), Raw gems (three into one), the Rare Gem (cut into the gem you pick) and Your gems. A tap selects a row; the foot carries its cost, the one quantity picker (minus, plus, Max) and one commit: a crack is today\'s one counted ask, a combine one ask after another. A crack plays today\'s reveal under its row.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window._uiPanels.building('gemcut'); });
+      await wait(P, 2500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6877 (card MN step 13c, `?menus3`): the Counter, in Make, at the Gem Works */
+  { id: 'menus3-gemset', group: 'Dashboard', title: 'The new menus: the Counter, the Gem Works (Set gems)', about: 'The owner\'s new menus, step 13c: the Enchanter\'s door opens the Counter on Set gems, its own tab. The Enchanting level, today\'s lines (the 400 XP a made gem pays), and a section for each weapon (its name, rarity, gems, slots, what each gem does), the amulet and the shield, with a row for each gem it can take: a set is one at a time (no picker: a slot fills, a gem is replaced); Take out with its gold; a refusal under what it was about.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window._uiPanels.building('enchant'); });
+      await wait(P, 2500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6861 (card MN step 4, `?menus3`): Bro · Bag in the new panel, and its Item page */
   { id: 'menus3-bag', group: 'Dashboard', title: 'The new menus: Bro, the Bag', about: 'The owner\'s new menus, step 4 (docs/design/menus3/): the Bro button opens the new panel on the Bag, always. The rail (All with the bag\'s count, Gear (9), Weapons with the weapon bag\'s fill, Armor, Consumables, Materials, Pets) over a grid four across, a tile its picture, name and count. Upright the panel is 48% of the screen above the dock, the fight controls hidden and the world\'s view moved up; sideways and on a computer a right drawer 40% wide with the fight controls left of it.',
     run: async ({ P }) => {
