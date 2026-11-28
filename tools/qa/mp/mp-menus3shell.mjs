@@ -137,14 +137,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('upright: the controls come back', !(await hidCtl(P)), null);
 
       await press(P, '[data-menus3-dock="world"]', true);
-      rec.ok('upright: World opens the Quests', (await topId(P)) === 'quests', await nav(P));
-      rec.ok('upright: the Menu\'s doors one press away (nothing lost)', !!(await box(P, '[data-dash-ctl="menu"]')), null);
+      /* v2.3.6863 (card MN step 7): World opens the NEW panel on Quests (mp-menus3quests plays it) */
+      const wps = await P.page.evaluate(() => window.__btMenus3.panelState());
+      rec.ok('upright: World opens the new panel on Quests', wps.open && wps.menu === 'world' && wps.section === 'quests' && (await shown(P)) === false, wps);
+      rec.ok('upright: its tabs Quests, Codex, Feats', (await P.page.evaluate(() => Array.from(document.querySelectorAll('[data-menus3-tab]')).map((e) => e.getAttribute('data-menus3-tab')).join())) === 'quests,codex,feats', null);
       /* a tap on the world closes */
       const at = await P.page.evaluate(() => { const x = 195, y = 260; const el = document.elementFromPoint(x, y); return { x, y, tag: el ? el.tagName : null }; });
       if (at.tag === 'CANVAS') {
         await P.page.touchscreen.tap(at.x, at.y);
         await P.page.waitForTimeout(600);
-        rec.ok('upright: a tap on the world closes it', (await shown(P)) === false && (await why(P)) === 'world', { why: await why(P), nav: await nav(P) });
+        rec.ok('upright: a tap on the world closes it', (await shown(P)) === false && (await P.page.evaluate(() => window.__btMenus3.panelState().open)) === false && (await why(P)) === 'world', { why: await why(P), nav: await nav(P) });
       } else {
         rec.ok(`LISTED upright: the world tap not played: ${at.tag} at ${at.x},${at.y}`, true, null);
         await closeBand(P);
@@ -225,10 +227,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('computer: the gear by the minimap', !!(await box(C, '[data-menus3-gear]')), null);
       await shot(C, 'computer-rest');
       await press(C, '[data-menus3-dock="world"]', false);
-      rec.ok('computer: World opens the Quests', (await topId(C)) === 'quests', await nav(C));
+      rec.ok('computer: World opens the new panel on Quests', (await C.page.evaluate(() => { const s = window.__btMenus3.panelState(); return s.open && s.section === 'quests'; })), await nav(C));   /* v2.3.6863 */
       await C.page.keyboard.press('Escape');
       await C.page.waitForTimeout(500);
-      rec.ok('computer: Esc closes it', (await shown(C)) === false, await nav(C));
+      rec.ok('computer: Esc closes it', (await shown(C)) === false && (await C.page.evaluate(() => window.__btMenus3.panelState().open)) === false, await nav(C));
       await panelCheck(C, rec, 'computer', 'drawer', 1280, 800, false);
 
       /* ── 4. ?menus3=0: yesterday's game, remembered; =1 forgets ── */

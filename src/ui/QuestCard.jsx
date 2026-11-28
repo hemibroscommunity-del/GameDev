@@ -55,6 +55,8 @@ import { say } from '@/game/say.js';
 import { charHudQuestLine } from '@/game/charHud.js';   /* v2.3.6781: under the character HUD, one line */
 import { cornerQuest } from '@/game/hudCorner.js';   /* v2.3.6790: the corner holds the HUD alone (or the line, ?questline=1) */
 import { SAY as HUD_SAY } from '@/data/say/charHud.js';
+import { menus3On } from '@/ui/menus3/menus3Switch.js';   /* v2.3.6863 (card MN step 7): the quest line opens its quest in the new panel */
+import { menus3Go } from '@/ui/menus3/menus3Wire.js';
 
 const GOLD = '#D8A94D';
 const GREEN = '#59BF91';
@@ -104,6 +106,8 @@ function readFold() { try { return localStorage.getItem(FOLD_KEY) === '1'; } cat
    One place, so a move of the quest pages (under the "Bro" tab) changes it
    once. */
 export function openQuestPage(qid) {
+  /* v2.3.6863: under ?menus3, World · Quests on THAT quest's page (its Back the Quests' own page) */
+  if (menus3On() && typeof qid === 'string' && qid && menus3Go('hud.questLine', { quest: qid })) return;
   try {
     questDetailBus.select(qid);
     dashboardPanelBus.open('quests');
