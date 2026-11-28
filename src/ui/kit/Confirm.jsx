@@ -23,8 +23,9 @@ export function Ui2Confirm({ action, words, onYes, onNo, no }) {
   return (
     <div className="u2-confirm" role="alertdialog" aria-label={words || say(SAY, 'ui2Kit.sure')} data-u2-confirm={action.id}>
       <span className="u2-confirm-q">{words || say(SAY, 'ui2Kit.sure')}</span>
-      <Ui2Action c={action.c || (action.cost === 'irreversible' ? 'red' : 'gold')} label={action.label} data-enter="" onClick={onYes} />
-      <Ui2Action c="silver" label={no || say(SAY, 'ui2Kit.cancel')} data-esc="" onClick={onNo} />
+      {/* v2.3.6840 (card UI4): the yes commits, or is danger when it cannot be undone; the no adjusts (a dismiss) */}
+      <Ui2Action intent={action.cost === 'irreversible' ? 'danger' : 'commit'} c={action.c || (action.cost === 'irreversible' ? 'red' : 'gold')} label={action.label} data-enter="" onClick={onYes} />
+      <Ui2Action intent="adjust" c="silver" label={no || say(SAY, 'ui2Kit.cancel')} data-esc="" onClick={onNo} />
     </div>
   );
 }

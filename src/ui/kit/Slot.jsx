@@ -7,6 +7,7 @@ import React from 'react';
 import { UI2_RARITY } from '@/game/ui2Tokens.js';
 import { QUALITY_LABEL } from '../mobile/dash/common.js';   /* the grade's word: the game's own */
 import { stateClass } from './shine.js';
+import { ui2Role } from '@/game/uiRoles.js';   /* v2.3.6840 (card UI4): the role, decided in one place */
 import { SAY } from '@/data/say/ui2Kit.js';   /* the kit's words, in the one table */
 import { say } from '@/game/say.js';
 import { UnrevealedMark } from '../reveal/UnrevealedMark.jsx';   /* v2.3.6688 (the mends): a "?" piece's mark, today's */
@@ -28,8 +29,9 @@ export function Ui2Slot({ grade = 'normal', art, size = 52, empty, state, onClic
     </>
   );
   const box = { width: size, height: size };
-  if (onClick) {
-    return <button type="button" className={cls} data-grade={g} style={box} aria-label={words} onClick={onClick}>{inner}</button>;
+  /* v2.3.6840 (card UI4, V17:47): the slot role; a button where it is pressed (src/game/uiRoles.js) */
+  if (ui2Role('Ui2Slot', { onClick }).press) {
+    return <button type="button" className={cls} data-grade={g} data-u2-role="slot" style={box} aria-label={words} onClick={onClick}>{inner}</button>;
   }
-  return <span className={cls} data-grade={g} style={box} role="img" aria-label={words}>{inner}</span>;
+  return <span className={cls} data-grade={g} data-u2-role="slot" style={box} role="img" aria-label={words}>{inner}</span>;
 }

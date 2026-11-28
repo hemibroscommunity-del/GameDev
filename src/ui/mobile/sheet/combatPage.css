@@ -146,3 +146,9 @@
 .ui2 .u2-at-grid.is-noart .u2-wp-attr-art { display: none; }
 .ui2 .u2-at-grid.is-noart .u2-wp-attr { justify-content: center; text-align: center; }
 .ui2 .u2-at-grid.is-noart .u2-wp-attr-words { align-items: center; }
+
+/* v2.3.6841 (card UI4 PR 2, `?v17look`): a point to spend gets V17's priority cue, NOT commit gold (V17:20
+   "Available points deserve a priority cue but not commit-style gold"): the prototype's .v17priority, its
+   count's words #F5CF83 bold and a tile's edge #BC9B60 (src/game/ui2Tokens.js UI2_V17) */
+.ui2.ui2-v17 .u2-at-line-v.is-gold, .ui2.ui2-v17 .u2-cb-pts.is-on, .ui2.ui2-v17 .u2-at-plus { color: var(--ui2-v17-priority-text); }
+.ui2.ui2-v17 .u2-raised.u2-wp-attr[data-attr-plus='1'] { border-color: var(--ui2-v17-priority-edge); }

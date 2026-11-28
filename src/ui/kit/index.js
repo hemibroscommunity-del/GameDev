@@ -19,7 +19,7 @@ export { Ui2Slot } from './Slot.jsx';
 export { Ui2Progress } from './Progress.jsx';
 export { Ui2Badge } from './Badge.jsx';
 export { Ui2Loading } from './Loading.jsx';
-export { ui2RootClass, ui2LookWas } from './shine.js';
+export { ui2RootClass, ui2LookWas, v17LookOn } from './shine.js';   /* v2.3.6841: v17LookOn, the V17 look (card UI4 PR 2) */
 /* v2.3.6683 (card UI2-bro): a screen's pieces -- its zones, its row of actions, its empty state, its one confirmation */
 export { Ui2Zones } from './Zones.jsx';
 export { Ui2Actions } from './ActionRow.jsx';
@@ -30,3 +30,13 @@ export { Ui2ItemGrid, Ui2ItemCell } from './ItemGrid.jsx';   /* v2.3.6688: the o
 /* v2.3.6693 (card UI2-codex): the collection (its kinds, its illustrated cards) and the showcase (an entry large, its doors) */
 export { Ui2Collection, Ui2CollectionCard } from './Collection.jsx';
 export { Ui2Showcase } from './Showcase.jsx';
+/* v2.3.6840 (card UI4 PR 1, the owner's V17:49): every piece is made with a ROLE (`intent`; the one table and
+   the one mapping of yesterday's props: src/game/uiRoles.js), and the five pieces V17 names that the kit
+   lacked, in today's look: the tab, the stepper, the stat you inspect, the comparison, the overlay */
+export { Ui2Tabs, Ui2Tab } from './Tab.jsx';
+export { Ui2Stepper } from './Stepper.jsx';
+export { Ui2InspectStat } from './InspectStat.jsx';
+export { Ui2Comparison } from './Comparison.jsx';
+export { Ui2Overlay } from './Overlay.jsx';
+export { Ui2LevelTile } from './LevelTile.jsx';   /* v2.3.6843: a weapon's door, its level, bar and points (card UI4 PR 4) */
+export { Ui2Strip } from './Strip.jsx';   /* v2.3.6843: a quiet strip that pages by whole entries (card UI4 PR 4) */

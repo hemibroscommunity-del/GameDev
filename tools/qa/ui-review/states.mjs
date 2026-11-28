@@ -913,7 +913,22 @@ export const STATES = [
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'homestead' }); }); } },
   /* v2.3.6683 (card UI2-bro): Bro's landing and its two frame pages */
   /* v2.3.6782 (card UI3-bro): Bro and Character are ONE page for yourself */
-  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: one page, six doors and the strip', about: 'The Menu\'s Bro tile (v2.3.6782, the owner 2026-11-26: "turn the Bro menu into a unified character management dashboard"): six equal tiles, three by two (one row sideways) -- Combat, Equipment, Life Skills / Feats, Pets, Journey -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close); under them (beside them sideways) ONE flat strip: AP, Quests done, Clan (or Party), Guilds and your title, each its label and value and a door with its chevron (no raised face). No portrait, no name, no combat level, no weapon doors (the HUD has who you are; Combat has the weapons). A value on its way is a placeholder, never 0. On the narrowest sideways page Quests, Clan, Guilds and the title are their pictures\' doors. Under ?ui2=0 today\'s three pages.',
+  { id: 'ui2-bro-landing', group: 'Dashboard', title: 'Bro: one page, six doors and the strip', about: 'The Menu\'s Bro tile (v2.3.6782, the owner 2026-11-26: "turn the Bro menu into a unified character management dashboard"): six equal tiles, three by two (one row sideways) -- Combat, Equipment, Life Skills / Feats, Pets, Journey -- each its picture and one word, under the one header (\u2039 Menu, Bro, Close); under them (beside them sideways) ONE flat strip: AP, Quests done, Clan (or Party), Guilds and your title, each its label and value and a door with its chevron (no raised face). No portrait, no name, no combat level, no weapon doors (the HUD has who you are; Combat has the weapons). A value on its way is a placeholder, never 0. On the narrowest sideways page Quests, Clan, Guilds and the title are their pictures\' doors. Under ?ui2=0 today\'s three pages. Since v2.3.6843 (card UI4 PR 4) this is ?v17bro=0\'s Bro (ui4-bro is the default).',
+    /* v2.3.6843 (card UI4 PR 4): V17's Bro is the default (ui4-bro); this is ?v17bro=0's, cleared after (it is remembered) */
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('v17bro', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!window.__broDashPanelBus, null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2500);
+      await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); });
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('v17bro', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  /* v2.3.6843 (card UI4 PR 4, the owner's V17:55): Bro leads with the three weapons (sheet/BroV17.jsx; ?v17bro=0 the six tiles) */
+  { id: 'ui4-bro', group: 'Dashboard', title: 'Bro: the three weapons first (V17)', about: 'The Menu\'s Bro tile with ?v17bro on (the default; v2.3.6843, the owner\'s V17: "Bro presents recognizable Sword/Bow/Staff artwork, levels/progress and available points first, then Character stats and Pets, with active weapon damage and health afterward"): Sword, Bow and Staff first, each the game\'s picture, its level, its XP bar, its state in words (In hand, framed; Worn; Not worn) and its points ONLY while it has some (no plus at zero); one tap opens that weapon\'s page. Under them the Shared Attributes door (its points by the same rule) and Pets, and quieter, flat, the held weapon\'s DPS and Max HP. Then ONE quiet strip: Equipment, Life Skills, Feats, Journey, AP, Quests, Clan, Guilds, whole entries only, a "more" control (1/2) where the width does not hold them all. Sideways ONE row; on a computer the weapons, the doors and the facts in one row and the strip whole. No portrait, name or combat level (the HUD has them).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },
   /* v2.3.6842 (card UI4, PR 3): a computer's open band, V17's 840 block (game/v17Wide.js; ?v17wide=0 the 480 one) */
   { id: 'v17wide-bro', group: 'Dashboard', title: 'A computer\'s open band, 840 wide (V17)', views: ['desktop'], about: 'On a computer (or a tablet) the open band\'s block -- the header row, the open page and the resting columns -- is 840 px wide and centred, as the owner\'s V17 handoff draws it (2026-11-27: "840 x 243 centered"; "use extra horizontal space for additional entries, not larger art, text or gameplay view"). The band\'s height (243), the header (52), the world above it and the camera are the same as before; the words and pictures keep their phone sizes, and the pages that lay out from their box (the Menu\'s tiles, Bro\'s doors, Gear\'s bag) use the room for more in a row. A phone is unchanged (its band is its own width). ?v17wide=0 (remembered) gives the 480 px block of 2026-11-05 ("Simply make the container areas smaller"): the owner\'s choice (card UI4, Q9).',
@@ -960,6 +975,14 @@ export const STATES = [
       await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); });
       await wait(P, 400);
       return tapSel(P, '[data-gear-cell="sword"] [role="button"]');
+    } },
+  /* v2.3.6845 (card UI4 PR 6, `?v17gear`): a look at a thing with no action to wear it (a material): Details keeps its
+     half of the row, in the place it has beside an Equip (V17:57 "fixed buttons") */
+  { id: 'dash-gear-look-thing', group: 'Dashboard', title: 'Gear: a look at a thing you cannot wear', about: 'A material or a fish tapped in the bag: the Equipped panel becomes its summary (its name, how many, what it does), Details in the left half of the button row where it stands beside Equip for a piece you could wear (the right half its own action, or empty): the buttons never move (V17:57). The reason an action is off sits above the buttons.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { const b = window.__broDashPanelBus; if (b && b.go) b.go({ type: 'rest' }); const g = window.__btGearTab; if (g) g.bus.reset(); });
+      await wait(P, 400);
+      return tapSel(P, '[data-gear-bag] [data-bag-key*="ore"], [data-gear-bag] [data-bag-key*="fish"], [data-gear-bag] [data-bag-key]');
     } },
   /* v2.3.6689: Bro's Equipment door, a showcase (card UI2-gear PR 3) */
   { id: 'ui2-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment, the showcase', about: 'Bro\'s Equipment door (\u2039 Bro, Equipment, Menu, Close): your figure with Manage Gear under it, and beside it the nine worn cells in Gear\'s body shape (the weapons down the left, Cape, Chest and Legs in the middle, Shield, Amulet and Gem down the right); no bag. A worn cell opens the one item page; Manage Gear opens Gear\'s two panels. Sideways the figure, the cells in one row and the button in one line. Tag 6698: a worn picture 94% of its slot (as Gear\'s); its own ground, not Gear\'s green.',
@@ -2250,6 +2273,60 @@ export const STATES = [
     after: async ({ P }) => {
       const u = new URL(P.page.url());
       u.searchParams.delete('uikit');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    },
+  },  /* v2.3.6840 (card UI4 PR 1, the owner's V17): the nine roles, and the five pieces V17 names that the kit
+     lacked, each a plate of ?uikit=1 in today's look (no screen uses them yet); like ui2-kit, last */
+  ...[
+    ['roles', 'The kit\'s nine roles (?uikit=1)', 'The nine roles of the owner\'s V17 (a fact, a stat you inspect, a way to go, the chosen one, adjust, commit, danger, disabled, an item slot), each drawn by a kit piece made with that role, in V17\'s look (v2.3.6841; ui4-look-before has the day before\'s).'],
+    ['tab', 'The kit\'s tab (?uikit=1)', 'A real tab row (Active, Daily, Completed): the chosen one pushed in and its word always written; not yet used by a screen.'],
+    ['stepper', 'The kit\'s stepper (?uikit=1)', 'The trade window\'s quantity stepper as a kit piece: one fewer, the number with what you have, one more, each end off at its end; not yet used by a screen.'],
+    ['inspect', 'The kit\'s stat you inspect (?uikit=1)', 'A stat that always opens (its chevron, or the word Details), beside a stat that does not.'],
+    ['compare', 'The kit\'s comparison (?uikit=1)', 'Before, after, and the difference signed and in words (better, worse, no change); the colour only repeats them.'],
+    ['overlay', 'The kit\'s overlay (?uikit=1)', 'A town window\'s frame as a kit piece: its header and close fixed, its body scrolling under them, at a sample size; no window uses it yet.'],
+    /* v2.3.6843 (card UI4 PR 4): Bro's two new pieces */
+    ['leveltile', 'The kit\'s level tile (?uikit=1)', 'A weapon\'s door (Bro\'s Sword, Bow, Staff): its picture, level and XP bar, its state in words (In hand, framed; Worn; Not worn), its points drawn only while it has some.'],
+    ['strip', 'The kit\'s quiet strip (?uikit=1)', 'A row of entries that never cuts a word at its edge: whole entries only, and a more control (1/3) that turns to the next where they do not all fit.'],
+  ].map(([plate, title, about]) => ({
+    id: 'ui4-kit-' + plate, group: 'The new dashboard (in build)', title, about,
+    run: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.set('uikit', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      const up = await P.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 60000 }).then(() => true, () => false);
+      if (!up) return 'the kit\'s page did not come up';
+      const at = await P.page.evaluate((id) => { const el = document.querySelector('[data-u2-plate="' + id + '"]'); if (!el) return false; el.scrollIntoView({ block: 'start' }); return true; }, plate);
+      if (!at) return 'the plate ' + plate + ' is not on the kit\'s page';
+      await wait(P, 800);
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.delete('uikit');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    },
+  })),
+  /* v2.3.6841 (card UI4 PR 2): the nine roles in the look of the day before V17 (?v17look=0), beside
+     ui4-kit-roles in V17's, so the owner compares; the switch is cleared after (it is remembered) */
+  {
+    id: 'ui4-look-before', group: 'The new dashboard (in build)', title: 'The kit\'s nine roles before V17 (?uikit=1&v17look=0)',
+    about: 'The same plate as ui4-kit-roles in the look of the day before the owner\'s V17: five light action faces, the chosen one pushed in, gold stat numbers and chevrons.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.set('uikit', '1');
+      u.searchParams.set('v17look', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      const up = await P.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 60000 }).then(() => true, () => false);
+      if (!up) return 'the kit\'s page did not come up';
+      const at = await P.page.evaluate(() => { const el = document.querySelector('[data-u2-plate="roles"]'); if (!el) return false; el.scrollIntoView({ block: 'start' }); return true; });
+      if (!at) return 'the plate roles is not on the kit\'s page';
+      await wait(P, 800);
+    },
+    after: async ({ P }) => {
+      const u = new URL(P.page.url());
+      u.searchParams.delete('uikit');
+      u.searchParams.set('v17look', '1');   /* clears the remembered =0 */
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     },

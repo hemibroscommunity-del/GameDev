@@ -7,11 +7,17 @@
  * (the spec's Q83).  `pending` is the mark while the worker answers. */
 import React from 'react';
 import { stateClass } from './shine.js';
+import { ui2Role } from '@/game/uiRoles.js';   /* v2.3.6840 (card UI4): the role, decided in one place */
 
-export function Ui2Action({ c = 'gold', label, wide, state, pending, disabled, onClick, style, ...rest }) {
+/* v2.3.6840 (card UI4, V17:43-46): `intent` 'commit' (does the thing), 'danger' (cannot be undone), 'adjust'
+   (a cancel, a setting), 'go' (takes you somewhere) or 'disabled'.  Without one, the colour `c` says it as
+   before (src/game/uiRoles.js FACE_ROLE); with one and no colour, the role wears today's face for it. */
+export function Ui2Action({ c, label, wide, state, pending, disabled, intent, onClick, style, ...rest }) {
+  const r = ui2Role('Ui2Action', { intent, onClick, c, disabled });
+  const off = !!disabled || r.role === 'disabled';
   const cls = 'u2-act' + (wide ? ' is-wide' : '') + stateClass(pending ? 'pending' : state);
   return (
-    <button type="button" className={cls} data-c={c} disabled={disabled || undefined} aria-busy={pending ? 'true' : undefined} onClick={pending ? undefined : onClick} style={style} {...rest}>
+    <button type="button" className={cls} data-c={r.face} data-u2-role={r.role} disabled={off || undefined} aria-busy={pending ? 'true' : undefined} onClick={pending ? undefined : onClick} style={style} {...rest}>
       <span>{label}</span>
       {pending ? <span className="u2-spin" data-u2-pending="" aria-hidden="true" /> : null}
     </button>
@@ -36,7 +42,7 @@ export function Ui2ActionRow({ aside, children }) {
 export function Ui2Disabled({ c = 'gold', label, why, ...rest }) {
   return (
     <div className="u2-actrow">
-      <Ui2Action c={c} label={label} disabled style={{ flex: '0 0 auto' }} {...rest} />
+      <Ui2Action intent="disabled" c={c} label={label} disabled style={{ flex: '0 0 auto' }} {...rest} />
       <span className="u2-why" data-u2-why="">{why}</span>
     </div>
   );

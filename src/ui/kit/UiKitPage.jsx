@@ -23,14 +23,27 @@
  * every demo tile is pressable (a named tap, counted on window.__btUiKit.taps:
  * a raised face is never drawn on a thing that cannot be pressed); the
  * pressed and selected stat demos are stats that open; no colour written
- * here (the kit's tokens); and the link to `?ui2look=0`, yesterday's look. */
+ * here (the kit's tokens); and the link to `?ui2look=0`, yesterday's look.
+ *
+ * v2.3.6840 (card UI4 PR 1, the owner's V17): the plate "Roles" (the nine
+ * roles of V17:37-47, each drawn by a piece made with it: src/game/uiRoles.js)
+ * and one plate for each piece V17 names that the kit lacked (the tab, the
+ * stepper, the stat you inspect, the comparison; the overlay at a sample
+ * size, not a band), all in today's look. */
 import React, { useEffect, useState } from 'react';
 import {
   Ui2Frame, Ui2Header, Ui2Tile, Ui2Group, Ui2Value, Ui2Stat, Ui2Action, Ui2ActionRow, Ui2Disabled,
   Ui2Slot, Ui2Progress, Ui2Loading, ui2RootClass, Ui2TwoPanel, Ui2ItemGrid,
-  Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm, Ui2Facts, Ui2Fact, ui2LookWas,
+  Ui2Zones, Ui2Actions, Ui2Empty, Ui2Confirm, Ui2Facts, Ui2Fact, ui2LookWas, v17LookOn,
   Ui2Collection, Ui2CollectionCard, Ui2Showcase,
+  Ui2Tabs, Ui2Tab, Ui2Stepper, Ui2InspectStat, Ui2Comparison, Ui2Overlay,
+  Ui2LevelTile, Ui2Strip,   /* v2.3.6843 (card UI4 PR 4): Bro's weapon door and its quiet strip */
 } from './index.js';
+import { COMBAT_DOORS } from '@/game/combatHub.js';   /* v2.3.6843: the level tile's plate wears the game's pictures */
+import { SAY as SAY_CH } from '@/data/say/combatHub.js';
+import { SAY as SAY_BV } from '@/data/say/broV17.js';
+import { SAY as SAY_DF } from '@/data/say/dashFrame.js';
+import { say } from '@/game/say.js';
 import { UI2_SIZE, UI2_SPACE, UI2_ACTION_NAMES, UI2_GRADES, UI2_FONT, UI2_TYPE } from '@/game/ui2Tokens.js';
 import { barHeight, identityRowHeight, BAND_ASSEMBLY_MAX_W } from '../mobile/sheet/sheetGeometry.js';
 import { computerFrame } from '@/game/deviceProfile.js';   /* a computer's window: the band is one block, 480 px at most */
@@ -340,9 +353,9 @@ function CollectionPlate({ room }) {
     <Ui2Collection shelves={room.wide ? SAMPLE_SHELVES.slice(0, 1) : SAMPLE_SHELVES} shelf={shelf} onShelf={setShelf} side={room.wide} head={shelf === 'monsters' && !room.wide ? '2 of 3 met' : null}>
       {shelf === 'monsters' ? (
         <>
-          <Ui2CollectionCard art={pic(KIT_ART.pets)} name="Snowman" sub="Frost · Frost Ridge" line="3 defeated" mark="NEW" onClick={() => {}} />
-          <Ui2CollectionCard art={pic(KIT_ART.combat)} name="Fire Goblin" sub="Flame · Flame Fields" line="12 defeated" onClick={() => {}} />
-          <Ui2CollectionCard art={pic(KIT_ART.pets, true)} name="???" sub="Earth Forest" line="Not met yet" dim onClick={() => {}} />
+          <Ui2CollectionCard art={pic(KIT_ART.pets)} name="Snowman" sub="Frost · Frost Ridge" line="3 defeated" mark="NEW" onClick={kitTap('Snowman')} />
+          <Ui2CollectionCard art={pic(KIT_ART.combat)} name="Fire Goblin" sub="Flame · Flame Fields" line="12 defeated" onClick={kitTap('Fire Goblin')} />
+          <Ui2CollectionCard art={pic(KIT_ART.pets, true)} name="???" sub="Earth Forest" line="Not met yet" dim onClick={kitTap('???')} />
         </>
       ) : <Ui2Empty title="Not in the Codex yet" why="Their pages are still being written." />}
     </Ui2Collection>
@@ -355,6 +368,108 @@ function ShowcasePlate({ room }) {
       figure={<img src={KIT_ART.pets} alt="" draggable={false} style={{ width: room.wide ? 56 : 84, height: room.wide ? 56 : 84, objectFit: 'contain' }} />}
       doors={[door('combat', 'Combat', 'The Lunge'), door('loot', 'Loot', '8 drops'), door('habitat', 'Habitat', 'Flame Fields'), door('story', 'Story', 'Cinder Goblin')]}
       facts={[{ id: 'levels', k: 'Levels', v: 'Lv 1–40' }, { id: 'element', k: 'Element', v: 'Flame' }, { id: 'type', k: 'Type', v: 'Humanoid' }, { id: 'kills', k: 'Defeated', v: '12' }, { id: 'strength', k: 'Strength', v: 'By level' }]} />
+  );
+}
+/* ── v2.3.6840 (card UI4 PR 1, the owner's V17:37-49): every piece made with its ROLE, and the five pieces V17
+   names that the kit lacked, each in TODAY'S look (PR 2 gives V17's).  Each piece below names its `intent`. ── */
+function RolesPlate({ room }) {
+  const tap = (id) => kitTap('role ' + id);
+  const cells = [
+    <Ui2Stat key="info" intent="info" v="23" k="Level" data-u4-role="info" />,
+    <Ui2InspectStat key="inspect" v="120.5" k="DPS" onClick={tap('inspect')} data-u4-role="inspect" />,
+    <Ui2Tile key="go" intent="go" size="compact" art={room.wide ? undefined : KIT_ART.combat} label="Combat" onClick={tap('go')} data-u4-role="go" />,
+    <Ui2Tile key="selected" intent="selected" size="compact" selected label="Chosen" onClick={tap('selected')} data-u4-role="selected" />,
+    <Ui2Action key="adjust" intent="adjust" label="Cancel" onClick={tap('adjust')} data-u4-role="adjust" />,
+    <Ui2Action key="commit" intent="commit" label="Equip" onClick={tap('commit')} data-u4-role="commit" />,
+    <Ui2Action key="danger" intent="danger" label="Drop" onClick={tap('danger')} data-u4-role="danger" />,
+    <Ui2Action key="disabled" intent="disabled" label="Spend" data-u4-role="disabled" />,
+    <span key="slot" data-u4-role="slot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ui2Slot grade="rare" art={KIT_ART.combat} size={44} onClick={tap('slot')} /></span>,
+  ];
+  if (room.wide) return <div style={grid(9, 1, { alignItems: 'center' })}>{cells}</div>;
+  return <div style={grid(3, 3, { alignItems: 'stretch' })}>{cells}</div>;
+}
+const TAB_WORDS = Object.freeze([['active', 'Active'], ['daily', 'Daily'], ['done', 'Completed']]);
+function TabPlate({ room }) {
+  const [on, setOn] = useState('active');
+  const tabs = (
+    <Ui2Tabs label="Quests" data-u4-piece="tab">
+      {TAB_WORDS.map(([id, w]) => <Ui2Tab key={id} label={w} selected={on === id} badge={id === 'daily' ? 2 : 0} onClick={() => setOn(id)} data-u4-tab={id} />)}
+    </Ui2Tabs>
+  );
+  if (room.wide) return <div style={row({ alignItems: 'center', height: '100%' })}><div style={{ flex: '1 1 0', minWidth: 0 }}>{tabs}</div></div>;
+  return (
+    <div style={col({ height: '100%' })}>
+      {tabs}
+      <Ui2Facts><Ui2Fact intent="info" k="Showing" v={TAB_WORDS.find((t) => t[0] === on)[1]} data-u4-tab-shows="" /></Ui2Facts>
+    </div>
+  );
+}
+function StepperPlate({ room }) {
+  const [n, setN] = useState(3);
+  const one = <Ui2Stepper value={n} max={40} of={40} name="Fire Goblin Remains" onChange={setN} data-u4-piece="stepper" />;
+  const low = <Ui2Stepper value={0} max={40} of={40} name="Copper Ore" onChange={kitTap('stepper min')} data-u4-step-end="min" />;
+  const top = <Ui2Stepper value={5} max={5} of={5} name="Bread" onChange={kitTap('stepper max')} data-u4-step-end="max" />;
+  if (room.wide) return <div style={row({ alignItems: 'center', height: '100%', justifyContent: 'space-around' })}>{one}{low}{top}</div>;
+  return <div style={col({ height: '100%', justifyContent: 'space-between', alignItems: 'center' })}>{one}{low}{top}</div>;
+}
+function InspectPlate({ room }) {
+  const a = <Ui2InspectStat v="120.5" k="DPS" onClick={kitTap('inspect DPS')} data-u4-piece="inspect" style={{ flex: '1 1 0' }} />;
+  const b = <Ui2InspectStat v="38%" k="Critical" details onClick={kitTap('inspect Critical')} data-u4-inspect="details" style={{ flex: '1 1 0' }} />;
+  const c = <Ui2Stat intent="info" v="23" k="Level" data-u4-inspect="passive" style={{ flex: '1 1 0' }} />;
+  if (room.wide) return <div style={row({ alignItems: 'center', height: '100%' })}>{a}{b}{c}</div>;
+  return <div style={col({ height: '100%', justifyContent: 'space-between' })}>{a}{b}{c}</div>;
+}
+/* v2.3.6843 (card UI4 PR 4): the level tile (a weapon's door: in hand and framed, worn, not worn; points drawn only
+   while some) and the strip that pages by whole entries (its "more" an adjust control) */
+function LevelTilePlate({ room }) {
+  /* the game's own pictures and words (combatHub.js COMBAT_DOORS; the say tables), sample levels and points */
+  const art = (c) => (COMBAT_DOORS.find((d) => d.id === c) || {}).art;
+  const t = [
+    <Ui2LevelTile key="s" intent="go" art={art('sword')} label={say(SAY_CH, 'combatHub.sword')} level={say(SAY_CH, 'combatHub.lv', { n: 12 })} frac={0.4} mark={say(SAY_BV, 'broV17.inHand')} held cue={say(SAY_CH, 'combatHub.points', { n: 2 })} onClick={kitTap('level tile Sword')} data-u4-piece="leveltile" />,
+    <Ui2LevelTile key="b" intent="go" art={art('bow')} label={say(SAY_CH, 'combatHub.bow')} level={say(SAY_CH, 'combatHub.lv', { n: 5 })} frac={0.75} mark={say(SAY_BV, 'broV17.worn')} onClick={kitTap('level tile Bow')} />,
+    <Ui2LevelTile key="m" intent="go" art={art('staff')} label={say(SAY_CH, 'combatHub.staff')} level={say(SAY_CH, 'combatHub.lv', { n: 1 })} frac={0} mark={say(SAY_BV, 'broV17.notWorn')} onClick={kitTap('level tile Staff')} />,
+  ];
+  return <div style={row({ height: room.wide ? 96 : 92, alignItems: 'stretch' })}>{t}</div>;
+}
+function StripPlate({ room }) {
+  const [page, setPage] = React.useState(0);
+  const all = [say(SAY_DF, 'dashFrame.equipment'), say(SAY_DF, 'dashFrame.lifeSkills'), say(SAY_DF, 'dashFrame.feats'), say(SAY_DF, 'dashFrame.journey'), say(SAY_DF, 'dashFrame.pets')];
+  const per = room.wide ? all.length : 2;
+  const pages = Math.ceil(all.length / per);
+  const shown = all.slice(page * per, page * per + per);
+  return (
+    <Ui2Strip page={page} pages={pages} onPage={setPage} more={say(SAY_BV, 'broV17.more', { i: page + 1, n: pages })} count={say(SAY_BV, 'broV17.pageN', { i: page + 1, n: pages })} data-u4-piece="strip">
+      {shown.map((w) => <Ui2Tile key={w} intent="go" size="compact" label={w} onClick={kitTap('strip ' + w)} style={{ flex: '1 1 0', minWidth: 0, minHeight: 44 }} />)}
+    </Ui2Strip>
+  );
+}
+function ComparisonPlate({ room }) {
+  const rows = [
+    <Ui2Comparison key="dmg" k="Damage" before={26} after={31} data-u4-piece="compare" data-u4-cmp="up" />,
+    <Ui2Comparison key="spd" k="Speed" before={2.1} after={1.9} unit="/s" data-u4-cmp="down" />,
+    <Ui2Comparison key="cd" k="Cooldown" before={4} after={3} unit="s" lower data-u4-cmp="lower" />,
+    <Ui2Comparison key="hp" k="Max HP" before={1250} after={1250} data-u4-cmp="same" />,
+  ];
+  if (room.wide) return <div style={grid(2, 2, { alignItems: 'center', columnGap: 24 })}>{rows}</div>;
+  return <Ui2Group style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>{rows}</Ui2Group>;
+}
+/* the overlay is not a band: it is drawn at a sample of V17's candidate sizes (V17:63: "Landscape bounded window
+   (~496-510 wide in V14 sample) ... portrait modest insets; desktop capped around 600"), NOT adopted here */
+function OverlaySample({ room }) {
+  const w = room.wide ? Math.min(room.w - 12, 500) : room.w - 12;
+  return (
+    <figure style={{ margin: '0 0 14px' }} data-u2-plate="overlay">
+      <figcaption style={{ font: `${UI2_TYPE.small}px/1.3 ${UI2_FONT.fontFamily}`, color: 'var(--ui2-text-muted)', margin: '0 0 4px 2px' }}>The overlay (V17:63): a town window's frame, its header and ✕ fixed, its body scrolling under them (a sample size; no window is moved to it yet)</figcaption>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <Ui2Overlay title="Feed & Seed" w={w} h={220} headH={room.head} onClose={kitTap('overlay close')} data-u4-piece="overlay">
+          <Ui2Facts>
+            {['Wheat seed', 'Carrot seed', 'Pumpkin seed', 'Berry bush', 'Sunflower seed', 'Corn seed', 'Bean seed', 'Melon seed', 'Watering can', 'Scarecrow', 'Hoe', 'Fertiliser'].map((k, i) => (
+              <Ui2Fact key={k} intent="info" k={k} v={(i + 1) * 15 + ' gold'} />
+            ))}
+          </Ui2Facts>
+        </Ui2Overlay>
+      </div>
+    </figure>
   );
 }
 function ConfirmPlate({ room }) {
@@ -391,7 +506,7 @@ export function UiKitPage() {
   }, []);
   useEffect(() => {
     try {
-      window.__btUiKit = { ready: fonts, room, player: !!me, plates: document.getElementsByClassName('u2-frame').length, look: ui2LookWas() ? 'was' : 'new', taps: 0, lastTap: null,
+      window.__btUiKit = { ready: fonts, room, player: !!me, plates: document.getElementsByClassName('u2-frame').length, look: ui2LookWas() ? 'was' : 'new', v17: v17LookOn() && !ui2LookWas(), taps: 0, lastTap: null,
         font: fonts && document.fonts.check(`700 16px ${UI2_FONT.fontFamily.split(',')[0]}`) };
     } catch (e) { /* no window */ }
   }, [fonts, room, me]);
@@ -407,6 +522,8 @@ export function UiKitPage() {
         <a href={shineOff ? '?uikit=1' : '?uikit=1&ui2shine=0'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{shineOff ? 'Shine on' : 'Shine off'}</a>
         {/* v2.3.6780: yesterday's look, to compare (remembered on this phone; ?ui2look=1 returns) */}
         <a href={was ? '?uikit=1&ui2look=1' : '?uikit=1&ui2look=0'} data-u2-look={was ? 'was' : 'new'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{was ? 'New look' : 'Old look'}</a>
+        {/* v2.3.6841 (card UI4 PR 2): the owner's V17 look, on by default; today's to compare (remembered; ?v17look=1 returns) */}
+        {was ? null : <a href={v17LookOn() ? '?uikit=1&v17look=0' : '?uikit=1&v17look=1'} data-u2-v17={v17LookOn() ? 'on' : 'off'} style={{ color: 'var(--ui2-text-gold)', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{v17LookOn() ? 'Before V17' : 'V17 look'}</a>}
       </div>
       <div style={wrap}>
         <Plate id="bro" room={room} title="Bro" caption={'Sample: the Bro landing' + (me ? ' (your doors; a count where points wait)' : ' (no player handed to this page)')}><BroSample room={room} me={me} /></Plate>
@@ -434,6 +551,15 @@ export function UiKitPage() {
         {/* v2.3.6693 (card UI2-codex) */}
         <Plate id="collection" room={room} title="Codex" caption="The collection: the kinds (raised doors, the chosen one pushed in), illustrated cards (the picture first; NEW; one not met greyed), a kind's honest empty line"><CollectionPlate room={room} /></Plate>
         <Plate id="showcase" room={room} title="Fire Goblin" caption="The showcase: the entry large, four doors each with its summary, its essentials flat in one strip"><ShowcasePlate room={room} /></Plate>
+        {/* v2.3.6840 (card UI4 PR 1): the nine roles, and the five pieces V17 names (today's look) */}
+        <Plate id="roles" room={room} title="Roles" caption="The nine roles (V17): a fact, a stat you inspect, a way to go, the chosen one, adjust, commit, danger, disabled, an item slot; each piece names its role, in today's look"><RolesPlate room={room} /></Plate>
+        <Plate id="tab" room={room} title="Quests" caption="The tab: a real tab row, the chosen one pushed in and its word always written (never colour alone)"><TabPlate room={room} /></Plate>
+        <Plate id="stepper" room={room} title="Bag" caption="The stepper (the trade window's): one fewer, the number with what you have, one more; off at each end"><StepperPlate room={room} /></Plate>
+        <Plate id="inspect" room={room} title="Sword" caption="The stat you inspect: it always opens (its chevron; or the word Details), beside a stat that does not"><InspectPlate room={room} /></Plate>
+        <Plate id="compare" room={room} title="Compare" caption="The comparison: before, after, the difference signed AND in words (better, worse, no change); the colour only repeats them"><ComparisonPlate room={room} /></Plate>
+        <Plate id="leveltile" room={room} title="Bro" caption="The level tile (a weapon's door): its picture, level and bar; its state in words, the one in hand framed; its points only while it has some"><LevelTilePlate room={room} /></Plate>
+        <Plate id="strip" room={room} title="Bro" caption="The quiet strip: whole entries only, never a word cut at its edge; where they do not all fit, a more control turns to the next"><StripPlate room={room} /></Plate>
+        <OverlaySample room={room} />
       </div>
     </div>
   );

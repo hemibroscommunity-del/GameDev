@@ -385,11 +385,14 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: compare, equipProject, workspace
 - **Files**: `src/game/`: equipLook
 - **Files**: `src/game/`: gearShowcase
+- **Files**: `src/game/`: uiRoles, kitRules
 - **Files**: `src/game/`: menuTile, gearGeometry
 - **Files**: `src/game/`: charHud
 - **Files**: `src/game/`: hudCorner
 - **Files**: `src/game/`: topGold
 - **Files**: `src/game/`: v17Wide
+- **Files**: `src/game/`: broV17
+- **Files**: `src/game/`: v17Gear
 - **Files**: `src/game/`: lifeProfile
 - **Files**: `src/game/`: feats
 - **Files**: `src/game/`: codexView, entityInspect, lootRows

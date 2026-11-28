@@ -110,6 +110,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      under the frame: Menu, Bro, Character) and it shows the compact count of the worker's number.
      v2.3.6782 (card UI3-bro): Bro is ONE page for yourself; the AP is the first entry of its strip */
   await H.dashOpen(P, 'hero');
+  /* v2.3.6843 (card UI4 PR 4): either Bro (V17's quiet strip, or the six tiles of ?v17bro=0) */ await H.broReveal(P, '[data-bro-fact="ap"]');
   let card = null;
   for (let i = 0; i < 30; i++) {
     card = await P.page.evaluate(() => {

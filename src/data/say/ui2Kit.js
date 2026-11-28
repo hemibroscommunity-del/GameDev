@@ -17,4 +17,12 @@ export const SAY = Object.freeze({
   'ui2Kit.sending': 'Sending…',
   'ui2Kit.unknown': 'Not confirmed yet',
   'ui2Kit.noRule': 'Not available',
+  /* v2.3.6840 (card UI4): the five new pieces (the Stepper, the stat you inspect, the Comparison) */
+  'ui2Kit.oneFewer': 'One fewer {name}',
+  'ui2Kit.oneMore': 'One more {name}',
+  'ui2Kit.details': 'Details',
+  'ui2Kit.better': 'better',
+  'ui2Kit.worse': 'worse',
+  'ui2Kit.same': 'no change',
+  'ui2Kit.becomes': 'becomes',
 });

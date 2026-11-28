@@ -30,12 +30,17 @@ import { broSelfPage } from '@/game/broHub.js';
 import { dashNavView } from '@/game/dashNav.js';   /* v2.3.6782: the frame's top entry, its `who` */   /* v2.3.6782: which of Bro's pages an id draws (yours: the one Bro page) */
 import { heroSectionBus } from './heroSectionBus.js';
 import { CombatHub } from './CombatHub.jsx';   /* v2.3.6685 (card UI2-combat): Combat's hub */
+import { BroV17 } from './BroV17.jsx';   /* v2.3.6843 (card UI4 PR 4): Bro, the three weapons first */
+import { v17BroWanted } from '@/game/broV17.js';
 import { WeaponPage } from './WeaponPage.jsx';   /* v2.3.6685: a weapon's page */
 import { SharedPage } from './SharedPage.jsx';   /* v2.3.6686: the Shared page */
 import { StatTree } from './StatTree.jsx';   /* v2.3.6686: the stat tree, a layer a page */
 import { GearShowcase } from './GearShowcase.jsx';   /* v2.3.6689 (card UI2-gear PR 3): Equipment's showcase */
 import { COMBAT_PAGES } from '@/game/combatHub.js';
 import { DashFeatsPage } from '../../lazyPanels.js';   /* v2.3.6695 (card UI2-feats): Feats' landing (the page id `achievements`), in the Achievements script */
+
+/* v2.3.6843: ?v17bro read once, when the page loads (the address and the phone's memory; =0 remembered) */
+const V17_BRO = v17BroWanted();
 const isWeapon = (c) => Object.prototype.hasOwnProperty.call(COMBAT_PAGES, String(c));   /* v2.3.6683: Combat's Points opens the Bro page's Points window */
 
 /* v2.3.6600 (card BRO, the owner: "I want it so that it shows "pages" where all the information needs
@@ -290,9 +295,14 @@ export const BroCard = ({ points, onPoints, door, who, page, sel }) => {
   /* v2.3.6782 (card UI3-bro): ONE page for yourself, the six and the strip (its readings the passport's
      reader's, so the strip and another player's Character never disagree; another player's strip reads
      only what their own entry carries) */
-  const landing = (
+  /* v2.3.6843 (card UI4 PR 4, the owner's V17:55): with ?v17bro on (the default), Bro leads with the three
+     weapons (sheet/BroV17.jsx; the rules src/game/broV17.js); ?v17bro=0 (remembered) the six and the strip */
+  const readStrip = who == null ? () => readPassport(S) : () => ((who && typeof who === 'object' && who.passport) || {});
+  const landing = V17_BRO ? (
+    <BroV17 S={S} caps={(S && S._serverCaps) || null} who={who == null ? null : who} lifeNew={lifeNew} onGear={openGear} read={readStrip} />
+  ) : (
     <BroLanding points={n} lifeNew={lifeNew} caps={(S && S._serverCaps) || null} who={who == null ? null : who} onGear={openGear}
-      read={who == null ? () => readPassport(S) : () => ((who && typeof who === 'object' && who.passport) || {})} />
+      read={readStrip} />
   );
   if (!door && dashboardPanelBus.frameOn()) return landing;
   /* v2.3.6684 (card UI2-bro PR 2): the passport (CharacterPage.jsx).  v2.3.6685 (card UI2-combat): a weapon's

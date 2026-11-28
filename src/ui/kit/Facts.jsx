@@ -10,6 +10,7 @@
  * summary strip; a phone on its side). */
 import React from 'react';
 import { stateClass } from './shine.js';
+import { ui2Role } from '@/game/uiRoles.js';   /* v2.3.6840 (card UI4): the role, decided in one place */
 
 export function Ui2Facts({ dir, children, className, style, ...rest }) {
   return (
@@ -20,9 +21,11 @@ export function Ui2Facts({ dir, children, className, style, ...rest }) {
 }
 
 /** One row: `k` the label, `v` the value; `none` the honest empty value ("No clan"); `gold` a value
-    that is progression; `art` a small picture before the value; `onClick` makes it a door. */
-export function Ui2Fact({ k, v, none, gold, art, state, onClick, className, style, ...rest }) {
-  const opens = typeof onClick === 'function';
+    that is progression; `art` a small picture before the value; `onClick` makes it a door.
+    v2.3.6840 (card UI4): `intent` 'info' or 'inspect' (V17:39-40); without one, src/game/uiRoles.js maps the handler. */
+export function Ui2Fact({ k, v, none, gold, art, state, intent, onClick, className, style, ...rest }) {
+  const r = ui2Role('Ui2Fact', { intent, onClick });
+  const opens = r.press;
   const cls = 'u2-fact' + stateClass(state) + (className ? ' ' + className : '');
   const inner = (
     <>
@@ -34,6 +37,6 @@ export function Ui2Fact({ k, v, none, gold, art, state, onClick, className, styl
       </span>
     </>
   );
-  if (opens) return <button type="button" className={cls} onClick={onClick} style={style} {...rest}>{inner}</button>;
-  return <div className={cls} style={style} {...rest}>{inner}</div>;
+  if (opens) return <button type="button" className={cls} data-u2-role={r.role} onClick={onClick} style={style} {...rest}>{inner}</button>;
+  return <div className={cls} data-u2-role={r.role} style={style} {...rest}>{inner}</div>;
 }

@@ -20,18 +20,19 @@
 import React from 'react';
 import { stateClass } from './shine.js';
 import { Ui2Badge } from './Badge.jsx';
+import { HEADER_ROLES } from '@/game/uiRoles.js';   /* v2.3.6840 (card UI4): Back and Menu go, Close adjusts (a dismiss, V17:43) */
 import { SAY } from '@/data/say/ui2Kit.js';   /* the kit's words, in the one table */
 import { say } from '@/game/say.js';
 
 export function Ui2Header({ title, backLabel = say(SAY, 'ui2Kit.back'), onBack, onMenu, onClose, states = {}, closeStart, menuNext, ctl = {}, menuMark = null }) {
   const close = (
-    <button type="button" className={'u2-raised u2-ctl is-round' + stateClass(states.close)} data-u2="close" data-esc="" data-esc-outer="" aria-label={say(SAY, 'ui2Kit.close')} onClick={onClose || undefined} {...(ctl.close || {})}>{'✕'}</button>
+    <button type="button" className={'u2-raised u2-ctl is-round' + stateClass(states.close)} data-u2="close" data-u2-role={HEADER_ROLES.close} data-esc="" data-esc-outer="" aria-label={say(SAY, 'ui2Kit.close')} onClick={onClose || undefined} {...(ctl.close || {})}>{'✕'}</button>
   );
   return (
     <div className="u2-head" style={{ width: '100%' }}>
       <span className="u2-head-side is-start">
         {closeStart ? close : onBack !== false ? (
-          <button type="button" className={'u2-raised u2-ctl' + stateClass(states.back)} data-u2="back" onClick={onBack || undefined} aria-label={say(SAY, 'ui2Kit.backAria', { label: backLabel })} {...(ctl.back || {})}>
+          <button type="button" className={'u2-raised u2-ctl' + stateClass(states.back)} data-u2="back" data-u2-role={HEADER_ROLES.back} onClick={onBack || undefined} aria-label={say(SAY, 'ui2Kit.backAria', { label: backLabel })} {...(ctl.back || {})}>
             <span className="u2-ctl-glyph" aria-hidden="true">{'‹'}</span><span>{backLabel}</span>
           </button>
         ) : null}
@@ -39,7 +40,7 @@ export function Ui2Header({ title, backLabel = say(SAY, 'ui2Kit.back'), onBack, 
       <h2 className="u2-head-title" data-u2="title" style={{ margin: 0 }}>{title}</h2>
       <span className="u2-head-side">
         {onMenu !== false ? (
-          <button type="button" className={'u2-raised u2-ctl' + stateClass(states.menu) + (menuMark && menuMark.glow ? ' is-glow' : '')} data-u2="menu" onClick={onMenu || undefined} {...(ctl.menu || {})}>
+          <button type="button" className={'u2-raised u2-ctl' + stateClass(states.menu) + (menuMark && menuMark.glow ? ' is-glow' : '')} data-u2="menu" data-u2-role={HEADER_ROLES.menu} onClick={onMenu || undefined} {...(ctl.menu || {})}>
             <span>{say(SAY, 'ui2Kit.menu')}</span>{menuNext ? <span className="u2-ctl-glyph" aria-hidden="true">{'›'}</span> : null}
             {menuMark ? <Ui2Badge count={menuMark.count} dot={menuMark.dot} /> : null}
           </button>

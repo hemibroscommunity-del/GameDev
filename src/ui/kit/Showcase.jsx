@@ -25,7 +25,7 @@ export function Ui2Showcase({ figure, head, doors = [], facts = [], short, locke
           {doors.length ? (
             <div className="u2-show-doors" data-u2-show-doors={doors.length}>
               {doors.map((d) => (
-                <Ui2Tile key={d.id} size="compact" label={d.label} sub={d.summary} className="u2-show-door"
+                <Ui2Tile key={d.id} intent="go" size="compact" label={d.label} sub={d.summary} className="u2-show-door"
                   data-u2-show-door={d.id} onClick={d.onClick} {...(d.attrs || {})} />
               ))}
             </div>

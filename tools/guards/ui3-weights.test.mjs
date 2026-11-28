@@ -53,6 +53,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { RAISED_KNOWN } from './lib/raisedFormsKnown.mjs';
+import { cssRules } from './lib/cssRules.mjs';   /* v2.3.6841: the rule reader, shared with ui4-look.test */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const KNOWN_FILE = path.join(ROOT, 'tools/guards/lib/raisedFormsKnown.mjs');
@@ -268,46 +269,16 @@ export function jsxFaults(file, src) {
   return faults;
 }
 
-/* ── the style sheets: a small rule reader (comments out; at-rules' blocks walked) ── */
-export function cssRules(text) {
-  const src = text.replace(/\/\*[\s\S]*?\*\//g, '');
-  const rules = [];
-  let i = 0;
-  const block = (end, at) => {
-    while (i < src.length) {
-      let j = i;
-      let depth = 0;
-      while (j < src.length && !(depth === 0 && (src[j] === '{' || src[j] === '}'))) { if (src[j] === '(') depth++; else if (src[j] === ')') depth--; j++; }
-      if (j >= src.length) { i = j; return; }
-      if (src[j] === '}') { i = j + 1; return; }
-      const sel = src.slice(i, j).trim().replace(/^[^{]*;\s*/, '');
-      i = j + 1;
-      if (/^@(media|supports|container|layer)/.test(sel)) { block('}', sel); continue; }
-      if (/^@/.test(sel)) { let d = 1; while (i < src.length && d) { if (src[i] === '{') d++; else if (src[i] === '}') d--; i++; } continue; }
-      let k = i;
-      let paren = 0;
-      while (k < src.length && !(paren === 0 && src[k] === '}')) { if (src[k] === '(') paren++; else if (src[k] === ')') paren--; k++; }
-      const body = src.slice(i, k);
-      i = k + 1;
-      const decls = [];
-      let buf = '';
-      let pd = 0;
-      for (const ch of body) {
-        if (ch === '(') pd++;
-        if (ch === ')') pd--;
-        if (ch === ';' && pd === 0) { decls.push(buf); buf = ''; } else buf += ch;
-      }
-      decls.push(buf);
-      rules.push({ sel, at: at || '', decls: decls.map((d) => d.trim()).filter(Boolean).map((d) => { const x = d.indexOf(':'); return { prop: d.slice(0, x).trim().toLowerCase(), value: d.slice(x + 1).trim() }; }) });
-    }
-  };
-  block(null, '');
-  return rules;
-}
+/* ── the style sheets: a small rule reader (v2.3.6841: moved to tools/guards/lib/cssRules.mjs, unchanged,
+   so ui4-look.test reads the sheets the same way without running this suite; re-exported here) ── */
+export { cssRules };
 
 /* the text colours (part 6: "consistent off-white text throughout, gold for progression and important
    numbers, and other colors only when they communicate something meaningful") */
-export const TEXT_TOKENS = Object.freeze(['text-ivory', 'text-muted', 'text-gold', 'text-on-action', 'text-disabled', 'brass-highlight']);
+export const TEXT_TOKENS = Object.freeze(['text-ivory', 'text-muted', 'text-gold', 'text-on-action', 'text-disabled', 'brass-highlight',
+  /* v2.3.6841 (card UI4 PR 2): the V17 look's words (src/game/ui2Tokens.js UI2_V17), read only under
+     `.ui2.ui2-v17` (tools/guards/ui4-look.test.mjs L1) */
+  'v17-ivory', 'v17-muted', 'v17-on-commit', 'v17-on-danger', 'v17-off-text', 'v17-select-text', 'v17-priority-text']);
 /* the colours that mean something, and the selectors they mean it on: [token pattern, selector pattern, why] */
 export const MEANING = Object.freeze([
   [/^grade-(rare|elite|elite-light|godly)$/, /\[data-grade=/, 'an item\'s grade'],

@@ -1,0 +1,44 @@
+/* ═══ v2.3.6843: BRO, THE THREE WEAPONS FIRST (card UI4 PR 4, the owner's V17) ═══
+ * sheet/BroV17.jsx; the room's numbers are src/game/broV17.js BRO_V17_ROOM.
+ * Upright: the weapons' row takes what the doors' row (44) and the strip (44)
+ * leave; a computer's or a tablet's block (wide): the weapons, the two doors
+ * (stacked) and the facts in ONE row, the strip whole under it; a phone on its
+ * side: ONE row (V17:31), the strip in what it leaves.  The type is the kit's
+ * (Bro keeps 11 px for its smallest word: ui2Tokens.js UI2_V17_SMALL11). */
+.ui2.u2-bv { flex: 1 1 auto; height: 100%; min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; }
+.ui2 .u2-bv-row { display: flex; gap: 4px; min-width: 0; }
+.ui2 .u2-bv-row.is-weapons { flex: 1 1 auto; min-height: 0; }
+.ui2 .u2-bv-row.is-doors { flex: 0 0 44px; }
+.ui2 .u2-bv-row.is-top { flex: 0 1 96px; min-height: 0; }   /* no taller than a phone's weapons (BRO_V17_ROOM.WIDE_ROW) */
+.ui2 .u2-bv-row.is-one { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+.ui2 .u2-bv-col { flex: 0 0 168px; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
+.ui2.u2-bv.is-wide .u2-bv-row.is-top > .u2-lt { flex: 0 1 150px; }
+.ui2.u2-bv.is-side .u2-bv-row.is-one > .u2-lt { flex: 0 0 114px; padding: 4px; }
+.ui2 .u2-bv-door { flex: 1 1 0; min-width: 0; min-height: 44px; }
+.ui2 .u2-bv-door.is-pets { flex: 0 1 96px; }
+.ui2.u2-bv.is-side .u2-bv-door.is-shared { flex: 0 0 108px; }
+.ui2.u2-bv.is-side .u2-bv-row.is-one > .u2-bv-door.is-pets { flex: 0 0 76px; }
+.ui2 .u2-bv-door .u2-tile-label { white-space: normal; line-height: 14px; }
+.ui2 .u2-bv-pts { color: var(--ui2-text-gold); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* the quieter facts: flat, label over value, nothing to press (V17:38) */
+.ui2 .u2-bv-facts { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 0; padding: 0 6px; min-width: 96px; }
+.ui2 .u2-bv-facts .u2-fact { min-height: 0; gap: 6px; }
+.ui2 .u2-bv-facts .u2-fact-k, .ui2 .u2-bv-facts .u2-fact-v { font-size: var(--ui2-fs-body); line-height: 16px; }
+.ui2.u2-bv.is-wide .u2-bv-facts { flex: 0 0 140px; align-self: center; padding-top: 6px; padding-bottom: 6px; }
+/* the strip: whole entries, each as wide as its rule shares out (broV17StripPages) */
+.ui2 .u2-bv-stripbox { flex: 0 0 44px; min-width: 0; display: flex; }
+.ui2.u2-bv.is-side .u2-bv-stripbox { flex: 1 1 0; height: auto; align-self: stretch; }
+.ui2 .u2-bv-strip { flex: 1 1 auto; min-width: 0; }
+.ui2 .u2-bv-strip .u2-strip-row > * { min-height: 44px; box-sizing: border-box; }
+.ui2 .u2-bv-entry.u2-tile.is-compact { gap: 4px; padding: 2px 4px; justify-content: center; }
+.ui2 .u2-bv-entry .u2-tile-label { font-size: var(--ui2-fs-small); line-height: 13px; white-space: nowrap; }
+/* a fact in the strip: its label over its value, centred (the owner, 22:20 UTC 2026-11-27: "I'd prefer centered") */
+.ui2 .u2-bv-strip .u2-fact { padding: 0 4px; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-align: center; }
+.ui2 .u2-bv-strip .u2-fact-k { flex: 0 0 auto; max-width: 100%; }
+.ui2 .u2-bv-strip .u2-fact-v { text-align: center; }
+/* the key a computer's letter wears (game.css [data-key]::after, bottom right) keeps clear of the word */
+.ui2 .u2-bv-entry.u2-tile.is-compact[data-key] { padding-right: 16px; }
+.ui2.u2-bv.is-side .u2-bv-strip .u2-fact, .ui2.u2-bv.is-side .u2-bv-entry { min-height: 44px; }
+
+/* V17's look: the points' cue the priority colour, never commit gold (V17:20) */
+.ui2.ui2-v17 .u2-bv-pts { color: var(--ui2-v17-priority-text); }

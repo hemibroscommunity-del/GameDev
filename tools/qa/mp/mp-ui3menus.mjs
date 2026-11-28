@@ -245,8 +245,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!pair && (g3.bagSlots || []).every((b) => /u2-slot/.test(b.s.cls) && b.inline === '||'), { pair: pair && pair.key, slot: pair && pair.s, bag0: (g3.bagSlots || [])[0], worn0: (g3.worn || [])[0] });
     rec.ok('3a. the bag\'s marks kept: the ore\'s count, the pin\'s anchor, the "?" on the unrevealed torso', !!ore && /3/.test(ore.text) && /⚓/.test(ore.text) && !!hid && hid.q,
       { ore: ore && ore.text, hidden: hid && { key: hid.key, q: hid.q }, pin: pinErr });
-    rec.ok('4. the label row 24 px, its words 11 px, no word under 11; every control 24 tall and 44 to the touch; the gold a recessed pill (not a button), its number the purse, its coin 16 px',
-      g3.head === 24 && g3.headFont === '11px' && g3.small.length === 0 && g3.ctls.length > 0 && g3.ctls.every((c) => c.h === 24 && c.touch === '44px')
+    /* v2.3.6841 (card UI4 PR 2): under the owner's V17 look (on by default) the smallest word is 12 (V17:49
+       "metadata 12-13"), measured to fit this row (mp-v17look 3); `?v17look=0` keeps 11 */
+    rec.ok('4. the label row 24 px, its words 12 px (V17\'s smallest; 11 before it), no word under 11; every control 24 tall and 44 to the touch; the gold a recessed pill (not a button), its number the purse, its coin 16 px',
+      g3.head === 24 && g3.headFont === '12px' && g3.small.length === 0 && g3.ctls.length > 0 && g3.ctls.every((c) => c.h === 24 && c.touch === '44px')
       && !!g3.gold && g3.gold.tag === 'DIV' && /is-pill/.test(g3.gold.cls) && g3.gold.sunk && g3.gold.n === g3.gold.coins && g3.gold.text.length > 0 && g3.gold.art === 16,
       { head: g3.head, font: g3.headFont, small: g3.small, ctls: g3.ctls, gold: g3.gold });
     const r3 = await bagRows(P, rec, '390x844', 3);

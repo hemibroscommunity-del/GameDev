@@ -36,6 +36,34 @@
  *      edge, after a reload with no switch too (remembered), and `?ui2look=1`
  *      the new again.
  * Pictures: docs/shots/ui3-kit-weights.png, -weights-sideways, -was.
+ *
+ * v2.3.6840 (card UI4 PR 1, the owner's V17: every piece made with a role;
+ * the five pieces V17 names that the kit lacked, in today's look):
+ *  11. at each size: the plate "Roles" draws each of the nine roles by a piece
+ *      made with it (data-u2-role), a fact a div and the rest buttons; the
+ *      tab row is a tablist of three tabs, exactly one aria-selected, and a
+ *      tap moves it (upright: the "Showing" fact follows); the stepper's ends
+ *      are off at their ends and a tap on + adds one; the comparison writes
+ *      every difference signed and in words ("+5 better", "no change"), the
+ *      colour on the good and bad only; the overlay's ✕ is 44 x 44 with
+ *      data-esc and its body scrolls under its header.
+ * Pictures: docs/shots/ui4-kit-pieces.png, -pieces-sideways.
+ *
+ * v2.3.6841 (card UI4 PR 2, `?v17look`, the owner's V17 look, ON by default):
+ * checks 1 to 11 hold TODAY's look, so they run with `?v17look=0` (remembered
+ * on each page of theirs), and their pictures stay the day before's;
+ *  12. by default (no switch) every kit root wears `ui2-v17` and the plate
+ *      "Roles" wears V17:39-46: commit #E4BA68 with #141D22 words, danger
+ *      #753439 with white words, go #294963 with its #698397 edge, adjust
+ *      #203644, inspect #91A9B9's border on #0A1620, the chosen one its gold
+ *      border #EAC474, a bar under it and its word underlined (never colour
+ *      alone), disabled #BCC8CC words on #20303B; the five faces of "Actions"
+ *      are three (green Accept now commit gold, blue Travel the slate);
+ *      `?v17look=0` takes the class away, still after a reload with no switch
+ *      (remembered), and `?v17look=1` brings it back; a label alone in its
+ *      box is centred (the owner, 22:20 UTC 2026-11-27: "I'd prefer
+ *      centered").
+ * Pictures: docs/shots/ui4-look-kit-<roles|actions>-<on|off>.png.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -52,7 +80,8 @@ export function audit() {
   const out = { frames: 0, boxes: [], overflow: [], clipped: [], small: [], buttons: 0, texts: 0 };
   const say = (el) => (el.getAttribute('data-u2-demo') || el.getAttribute('data-u2') || el.className || el.tagName) + ' "' + (el.textContent || '').trim().slice(0, 24) + '"';
   const inside = (r, R) => r.left >= R.left - 0.5 && r.right <= R.right + 0.5 && r.top >= R.top - 0.5 && r.bottom <= R.bottom + 0.5;
-  for (const fr of document.querySelectorAll('.u2-frame')) {
+  /* v2.3.6840: the overlay is a frame too, but not a band: its own check (11) */
+  for (const fr of document.querySelectorAll('.u2-frame:not(.u2-over)')) {
     out.frames++;
     const R = fr.getBoundingClientRect();
     out.boxes.push([Math.round(R.width), Math.round(R.height)]);
@@ -148,6 +177,82 @@ export function colours() {
     edge: tile && getComputedStyle(tile).borderTopColor, line: v('--ui2-line'), probe: window.__btUiKit && window.__btUiKit.look };
 }
 
+/* v2.3.6840 (card UI4 PR 1): the roles and the five pieces, read in the page (taps through the DOM: no
+   layout read needed but the ✕'s box) */
+export async function ui4Pieces() {
+  const q = (sel) => document.querySelector(sel);
+  const out = { roles: {}, tabs: null, stepper: null, cmp: [], over: null };
+  for (const el of document.querySelectorAll('[data-u2-plate="roles"] [data-u4-role]')) {
+    const want = el.getAttribute('data-u4-role');
+    const piece = el.hasAttribute('data-u2-role') ? el : el.querySelector('[data-u2-role]');
+    out.roles[want] = piece ? { role: piece.getAttribute('data-u2-role'), tag: piece.tagName.toLowerCase(), off: !!piece.disabled } : null;
+  }
+  const list = q('[data-u4-piece="tab"]');
+  if (list) {
+    const read = () => Array.from(list.querySelectorAll('[role="tab"]')).map((t) => ({ id: t.getAttribute('data-u4-tab'), sel: t.getAttribute('aria-selected'), role: t.getAttribute('data-u2-role') }));
+    const before = read();
+    const daily = list.querySelector('[data-u4-tab="daily"]');
+    if (daily) daily.click();
+    await new Promise((r) => setTimeout(r, 120));
+    const after = read();
+    const shows = q('[data-u4-tab-shows] .u2-fact-v');
+    out.tabs = { list: list.getAttribute('role'), before, after, shows: shows ? shows.textContent : null };
+    const active = list.querySelector('[data-u4-tab="active"]');
+    if (active) active.click();
+  }
+  const st = q('[data-u4-piece="stepper"]');
+  if (st) {
+    const v = () => (st.querySelector('.u2-step-v b') || {}).textContent;
+    const was = v();
+    st.querySelector('[data-u2-step-b="more"]').click();
+    await new Promise((r) => setTimeout(r, 120));
+    const now = v();
+    st.querySelector('[data-u2-step-b="less"]').click();
+    const lo = q('[data-u4-step-end="min"]');
+    const hi = q('[data-u4-step-end="max"]');
+    out.stepper = { was, now, minLess: lo && lo.querySelector('[data-u2-step-b="less"]').disabled, minMore: lo && lo.querySelector('[data-u2-step-b="more"]').disabled,
+      maxMore: hi && hi.querySelector('[data-u2-step-b="more"]').disabled, roles: Array.from(st.querySelectorAll('button')).map((b) => b.getAttribute('data-u2-role')) };
+  }
+  for (const c of document.querySelectorAll('[data-u4-cmp]')) {
+    const d = c.querySelector('.u2-cmp-d');
+    out.cmp.push({ id: c.getAttribute('data-u4-cmp'), text: d ? d.textContent : null, good: d ? d.classList.contains('is-good') : null, bad: d ? d.classList.contains('is-bad') : null, role: c.getAttribute('data-u2-role') });
+  }
+  const ov = q('[data-u4-piece="overlay"]');
+  if (ov) {
+    const x = ov.querySelector('[data-u2="close"]');
+    const r = x.getBoundingClientRect();
+    const body = ov.querySelector('[data-u2-overlay-body]');
+    out.over = { w: Math.round(r.width), h: Math.round(r.height), esc: x.hasAttribute('data-esc'), role: x.getAttribute('data-u2-role'), dialog: ov.getAttribute('role'),
+      scrolls: body.scrollHeight > body.clientHeight + 4 && getComputedStyle(body).overflowY === 'auto' };
+  }
+  return out;
+}
+export function ui4Ok(U, side) {
+  const bad = [];
+  const want = ['info', 'inspect', 'go', 'selected', 'adjust', 'commit', 'danger', 'disabled', 'slot'];
+  for (const id of want) {
+    const r = U.roles[id];
+    if (!r || r.role !== id) bad.push('role ' + id + ' drawn as ' + JSON.stringify(r));
+    else if (id === 'info' ? r.tag !== 'div' : r.tag !== 'button') bad.push('role ' + id + ' is a ' + r.tag);
+  }
+  if (U.roles.disabled && !U.roles.disabled.off) bad.push('the disabled role is pressable');
+  const T = U.tabs;
+  if (!T || T.list !== 'tablist' || T.before.length !== 3) bad.push('no tab row of three');
+  else {
+    const one = (L, id) => L.filter((t) => t.sel === 'true').map((t) => t.id).join() === id && L.every((t) => t.role === (t.sel === 'true' ? 'selected' : 'go'));
+    if (!one(T.before, 'active') || !one(T.after, 'daily')) bad.push('the tab did not move: ' + JSON.stringify(T));
+    if (!side && T.shows !== 'Daily') bad.push('the "Showing" fact did not follow the tab: ' + T.shows);
+  }
+  const S = U.stepper;
+  if (!S || S.was !== '3' || S.now !== '4' || !S.minLess || S.minMore || !S.maxMore || S.roles.some((r) => r !== 'adjust')) bad.push('the stepper: ' + JSON.stringify(S));
+  const C = Object.fromEntries(U.cmp.map((c) => [c.id, c]));
+  const ok = (id, text, good, badc) => C[id] && C[id].text === text && C[id].good === good && C[id].bad === badc && C[id].role === 'info';
+  if (!ok('up', '+5 better', true, false) || !ok('down', '−0.2 worse', false, true) || !ok('lower', '−1 better', true, false) || !ok('same', 'no change', false, false)) bad.push('the comparison: ' + JSON.stringify(U.cmp));
+  const O = U.over;
+  if (!O || O.w < 44 || O.h < 44 || !O.esc || O.role !== 'adjust' || O.dialog !== 'dialog' || !O.scrolls) bad.push('the overlay: ' + JSON.stringify(O));
+  return bad;
+}
+
 async function shotPlates(P, file, ids) {
   const els = [];
   for (const id of ids) els.push(await P.page.$(`[data-u2-plate="${id}"]`));
@@ -171,7 +276,7 @@ async function shotPlates(P, file, ids) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   fs.mkdirSync(SHOTS, { recursive: true });
-  const P = await H.newPlayer(browser, { name: NAME, wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'uikit=1' });
+  const P = await H.newPlayer(browser, { name: NAME, wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'uikit=1&v17look=0' });
   try {
     /* the kit lies over the door: put it aside while the player walks in */
     await P.page.waitForSelector('#bt-uikit', { state: 'attached', timeout: 60000 }).catch(() => null);
@@ -204,15 +309,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const A = await P.page.evaluate(audit);
       /* v2.3.6688: nine plates, the workspace (two panels, the one grid of item cells: card UI2-gear PR 2) the ninth;
          v2.3.6780: thirteen (the zones, empty and confirm plates of v2.3.6683 had come since the nine), the
-         three weights (card UI3-kit) the thirteenth; v2.3.6693: fifteen (card UI2-codex: the collection, the showcase) */
-      const sizeOk = A.frames === 15 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
-      rec.ok(`1a. ${s.tag}: fifteen boxes (v2.3.6693), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
+         three weights (card UI3-kit) the thirteenth; v2.3.6693: fifteen (card UI2-codex: the collection, the showcase);
+         v2.3.6840: twenty (card UI4: the roles, the tab, the stepper, the stat you inspect, the comparison) */
+      const sizeOk = A.frames === 20 && A.boxes.every(([w, h]) => w === s.band[0] && h === s.band[1]) && k.room.head === s.head;
+      rec.ok(`1a. ${s.tag}: twenty boxes (v2.3.6840), each the band's real size ${s.band[0]} x ${s.band[1]} with a ${s.head} px header row`, sizeOk, { boxes: A.boxes, room: k.room });
       rec.ok(`1b. ${s.tag}: every piece inside its box and its page (${A.texts} runs of words read)`, A.overflow.length === 0, A.overflow.slice(0, 8));
       rec.ok(`1c. ${s.tag}: no text cut or run out of its box`, A.clipped.length === 0 && A.texts > 80, A.clipped.slice(0, 8));
       rec.ok(`2. ${s.tag}: every control in a box is at least 44 x 44 (${A.buttons} controls)`, A.small.length === 0 && A.buttons > 40, A.small.slice(0, 8));
       const W = await P.page.evaluate(weights);
       const wb = weightsOk(W);
       rec.ok(`8. ${s.tag}: three weights: the raised door has a drop shadow, the stat and the facts none, no fact row with a face, a chevron only on what opens, each 44 x 44`, wb.length === 0, wb.length ? { bad: wb, W } : W.raised);
+      /* v2.3.6840: 11, the roles and the five pieces */
+      const U = await P.page.evaluate(ui4Pieces);
+      const ub = ui4Ok(U, s.tag === '844x390');
+      rec.ok(`11. ${s.tag}: the nine roles each drawn by a piece made with it; the tab, the stepper, the comparison and the overlay as built`, ub.length === 0, ub.length ? { bad: ub, U } : U.roles);
+      if (s.tag === '390x844') {
+        const okU = await shotPlates(P, 'ui4-kit-pieces.png', ['roles', 'tab', 'stepper', 'inspect', 'compare', 'overlay']);
+        await P.page.setViewportSize({ width: 390, height: 844 });
+        await P.page.waitForTimeout(600);
+        rec.ok('the picture of the roles and the five pieces (docs/shots/ui4-kit-pieces)', okU, okU);
+      }
+      if (s.tag === '844x390') {
+        const okS = await shotPlates(P, 'ui4-kit-pieces-sideways.png', ['roles', 'tab', 'stepper', 'inspect', 'compare']);
+        await P.page.setViewportSize({ width: 844, height: 390 });
+        await P.page.waitForTimeout(600);
+        rec.ok('the sideways picture of the roles and the pieces (docs/shots/ui4-kit-pieces-sideways)', okS, okS);
+      }
       if (s.tag === '390x844') {
         const L = await P.page.evaluate(looks);
         const ok3a = L.tile && L.tilePressed && (L.tilePressed.shadow !== L.tile.shadow) && (L.tilePressed.transform !== L.tile.transform);
@@ -267,7 +389,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } finally { await P.ctx.close().catch(() => {}); }
 
   /* 6 and 7: the switch and reduced motion, on a page of their own (no world needed) */
-  const Q = await H.newPlayer(browser, { name: 'Kitshine', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, query: 'uikit=1' });
+  const Q = await H.newPlayer(browser, { name: 'Kitshine', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, query: 'uikit=1&v17look=0' });
   try {
     const gloss = () => Q.page.evaluate(() => {
       const t = document.querySelector('[data-u2-demo="Default"]');
@@ -314,8 +436,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the picture of yesterday\'s look (docs/shots/ui3-kit-was)', shotWas, shotWas);
   } finally { await Q.ctx.close().catch(() => {}); }
 
+  /* v2.3.6841: 12. the V17 look, by default, on the kit page; =0 remembered; =1 back */
+  const R = await H.newPlayer(browser, { name: 'Kitlook', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'uikit=1' });
+  try {
+    const up = () => R.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 30000 }).then(() => true, () => false);
+    const look = () => R.page.evaluate(() => {
+      const cs = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e) : null; };
+      const pick = (sel, ...ps) => { const c = cs(sel); return c ? ps.map((p) => c[p]).join(' | ') : null; };
+      const lab = document.querySelector('[data-u2-plate="roles"] [data-u2-role="selected"] .u2-tile-label');
+      return {
+        roots: document.querySelectorAll('.ui2').length, v17: document.querySelectorAll('.ui2.ui2-v17').length,
+        commit: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="commit"]', 'backgroundColor', 'color'),
+        danger: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="danger"]', 'backgroundColor', 'color'),
+        go: pick('[data-u2-plate="roles"] .u2-raised[data-u2-role="go"]', 'backgroundColor', 'borderTopColor'),
+        adjust: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="adjust"]', 'backgroundColor', 'color'),
+        inspect: pick('[data-u2-plate="roles"] .u2-stat[data-u2-role="inspect"]', 'backgroundColor', 'borderTopColor'),
+        selected: pick('[data-u2-plate="roles"] [data-u2-role="selected"]', 'borderTopColor', 'boxShadow'),
+        underline: lab ? getComputedStyle(lab).textDecorationLine : null,
+        lone: pick('[data-u2-plate="roles"] .u2-tile.is-compact.is-lone', 'justifyContent'),
+        statWords: pick('[data-u2-plate="roles"] .u2-stat .u2-stat-words', 'textAlign'),
+        disabled: pick('[data-u2-plate="roles"] .u2-act[data-u2-role="disabled"]', 'backgroundColor', 'color'),
+        green: pick('[data-u2-plate="actions"] [data-u2-demo="green"]', 'backgroundColor'),
+        blue: pick('[data-u2-plate="actions"] [data-u2-demo="blue"]', 'backgroundColor', 'color'),
+      };
+    });
+    const shoot = async (plate, file) => R.page.$(`[data-u2-plate="${plate}"]`).then((e) => (e ? e.screenshot({ path: path.join(SHOTS, file) }).then(() => true, () => false) : false));
+    await up();
+    const on = await look();
+    const s1 = await shoot('roles', 'ui4-look-kit-roles-on.png');
+    const s2 = await shoot('actions', 'ui4-look-kit-actions-on.png');
+    rec.ok('12a. by default every kit root wears ui2-v17, and the roles wear V17:39-46 (commit #E4BA68/#141D22, danger #753439/white, go #294963 edge #698397, adjust #203644, inspect #91A9B9 on #0A1620, disabled #BCC8CC on #20303B)',
+      on.roots > 0 && on.v17 === on.roots && on.commit === 'rgb(228, 186, 104) | rgb(20, 29, 34)' && on.danger === 'rgb(117, 52, 57) | rgb(255, 255, 255)'
+        && on.go === 'rgb(41, 73, 99) | rgb(105, 131, 151)' && /^rgb\(32, 54, 68\)/.test(on.adjust || '') && on.inspect === 'rgb(10, 22, 32) | rgb(145, 169, 185)'
+        && on.disabled === 'rgb(32, 48, 59) | rgb(188, 200, 204)', on);
+    rec.ok('12b. the chosen one: its gold border #EAC474, a bar under it (an inset shadow) and its word underlined: never colour alone',
+      /^rgb\(234, 196, 116\)/.test(on.selected || '') && /inset/.test(on.selected || '') && /underline/.test(on.underline || ''), on);
+    rec.ok('12c. no third colour: green Accept is commit gold, blue Travel the navigation slate with ivory words', on.green === 'rgb(228, 186, 104)' && on.blue === 'rgb(41, 73, 99) | rgb(241, 240, 233)', on);
+    rec.ok('12f. a label alone in its box is centred (the owner: "I\'d prefer centered"): the chosen tile\'s word, a stat\'s words', on.lone === 'center' && on.statWords === 'center', on);
+    const goto = async (q) => { await R.page.goto(R.page.url().replace(/[?&]v17look=[01]/, '') + q, { waitUntil: 'domcontentloaded' }); await up(); return look(); };
+    const off = await goto('&v17look=0');
+    const s3 = await shoot('roles', 'ui4-look-kit-roles-off.png');
+    const s4 = await shoot('actions', 'ui4-look-kit-actions-off.png');
+    const kept = await goto('');
+    const back = await goto('&v17look=1');
+    rec.ok('12d. ?v17look=0 takes the class from every root, still after a reload with no switch (remembered); ?v17look=1 brings it back',
+      off.v17 === 0 && off.roots > 0 && kept.v17 === 0 && back.v17 === back.roots && back.roots > 0 && /gradient/.test('' + off.green) === false, { off: off.v17, kept: kept.v17, back: back.v17 });
+    rec.ok('12e. the pictures, both ways (docs/shots/ui4-look-kit-roles-*, -actions-*)', s1 && s2 && s3 && s4, [s1, s2, s3, s4]);
+  } finally { await R.ctx.close().catch(() => {}); }
+
   /* v2.3.6780: 8 on a computer (the band's 480 px at most) */
-  const D = await H.newPlayer(browser, { name: 'Kitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'uikit=1' });
+  const D = await H.newPlayer(browser, { name: 'Kitdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'uikit=1&v17look=0' });
   try {
     const up = await D.page.waitForFunction(() => window.__btUiKit && window.__btUiKit.ready, null, { timeout: 30000 }).then(() => true, () => false);
     const W = up ? await D.page.evaluate(weights) : null;

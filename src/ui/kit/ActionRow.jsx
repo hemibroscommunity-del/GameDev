@@ -15,7 +15,8 @@ import { SAY } from '@/data/say/ui2Kit.js';
 import { say } from '@/game/say.js';
 
 /**
- * actions  [{ id, slot, cost, check, label, c, onPress }] (screenZones.js's action, with its face)
+ * actions  [{ id, slot, cost, check, label, c, intent, onPress }] (screenZones.js's action, with its face;
+ *          v2.3.6840 (card UI4): `intent` its role, else `c` says it as before: src/game/uiRoles.js) 
  * marks    { [id]: 'free' | 'out' | 'unknown' }
  * whyWord  (why) => words for a reason key (default: the reason as it is)
  */
@@ -34,7 +35,7 @@ export function Ui2Actions({ actions, marks, whyWord }) {
         const note = !cell.on ? (cell.why === WHY_NO_RULE ? say(SAY, 'ui2Kit.noRule') : whyWord ? whyWord(cell.why) : cell.why) : m === 'unknown' ? say(SAY, 'ui2Kit.unknown') : null;
         return (
           <span key={cell.id} className="u2-actcell" data-u2-slot={i} data-u2-action={cell.id} data-u2-mark={m}>
-            <Ui2Action c={a.c || 'gold'} label={a.label} pending={m === 'out'} disabled={!cell.on || m === 'unknown'}
+            <Ui2Action intent={a.intent} c={a.c} label={a.label} pending={m === 'out'} disabled={!cell.on || m === 'unknown'}
               aria-describedby={note ? 'u2why-' + cell.id : undefined}
               onClick={cell.on && !held && a.onPress ? () => a.onPress(cell) : undefined} />
             {note ? <span id={'u2why-' + cell.id} className="u2-why" data-u2-why={cell.on ? 'unknown' : cell.why}>{note}</span> : null}
