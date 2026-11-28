@@ -2803,3 +2803,20 @@ Screens: menus3-power
 **Flagged to the owner:** the document's "Undo while the panel stays open" is the draft now (decided 5); the game has no overall XP of its own (the best weapon's is shown); the wireframe's four stats a lane are the game's six (and the body's seven); the stats line's "13 numbers" are split by lane (a weapon's eight, the body's six); the P key still opens today's Bro page (the keys wait for their own step).
 
 Sources: src/game/menus3Power.js, menus3Router.js; src/ui/menus3/Menus3Power.jsx, Menus3Panel.jsx, menus3Wire.js, menus3.css; src/ui/mobile/sheet/StatTree.jsx (`at`); src/ui/hud/HudArt.jsx, CharacterHud.jsx; server/test/menus3-power.test.mjs; tools/qa/mp/mp-menus3power.mjs.
+
+## The new menus' Feats: the AP line, Medals | Titles | Records, a medal's page (v2.3.6868, card MN step 9)
+Screens: menus3-feats
+
+**What it is for:** what you have done and what it earned you, in World's third section (the owner's document: "Feats (medals by tier, AP)", "AP source breakdown: World · Feats (AP header line)", "Equipped title: World · Feats · Titles", "Lifetime records: World · Feats · Records"; the wireframe v4.4's AP bar, its rail and rows).
+
+**Decisions, and why:**
+- **World's Feats tab opens the new panel on Feats**, always on Medals (rule 1). The page is today's Feats' readings, never counted again (`src/game/menus3Feats.js` reads `src/game/feats.js`).
+- **The AP line** (the wireframe's bar): the worker's total, "n of 33 medals earned", and its split (from medals; quests, guilds and the arena TOGETHER: the worker keeps one number) only where the parts add up; else "where these came from is not known", never a split that is false. The bar is a press to where the AP came from (today's AP tree's layers on one page: by tier, then the rest). Ranks, on its right, opens today's leaderboards until People · Ranks is rebuilt; their Back brings the panel back (`menus3Away`).
+- **Medals**: the game's four tiers (Common, Rare, Arena, Super-rare), each its count and AP, every one of the table's medals a row, 44 tall (the wireframe's 38 mended): a DRAWN medal (its tier's colour, filled and ticked when earned, dashed when not), the name, Earned, its short progress where the game keeps one, or Not yet: a word and a mark, never colour alone. A row opens the medal's page with Back: its one picture (as today's medal page), tier, AP, the day earned, how, so far, and Equip (Remove when worn) on an earned one.
+- **Titles**: the one you wear, every earned title newest first with Equip (Remove on the worn one), the family's next and locked rungs as words (today's Titles page). Equip is today's request (`achv_title`, `sendAchvTitle`, the action door); every button reads "Saving..." and is held while an ask is out.
+- **Records**: the counters the game keeps (kills, deaths, lifetime gold, lifetime XP), the three weapons' accuracy (asked as today's Journey page asks), your record on Hemi when there is one, and "Quests you finished (n)", today's Quest History door, which opens World · Quests' own Done rail.
+- **No art loads because it opened**: the rows draw their medals; only a medal's page shows its picture.
+
+**Flagged to the owner:** no claim and no dot (decided 7): an achievement pays its AP the moment the worker grants it, and no button in today's game lights for a feat's reward; the wireframe's "next feat" progress bar is sample content (the game picks no "next" feat); the document's key F is the Element Burst: no key added; Duels Won and Deepest Zone are never counted (no writer) and stay off, as under today's Feats.
+
+Sources: src/game/menus3Feats.js, feats.js, achievements.js; src/ui/menus3/Menus3Feats.jsx, Menus3Panel.jsx, menus3.css; src/data/say/menus3Feats.js.

@@ -52,6 +52,7 @@ export const MENUS3_TODAY = Object.freeze({
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
+  'feats',   /* v2.3.6868 (card MN step 9): + World's Feats (F stays the Element Burst: no key) */
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */
