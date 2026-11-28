@@ -223,12 +223,147 @@ export function sendLanded(before, now) {
  *  point is out, landed, timedOut }. */
 export function queueStep(q) {
   const s = q || {};
+  if (s.idle) return 'idle';   /* v2.3.6866: no run (the queue's verbs below ask this one table) */
   if (s.waiting) {
     if (s.landed) return num(s.left) > 0 ? 'send' : 'done';
     return s.timedOut ? 'stop' : 'wait';
   }
   return num(s.left) > 0 ? 'send' : 'done';
 }
+
+/* ── v2.3.6866: THE QUEUE, ONE COPY (the gatekeeper's sitting 75 on #2442) ──
+ * The page held its own queue beside queueStep, which only the suite played;
+ * and a point the worker took AFTER the wait was called refused and KEPT in
+ * the draft, so the next Apply sent it again: two spent for one staged.  Now
+ * the queue is this one state, each verb a new one, and the page holds only
+ * the clock and act().  A send the wait gave up on stays WATCHED (`late`):
+ * the draft is reconciled against the character the worker sends, never
+ * against the clock alone --
+ *   its stat rose    it landed: its stage leaves the draft, it counts applied;
+ *   its stat fell    a reset: the watch ends, nothing landed;
+ *   a LATER send landed while it had not risen: the worker answers in order,
+ *                    so it refused this one: the watch ends;
+ * and while a send is watched ONE stage of its kind is held (queueSendable):
+ * Apply never sends it a second time.
+ * q { on, items: [{ lane, stat, cat }], i, out: { lane, stat, cat, before } | null,
+ *     placed, late: [{ lane, stat, before }] }; ptsOf(lane, stat) the points now. */
+export const QUEUE_LATE_MAX = 40;   /* a bound on the watches: far past any run of timeouts */
+const keyOf = (w) => w.lane + '|' + w.stat;
+function freezeQ(o) {
+  const w = (x) => Object.freeze({ lane: x.lane, stat: x.stat, before: num(x.before) });
+  return Object.freeze({
+    on: !!o.on,
+    items: Object.freeze((Array.isArray(o.items) ? o.items : []).map((x) => Object.freeze({ lane: x.lane, stat: x.stat, cat: x.cat }))),
+    i: num(o.i),
+    out: o.out ? Object.freeze({ lane: o.out.lane, stat: o.out.stat, cat: o.out.cat, before: num(o.out.before) }) : null,
+    placed: num(o.placed),
+    late: Object.freeze((Array.isArray(o.late) ? o.late : []).slice(-QUEUE_LATE_MAX).map(w)),
+  });
+}
+const ptsCall = (ptsOf, w) => num(typeof ptsOf === 'function' ? ptsOf(w.lane, w.stat) : 0);
+
+/** No queue, nothing watched. */
+export function queueFresh() { return freezeQ({}); }
+
+/** Apply: a run of `items` ({ lane, stat, cat }, draftSends' payloads with
+ *  their lanes).  A run already going, or nothing to send: no change.  The
+ *  watches of earlier runs are kept (their points may still land). */
+export function queueBegin(q, items) {
+  const Q = q || queueFresh();
+  if (Q.on || !Array.isArray(items) || !items.length) return Q;
+  return freezeQ({ on: true, items, i: 0, out: null, placed: 0, late: Q.late });
+}
+
+/** The next move with nothing out: { q, step, send }.  'send': `send` is the
+ *  request's payload { stat, cat } and the point is out, its stat's points now
+ *  kept; 'done': the run is over; 'wait' (a point is out) and 'idle': no change. */
+export function queueSend(q, ptsOf) {
+  const Q = q || queueFresh();
+  if (!Q.on) return { q: Q, step: queueStep({ idle: true }), send: null };
+  if (Q.out) return { q: Q, step: queueStep({ waiting: true }), send: null };
+  const step = queueStep({ left: Q.items.length - Q.i });
+  if (step === 'done') return { q: freezeQ({ ...Q, on: false }), step, send: null };
+  const it = Q.items[Q.i];
+  return {
+    q: freezeQ({ ...Q, out: { ...it, before: ptsCall(ptsOf, it) } }),
+    step, send: Object.freeze({ stat: it.stat, cat: it.cat }),
+  };
+}
+
+/** A reading of the character (every new one, a run going or not, and the
+ *  wait's end): { q, draft, landed, step }.  Each watched send (the late ones
+ *  in the order sent, then the one out) whose stat rose LANDED: the first
+ *  stage of its kind leaves the draft and it counts in `placed`; two sends of
+ *  one stat count one rise once, the earlier first.  `landed` lists them
+ *  ({ lane, stat, late }).  `step` is queueStep's for the point out ('send'
+ *  the next, 'done', 'wait'), 'idle' with no run. */
+export function queueRead(q, draft, ptsOf) {
+  const Q = q || queueFresh();
+  const ws = Q.late.map((w) => ({ lane: w.lane, stat: w.stat, before: w.before, late: true }));
+  if (Q.out) ws.push({ lane: Q.out.lane, stat: Q.out.stat, before: Q.out.before, late: false });
+  let d = draftOf(draft);
+  let cut = false, lastLanded = -1;
+  const landed = [];
+  for (let k = 0; k < ws.length; k++) {
+    const w = ws[k];
+    const now = ptsCall(ptsOf, w);
+    if (now > w.before) {
+      w.landed = true; lastLanded = k;
+      landed.push(Object.freeze({ lane: w.lane, stat: w.stat, late: w.late }));
+      for (let j = k + 1; j < ws.length; j++) if (keyOf(ws[j]) === keyOf(w)) ws[j].before = Math.max(ws[j].before, w.before + 1);
+      const at = d.findIndex((s) => keyOf(s) === keyOf(w));
+      if (at >= 0) { d = Object.freeze(d.slice(0, at).concat(d.slice(at + 1))); cut = true; }
+    } else if (now < w.before && w.late) w.gone = true;   /* a reset under it */
+  }
+  /* sent before one that landed and not risen: refused (the worker answers in order) */
+  const late = ws.filter((w, k) => w.late && !w.landed && !w.gone && !(k < lastLanded));
+  const outW = Q.out ? ws[ws.length - 1] : null;
+  const next = { ...Q, late, placed: Q.placed + landed.length };
+  let step = queueStep(Q.on ? { waiting: true } : { idle: true });
+  if (Q.on && outW) {
+    step = queueStep({ waiting: true, landed: !!outW.landed, left: Q.items.length - Q.i - 1 });
+    if (outW.landed) { next.out = null; next.i = Q.i + 1; if (step === 'done') next.on = false; }
+    else next.out = { ...Q.out, before: outW.before };   /* an earlier send's rise is not this one's */
+  } else if (Q.on) step = queueStep({ left: Q.items.length - Q.i });
+  return { q: freezeQ(next), draft: cut ? d : (Array.isArray(draft) && Object.isFrozen(draft) ? draft : d), landed: Object.freeze(landed), step };
+}
+
+/** The run stops (the wait ran out, or the line is down): the point out, if
+ *  any, is WATCHED from now on, never called refused for good.  { q, held }:
+ *  `held` the stage it watches ({ lane, stat }) or null. */
+export function queueEnd(q) {
+  const Q = q || queueFresh();
+  const o = Q.out;
+  return {
+    q: freezeQ({ ...Q, on: false, out: null, late: o ? Q.late.concat([o]) : Q.late }),
+    held: o ? Object.freeze({ lane: o.lane, stat: o.stat }) : null,
+  };
+}
+
+/** Leaving the page: the point out finishes; nothing more is sent. */
+export function queueCut(q) {
+  const Q = q || queueFresh();
+  return Q.on ? freezeQ({ ...Q, items: Q.items.slice(0, Q.i + 1) }) : Q;
+}
+
+/** The draft Apply may send: one stage of its kind held for each watched
+ *  send (the LAST of that kind: the draft's order is kept for the rest). */
+export function queueSendable(draft, q) {
+  const d = draftOf(draft);
+  const Q = q || queueFresh();
+  if (!Q.late.length) return d;
+  const hold = Object.create(null);
+  for (const w of Q.late) hold[keyOf(w)] = (hold[keyOf(w)] || 0) + 1;
+  const out = [];
+  for (let i = d.length - 1; i >= 0; i--) {
+    const k = keyOf(d[i]);
+    if (hold[k] > 0) { hold[k]--; continue; }
+    out.unshift(d[i]);
+  }
+  return Object.freeze(out);
+}
+/** How many stages are held for a watched send. */
+export function queueHeld(draft, q) { return draftOf(draft).length - queueSendable(draft, q).length; }
 
 /** A stat's filled steps for its card: { filled, staged, cap, steps }.  With
  *  no per-stat cap (caps.nostatcap: the storage bound is no number to show)

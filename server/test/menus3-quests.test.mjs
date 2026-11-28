@@ -21,10 +21,16 @@
  *      place only where the game maps it; an offer its place alone; a done
  *      quest none;
  *   4. THE ROAD: World opens the panel on Quests (built); the quest line is
- *      World · Quests; Codex and Feats still today's. */
+ *      World · Quests; Codex and Feats still today's;
+ *   5. v2.3.6866, A LINK'S WAY BACK (the gatekeeper's sitting 75): played on
+ *      the band's own state (src/game/dashNav.js) -- only the arrival's own
+ *      Back brings the panel back; the band's Menu (its root wipes the
+ *      stack) then X drops the ticket (it brought the panel back); a Close
+ *      drops it; a page on top and Back to the arrival keeps it. */
 import { MENUS3_QUEST_RAIL, MENUS3_QUEST_PAGES, questRailId, questRails, questRailStart, questLinks, todayStrip, denSpin, todayTap } from '../../src/game/menus3Quests.js';
 import { MENUS3_BUILT, menus3Route } from '../../src/game/menus3Router.js';
-import { navStart, navPush, navBack, navTop } from '../../src/game/menus3Nav.js';
+import { navStart, navPush, navBack, navTop, awayStep } from '../../src/game/menus3Nav.js';
+import { dashNavInit, dashNavStep } from '../../src/game/dashNav.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -117,6 +123,42 @@ function check(name, cond, detail) {
   const q = menus3Route('hud.questLine', { built: MENUS3_BUILT, quest: 'tut_1' });
   check('4c the quest line: World · Quests in the panel', q.road === 'panel' && q.section === 'quests');
   check('4d Codex and Feats still today\'s', !MENUS3_BUILT.includes('codex') && !MENUS3_BUILT.includes('feats'));
+}
+
+/* ── 5. a link's way back (v2.3.6866) ── */
+{
+  /* the ticket as menus3Away takes it: the arrival on top of the band's stack */
+  const arrive = () => {
+    const n = dashNavStep(dashNavInit(false), { type: 'arrive', id: 'codexMonster' });
+    const st = n[n.ws];
+    return { n, tk: { ws: n.ws, key: st[st.length - 1].key, top: true } };
+  };
+  /* every change of the band asks the ticket (onBandChange): the verdicts in order */
+  const play = (acts) => {
+    let { n, tk } = arrive();
+    const said = [];
+    for (const a of acts) {
+      const m = dashNavStep(n, a);
+      if (m === n) continue;
+      n = m;
+      const r = awayStep(tk, n);
+      said.push(r.verdict);
+      if (r.verdict !== 'keep') break;
+      tk = r.tk;
+    }
+    return said.join(',');
+  };
+  check('5a the arrival\'s own Back: the panel comes back', play([{ type: 'back' }]) === 'back', play([{ type: 'back' }]));
+  /* THE BUG (main 46740533): Menu wiped the stack, then X: the panel popped back */
+  check('5b the band\'s Menu, then X: the ticket is dropped, never Back', play([{ type: 'menuRoot' }, { type: 'close' }]) === 'drop', play([{ type: 'menuRoot' }, { type: 'close' }]));
+  check('5c ...then Back at the Menu\'s root and a Close: the same', play([{ type: 'menuRoot' }, { type: 'back' }, { type: 'close' }]) === 'drop');
+  check('5d a Close (X, Esc, the world): dropped, the panel stays shut', play([{ type: 'close' }]) === 'drop');
+  check('5e a page opened over the arrival, Back to it, then its Back: the panel comes back',
+    play([{ type: 'push', id: 'itemPage' }, { type: 'back' }, { type: 'back' }]) === 'keep,keep,back',
+    play([{ type: 'push', id: 'itemPage' }, { type: 'back' }, { type: 'back' }]));
+  check('5f Gear\'s workspace, then a Close: dropped', play([{ type: 'gear' }, { type: 'close' }]) === 'keep,drop', play([{ type: 'gear' }, { type: 'close' }]));
+  check('5g no ticket, or no band: dropped', awayStep(null, dashNavInit(false)).verdict === 'drop' && awayStep({ ws: 'menu', key: 1, top: true }, null).verdict === 'drop');
+  check('5h a band shut with the arrival NOT on top when it last showed: dropped', awayStep({ ws: 'menu', key: 999, top: false }, dashNavInit(false)).verdict === 'drop');
 }
 
 console.log(`menus3-quests: ${passes} passed, ${failures} failed`);
