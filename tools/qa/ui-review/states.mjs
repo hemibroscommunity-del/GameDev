@@ -984,6 +984,24 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6862 (card MN step 5, `?menus3`): Bro · Power in the new panel, a draft staged */
+  { id: 'menus3-power', group: 'Dashboard', title: 'The new menus: Bro, Power', about: 'The owner\'s new menus, step 5 (docs/design/menus3/): the face, the weapon bar and the Power tab open the new panel on Power. The overall level and XP at the top (and the free Reset, quiet, two taps); four lanes (Sword, Bow, Staff with their levels and XP; Body, the shared upgrades), a gold dot where points wait; the kinds of point told apart (the weapon\'s, the shared, a spare that buys anything); the lane\'s real upgrades as cards two across, a tap stages a point (its number now -> after), a minus beside it takes one back; the footer\'s stats line (DPS, or Max HP for the body: it opens the lane\'s real numbers, DPS its breakdown), the arrow that clears the draft and ONE "Apply N points". Nothing is sent before Apply.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('hud.face'); });
+      await wait(P, 1200);
+      await evalIn(P, () => { const t = document.querySelector('[data-m3-stage]'); if (t) t.click(); });
+      await wait(P, 600);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6842 (card UI4, PR 3): a computer's open band, V17's 840 block (game/v17Wide.js; ?v17wide=0 the 480 one) */
   { id: 'v17wide-bro', group: 'Dashboard', title: 'A computer\'s open band, 840 wide (V17)', views: ['desktop'], about: 'On a computer (or a tablet) the open band\'s block -- the header row, the open page and the resting columns -- is 840 px wide and centred, as the owner\'s V17 handoff draws it (2026-11-27: "840 x 243 centered"; "use extra horizontal space for additional entries, not larger art, text or gameplay view"). The band\'s height (243), the header (52), the world above it and the camera are the same as before; the words and pictures keep their phone sizes, and the pages that lay out from their box (the Menu\'s tiles, Bro\'s doors, Gear\'s bag) use the room for more in a row. A phone is unchanged (its band is its own width). ?v17wide=0 (remembered) gives the 480 px block of 2026-11-05 ("Simply make the container areas smaller"): the owner\'s choice (card UI4, Q9).',
     run: async ({ P }) => { await evalIn(P, () => { const b = window.__broDashPanelBus; b.open('more'); b.go({ type: 'push', id: 'hero' }); }); } },

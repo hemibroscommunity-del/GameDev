@@ -48,9 +48,10 @@ let _panel = SHUT;
 const isBuilt = (s) => MENUS3_BUILT.indexOf(s) >= 0;
 export const menus3Bus = {
   get state() { return _panel; },
-  open(menu, section) {
+  /* v2.3.6862: `rail` the section's own page's place to open on (Power's lane, from the weapon bar) */
+  open(menu, section, rail) {
     const sec = section || null;
-    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec) });
+    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec, rail == null ? null : rail) });
     stamp(); emit();
   },
   /* a header tab: a built section starts its own page; one not built yet goes
@@ -155,7 +156,7 @@ export function menus3Go(entry, ctx) {
         if (ui && typeof ui.chatOpen === 'function') { ui.chatOpen(); return true; }
         return false;
       }
-      case 'panel': menus3Bus.open(r.menu, r.section); return true;
+      case 'panel': menus3Bus.open(r.menu, r.section, r.lane); return true;
       default: return false;
     }
   } catch (e) { return false; }

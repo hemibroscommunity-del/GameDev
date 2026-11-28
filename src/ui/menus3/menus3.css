@@ -47,3 +47,61 @@
 .m3-cmp { display: flex; flex-direction: column; gap: 2px; }
 /* the wireframe's tiles and rows are squared (7 px corners), the kit's control a pill: the shape only */
 .m3-body :is(.m3-tile, .m3-slot, .m3-row, .m3-counter, .m3-door, .m3-petrow) { border-radius: 8px; }
+/* ═══ v2.3.6862: BRO · POWER (card MN step 5) ═══
+   The wireframe v4.4's Power: four lanes in a row (44+ tall), the upgrades as cards two across
+   (the card the stage, 52 tall; its minus beside it, 44 wide, 8 px apart: the wireframe's 6 mended),
+   the footer's stats line, the reset arrow (44 x 44) and Apply.  The kit's control and its
+   selected state; the dot the kit's gold.  No picture: the icons are drawn. */
+.m3-dot { display: inline-block; width: 7px; height: 7px; margin-left: 5px; border-radius: 50%; background: var(--ui2-gold, #E4BA68); vertical-align: middle; }
+.m3-power { gap: 6px; }
+.m3-power-top { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.m3-power-lvl { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.m3-xp { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.m3-xp-track, .m3-lane-xp { position: relative; display: block; height: 6px; border-radius: 6px; background: rgba(0,0,0,.35); border: 1px solid var(--ui2-line, #4B6275); overflow: hidden; }
+.m3-xp-track { flex: 1 1 auto; min-width: 40px; }
+.m3-xp-track i, .m3-lane-xp i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ui2-gold, #E4BA68); }
+.m3-xp-words { flex: none; font-size: 11px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-reset { flex: none; min-height: 44px; padding: 0 10px; font-size: 12px; font-weight: 700; background: transparent; border: 1px solid var(--ui2-line, #4B6275); color: var(--ui2-text-muted, #BCC8CC); border-radius: 8px; }
+.m3-reset.is-armed { border-color: var(--ui2-gold, #E4BA68); color: var(--ui2-gold, #E4BA68); }
+.m3-lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.m3-lane { min-width: 0; min-height: 50px; padding: 3px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.m3-lane-name { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.m3-lane-ic { flex: none; }
+.m3-lane-sub { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-lane-xp { width: 70%; height: 4px; }
+.m3-power-kinds { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.m3-kind { padding: 2px 8px; border-radius: 10px; border: 1px solid var(--ui2-line, #4B6275); }
+.m3-kind.is-weapon, .m3-kind.is-shared { border-color: var(--ui2-gold, #E4BA68); color: var(--ui2-gold, #E4BA68); }
+.m3-kind.is-spare { border-style: dashed; }
+.m3-kind.is-none { border: none; padding-left: 2px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.m3-card { min-width: 0; display: flex; gap: 8px; }
+.m3-card-add { flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px; text-align: left; }
+.m3-card-sub { flex: 0 0 44px; width: 44px; min-height: 52px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.m3-card-sub:disabled { opacity: .4; }
+.m3-card.is-staged .m3-card-add { border-color: var(--ui2-gold, #E4BA68); }
+.m3-card-words { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.m3-card-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m3-card-num { font-size: 12.5px; color: var(--ui2-text-muted, #BCC8CC); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.m3-card-from { font-style: normal; font-size: 11px; color: var(--ui2-gold, #E4BA68); }
+.m3-card-cap { font-size: 10.5px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-card-plus { flex: none; color: var(--ui2-gold, #E4BA68); display: flex; }
+.m3-steps { display: flex; gap: 2px; }
+.m3-steps i { width: 7px; height: 5px; border-radius: 1px; background: rgba(0,0,0,.35); border: 1px solid var(--ui2-line, #4B6275); }
+.m3-steps i.is-on { background: var(--ui2-text-muted, #BCC8CC); }
+.m3-steps i.is-staged { background: var(--ui2-gold, #E4BA68); }
+.m3-focus { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.m3-focus-words { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-focus-about { flex: none; min-height: 44px; padding: 0 10px; font-size: 12px; }
+.m3-note.is-refused, .m3-note.is-offline, .m3-note.is-why { color: var(--ui2-gold, #E4BA68); }
+.m3-power-foot { display: flex; gap: 8px; align-items: stretch; }
+.m3-statsline { flex: 1 1 0; min-width: 0; min-height: 44px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 2px 8px; position: relative; text-align: left; }
+.m3-statsline > svg { position: absolute; right: 8px; top: 50%; margin-top: -5px; }
+.m3-statsline-word { font-size: 11px; color: var(--ui2-text-muted, #BCC8CC); white-space: nowrap; }
+.m3-statsline-num { font-size: 16px; white-space: nowrap; }
+.m3-clear { flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.m3-apply { flex: 1 1 0; min-width: 98px; min-height: 44px; font-size: 13px; font-weight: 750; }
+.m3-apply.is-ready { border-color: var(--ui2-gold, #E4BA68); background: var(--ui2-gold, #E4BA68); color: #141D22; }
+.m3-statrow { width: 100%; justify-content: space-between; }
+.m3-statrow-v { margin-left: auto; font-variant-numeric: tabular-nums; }
+.m3-body :is(.m3-lane, .m3-card-add, .m3-card-sub, .m3-statsline, .m3-clear, .m3-apply, .m3-focus-about, .m3-statrow) { border-radius: 8px; }

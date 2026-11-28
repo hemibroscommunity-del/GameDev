@@ -29,6 +29,7 @@ import { navCanBack, navTop } from '@/game/menus3Nav.js';   /* v2.3.6861 */
 import { beforeDraw } from '@/game/framePacer.js';
 import { gearCell } from '@/ui/mobile/dash/itemCategory.js';
 import { Menus3Bag } from './Menus3Bag.jsx';
+import { Menus3Power, powerDot } from './Menus3Power.jsx';   /* v2.3.6862: Bro · Power (card MN step 5) */
 import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
@@ -116,6 +117,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
             <button key={s} type="button" className={'u2-raised u2-ctl' + (s === st.section ? ' is-selected' : '')} style={TAB}
               data-menus3-tab={s} aria-pressed={s === st.section} {...frameTap(() => menus3Bus.section(s))}>
               {sectionWord(s)}
+              {s === 'power' && powerDot(rpgState, getS()) ? <i className="m3-dot" data-menus3-dot="power" aria-hidden="true" /> : null}
             </button>
           ))}
           <button type="button" className="u2-raised u2-ctl is-round" style={X} data-menus3-x="" data-esc=""
@@ -127,6 +129,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           data-menus3-body={st.section || ''} data-menus3-page={top ? top.page : ''}
           onScroll={keepScroll}>
           {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
+          {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
         </div>
       </section>
     </div>,

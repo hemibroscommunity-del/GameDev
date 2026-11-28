@@ -37,6 +37,8 @@ import { say } from '@/game/say.js';
 import { hudArtOn } from '@/game/hudArt.js';   /* v2.3.6787: the owner's pictures (card UI3 PR 8) */
 import HudArt from './HudArt.jsx';
 import './charHud.css';
+import { menus3On } from '@/ui/menus3/menus3Switch.js';   /* v2.3.6862 (card MN step 5) */
+import { menus3Go } from '@/ui/menus3/menus3Wire.js';
 
 /* QA only: what the HUD shows, for mp-charhud (the probe reads the model) */
 function publish(model, bar) {
@@ -89,6 +91,7 @@ export default function CharacterHud({ rpgState, live }) {
 
   const open = (e) => {
     e.stopPropagation();
+    if (menus3On()) { menus3Go('hud.face'); return; }   /* v2.3.6862 (card MN step 5): the new Bro · Power */
     try { dashboardPanelBus.open('hero'); } catch (e2) { /* the dashboard not mounted yet */ }
   };
   const stop = (e) => e.stopPropagation();
