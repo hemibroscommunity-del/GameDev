@@ -45,3 +45,5 @@
 .m3-cand { display: flex; align-items: center; gap: 6px; }
 .m3-cand > :last-child { flex: none; min-height: 44px; min-width: 76px; }
 .m3-cmp { display: flex; flex-direction: column; gap: 2px; }
+/* the wireframe's tiles and rows are squared (7 px corners), the kit's control a pill: the shape only */
+.m3-body :is(.m3-tile, .m3-slot, .m3-row, .m3-counter, .m3-door, .m3-petrow) { border-radius: 8px; }

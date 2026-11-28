@@ -174,6 +174,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('upright: Back from the slot to Gear', ps.page === 'root' && ps.rail === 'gear', ps);
 
       /* Pets: a pet opens its page (today's, with Take out) */
+      /* the rail's last place sits past the screen's edge: the rail scrolls it in, as a thumb would */
+      await P.page.evaluate(() => { const el = document.querySelector('[data-m3-rail="pets"]'); if (el) el.scrollIntoView({ inline: 'end', block: 'nearest' }); });
+      await P.page.waitForTimeout(400);
       await tap(P, '[data-m3-rail="pets"]', true);
       const pets = await attrs(P, '[data-m3-pet]', 'data-m3-pet');
       if (pets.length) {
@@ -207,8 +210,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const pb = await box(Q, '[data-menus3-panel="drawer"]');
       rec.ok('sideways: Bro opens the drawer, 40% wide on the right', ps.open && !!pb && Math.abs(pb.w - Math.round(844 * 0.4)) <= 3 && Math.abs(pb.x + pb.w - 844) <= 3, { ps, pb });
       rec.ok('sideways: the fight controls are not hidden', !(await Q.page.evaluate(() => document.documentElement.classList.contains('bt-menus3-hide-ctl'))), null);
-      const disc = await Q.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-zone'); if (!el) return null; const r = el.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2; const hit = document.elementFromPoint(cx, cy); return { x: Math.round(r.left), r: Math.round(r.right), vis: getComputedStyle(el).visibility, mine: !!(hit && (hit === el || el.contains(hit))) }; });
-      rec.ok('sideways: the attack disc stands left of the drawer, uncovered', !!disc && !!pb && disc.r <= pb.x + 2 && disc.vis !== 'hidden' && disc.mine, { disc, pb });
+      const disc = await Q.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-zone'); if (!el) return null; const r = el.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2; const hit = document.elementFromPoint(cx, cy); return { x: Math.round(r.left), r: Math.round(r.right), vis: getComputedStyle(el).visibility, under: !!(hit && hit.closest && hit.closest('[data-menus3-panel]')), hit: hit ? (hit.getAttribute('data-joyzone') || hit.className || hit.tagName) : null }; });
+      /* idle the disc is see-through and lets a tap fall to the right zone under it (TouchControls v2.3.2246): "uncovered" is no drawer over it */
+      rec.ok('sideways: the attack disc stands left of the drawer, uncovered', !!disc && !!pb && disc.r <= pb.x + 2 && disc.vis !== 'hidden' && !disc.under, { disc, pb });
       await shot(Q, 'sideways-bag');
       await tap(Q, '[data-menus3-x]', true);
       const disc2 = await Q.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-zone'); if (!el) return null; const r = el.getBoundingClientRect(); return Math.round(r.right); });
