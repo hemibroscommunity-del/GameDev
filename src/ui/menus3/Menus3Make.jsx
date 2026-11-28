@@ -34,6 +34,7 @@ import {
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { BAR_THUMBS, thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { SMITH_STRIKE_MS } from '@/game/smithing.js';
+import { cue } from '@/game/eventSounds.js';
 import { essenceIcon } from '@/data/salvage.js';
 import { isGearOnLevel } from '@/data/oneFormula.js';
 import { hardenTierOf, hardenCost, hardenLevelFor } from '@/data/hardenCosts.js';
@@ -272,7 +273,7 @@ const BLACKSMITH = Object.freeze({
   /* smelting and the armour celebrate from their own receipts (wsClient); the rest here, as today */
   celebrates: (row) => row.kind !== 'smelt' && row.kind !== 'armor',
   /* the anvil's ring, as today: a smelt, the armour and a hardening are heard from their own answers */
-  ring: (row) => (row.kind !== 'smelt' && row.kind !== 'armor' && row.kind !== 'harden' ? 'forge' : null),
+  ring: (row) => { if (row.kind !== 'smelt' && row.kind !== 'armor' && row.kind !== 'harden') cue('forge'); },
   fail: say(SAY_S, 'smithy.forgeFail'),
 });
 

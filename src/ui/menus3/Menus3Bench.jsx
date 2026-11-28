@@ -21,7 +21,7 @@
  * { label, icon }, rows(tab, S, R, lvl), body(tab, S, R) (a tab that is
  * today's as it is: the Blacksmith's Salvage), above(tab, S, R, rows),
  * celebrates(row) (a level-up this page tells: the rest celebrate from their
- * own receipts), ring(row) (the sound when one lands), fail (the stop's word
+ * own receipts), ring(row) (plays the sound when one lands), fail (the stop's word
  * when a row has none) }.
  *
  * A row: { key, icon, fallback, title, sub, badge, costs [{icon, have, need}]
@@ -91,8 +91,7 @@ function useMakeQueue(S, lvl, bench) {
     if (r.then === 'wait') return;
     clear();
     if (j.row.done) popup(j.row.done);
-    const ring = bench.ring(j.row);
-    if (ring) cue(ring);
+    bench.ring(j.row);   /* the bench plays its own sound (each cue named where it is played: sound-cues) */
     if (typeof j.row.landed === 'function') { try { j.row.landed(); } catch (e) { /* today's page's extra */ } }
     if (r.then === 'landed') sendNext(r.q); else put(r.q);
   };

@@ -27,6 +27,7 @@ import { dishFor } from '@/data/dishes.js';
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { deskWords } from '@/game/deskWords.js';
 import { SMITH_STRIKE_MS } from '@/game/smithing.js';
+import { cue } from '@/game/eventSounds.js';
 import { C, Chip } from '../panels/buildings/BenchParts.jsx';
 import { act } from '@/game/actions.js';
 import { SAY } from '@/data/say/menus3Counter.js';
@@ -103,7 +104,7 @@ const COOKHOUSE = Object.freeze({
   },
   /* today's window told a Cooking level as it cooked; here when the cook lands */
   celebrates: () => true,
-  ring: () => 'cookDone',
+  ring: () => { cue('cookDone'); },
   fail: say(SAY, 'menus3Counter.cookFail'),
 });
 

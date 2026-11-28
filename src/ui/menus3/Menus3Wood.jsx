@@ -32,6 +32,7 @@ import { weaponDisplayName } from '@/ui/mobile/sheet/equipModel.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';
 import { SMITH_STRIKE_MS } from '@/game/smithing.js';
+import { cue } from '@/game/eventSounds.js';
 import { C, COIN, XP, Icon, Chip, Lock } from '../panels/buildings/BenchParts.jsx';
 import { NAMES as TRAP_LOG_NAMES } from '../panels/buildings/TrapsTab.jsx';
 import { act } from '@/game/actions.js';
@@ -227,7 +228,7 @@ const WOODWORKER = Object.freeze({
   },
   /* the hardened wood and the traps celebrate from their own receipts; a bow or a staff here, as today */
   celebrates: (row) => row.kind === 'craft',
-  ring: (row) => (row.kind === 'craft' ? 'woodwork' : null),
+  ring: (row) => { if (row.kind === 'craft') cue('woodwork'); },
   fail: say(SAY_W, 'woodwork.couldNot'),
 });
 

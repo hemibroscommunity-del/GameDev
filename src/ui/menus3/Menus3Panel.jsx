@@ -72,7 +72,8 @@ function counterTitle(st) {
   const s = st.station;
   /* v2.3.6873 (card MN step 13b): + the Woodworker and the Cookhouse */
   const station = !s ? '' : s.bench === 'blacksmith' ? say(SAY_SM, 'smithy.title')
-    : s.bench === 'woodworker' || s.bench === 'cookhouse' ? say(SAY_C, 'menus3Counter.station.' + s.bench) : '';
+    : s.bench === 'woodworker' ? say(SAY_C, 'menus3Counter.stationWoodworker')
+      : s.bench === 'cookhouse' ? say(SAY_C, 'menus3Counter.stationCookhouse') : '';
   return say(SAY_C, 'menus3Counter.title', { station, mode: say(SAY_C, 'menus3Counter.make') });
 }
 function CounterGold({ n }) {

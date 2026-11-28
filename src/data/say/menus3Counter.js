@@ -21,8 +21,8 @@ export const SAY = Object.freeze({
   /* v2.3.6873 (card MN step 13b): the Woodworker's and the Cookhouse's words that today's windows
      wrote in place (TrapsTab.jsx, CookPanel.jsx), the same words; the rest are theirs
      (data/say/woodwork.js) */
-  'menus3Counter.station.woodworker': 'Woodworker',
-  'menus3Counter.station.cookhouse': 'Cookhouse',
+  'menus3Counter.stationWoodworker': 'Woodworker',
+  'menus3Counter.stationCookhouse': 'Cookhouse',
   'menus3Counter.trapName': 'Box Trap ×{n}',
   'menus3Counter.trapHow': 'One log of any kind each. A trap is used every time it springs.',
   'menus3Counter.trapNoLogs': 'You have no logs. Chop any tree out in the lands, then come back.',
