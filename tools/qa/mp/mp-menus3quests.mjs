@@ -44,6 +44,23 @@ const probe = (P) => P.page.evaluate(() => window.__btMenus3Quests || null);
 const qprobe = (P) => P.page.evaluate(() => window.__btMenus3Quest || null);
 const bandTop = (P) => P.page.evaluate(() => { try { const n = window.__broDashPanelBus.nav(); const st = n[n.ws] || []; return { shown: !!n.shown, top: st.length ? st[st.length - 1].id : null }; } catch (e) { return null; } });
 /* every tappable thing in the panel, under 44 in either way */
+/* v2.3.6866 (the gatekeeper's sitting 75): what takes a tap at the centre of the minimap's
+   click box and of the gear, which sit under the drawer: the drawer's own box, never them */
+const underDrawer = (P, asMain) => P.page.evaluate((m) => ['[data-world-map-open]', '[data-menus3-gear]'].map((sel) => {
+  const el = document.querySelector(sel);
+  const pn = document.querySelector('[data-menus3-panel]');
+  if (!el || !pn) return { sel, none: true };
+  /* asMain: the mend's rule overruled on the element (main 46740533 had none), to play the bug itself */
+  if (m) { el.style.setProperty('visibility', 'visible', 'important'); el.style.setProperty('pointer-events', 'auto', 'important'); }
+  try {
+    const r = el.getBoundingClientRect(), q = pn.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    if (!(r.width > 0) || x < q.left || x > q.right || y < q.top || y > q.bottom) return { sel, outside: true };
+    const hit = document.elementFromPoint(x, y);
+    return { sel, inPanel: !!(hit && hit.closest && hit.closest('[data-menus3-panel]')), hit: hit ? hit.tagName + (hit === el ? ' (it)' : '') : null };
+  } finally { if (m) { el.style.removeProperty('visibility'); el.style.removeProperty('pointer-events'); } }
+}), !!asMain);
+const drawerOk = (u) => u.every((x) => x.none || x.outside || x.inPanel);
 const small = (P) => P.page.evaluate(() => Array.from(document.querySelectorAll('[data-menus3-panel] button')).map((el) => { const r = el.getBoundingClientRect(); return { t: (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 24), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((b) => b.w > 0 && (b.w < 44 || b.h < 44)));
 
 async function tap(P, sel, touch) {
@@ -224,6 +241,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const sm = await small(S2);
       rec.ok('sideways: every tappable thing 44 x 44 or more', sm.length === 0, sm);
       await shot(S2, 'sideways-quests');
+      const ud = await underDrawer(S2);
+      rec.ok('sideways: the drawer takes a tap over the minimap\'s box and the gear (they stand under it)', drawerOk(ud) && ud.some((x) => x.inPanel), ud);
+      const was = await underDrawer(S2, true);
+      rec.ok(`LISTED sideways: without the mend (main) the drawer ${drawerOk(was) ? 'took them too' : 'lost the tap to ' + was.filter((x) => !x.inPanel && !x.none && !x.outside).map((x) => x.sel).join(' and ')}`, true, was);
       await tap(S2, '[data-m3-quest="tut_1"]', true);
       const q = await qprobe(S2);
       rec.ok('sideways: a quest\'s page inside the drawer', !!q && q.id === 'tut_1' && !!(await box(S2, '[data-menus3-panel] [data-quest-ui2-page]')), q);
@@ -241,9 +262,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let ps = await openWorld(D, false);
       rec.ok('computer: World opens the drawer on Quests', ps.open && ps.section === 'quests' && (await D.page.evaluate(() => document.querySelector('[data-menus3-panel]').getAttribute('data-menus3-panel'))) === 'drawer', ps);
       await shot(D, 'computer-quests');
+      const ud = await underDrawer(D);
+      rec.ok('computer: the drawer takes a click over the minimap\'s box and the gear', drawerOk(ud) && ud.some((x) => x.inPanel), ud);
       await D.page.keyboard.press('Escape');
       await D.page.waitForTimeout(500);
       rec.ok('computer: Esc closes it', (await pstate(D)).open === false, null);
+      /* no panel: the minimap's box takes its click as before (nothing moved) */
+      const mo = await D.page.evaluate(() => { const el = document.querySelector('[data-world-map-open]'); if (!el) return null; const r = el.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { mine: h === el, vis: getComputedStyle(el).visibility }; });
+      rec.ok('computer: no panel open, the minimap\'s box takes its click', !!mo && mo.mine && mo.vis === 'visible', mo);
       await D.page.keyboard.press('j');
       await D.page.waitForTimeout(700);
       ps = await pstate(D);

@@ -18,7 +18,10 @@
  * goes when the last has landed (the stat's points rose); one the worker
  * refuses (or leaves unanswered past today's wait, statWindow.jsx
  * STAY_WAIT_MS) stops the queue and is said in plain words, and what landed
- * stays.  Leaving the page with a draft drops it, said in one quiet line over
+ * stays.  v2.3.6866: the queue is the rule module's (queueBegin ...
+ * queueEnd: the node suite plays the very one); a point that lands AFTER the
+ * wait counts as landed when the character says so, and its stage is held
+ * meanwhile so a second Apply never sends it twice.  Leaving the page with a draft drops it, said in one quiet line over
  * the bro (no dialog).  No Undo after Apply: the worker's free Reset is the
  * way back, a quiet two-tap button at the top, as today's Points window had.
  *
@@ -35,7 +38,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { act } from '@/game/actions.js';
 import {
   POWER_LANES, POWER_WEAPONS, powerPools, powerWaiting, powerStartLane, draftOf, draftReplay, draftStage,
-  draftUnstage, draftClear, draftCount, draftPrune, draftSends, draftLeft, sendLanded, statSteps,
+  draftUnstage, draftClear, draftCount, draftPrune, draftSends, draftLeft, statSteps,
+  queueFresh, queueBegin, queueSend, queueRead, queueEnd, queueCut, queueSendable, queueHeld,
 } from '@/game/menus3Power.js';
 import { weaponProgress } from '@/game/progression.js';
 import { combatLevel, weaponAttributes, sharedAttributes } from '@/game/combatHub.js';
@@ -138,54 +142,68 @@ function upgradesOf(R, lane) {
 let _draft = draftOf([]);
 let _note = null;            /* { kind: 'why' | 'applied' | 'refused' | 'offline', text } */
 let _focus = null;           /* { lane, stat }: the card last touched (the preview line) */
-const Q = { on: false, items: [], i: 0, out: null, timer: 0, placed: 0, getS: null, bump: null };
-function queueStop(note) {
-  if (Q.timer) { clearTimeout(Q.timer); Q.timer = 0; }
-  Q.on = false; Q.out = null;
+/* v2.3.6866: the queue's state is the rule module's (one copy the suite plays);
+   the page keeps only the clock, the reader and the redraw.  `bump` null: the
+   page is gone, and a run's end says nothing (no note outlives its page). */
+let Q = queueFresh();
+const QH = { timer: 0, getS: null, bump: null };
+function ptsNow() {
+  const S = QH.getS ? QH.getS() : null;
+  const R = (S && S.rpg) || {};
+  return (lane, stat) => statPts(R, lane, stat);
+}
+function clearWait() { if (QH.timer) { clearTimeout(QH.timer); QH.timer = 0; } }
+function queueSay(note) {
+  if (!QH.bump) return;
   if (note) _note = note;
-  if (Q.bump) Q.bump();
+  QH.bump();
+}
+function statWord(lane, stat) {
+  const S = QH.getS ? QH.getS() : null;
+  return (upgradesOf((S && S.rpg) || {}, lane).find((u) => u.key === stat) || {}).label || stat;
 }
 function queueNext() {
-  const S = Q.getS ? Q.getS() : null;
+  const S = QH.getS ? QH.getS() : null;
   const R = S && S.rpg;
-  if (Q.i >= Q.items.length) { queueStop({ kind: 'applied', text: say(SAY, 'menus3.applied', { n: Q.placed }) }); return; }
   const ch = S && S.channel;
-  if (!R || !ch || (typeof ch.isLive === 'function' && !ch.isLive())) {
+  if (Q.on && !Q.out && Q.i < Q.items.length && (!R || !ch || (typeof ch.isLive === 'function' && !ch.isLive()))) {
     try { if (ch && ch.reconnectNow) ch.reconnectNow(); } catch (e) { /* best effort */ }
-    queueStop({ kind: 'offline', text: say(SAY, 'menus3.offline', { n: Q.placed }) });
+    clearWait();
+    Q = queueEnd(Q).q;
+    queueSay({ kind: 'offline', text: say(SAY, 'menus3.offline', { n: Q.placed }) });
     return;
   }
-  const it = Q.items[Q.i];
-  Q.out = { ...it, before: statPts(R, it.lane, it.stat) };
-  act('prog3_allocate', { stat: it.stat, cat: it.cat });   /* the game's existing request, through the action door */
-  Q.timer = setTimeout(() => { Q.timer = 0; queueCheck(true); }, STAY_WAIT_MS);
-  if (Q.bump) Q.bump();
+  const r = queueSend(Q, ptsNow());
+  Q = r.q;
+  if (r.step === 'done') { clearWait(); queueSay({ kind: 'applied', text: say(SAY, 'menus3.applied', { n: Q.placed }) }); return; }
+  if (r.step !== 'send') return;
+  act('prog3_allocate', r.send);   /* the game's existing request, through the action door */
+  clearWait();
+  QH.timer = setTimeout(() => { QH.timer = 0; queueCheck(true); }, STAY_WAIT_MS);
+  queueSay(null);
 }
 /** Called on every new reading of the character (and at the wait's end). */
 function queueCheck(timedOut) {
-  if (!Q.on || !Q.out) return;
-  const S = Q.getS ? Q.getS() : null;
-  const R = (S && S.rpg) || {};
-  if (sendLanded(Q.out.before, statPts(R, Q.out.lane, Q.out.stat))) {
-    if (Q.timer) { clearTimeout(Q.timer); Q.timer = 0; }
-    /* the point landed: its stage leaves the draft (the first of its kind: the draft's order is the queue's) */
-    const d = _draft.slice();
-    const k = d.findIndex((s) => s.lane === Q.out.lane && s.stat === Q.out.stat);
-    if (k >= 0) d.splice(k, 1);
-    _draft = draftOf(d);
-    Q.placed++; Q.i++; Q.out = null;
-    queueNext();
+  const r = queueRead(Q, _draft, ptsNow());
+  Q = r.q;
+  if (r.draft !== _draft) _draft = r.draft;
+  /* a point the wait gave up on landed after all: its refused note says so */
+  const late = r.landed.find((x) => x.late);
+  if (late && _note && _note.kind === 'refused') queueSay({ kind: 'applied', text: say(SAY, 'menus3.lateLanded', { stat: statWord(late.lane, late.stat), n: Q.placed }) });
+  if (r.step === 'done') { clearWait(); queueSay({ kind: 'applied', text: say(SAY, 'menus3.applied', { n: Q.placed }) }); return; }
+  if (r.step === 'send') { clearWait(); queueNext(); return; }
+  if (timedOut && Q.on && Q.out) {
+    const e = queueEnd(Q);
+    Q = e.q;
+    queueSay({ kind: 'refused', text: say(SAY, 'menus3.refused', { stat: statWord(e.held.lane, e.held.stat), n: Q.placed }) });
     return;
   }
-  if (timedOut) {
-    const st = Q.out;
-    const word = (upgradesOf(R, st.lane).find((u) => u.key === st.stat) || {}).label || st.stat;
-    queueStop({ kind: 'refused', text: say(SAY, 'menus3.refused', { stat: word, n: Q.placed }) });
-  }
+  if (r.landed.length) queueSay(null);
 }
 function queueStart(getS, items) {
   if (Q.on || !items.length) return;
-  Object.assign(Q, { on: true, items: items.slice(), i: 0, out: null, placed: 0, getS });
+  QH.getS = getS;
+  Q = queueBegin(Q, items);
   _note = null;
   queueNext();
 }
@@ -248,7 +266,8 @@ function headline(R, lane, draft) {
 export function Menus3Power({ R, getS, top, root }) {
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => (t + 1) % 1000000);
-  Q.bump = bump;
+  QH.bump = bump;
+  QH.getS = getS;
   const S = getS ? getS() : null;
   const RR = R || (S && S.rpg) || {};
   const ctx = ctxOf(RR, S);
@@ -262,7 +281,8 @@ export function Menus3Power({ R, getS, top, root }) {
 
   /* a new reading of the character: the queue looks for its point; the draft keeps what the worker would still take */
   useEffect(() => {
-    if (Q.on) { queueCheck(false); return; }
+    if (Q.on || Q.late.length) queueCheck(false);   /* v2.3.6866: a late point is the character's to settle */
+    if (Q.on) return;
     const d = draftPrune(_draft, ctx);
     if (d !== _draft) { _draft = d; bump(); }
   }, [R]);
@@ -272,16 +292,19 @@ export function Menus3Power({ R, getS, top, root }) {
   useEffect(() => () => {
     const S2 = getSRef.current ? getSRef.current() : null;
     const cut = Q.on && Q.items.length > Q.i + 1;
-    if (Q.on) Q.items = Q.items.slice(0, Q.i + 1);   /* the point in flight finishes; nothing more is sent */
+    Q = queueCut(Q);   /* the point in flight finishes; nothing more is sent */
     if ((_draft.length && !Q.on) || cut) quietLine(S2, say(SAY, 'menus3.dropped'));
     _draft = draftOf([]); _note = null; _focus = null;
-    Q.bump = null;
+    QH.bump = null;
   }, []);
 
   const replay = draftReplay(_draft, ctx);
   const left = draftLeft(_draft, ctx);
   const waitLeft = powerWaiting(left);
-  const total = replay.filter((s) => s.from).length;
+  /* v2.3.6866: a stage held for a point still unanswered is never sent twice */
+  const sendable = queueSendable(_draft, Q);
+  const heldN = queueHeld(_draft, Q);
+  const total = draftReplay(sendable, ctx).filter((s) => s.from).length;
 
   /* the QA probe (tools/qa/mp/mp-menus3power.mjs) */
   useEffect(() => {
@@ -289,9 +312,9 @@ export function Menus3Power({ R, getS, top, root }) {
       /* read now, not the render's: a queue may have moved the draft in an effect above this one */
       const rNow = draftReplay(_draft, ctx);
       window.__btMenus3Power = {
-        lane, page, draft: rNow.map((s) => ({ lane: s.lane, stat: s.stat, from: s.from })), total: rNow.filter((s) => s.from).length,
+        lane, page, draft: rNow.map((s) => ({ lane: s.lane, stat: s.stat, from: s.from })), total: draftReplay(queueSendable(_draft, Q), ctx).filter((s) => s.from).length,
         waiting: { ...waitingNow }, left: { by: { ...left.by }, shared: left.shared, spare: left.spare },
-        queue: { on: Q.on, i: Q.i, n: Q.items.length, placed: Q.placed }, note: _note ? { ..._note } : null,
+        queue: { on: Q.on, i: Q.i, n: Q.items.length, placed: Q.placed, late: Q.late.length }, held: queueHeld(_draft, Q), note: _note ? { ..._note } : null,
       };
     } catch (e) { /* no window */ }
   });
@@ -324,8 +347,8 @@ export function Menus3Power({ R, getS, top, root }) {
   const clear = () => { if (busy) return; _draft = draftClear(); _note = null; bump(); };
   const apply = () => {
     if (busy || !total) return;
-    const sends = draftSends(_draft, ctx, prog3SharedSpendCat(RR));
-    const stagesOk = replay.filter((s) => s.from);
+    const sends = draftSends(sendable, ctx, prog3SharedSpendCat(RR));
+    const stagesOk = draftReplay(sendable, ctx).filter((s) => s.from);
     queueStart(getS, sends.map((x, i) => ({ ...x, lane: stagesOk[i].lane })));
   };
 
@@ -404,7 +427,8 @@ export function Menus3Power({ R, getS, top, root }) {
         })}
       </div>
       {focus ? <FocusLine R={RR} lane={lane} u={focus} staged={draftCount(_draft, lane, focus.key)} getS={getS} pools={ctx.pools} /> : null}
-      {_note ? <p className={'m3-line m3-note is-' + _note.kind} data-m3-note={_note.kind} role="status">{_note.text}</p> : null}
+      {_note ? <p className={'m3-line m3-note is-' + _note.kind} data-m3-note={_note.kind} role="status">{_note.text}</p>
+        : heldN ? <p className="m3-line m3-note is-why" data-m3-held={heldN} role="status">{say(SAY, 'menus3.held', { n: heldN })}</p> : null}
       <div className="m3-foot m3-power-foot">
         <button type="button" className="u2-raised u2-ctl m3-statsline" data-m3-statsline={lane} onClick={() => menus3Bus.push('stats', lane)}>
           <span className="m3-statsline-word">{say(SAY, 'menus3.stats')} {'·'} {head.word}</span>

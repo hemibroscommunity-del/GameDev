@@ -29,7 +29,7 @@
 import { menus3On } from './menus3Switch.js';
 import { menus3Route, MENUS3_BUILT, MENUS3_TODAY } from '../../game/menus3Router.js';
 import { menus3Shape, menus3CamOffset } from '../../game/menus3Panel.js';
-import { navStart, navPush, navBack, navKeep, navPrune, navTop } from '../../game/menus3Nav.js';   /* v2.3.6861: the one Back (card MN step 4) */
+import { navStart, navPush, navBack, navKeep, navPrune, navTop, awayStep } from '../../game/menus3Nav.js';   /* v2.3.6861: the one Back (card MN step 4) */
 import { menus3CloseWhy } from '../../game/menus3Close.js';
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';
 import { dashMinBus } from '../mobile/dashMinBus.js';
@@ -185,17 +185,20 @@ function arrivalKey() {
     const n = dashboardPanelBus.nav();
     const st = n && n.ws && Array.isArray(n[n.ws]) ? n[n.ws] : null;
     const t = st && st.length ? st[st.length - 1] : null;
-    return t && t.key != null ? { ws: n.ws, key: t.key } : null;
+    return t && t.key != null ? { ws: n.ws, key: t.key, top: true } : null;
   } catch (e) { return null; }
 }
 function onBandChange() {
   const tk = _ticket;
-  if (!tk || bandShown()) return;
+  if (!tk) return;
+  /* v2.3.6866: asked at every change (menus3Nav.js awayStep): only the arrival's own Back brings the panel back */
+  let n = null;
+  try { n = dashboardPanelBus.nav(); } catch (e) { n = null; }
+  const r = awayStep(tk.at, n);
+  if (r.verdict === 'keep') { tk.at = r.tk; return; }
   _ticket = null;
   if (_ticketOff) { try { _ticketOff(); } catch (e) { /* gone */ } _ticketOff = null; }
-  let still = false;
-  try { const n = dashboardPanelBus.nav(); still = !!(n && Array.isArray(n[tk.at.ws]) && n[tk.at.ws].some((e) => e && e.key === tk.at.key)); } catch (e) { still = false; }
-  if (still) return;   /* a Close: the panel stays shut */
+  if (r.verdict !== 'back') return;   /* a Close, the Menu's root, a wipe: the panel stays shut */
   _panel = Object.freeze({ open: true, menu: tk.menu, section: tk.section, nav: tk.nav });
   stamp(); emit();
 }
