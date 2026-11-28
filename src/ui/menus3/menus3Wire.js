@@ -174,6 +174,23 @@ export function menus3Go(entry, ctx) {
   } catch (e) { return false; }
 }
 
+/* ═══ v2.3.6865: BRO'S KEYS OPEN BRO'S SECTIONS (card MN step 6) ═══
+   The owner's I Bag, P Power, L Skills (SPEC.md's hotkeys): under ?menus3 a
+   key that opens today's screen of the same thing opens the new panel's
+   section instead (deskKeys.js navKey), and pressed with that section
+   showing closes it, as every page key does (I, which the Bro button wears,
+   too: with Power or Skills showing it goes to the Bag).  True when it went. */
+export function menus3Key(section) {
+  if (!_on) return false;
+  if (section !== 'bag' && section !== 'power' && section !== 'skills') return false;
+  if (!isBuilt(section)) return false;
+  if (_panel.open && _panel.section === section) { menus3Close('key'); return true; }
+  _ticket = null;
+  if (bandShown()) { try { dashboardPanelBus.go({ type: 'close' }); } catch (e) { /* no band */ } }
+  menus3Bus.open('bro', section);
+  return true;
+}
+
 /* ═══ v2.3.6867: M, THE MAP'S KEY (card MN step 8) ═══
    The owner's M opens the World map, as the minimap does: under ?menus3 the
    new panel shuts as the map opens (one menu at a time, the minimap's road);

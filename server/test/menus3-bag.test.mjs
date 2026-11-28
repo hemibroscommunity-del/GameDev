@@ -138,8 +138,9 @@ function check(name, cond, detail) {
   check('7a the Bag is built', MENUS3_BUILT.includes('bag'));
   const r = menus3Route('dock.bro', { built: MENUS3_BUILT });
   check('7b the Bro button opens the panel on the Bag, always', r.road === 'panel' && r.section === 'bag' && r.menu === 'bro');
-  /* v2.3.6862 (card MN step 5): Power is built now (menus3-power.test 7); Skills still today's */
-  check('7c Skills still today\'s', !MENUS3_BUILT.includes('skills'));
+  /* v2.3.6862 (card MN step 5): Power is built now (menus3-power.test 7); v2.3.6865 (step 6): and
+     Skills (menus3-skills.test 5): all three of Bro's sections are the panel's */
+  check('7c Bro\'s three are built', ['bag', 'power', 'skills'].every((s) => MENUS3_BUILT.includes(s)));
 }
 
 console.log(`menus3-bag: ${passes} passed, ${failures} failed`);
