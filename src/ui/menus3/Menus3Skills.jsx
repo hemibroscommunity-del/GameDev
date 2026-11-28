@@ -45,6 +45,7 @@ const QUOTE = {
 };
 const quoteOf = (k) => (Object.prototype.hasOwnProperty.call(QUOTE, k) ? QUOTE[k]() : '');
 const DOT = ' \u00B7 ';
+const OFFLINE = 'offline';   /* the claim's note when the request could not leave (guildClaim's own word) */
 const fmt = (n) => (Number(n) || 0).toLocaleString('en-US');
 const rungWords = (r, more) => (more > 0 ? say(SAY_L, 'lifePage.unlockAtMore', { lvl: r.lvl, name: r.name, more }) : say(SAY_L, 'lifePage.unlockAt', { lvl: r.lvl, name: r.name }));
 
@@ -133,12 +134,11 @@ function useClaim(getS, R, skill) {
   const S = typeof getS === 'function' ? getS() : null;
   const press = () => {
     const w = guildClaim(typeof getS === 'function' ? getS() : null, skill);
-    if (w === 'closed') { setNote('closed'); return; }
-    if (w === 'offline') { setNote('offline'); return; }
-    if (w !== 'send' || waiting) return;
+    if (w !== 'send') { setNote(w === 'notReady' ? null : w); return; }   /* 'closed' or 'offline': said under it */
+    if (waiting) return;
     let ok = false;
     try { ok = act('guild_quest_turn_in', { skill }) !== false; } catch (e) { ok = false; }
-    if (!ok) { setNote('offline'); return; }
+    if (!ok) { setNote(OFFLINE); return; }
     setNote(null);
     setSent(step);
   };

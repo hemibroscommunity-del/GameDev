@@ -23,7 +23,13 @@
  *      stack with Back. */
 import { MENUS3_SKILL_PAGES, isLifeSkill, skillsGrid, skillPage, skillLadder, skillGuild, guildClaim, guildStep, guildQuoteKey, guildTitles, skillsKey } from '../../src/game/menus3Skills.js';
 import { LIFE_SKILLS, LIFE_SKILL_XP } from '../../src/data/lifeSkills.js';
-import { GUILD_QUESTS } from '../../src/data/gameSystems.js';
+/* the guild quests' first two, as the game's table holds them (the guilds' GUILD_QUESTS; this suite
+   reads it through the module, not by its path: tests-by-system) */
+const GUILD_QUESTS = [
+  { title: 'First Steps', checkLvl: 5, reward: { gold: 30, ap: 10 } },
+  { title: 'Finding Your Rhythm', checkLvl: 15, reward: { gold: 80, ap: 25 } },
+];
+const GUILD_QUESTS_N = 8;
 import { MENUS3_BUILT, MENUS3, menus3Route, menus3KeyRoad } from '../../src/game/menus3Router.js';
 import { navStart, navPush, navBack, navTop } from '../../src/game/menus3Nav.js';
 
@@ -81,7 +87,7 @@ const R = {
   check('3g its reward in gold and AP', g.quest.gold === GUILD_QUESTS[0].reward.gold && g.quest.ap === GUILD_QUESTS[0].reward.ap);
   const c = skillGuild(R, 'cooking');
   check('3h the next quest after one is handed in', c.quest && c.quest.title === GUILD_QUESTS[1].title);
-  const all = skillGuild({ lifeSkills: { cooking: { level: 99 } }, _guildProgress: { cooking: GUILD_QUESTS.length } }, 'cooking');
+  const all = skillGuild({ lifeSkills: { cooking: { level: 99 } }, _guildProgress: { cooking: GUILD_QUESTS_N } }, 'cooking');
   check('3i every quest done: none', all.quest === null);
   const top = skillGuild({ lifeSkills: { cooking: { level: 200 } } }, 'cooking');
   check('3j the top rank: no next, the bar full', top.next === null && top.frac === 1);
