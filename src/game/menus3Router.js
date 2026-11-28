@@ -153,7 +153,11 @@ export function menus3MenuOf(pageId) {
    TODAY's page, and the new panel shuts first: one menu at a time (the
    orchestrator's finding of 11-28: K, U, O opened today's page with the
    panel still open). */
-export const MENUS3_KEY_SECTION = Object.freeze({ dashboard: 'bag', hero: 'power', skills: 'skills' });
+export const MENUS3_KEY_SECTION = Object.freeze({ dashboard: 'bag', hero: 'power', skills: 'skills',
+  /* v2.3.6876 (card MN's keys): K today's Codex page -> World · Codex, U today's Leaderboards -> People ·
+     Ranks, each in the panel (the same thing: their steps rebuilt them); O, the Menu, stays today's.  C and B
+     are not page keys: desktopControls.js sends them to menus3Wire.js menus3ChatKey, menus3EmoteKey */
+  encyclopedia: 'codex', leaderboard: 'ranks' });
 /** A page key's road: { road: 'panel', section } for Bro's three (built),
  *  { road: 'world' } for J, else { road: 'today', shut: true }. */
 export function menus3KeyRoad(id, built) {

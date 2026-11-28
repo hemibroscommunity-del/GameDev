@@ -127,7 +127,10 @@ const R = {
   const r = (id) => menus3KeyRoad(id, MENUS3_BUILT);
   check('6a I, P, L open Bro\'s three in the panel', r('dashboard').section === 'bag' && r('hero').section === 'power' && r('skills').section === 'skills' && r('skills').road === 'panel');
   check('6b J is the World button\'s', r('quests').road === 'world');
-  check('6c every other page key opens today\'s page with the panel shut first', ['encyclopedia', 'leaderboard', 'more', '__proto__'].every((k) => r(k).road === 'today' && r(k).shut === true));
+  check('6c every other page key opens today\'s page with the panel shut first', ['more', '__proto__'].every((k) => r(k).road === 'today' && r(k).shut === true));
+  /* v2.3.6876 (card MN's keys): K the Codex, U the Ranks, in the panel (their steps rebuilt them) */
+  check('6e K opens World · Codex, U People · Ranks, in the panel', r('encyclopedia').road === 'panel' && r('encyclopedia').section === 'codex' && r('leaderboard').road === 'panel' && r('leaderboard').section === 'ranks');
+  check('6f K and U before their steps: today\'s road', menus3KeyRoad('encyclopedia', ['bag']).road === 'today' && menus3KeyRoad('leaderboard', ['bag']).road === 'today');
   check('6d a section not built goes today\'s road, the panel shut', menus3KeyRoad('skills', ['bag']).road === 'today' && menus3KeyRoad('skills', ['bag']).shut);
 }
 
