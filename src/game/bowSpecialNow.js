@@ -74,6 +74,7 @@ export function bowSpecialMon(S, wpn) {
  *  it is already the lock.  'lock' when it took it, else null. */
 export function bowSpecialTake(S, m) {
   if (!S || !m) return null;
+  if (discKind(S) === 'stick') return null;   /* v2.3.6650: the stick keeps no lock (card PAD part 13): a special comboAim.js sent at a monster takes none */
   if (latchLocked(S)) return null;   /* the lock it flies at (bowSpecialMon reads the lock first); a press on a lock would let go of it */
   return latchPress(S, m.id, holdAutoOn()) === 'lock' ? 'lock' : null;
 }

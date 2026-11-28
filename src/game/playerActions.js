@@ -27,6 +27,7 @@ import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carrie
 import { mcSwingGapMs, mcNoteSwing } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial's gap and share */
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 import { bowSpecialMon, bowSpecialTake } from '@/game/bowSpecialNow.js';   /* v2.3.6557: the bow's special at once (card CT part 23 PR 2) */
+import { comboMon } from '@/game/comboAim.js';   /* v2.3.6650: the combo goes at the last target (card PAD part 14) */
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -173,6 +174,11 @@ export function specialAttack(S) {
        flies at it now, and the queue below is for empty air only
        (game/bowSpecialNow.js; `?specialnow=0` the queue as before). */
     var _nowMon = bowSpecialMon(S, getActiveWeapon(R));
+    /* v2.3.6650: the two buttons' stick (a bow or a staff): Special with the
+       thumb off the disc goes at the last target, else the monster the facing
+       lines up, at once and with no lock (game/comboAim.js; the owner: "Just
+       make the combo auto-attack the last target"; `?comboaim=0` today's) */
+    if (!_nowMon) _nowMon = comboMon(S, (R.activeSlot === 'staff' ? staffRangeMult : bowRangeMult)(R || {}), now);
     if ((R.activeSlot === 'ranged') && !_nowMon && !(S._bowSight && S._bowSight.d != null)) {
       S._bowSpecialQueued = now;
       /* ═══ v2.3.2543: THE QUEUE IS SHOWN ON THE BUTTON, NOT SAID IN A POPUP ═══
@@ -573,7 +579,7 @@ export function specialAttack(S) {
         S.player.x, S.player.y + shotGroundDy(S), { isSpecial: true });
       /* v2.3.3501: ...and what it is fired at, boots to feet (shotGround.js) */
       var _orbGf = shotAimAt(S, S.player.x, S.player.y, aimAng, _ORB_RANGE_PX,
-        { isSpecial: true, isStaff: true, aimAt: _sLock ? S.lockedTarget.ref.id : null,
+        { isSpecial: true, isStaff: true, aimAt: _sLock ? _sRef.id : null,   /* v2.3.6650: the monster aimed at (_sRef: comboAim's, the bow's, else the lock's ref), never a lock that is not there */
           ground: { x: S.player.x, y: S.player.y + shotGroundDy(S), len: _ORB_RANGE_PX } });
       /* ═══ v2.3.2842: ONE BIG BOLT (gameSystems STAFF_BIG_BOLT_*) ═══
          Owner: "Instead of the current special attack with 3 orbs I want to

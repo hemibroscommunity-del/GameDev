@@ -89,6 +89,7 @@ const FORMS = {
   'chargebtn': '0',
   'coinflip': '0',
   'combatreset': '0',
+  'comboaim': '0',
   'conndoor': '0',
   'create': '1',
   'crowd': '*',
