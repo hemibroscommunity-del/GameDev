@@ -324,7 +324,7 @@ export const SYSTEMS = Object.freeze({
       f('src/game', 'feats') /* v2.3.6695: Feats' rules, AP's two sources, the four tiers, the one title family (card UI2-feats) */,
       f('src/game', 'codexView|entityInspect|lootRows') /* v2.3.6693: the Codex's collection, a showcase, a monster's loot rows (card UI2-codex) */,
       f('src/game', 'ownPlate') /* v2.3.6788: your own name plate's rule (card UI3 PR 9) */,
-      f('src/game', 'hudArt') /* v2.3.6787: the character HUD in the owner's pictures (card UI3 PR 8) */],
+      f('src/game', 'hudArt') /* v2.3.6787: the character HUD in the owner's pictures (card UI3 PR 8) */, f('src/game', 'bigHud') /* v2.3.6847: the HUD and Attack about twice as big (card UI4) */],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],
