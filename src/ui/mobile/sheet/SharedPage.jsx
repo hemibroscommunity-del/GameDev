@@ -41,9 +41,16 @@ import { prog3BodyMeta } from '../../../data/prog3.js';
 import { toDisplayHp } from '../../../data/gameSystems.js';
 import { ui2RootClass } from '@/ui/kit/index.js';
 import { SummaryStrip, AttrGrid } from './attrTemplate.jsx';
+import { UpgradeGrid } from './attrTemplate.jsx';   /* v2.3.6844 (card UI4 PR 5): V17's order */
+import { v17CombatWanted, v17Shape, v17TileArt, v17RuleInRow, sharedPointsRule } from '@/game/combatV17.js';
+import { SAY as SAY_V17 } from '@/data/say/combatV17.js';
+import { isOneLevelEnabled } from '../../../data/oneFormula.js';
 import { SAY } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
 import './combatPage.css';
+
+/* v2.3.6844 (card UI4 PR 5): V17's order (the upgrades first) unless `?v17combat=0` on this device */
+const V17_COMBAT = v17CombatWanted();
 
 /* the shared Speed is the walk's: "Move speed" where a page could also say "Attack speed" (the card's reading 8) */
 const TILE_WORD = { move: () => say(SAY, 'combatHub.moveSpeed') };
@@ -98,7 +105,7 @@ export function SharedPage({ S, who, live }) {
   const attrs = sharedAttributes(R);
   const win = statWindow({
     R, buildCat: broStartWeapon(R), stayRef, readOnly: !self, live: live || (() => S),
-    laneAvail: (c) => Number(pools[c]) || 0, sharedAvail: pools.shared,
+    laneAvail: (c) => Number(pools[c]) || 0, sharedAvail: pools.shared, commitRole: V17_COMBAT,
   });
   stayCheckRef.current = self ? win.stayCheck : null;
   const metaOf = Object.create(null);
@@ -111,8 +118,10 @@ export function SharedPage({ S, who, live }) {
     if (lane !== 'shared') return;
     win.openStatInfo(st, lane, self ? win.spendFor(st, lane) : null);
   };
+  /* v2.3.6844 (card UI4 PR 5): what V17's order drew (its shape, the pictures' size, the rule's words) */
+  let v17Probe = null;
   useEffect(() => {
-    try { window.__btSharedPage = { hp: head.hp, def: head.def, points: avail, attrs: attrs.map((a) => a.key) }; } catch (e) { /* no window */ }
+    try { window.__btSharedPage = { hp: head.hp, def: head.def, points: avail, attrs: attrs.map((a) => a.key), v17: v17Probe }; } catch (e) { /* no window */ }
   });
   useEffect(() => () => { try { window.__btSharedPage = null; } catch (e) { /* no window */ } }, []);
 
@@ -125,11 +134,20 @@ export function SharedPage({ S, who, live }) {
     words: pw ? say(SAY, pw.key === 'combatHub.point' ? 'combatHub.sharedPoint' : 'combatHub.sharedPoints', { n: pw.n }) : null,
     tone: pointsTone(avail), data: { 'data-shared-pool': avail == null ? '' : avail },
   };
+  /* v2.3.6844 (card UI4 PR 5): under `?v17combat` the same ONE strip sits after the seven, and where its row
+     holds it the game's rule for shared points beside Defense (combatV17.js sharedPointsRule; flag Q1) */
+  const v17Shape0 = V17_COMBAT ? v17Shape(short) : null;
+  const v17RuleIn = V17_COMBAT && self && v17RuleInRow(v17Shape0, room.w);
+  let oneLevel = true;
+  try { oneLevel = isOneLevelEnabled(); } catch (e) { oneLevel = true; }
+  const rule = sharedPointsRule(oneLevel);
+  const ruleWords = say(SAY_V17, rule.key === 'combatV17.ruleEvery' ? 'combatV17.ruleEvery' : 'combatV17.ruleBest', { n: rule.n });
   const strip = (
     <SummaryStrip
       stat={{ v: head.hp, k: say(SAY, 'combatHub.maxHp'), aria: say(SAY, 'combatHub.maxHpAria', { v: head.hp }), data: { 'data-shared-hp': head.hp },
         onClick: () => explain(metaOf.hp ? metaOf.hp.label : '', head.hp) }}
-      facts={[{ id: 'def', k: say(SAY, 'combatHub.defense'), v: head.def, data: { 'data-shared-def': head.def } }]} />
+      facts={[{ id: 'def', k: say(SAY, 'combatHub.defense'), v: head.def, data: { 'data-shared-def': head.def } }].concat(v17RuleIn ? [{ id: 'rule', k: say(SAY_V17, 'combatV17.ruleK'), v: ruleWords, data: { 'data-shared-rule': rule.key } }] : [])}
+      wide={v17RuleIn || undefined} />
   );
   const attrsOf = attrs.map((a) => {
     const label = TILE_WORD[a.key] ? TILE_WORD[a.key]() : a.label;
@@ -141,6 +159,25 @@ export function SharedPage({ S, who, live }) {
   });
   const noart = !short && room.w > 0 && room.w < 520;   /* upright under 520 px of page the pictures go, never the words */
   const grid = <AttrGrid line={line} attrs={attrsOf} mark="shared" plus={attrPlus(avail, self)} onOpen={openAttr} grid={'is-seven' + (short ? ' is-one' : '') + (noart ? ' is-noart' : '')} />;
+
+  /* ═══ v2.3.6844 (card UI4 PR 5, `?v17combat`): V17:55's order on the one template ═══
+     "Shared ...: upgrade choices and available points first, supporting current strength below in
+     portrait or to the right in landscape."  The seven FIRST, each the game's picture over its name
+     (sheet/attrTemplate.jsx UpgradeGrid: never the pictureless tiles of a narrow page, which cut
+     "Max Mana" and "Move speed" at 320 and 360 wide: mp-v17fit), then Max HP (the stat: its tap
+     explains it) and Defense, and, where the row holds it, where shared points come from in the GAME
+     (src/game/combatV17.js sharedPointsRule: the best weapon's level; flag Q1). */
+  if (V17_COMBAT) {
+    const shape = v17Shape0;
+    const art = v17TileArt(room.h, shape === 'side');
+    v17Probe = { shape, art, ruleIn: v17RuleIn, rule: rule.key, ruleWords, w: room.w, h: room.h, order: 'upgrades,strength' };
+    const ups = <UpgradeGrid line={line} attrs={attrsOf} mark="shared" plus={attrPlus(avail, self)} onOpen={openAttr} art={art} grid={'is-seven' + (shape === 'side' ? ' is-one' : '')} />;
+    return (
+      <div ref={ref} className={ui2RootClass() + ' u2-wp u2-sp u2-cv is-' + shape + (short ? ' is-short' : '')} data-shared-page="" data-shared-whose={self ? 'self' : 'other'} data-cv-order="upgrades,strength" data-shared-rule-words={self ? ruleWords : ''}>
+        {shape === 'side' ? <div className="u2-wp-row is-one">{ups}{strip}</div> : <>{ups}<div className="u2-cv-foot">{strip}</div></>}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className={ui2RootClass() + ' u2-wp u2-sp' + (short ? ' is-short' : '')} data-shared-page="" data-shared-whose={self ? 'self' : 'other'}>

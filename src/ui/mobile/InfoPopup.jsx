@@ -133,6 +133,12 @@ export const InfoPopup = () => {
   /* v2.3.6685 (card UI2-combat): READ-ONLY (another player's page, step 9): the window reads, with no
      stepper, no Spend and no lanes (their pools are theirs) -- whatever the payload carries */
   const ro = !!cur.readOnly;
+  /* v2.3.6844 (card UI4 PR 5): the opener asked for the kit's commit role on Spend (statWindow's
+     `commitRole`, the combat pages under `?v17combat`): V17's commit gold #E4BA68 with #141D22 words
+     while it spends, `disabled` with its reason while it cannot.  Every other window: unchanged. */
+  const cr = !!cur.commitRole;
+  const commitBg = cr ? '#E4BA68' : COL.goldBg;
+  const commitInk = cr ? '#141D22' : COL.goldText;
   const stepMax = (!ro && cur.action && !cur.action.blocked && cur.action.stepMax > 0) ? cur.action.stepMax : 0;
   /* ═══ v2.3.3577: THE COUNT STARTS AT 0, AND [+] ADDS EVERY POINT ═══
      The owner: "when there's only 1 point left to add in your stat point
@@ -538,14 +544,15 @@ export const InfoPopup = () => {
             <button type="button"
               data-infopopup-action
               data-infopopup-spending={spending ? '1' : undefined}
+              data-u2-role={cr ? ((spending || stepN < 1) ? 'disabled' : 'commit') : undefined}
               aria-disabled={(spending || stepN < 1) || undefined}
               onPointerUp={(e) => { e.stopPropagation(); spend(e); }}
               style={{
                 flex: '1 1 auto', minWidth: 0, height: 40, padding: '0 10px',
                 /* v2.3.3577: nothing added yet -- the outline a blocked
                    action wears (below), until [+] adds a point */
-                background: stepN < 1 ? 'transparent' : COL.goldBg,
-                color: stepN < 1 ? COL.muted : COL.goldText,
+                background: stepN < 1 ? 'transparent' : commitBg,
+                color: stepN < 1 ? COL.muted : commitInk,
                 border: stepN < 1 ? `1px solid ${COL.border}` : 0, borderRadius: 9,
                 fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap',
                 cursor: (spending || stepN < 1) ? 'default' : 'pointer', touchAction: 'manipulation',
@@ -568,11 +575,12 @@ export const InfoPopup = () => {
                  look right and be unreachable, which is the failure mode
                  TRAPS §67 is about. */
               aria-disabled={!!cur.action.blocked}
+              data-u2-role={cr ? (cur.action.blocked ? 'disabled' : 'commit') : undefined}
               onPointerUp={(e) => { e.stopPropagation(); spend(e); }}
               style={{
                 flex: '1 1 auto', padding: '9px 10px',
-                background: cur.action.blocked ? 'transparent' : COL.goldBg,
-                color: cur.action.blocked ? COL.muted : COL.goldText,
+                background: cur.action.blocked ? 'transparent' : commitBg,
+                color: cur.action.blocked ? COL.muted : commitInk,
                 border: cur.action.blocked ? `1px solid ${COL.border}` : 0,
                 borderRadius: 9,
                 fontSize: 12.5, fontWeight: 900,
