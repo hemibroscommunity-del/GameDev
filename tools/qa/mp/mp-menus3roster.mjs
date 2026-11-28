@@ -136,16 +136,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const RB = await roster(B);
     rec.ok('upright: the other sees the request (its count, the row with Accept)', !!RB && RB.counts.requests >= 1 && RB.requests.includes(aId) && !!(await box(B, `[data-m3-request="${aId}"] [data-m3-req-act="accept"]`)), RB);
     await shot(B, 'upright-requests');
-    /* Message: today's chat box aimed at them; its shutting brings the page back */
+    /* Message: v2.3.6870 (card MN step 11) People · Chat in the panel, on Whispers aimed at them; Back is their page */
     const hasMsg = !!PL && PL.acts.includes('message');
     if (hasMsg) {
       await tap(A, '[data-m3-pact="message"]', true);
-      const lane = await A.page.evaluate(() => ({ mode: window.__btChatLane.mode(), to: window.__btChatLane.to(), open: window.__btMenus3.panelState().open }));
-      rec.ok('upright: Message opens today\'s chat on the whisper lane, aimed at them', lane.mode === 'whisper' && lane.to === 'Rostb' && !lane.open, lane);
-      await A.page.evaluate(() => { try { window._uiPanels.chatOpen(false); } catch (e) { /* shut */ } });
-      await A.page.waitForTimeout(800);
+      await A.page.waitForTimeout(900);
       ps = await pstate(A);
-      rec.ok('upright: the chat shut, the panel is back on their page', ps.open && ps.page === 'player' && ps.arg === bId, ps);
+      const ch = await A.page.evaluate(() => window.__btMenus3Chat || null);
+      rec.ok('upright: Message opens People · Chat on Whispers, aimed at them', ps.open && ps.page === 'whisper' && ps.arg === 'Rostb' && !!ch && ch.tab === 'whispers' && ch.to === 'Rostb', { ps, ch });
+      await tap(A, '[data-menus3-back]', true);
+      ps = await pstate(A);
+      rec.ok('upright: Back from the whisper is their page', ps.open && ps.page === 'player' && ps.arg === bId, ps);
     } else {
       rec.ok('upright: Message (the worker\'s whisper lane)', false, PL && PL.acts);
     }

@@ -42,7 +42,12 @@ import { Menus3Roster, Menus3Player, menus3PlayerTitle } from './Menus3Roster.js
 import { Menus3CounterLazy } from '../lazyPanels.js';   /* v2.3.6872 (card MN step 13): the Counter, its own script */
 import { SAY as SAY_C } from '@/data/say/menus3Counter.js';
 import { SAY as SAY_SM } from '@/data/say/smithy.js';
+import { lazyPanel } from '@/ui/lazyPanel.js';   /* v2.3.6870 (card MN step 11): People · Chat and Ranks, loaded when first opened */
+import { chatPeopleDot, chatPageTitle } from './menus3People.js';
 import './menus3.css';
+
+const Menus3Chat = lazyPanel(() => import('./Menus3Chat.jsx'), 'Menus3Chat');
+const Menus3Ranks = lazyPanel(() => import('./Menus3Ranks.jsx'), 'Menus3Ranks');
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
   background: 'var(--ui2-page, #193145)', borderTop: '2px solid var(--ui2-edge, #b89b63)', boxShadow: '0 -5px 16px rgba(0,0,0,.45)' };
@@ -100,6 +105,7 @@ function pageTitle(top, getS) {
   if (!top) return '';
   if (isCodex3Page(top.page)) return codexTitle(top, getS);   /* v2.3.6867: a Codex page, wherever it opened */
   if (top.page === 'player') return menus3PlayerTitle(getS, top.arg);   /* v2.3.6864: the player's name, from any section */
+  if (top.page === 'dm' || top.page === 'whisper') return chatPageTitle(top, getS);   /* v2.3.6870: a friend's thread, a Message's whisper */
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
@@ -160,6 +166,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
               data-menus3-tab={s} aria-pressed={s === st.section} {...frameTap(() => menus3Bus.section(s))}>
               {sectionWord(s)}
               {s === 'power' && powerDot(rpgState, getS()) ? <i className="m3-dot" data-menus3-dot="power" aria-hidden="true" /> : null}
+              {s === 'chat' && st.section !== 'chat' && chatPeopleDot(getS()).dock ? <i className="m3-dot" data-menus3-dot="chat" aria-hidden="true" /> : null}
             </button>
           ))}
           <button type="button" className="u2-raised u2-ctl is-round" style={X} data-menus3-x="" data-esc=""
@@ -179,6 +186,8 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {body === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
           {body === 'roster' ? <Menus3Roster getS={getS} top={top} /> : null}
           {body === 'counter' ? <Menus3CounterLazy R={rpgState} getS={getS} station={st.station} /> : null}
+          {body === 'chat' || (top && top.page === 'whisper') ? <Menus3Chat top={top} getS={getS} /> : null}
+          {body === 'ranks' ? <Menus3Ranks top={top} getS={getS} /> : null}
           {body !== 'roster' && top && top.page === 'player' ? <Menus3Player key={'p' + top.arg} getS={getS} id={top.arg} /> : null}
         </div>
       </section>

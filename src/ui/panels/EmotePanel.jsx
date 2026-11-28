@@ -2,6 +2,7 @@ import React from 'react';
 import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
 import { EMOTE_MOVES, EMOTE_MOVE_IDS } from '@/game/emoteMoves.js';   /* v2.3.3392 */
 import { seasonOn } from '@/game/season.js';   /* v2.3.3395: Halloween week's Zombie Shuffle */
+import { menus3ChatShut } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6870: People · Chat's smiley (card MN step 11) */
 
 /* === EmotePanel — the showEmotes quick-picker === */
 /* v2.3.886: extracted verbatim from the showEmotes JSX subtree in
@@ -41,6 +42,9 @@ export function EmotePanel(props) {
   var sendMove = props.sendMove;
   var movesOn = !!(props.movesOn && sendMove);
   var onClose = props.onClose || function () {};
+  /* v2.3.6870 (card MN step 11): the picker going away hands the new panel back to People · Chat when its
+     smiley opened it (menus3Wire.js menus3AwayChat; a no-op otherwise) */
+  React.useEffect(function () { return function () { menus3ChatShut(); }; }, []);
   var stop = function (e) { e.stopPropagation(); };
   var _tab = React.useState(readTab);
   var tab = movesOn ? _tab[0] : 'emoji';

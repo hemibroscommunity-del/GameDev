@@ -70,7 +70,7 @@ function backWord(to, titleOf) {
    that ARE dashNav's 'fold': Gear when the band is folded ('min'), Close when
    it is shown ('open').  `foldHook` false (`?bandgrip=1`: the handle wears it;
    or sideways) wears none. */
-export function DashHeader({ nav, titleOf, menuMark, foldHook = false }) {
+export function DashHeader({ nav, titleOf, menuMark, foldHook = false, peopleDot = false }) {
   const v = dashNavView(nav);
   const kind = !v.shown ? 'closed' : v.top ? 'page' : v.ws === 'gear' ? 'gear-root' : 'menu-root';
   const wrap = (child) => (
@@ -82,7 +82,7 @@ export function DashHeader({ nav, titleOf, menuMark, foldHook = false }) {
   if (kind === 'closed') {
     const mark = menuMark || {};
     /* v2.3.6860 (card MN step 1): the owner's dock, Bro World People, under ?menus3 */
-    if (menus3On()) return wrap(<Menus3Dock mark={mark} tap={frameTap} />);
+    if (menus3On()) return wrap(<Menus3Dock mark={mark} tap={frameTap} people={peopleDot} />);   /* v2.3.6870: + People's dot */
     return wrap(
       <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
         <Ui2Tile size="primary" label={say(SAY, 'dashFrame.gear')} aria-label={say(SAY, 'dashFrame.gearAria')}
