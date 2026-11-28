@@ -47,6 +47,30 @@
 .m3-cmp { display: flex; flex-direction: column; gap: 2px; }
 /* the wireframe's tiles and rows are squared (7 px corners), the kit's control a pill: the shape only */
 .m3-body :is(.m3-tile, .m3-slot, .m3-row, .m3-counter, .m3-door, .m3-petrow) { border-radius: 8px; }
+/* v2.3.6863 (card MN step 7): World · Quests -- the Today strip's places (the rail's pills, a lit one
+   with its dot), their words under them, the rows with a Map beside (44 x 64: the wireframe's 39-wide
+   "Go" mended), a quest's links as rows; today's quest page drawn as it is (questsUi2.css) */
+.m3-quests { display: flex; flex-direction: column; gap: 2px; }
+.m3-today { display: flex; flex-direction: column; gap: 4px; margin-bottom: 2px; }
+.m3-chip { display: inline-flex; align-items: center; gap: 6px; }
+.m3-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ui2-gold, #E7C46A); flex: none; }
+.m3-today-words { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--ui2-well, rgba(0,0,0,.18)); font-size: 13px; }
+.m3-today-words.is-col { flex-direction: column; align-items: stretch; gap: 3px; }
+.m3-today-line { flex: 1 1 auto; min-width: 0; }
+.m3-today-sub { font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-today-go { flex: none; min-height: 44px; min-width: 76px; }
+.m3-order { display: flex; align-items: center; gap: 6px; }
+.m3-order-art { width: 24px; height: 24px; object-fit: contain; flex: none; pointer-events: none; }
+.m3-order-name { flex: 1 1 auto; min-width: 0; }
+.m3-qlist { display: flex; flex-direction: column; gap: 4px; }
+.m3-qrow { display: flex; align-items: stretch; gap: 6px; }
+.m3-qrow > :first-child { flex: 1 1 auto; min-width: 0; min-height: 52px; }
+.m3-qmap { flex: none; min-height: 44px; min-width: 64px; }
+.m3-quest { display: flex; flex-direction: column; gap: 6px; }
+.m3-qlinks { display: flex; flex-direction: column; gap: 4px; }
+.m3-qlink { min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 4px 10px; text-align: left; border-radius: 8px; }
+.m3-quest .ui2.u2-qp { height: auto; flex: 0 0 auto; overflow: visible; }
+.m3-quest .ui2 .u2-qp-steps { flex: 0 0 auto; max-height: 120px; }
 /* ═══ v2.3.6862: BRO · POWER (card MN step 5) ═══
    The wireframe v4.4's Power: four lanes in a row (44+ tall), the upgrades as cards two across
    (the card the stage, 52 tall; its minus beside it, 44 wide, 8 px apart: the wireframe's 6 mended),

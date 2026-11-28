@@ -984,6 +984,39 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6863 (card MN step 7, `?menus3`): World, the Quests in the new panel, and a quest's page */
+  { id: 'menus3-quests', group: 'Dashboard', title: 'The new menus: World, the Quests', about: 'The owner\'s new menus, step 7 (docs/design/menus3/): the World button opens the new panel on Quests, always. At the top the Today strip, only what the game has today: the free daily spin (lit while it waits; Spin opens the wheel as the top bar does), the login streak with its freezes and the Gambling Den\'s spin, the farm\'s three orders (read; delivered at Feed & Seed); a place\'s words open under it. Then the rail Active | On offer | Done (no Daily: the daily quests are off) over the rows: the giver\'s face, the name, its count, Ready, the star of the tracked one (first), and Map where the game can show the place.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.world'); });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  { id: 'menus3-quest', group: 'Dashboard', title: 'The new menus: a quest\'s page', about: 'The owner\'s new menus, step 7: a quest\'s row opens its page inside the panel, Back top left -- the steps behind you, NOW (what to do, its count and bar, its place), The adventure continues, and nothing still to come; Track, Show on map (the map opens over the panel, which is still there when it closes) and the Rewards door; under it the quest\'s links (the monster in the Codex, the item\'s page, its place on the map), today\'s pages until the new Codex, the panel back on the quest when their Back leaves.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.world'); });
+      await wait(P, 1200);
+      await evalIn(P, () => { const t = document.querySelector('[data-m3-quest]'); if (t) t.click(); });
+      await wait(P, 1000);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6862 (card MN step 5, `?menus3`): Bro · Power in the new panel, a draft staged */
   { id: 'menus3-power', group: 'Dashboard', title: 'The new menus: Bro, Power', about: 'The owner\'s new menus, step 5 (docs/design/menus3/): the face, the weapon bar and the Power tab open the new panel on Power. The overall level and XP at the top (and the free Reset, quiet, two taps); four lanes (Sword, Bow, Staff with their levels and XP; Body, the shared upgrades), a gold dot where points wait; the kinds of point told apart (the weapon\'s, the shared, a spare that buys anything); the lane\'s real upgrades as cards two across, a tap stages a point (its number now -> after), a minus beside it takes one back; the footer\'s stats line (DPS, or Max HP for the body: it opens the lane\'s real numbers, DPS its breakdown), the arrow that clears the draft and ONE "Apply N points". Nothing is sent before Apply.',
     run: async ({ P }) => {
