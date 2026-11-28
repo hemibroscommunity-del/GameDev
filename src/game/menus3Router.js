@@ -53,6 +53,8 @@ export const MENUS3_TODAY = Object.freeze({
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
+  'feats',   /* v2.3.6868 (card MN step 9): + World's Feats (F stays the Element Burst: no key) */
+  'settings',   /* v2.3.6869 (card MN step 12): + Settings, from the gear (no menu of the dock's) */
   'roster',
   'chat', 'ranks',   /* v2.3.6870 (card MN step 11): + People's Chat and Ranks */
 ]);

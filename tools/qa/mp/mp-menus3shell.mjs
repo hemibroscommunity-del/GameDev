@@ -168,8 +168,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       } else rec.ok('upright: the open panel\'s header found', false, await nav(P));
       await closeBand(P);
 
+      /* v2.3.6869 (card MN step 12): the gear opens the new panel on Settings (mp-menus3settings plays it) */
       await press(P, '[data-menus3-gear]', true);
-      rec.ok('upright: the gear opens Settings (today\'s hub)', (await topId(P)) === 'settingsHub', await nav(P));
+      rec.ok('upright: the gear opens Settings (the new panel)', await P.page.evaluate(() => { const s = window.__btMenus3.panelState(); return s.open && s.section === 'settings'; }), await nav(P));
+      await P.page.evaluate(() => { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); });
       await closeBand(P);
 
       /* a hit: inside the safe ground nothing; outside, it closes */

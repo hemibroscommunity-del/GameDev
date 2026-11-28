@@ -951,6 +951,22 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6869 (card MN step 12, `?menus3`): Settings in the new panel, the rail of five */
+  { id: 'menus3-settings', group: 'Dashboard', title: 'The new menus: Settings', about: 'The owner\'s new menus, step 12 (docs/design/menus3/): the gear left of the minimap opens the new panel on Settings, always on Sound. A rail of five under the title: Sound (the switch, Music and Effects sliders 44 tall), Screen (the landscape menu side, the controls lesson, full screen in iPhone Safari), Alerts (silence them, chat on screen, the chat and news lines), Account (today\'s Account: Log out or Switch Bro, the Login Key, continue a character; Restart under it), Help (Feedback, About). Each writes what today\'s Settings writes.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('hud.gear'); });
+      await wait(P, 1500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6861 (card MN step 4, `?menus3`): Bro · Bag in the new panel, and its Item page */
   { id: 'menus3-bag', group: 'Dashboard', title: 'The new menus: Bro, the Bag', about: 'The owner\'s new menus, step 4 (docs/design/menus3/): the Bro button opens the new panel on the Bag, always. The rail (All with the bag\'s count, Gear (9), Weapons with the weapon bag\'s fill, Armor, Consumables, Materials, Pets) over a grid four across, a tile its picture, name and count. Upright the panel is 48% of the screen above the dock, the fight controls hidden and the world\'s view moved up; sideways and on a computer a right drawer 40% wide with the fight controls left of it.',
     run: async ({ P }) => {
@@ -985,6 +1001,24 @@ export const STATES = [
       await wait(P, 1500);
     } },
   /* v2.3.6863 (card MN step 7, `?menus3`): World, the Quests in the new panel, and a quest's page */
+  /* v2.3.6868 (card MN step 9, `?menus3`): World · Feats in the new panel */
+  { id: 'menus3-feats', group: 'Dashboard', title: 'The new menus: World, the Feats', about: 'The owner\'s new menus, step 9 (docs/design/menus3/): World\'s Feats tab opens the new panel on Feats. At the top the AP line: the worker\'s total, how many medals of how many, its split (medals; quests, guilds and the arena together) where the parts add up; a press opens where the AP came from; Ranks opens today\'s leaderboards. Then the rail Medals | Titles | Records: the four tiers\' medals as rows (a drawn medal, Earned, its progress or Not yet), every earned title with Equip (Remove on the worn one), the counters the game keeps with the accuracy of the three weapons. No claim and no dot: the game has no feat reward to claim.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.go('dock.world'); });
+      await wait(P, 800);
+      await evalIn(P, () => { try { const t = document.querySelector('[data-menus3-tab="feats"]'); if (t) t.click(); } catch (e) { /* shut */ } });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   { id: 'menus3-quests', group: 'Dashboard', title: 'The new menus: World, the Quests', about: 'The owner\'s new menus, step 7 (docs/design/menus3/): the World button opens the new panel on Quests, always. At the top the Today strip, only what the game has today: the free daily spin (lit while it waits; Spin opens the wheel as the top bar does), the login streak with its freezes and the Gambling Den\'s spin, the farm\'s three orders (read; delivered at Feed & Seed); a place\'s words open under it. Then the rail Active | On offer | Done (no Daily: the daily quests are off) over the rows: the giver\'s face, the name, its count, Ready, the star of the tracked one (first), and Map where the game can show the place.',
     run: async ({ P }) => {
       const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');

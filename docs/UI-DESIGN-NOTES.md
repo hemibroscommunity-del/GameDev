@@ -2804,6 +2804,23 @@ Screens: menus3-power
 
 Sources: src/game/menus3Power.js, menus3Router.js; src/ui/menus3/Menus3Power.jsx, Menus3Panel.jsx, menus3Wire.js, menus3.css; src/ui/mobile/sheet/StatTree.jsx (`at`); src/ui/hud/HudArt.jsx, CharacterHud.jsx; server/test/menus3-power.test.mjs; tools/qa/mp/mp-menus3power.mjs.
 
+## The new menus' Settings: the rail of five (v2.3.6869, card MN step 12)
+Screens: menus3-settings
+
+**What it is for:** the game's own switches, in the owner's Settings (decided 9: *"The wireframe's rail of five (Sound, Screen, Alerts, Account, Help). Log out lives in Account."*; their document's "The Game Itself": sound; the landscape drawer side, full screen, replay the controls lesson; silence alerts, show the play-screen chat feed; the Login Key, Log out / switch bro, continue another character, Restart character; Feedback, About). It replaces, under `?menus3`, the Settings hub and its five pages (Settings, Notifications, Account, Feedback, About) as the way in.
+
+**Decisions, and why:**
+- **The gear opens the new panel on Settings, always on Sound** (rule 1); a press of the gear again closes it, as the wireframe's does. Settings is no dock menu's: the header holds its title and the X, no tabs. Sideways and on a computer the gear stands aside while the drawer is open (the mends, #2445: the drawer covers its corner), so there it closes by the X, Esc or a tap on the world, and the gear opens it again once it is shut.
+- **The rail of five** under the title, the Bag's pills (44 tall); a row is its name and a line under it on the left, its control on the right (the wireframe's). Its sliders, 16 px tall there, are 44 here (decided 10), with their percent; its On / Off a 44 button lit when on.
+- **Every control is today's, with today's writer** (`src/game/menus3Settings.js` SETTINGS_TODAY says where each of today's went; the suite reads today's page's own words, so a row added there without a home fails): the sound's switch and levels, the debug overlay and the restart with its confirm screen moved VERBATIM into `dash/settingsParts.jsx`, which today's page and this one both call; the menu side, the quest path, the silence and the chat on screen call the same modules today's rows call. What a device or a switch hides today stays hidden the same way (full screen only in iPhone Safari's browser, the quest path only with `?questpath`, the debug overlay only with `?dev=1`).
+- **Account is today's Account page whole** (`AccountPanel.jsx`: Log out or Switch Bro with its confirm and its one road out, the Login Key, continue another character with its key), Restart character under it, red, its confirm screen in the rail's place. No login code is touched.
+- **Whole pages open today's pages**: Feedback, About (privacy, rules, credits, the smoothness reports) and the chat and news lines (the Notifications page, its unread count on the row) open in today's band, and their Back gives the panel back on the same rail (`menus3Away`). Settings opens only what today's Settings opens.
+- **The controls lesson and full screen shut the panel first**: the lesson teaches the fight controls, which the open panel hides upright; the install hint is drawn over the world.
+
+**Flagged to the owner:** the placement map's "desktop keys" (Screen and controls) has no page in the game today (the keys are worn by their buttons, `data-key`): nothing is built for it. The wireframe's "Control layout" and "Dashboard size" rows are its samples: the game has no such settings.
+
+Sources: src/game/menus3Settings.js, menus3Router.js (MENUS3_BUILT), src/ui/menus3/Menus3Settings.jsx, Menus3Panel.jsx, menus3Wire.js (the gear's toggle), menus3.css, src/ui/mobile/dash/settingsParts.jsx, SettingsPanel.jsx, AccountPanel.jsx, src/ui/lazyPanels.js, src/data/say/menus3Settings.js; server/test/menus3-settings.test.mjs; tools/qa/mp/mp-menus3settings.mjs.
+
 ## The new menus' Roster and the one Player page (v2.3.6864, card MN step 10)
 Screens: menus3-roster, menus3-player
 
@@ -2850,3 +2867,19 @@ Screens: menus3-chat, menus3-ranks
 - C (Chat), U (Ranks), B (Emotes): the keys wait for Bro · Skills' deskKeys.js; until then C opens today's chat box and B today's picker, as yesterday.
 
 Sources: src/game/menus3Chat.js, menus3Router.js (MENUS3_BUILT), menus3Roster.js (`rowCard`); src/ui/menus3/Menus3Chat.jsx, Menus3Ranks.jsx, menus3People.js, Menus3Panel.jsx, Menus3Dock.jsx, Menus3Roster.jsx (Message, menus3PlayerHint), menus3Wire.js, menus3.css; src/ui/mobile/dash/RankStandings.jsx (`nav`), LeaderboardPanel.jsx (ui2RankParts); src/ui/panels/EmotePanel.jsx; src/ui/BroTown.jsx (openSelfChat); src/data/say/menus3Chat.js; server/test/menus3-chat.test.mjs; tools/qa/mp/mp-menus3chat.mjs.
+## The new menus' Feats: the AP line, Medals | Titles | Records, a medal's page (v2.3.6868, card MN step 9)
+Screens: menus3-feats
+
+**What it is for:** what you have done and what it earned you, in World's third section (the owner's document: "Feats (medals by tier, AP)", "AP source breakdown: World · Feats (AP header line)", "Equipped title: World · Feats · Titles", "Lifetime records: World · Feats · Records"; the wireframe v4.4's AP bar, its rail and rows).
+
+**Decisions, and why:**
+- **World's Feats tab opens the new panel on Feats**, always on Medals (rule 1). The page is today's Feats' readings, never counted again (`src/game/menus3Feats.js` reads `src/game/feats.js`).
+- **The AP line** (the wireframe's bar): the worker's total, "n of 33 medals earned", and its split (from medals; quests, guilds and the arena TOGETHER: the worker keeps one number) only where the parts add up; else "where these came from is not known", never a split that is false. The bar is a press to where the AP came from (today's AP tree's layers on one page: by tier, then the rest). Ranks, on its right, opens today's leaderboards until People · Ranks is rebuilt; their Back brings the panel back (`menus3Away`).
+- **Medals**: the game's four tiers (Common, Rare, Arena, Super-rare), each its count and AP, every one of the table's medals a row, 44 tall (the wireframe's 38 mended): a DRAWN medal (its tier's colour, filled and ticked when earned, dashed when not), the name, Earned, its short progress where the game keeps one, or Not yet: a word and a mark, never colour alone. A row opens the medal's page with Back: its one picture (as today's medal page), tier, AP, the day earned, how, so far, and Equip (Remove when worn) on an earned one.
+- **Titles**: the one you wear, every earned title newest first with Equip (Remove on the worn one), the family's next and locked rungs as words (today's Titles page). Equip is today's request (`achv_title`, `sendAchvTitle`, the action door); every button reads "Saving..." and is held while an ask is out.
+- **Records**: the counters the game keeps (kills, deaths, lifetime gold, lifetime XP), the three weapons' accuracy (asked as today's Journey page asks), your record on Hemi when there is one, and "Quests you finished (n)", today's Quest History door, which opens World · Quests' own Done rail.
+- **No art loads because it opened**: the rows draw their medals; only a medal's page shows its picture.
+
+**Flagged to the owner:** no claim and no dot (decided 7): an achievement pays its AP the moment the worker grants it, and no button in today's game lights for a feat's reward; the wireframe's "next feat" progress bar is sample content (the game picks no "next" feat); the document's key F is the Element Burst: no key added; Duels Won and Deepest Zone are never counted (no writer) and stay off, as under today's Feats.
+
+Sources: src/game/menus3Feats.js, feats.js, achievements.js; src/ui/menus3/Menus3Feats.jsx, Menus3Panel.jsx, menus3.css; src/data/say/menus3Feats.js.
