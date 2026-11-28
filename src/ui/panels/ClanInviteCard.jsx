@@ -4,6 +4,8 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { SAY } from '@/data/say/clanInvite.js';   /* v2.3.6320: its words, in the one table (docs/specs/player-words.md, W0) */
 import { say, sayPieces } from '@/game/say.js';
+import { menus3Active } from '../menus3/menus3Wire.js';   /* v2.3.6871: the one Card (card MN step 3) */
+import { Menus3Card } from '../menus3/Menus3Card.jsx';
 
 /* ═══ v2.3.3066: A CLAN INVITE YOU CAN TAKE UP ═══
  *
@@ -34,6 +36,12 @@ export function ClanInviteCard(props) {
     S._pendingClanInvite = null;
     onDone();
   };
+  /* v2.3.6871 (card MN step 3): under ?menus3 the invite is the owner's one Card, its answers
+     today's accept and "Not now" above, unchanged */
+  if (menus3Active()) {
+    return <Menus3Card kind="clan.invite" args={{ fromName: invite.fromName, clanTag: invite.clanTag, clanName: invite.clanName }}
+      mark={{ 'data-clan-invite': '' }} onAnswer={function (a) { if (a === 'yes') accept(); else later(); }} />;
+  }
   /* the font shorthand FIRST: after fontSize/fontWeight it would reset them */
   var btn = { font: 'inherit', flex: 1, minHeight: 44, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
   return createPortal(

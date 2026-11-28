@@ -2804,6 +2804,18 @@ Screens: menus3-power
 
 Sources: src/game/menus3Power.js, menus3Router.js; src/ui/menus3/Menus3Power.jsx, Menus3Panel.jsx, menus3Wire.js, menus3.css; src/ui/mobile/sheet/StatTree.jsx (`at`); src/ui/hud/HudArt.jsx, CharacterHud.jsx; server/test/menus3-power.test.mjs; tools/qa/mp/mp-menus3power.mjs.
 
+## The new menus' one Card: invites and confirms (v2.3.6871, card MN step 3)
+Screens: menus3-card
+
+**What it is for:** the owner's document, section 5: *"All NPC dialogue, offers, invites, rewards, death prompts, and confirmations share one compact card with at most 2 buttons."* Under `?menus3` the prompts that are TODAY a line of words and one or two answers are drawn as that one card; `?menus3=0` draws every old prompt exactly as before.
+
+**Decisions, and why:**
+- **The wireframe's card as drawn** (`.modalcard`): a dim over the whole screen, the card in the middle at most 330 wide, the title bold, a muted line, the game's fine print where today's prompt had it, ONE row of two answers: the quiet one left (Esc, `data-esc`), the lead one right (Enter, `data-enter`), each 44 tall, in the kit's action faces (an invite's yes commits, a release is danger). No picture, no icon file: nothing loads.
+- **Today's words, today's sends.** The words are today's prompt's own rows (`src/game/menus3Card.js` reads today's tables); an answer calls the prompt's OWN handler (the same request and payload through `act()`), so the game does not change. The prompt still owns its state and its clock (a duel's card still closes when the challenge runs out); only what it draws changes.
+- **The dim is inert**, as today's duel and clan cards are: a stray tap must not answer for you. Today's party invite had no dim; on the Card it waits for its answer (or its clock), as the duel does.
+- **What moved:** a party invite (`PartyHUD.jsx`), a duel challenge without a wager (`DuelRequestPanel.jsx`), a clan invite (`ClanInviteCard.jsx`; Clans go in a later step, the invite stays answerable until then), releasing a pet (`PetsPage.jsx`, the kit's Ui2Confirm there). Today's hooks (`data-party-invite`, `data-duel-request`, `data-clan-invite`) are on the card.
+- **What keeps today's window** (`CARD_TODAY`, each with why): a challenge with a wager, a trade request, buying pet room, creating a clan (gold); "Attack?" in no man's land (up to four answers); log out (a login step); leaving a trade (inside the trade window, step 14); drop and sell (a quantity picker); restart (a screen with its states); townsfolk talk (pages of words), a quest's offer and reward (lists); death (no answers today); the Hotel's rest and the Land Office (rows inside their buildings' windows), New monster (a timed tap, no answers), the dungeon's mouth and way out (no prompt today); a friend request (no prompt today: a row in Requests).
+
 ## The new menus' Settings: the rail of five (v2.3.6869, card MN step 12)
 Screens: menus3-settings
 

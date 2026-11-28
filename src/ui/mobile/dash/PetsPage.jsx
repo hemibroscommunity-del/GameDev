@@ -41,6 +41,8 @@ import { deskWideActive } from '../../deskWide.js';
 import { openCodexMonster } from './codexPageOpen.js';
 import { openPetsPage, petsTop, keepPetsSel, petsKeepGetter, petsPressNow, petsMarks, petsPendCount } from './petsPageOpen.js';
 import './petsUi2.css';
+import { menus3Active } from '../../menus3/menus3Wire.js';   /* v2.3.6871: Release is the one Card under ?menus3 (card MN step 3) */
+import { Menus3Card } from '../../menus3/Menus3Card.jsx';
 
 const POLL_MS = 400;
 const revOf = (S) => (S ? Math.floor(Number(S._petBookRev) || 0) : -1);
@@ -258,6 +260,12 @@ function One({ getS, id }) {
         <Ui2Action c="silver" label={say(SAY, 'pets.houseKeep')} data-esc="" onClick={() => { setMode(null); setText(''); }} />
         {text && !clean ? <span className="u2-why" data-u2-why="name">{say(SAY, 'pets.nameRule')}</span> : null}
       </div>
+    );
+  } else if (mode === 'release' && menus3Active()) {
+    /* v2.3.6871 (card MN step 3): under ?menus3 the owner's one Card asks, its answers today's below */
+    actions = (
+      <Menus3Card kind="pet.release" args={{ name: v.name }}
+        onAnswer={(a) => { if (a === 'yes') press(PET_HOLDS.release(id), () => sendPetRelease(S, id)); setMode(null); }} />
     );
   } else if (mode === 'release') {
     actions = (

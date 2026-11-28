@@ -967,6 +967,22 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6871 (card MN step 3, `?menus3`): the one Card, a duel challenge without a wager */
+  { id: 'menus3-card', group: 'Dashboard', title: 'The new menus: the one Card', about: 'The owner\'s new menus, step 3 (docs/design/menus3/ SPEC section 5): a small card in the middle of the screen over a dim, its title bold, a muted line and the game\'s fine print, and one row of at most two answers -- the quiet one left (Esc), the lead one right (Enter), each 44 tall. Today\'s words and today\'s sends: a party invite, a duel challenge without a wager (shown here, a stand-in player), a clan invite, releasing a pet. A challenge with a wager, a trade request and everything with gold, a list or more answers keep today\'s windows.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => window._uiPanels.duelRequest({ fromId: 'bp_demo', fromName: 'Rival Bro', wager: 0 }));
+      await wait(P, 1000);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-card-answer="no"]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6861 (card MN step 4, `?menus3`): Bro · Bag in the new panel, and its Item page */
   { id: 'menus3-bag', group: 'Dashboard', title: 'The new menus: Bro, the Bag', about: 'The owner\'s new menus, step 4 (docs/design/menus3/): the Bro button opens the new panel on the Bag, always. The rail (All with the bag\'s count, Gear (9), Weapons with the weapon bag\'s fill, Armor, Consumables, Materials, Pets) over a grid four across, a tile its picture, name and count. Upright the panel is 48% of the screen above the dock, the fight controls hidden and the world\'s view moved up; sideways and on a computer a right drawer 40% wide with the fight controls left of it.',
     run: async ({ P }) => {
