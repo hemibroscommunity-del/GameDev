@@ -155,13 +155,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* Leave: two taps; gone on both */
     /* the two taps inside the chip's three seconds (MENUS3_ROSTER_ARM_MS): one quick read between */
     await tap(A, '[data-m3-party-leave]', true);
-    const armedNow = (await attrs(A, '[data-m3-party-leave]', 'data-m3-party-leave'))[0];
-    await tap(A, '[data-m3-party-leave]', true);
+    const armedNow = await A.page.evaluate(() => { const b = document.querySelector('[data-m3-party-leave]'); const a = b ? b.getAttribute('data-m3-party-leave') : null; if (b) b.click(); return a; });
     rec.ok('upright: Leave\'s first tap only asks', armedNow === 'armed', armedNow);
-    const gone = await H.waitFor(B, (S) => (S._party && S._party.state === 'open' ? S._party.members.length : 0), (n) => n === 0, { timeout: 15000, label: 'party gone' }).catch(() => null);
+    /* the one who left has no party; the other is alone in theirs or has none (parties last: partykeep) */
+    const left = await H.waitFor(A, (S) => (S._party && S._party.state === 'open' ? S._party.members.length : 0), (n) => n === 0, { timeout: 15000, label: 'left' }).catch(() => null);
+    const other = await H.waitFor(B, (S) => (S._party && S._party.state === 'open' ? S._party.members.length : 0), (n) => n < 2, { timeout: 15000, label: 'the other alone' }).catch(() => null);
     await A.page.waitForTimeout(1200);
     R = await roster(A);
-    rec.ok('upright: the second tap leaves; the party is gone on both bars', gone === 0 && !!R && R.party === 'none', { gone, R: R && R.party });
+    rec.ok('upright: the second tap leaves; your bar is the slim line again, the other is no longer with you', left === 0 && other !== null && other < 2 && !!R && R.party === 'none', { left, other, R: R && R.party });
     /* the old list's doors */
     await tap(A, '[data-menus3-x]', true);
     await A.page.evaluate(() => { try { window.__broLegacyUI.playersOpen(); } catch (e) { /* no door */ } });
@@ -171,9 +172,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('upright: the old player list\'s door opens Roster on Nearby, the old list never shows', ps.open && ps.section === 'roster' && !!R && R.seg === 'nearby' && !(await box(A, '.bt-plist')), { ps, plist: !!(await box(A, '.bt-plist')) });
     const tw = await A.page.evaluate(() => { const S = window._gameState.current; return !!(S && S._serverCaps && S._serverCaps.whisper); });
     rec.ok('upright: the worker carries whispers (the page\'s Message rides on it)', tw, null);
-  } finally { await B.page.context().close().catch(() => {}); }
+  } catch (e) { rec.ok('upright: ran', false, String(e).slice(0, 200)); }
 
   /* ── 2. sideways: a third player; the first in Nearby ── */
+  await H.nudge(A).catch(() => {});
   const S2 = await H.newPlayer(browser, { name: 'Rostside', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true, query: 'menus3=1' });
   try {
     await H.enterWorld(S2);
@@ -196,6 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } finally { await S2.page.context().close().catch(() => {}); }
 
   /* ── 3. a computer ── */
+  await H.nudge(A).catch(() => {});
   const D = await H.newPlayer(browser, { name: 'Rostdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'menus3=1' });
   try {
     await H.enterWorld(D);
@@ -214,5 +217,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ps = await pstate(D);
     rec.ok('computer: Esc closes it', !ps.open, ps);
   } finally { await D.page.context().close().catch(() => {}); }
+  await B.page.context().close().catch(() => {});
   await A.page.context().close().catch(() => {});
 }
