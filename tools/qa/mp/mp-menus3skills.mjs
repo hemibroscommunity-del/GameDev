@@ -73,6 +73,8 @@ async function seed(P, wsPort, rec, who) {
   for (let i = 0; i < 20; i++) { L = await levels(P); if (Object.keys(SEED).every((k) => L[k] === SEED[k])) break; await P.page.waitForTimeout(300); }
   rec.ok(`${who}: the worker set Fishing 12, Mining 5, Cooking 30, Trapping 3`, Object.keys(SEED).every((k) => L && L[k] === SEED[k]), L);
 }
+/* the Skills page is its own script (lazyPanels.js): wait for its grid before reading it */
+const grid = (P) => P.page.waitForSelector('[data-m3-skillgrid]', { timeout: 20000 }).catch(() => null);
 const until = (P, fn, ok, ms, label) => H.waitFor(P, fn, ok, { timeout: ms, label }).catch(() => null);
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -82,6 +84,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (await inWorld(P, rec, 'upright')) {
       /* Skills once: every level seen (today's rule), so the seeded ones are the new ones */
       await P.page.evaluate(() => window.__btMenus3.panel('bro', 'skills'));
+      await grid(P);
       await P.page.waitForTimeout(800);
       await P.page.evaluate(() => { try { document.querySelector('[data-menus3-x]').click(); } catch (e) { /* shut */ } });
       await P.page.waitForTimeout(400);
@@ -90,6 +93,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
       rec.ok('upright: the Skills tab wears the dot of a level-up not yet looked at', !!(await box(P, '[data-menus3-dot="skills"]')), null);
       const tabbed = await tap(P, '[data-menus3-tab="skills"]', true);
+      await grid(P);
       let st = await pstate(P);
       let s = await probe(P);
       rec.ok('upright: the Skills tab opens the new panel on Skills', tabbed && st.open && st.section === 'skills' && st.page === 'root' && !!s && s.page === 'root', { st, tabbed });
@@ -151,6 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await Q.page.evaluate(() => window.__btMenus3.go('dock.bro'));
       await Q.page.waitForTimeout(600);
       await tap(Q, '[data-menus3-tab="skills"]', true);
+      await grid(Q);
       const pb = await box(Q, '[data-menus3-panel]');
       rec.ok('sideways: Skills in the drawer, 40% wide on the right', !!pb && Math.abs(pb.w - Math.round(844 * 0.4)) <= 3 && Math.abs(pb.x + pb.w - 844) <= 3, pb);
       const tiles = await boxes(Q, '[data-m3-skill]');
@@ -176,6 +181,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await D.page.waitForTimeout(300);
       await D.page.keyboard.press('KeyL');
       await D.page.waitForTimeout(700);
+      await grid(D);
       let st = await pstate(D);
       const pb = await box(D, '[data-menus3-panel]');
       rec.ok('computer: L opens the new panel on Skills, in the drawer', st.open && st.section === 'skills' && !!pb && pb.x > 600, { st, pb });
