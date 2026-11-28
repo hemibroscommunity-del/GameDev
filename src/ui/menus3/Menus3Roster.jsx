@@ -47,6 +47,42 @@ import { SAY } from '@/data/say/menus3Roster.js';
 import { SAY as SAY_S } from '@/data/say/socialDash.js';
 import { say } from '@/game/say.js';
 
+/* the words, each key written out (the say guard reads them) */
+const ACT_WORD = {
+  message: () => say(SAY, 'menus3Roster.actMessage'),
+  invite: () => say(SAY, 'menus3Roster.actInvite'),
+  kick: () => say(SAY, 'menus3Roster.actKick'),
+  trade: () => say(SAY, 'menus3Roster.actTrade'),
+  duel: () => say(SAY, 'menus3Roster.actDuel'),
+  friend: () => say(SAY, 'menus3Roster.actFriend'),
+  unfriend: () => say(SAY, 'menus3Roster.actUnfriend'),
+  card: () => say(SAY, 'menus3Roster.actCard'),
+  mute: () => say(SAY, 'menus3Roster.actMute'),
+  unmute: () => say(SAY, 'menus3Roster.actUnmute'),
+  block: () => say(SAY, 'menus3Roster.actBlock'),
+  unblock: () => say(SAY, 'menus3Roster.actUnblock'),
+  report: () => say(SAY, 'menus3Roster.actReport'),
+};
+const SENT_WORD = {
+  invite: () => say(SAY, 'menus3Roster.sentInvite'),
+  kick: () => say(SAY, 'menus3Roster.sentKick'),
+  duel: () => say(SAY, 'menus3Roster.sentDuel'),
+  friend: () => say(SAY, 'menus3Roster.sentFriend'),
+  unfriend: () => say(SAY, 'menus3Roster.sentUnfriend'),
+  mute: () => say(SAY, 'menus3Roster.sentMute'),
+  unmute: () => say(SAY, 'menus3Roster.sentUnmute'),
+  block: () => say(SAY, 'menus3Roster.sentBlock'),
+  unblock: () => say(SAY, 'menus3Roster.sentUnblock'),
+  report: () => say(SAY, 'menus3Roster.sentReport'),
+};
+const WHY_WORD = {
+  spam: () => say(SAY, 'menus3Roster.whySpam'),
+  abuse: () => say(SAY, 'menus3Roster.whyAbuse'),
+  harassment: () => say(SAY, 'menus3Roster.whyHarassment'),
+  cheating: () => say(SAY, 'menus3Roster.whyCheating'),
+};
+const wordOf = (t, k) => (Object.prototype.hasOwnProperty.call(t, k) ? t[k]() : '');
+
 const caps = (S) => (S && S._serverCaps) || {};
 const sendIf = (S, ev, payload) => { try { if (S && S.channel) return act(ev, payload || {}); } catch (e) { /* no channel */ } return false; };
 const idSet = (list, f) => { const o = Object.create(null); for (const x of list || []) { const k = f(x); if (k != null) o[String(k)] = 1; } return o; };
@@ -361,7 +397,7 @@ export function Menus3Player({ getS, id }) {
     try { window.__btMenus3Player = { id: f.id, name: f.name, level: f.level, where: f.where, acts: acts.map((a) => a.id), note }; } catch (e) { /* no window */ }
   });
   const tell = (k) => {
-    setNote(say(SAY, 'menus3Roster.sent.' + k));
+    setNote(typeof k === 'function' ? k() : '');
     clearTimeout(noteT.current);
     noteT.current = setTimeout(() => setNote(''), 4000);
     force((v) => (v + 1) % 1e9);
@@ -378,33 +414,33 @@ export function Menus3Player({ getS, id }) {
     }
     switch (a.id) {
       case 'message': whisper(f.name); return;
-      case 'invite': sendIf(S, 'party_invite', { target: f.id }); tell('invite'); return;
-      case 'kick': sendIf(S, 'party_kick', { target: f.id }); tell('kick'); return;
+      case 'invite': sendIf(S, 'party_invite', { target: f.id }); tell(SENT_WORD.invite); return;
+      case 'kick': sendIf(S, 'party_kick', { target: f.id }); tell(SENT_WORD.kick); return;
       case 'trade':
         /* the card's: the two-sided window where the worker has it (its drawer joins the bag, so the
            panel goes); else the old one-way gift, which only the card opens */
         if (c.trade2 && S && S.channel) { menus3Bus.close(); sendIf(S, 'trade2_open', { target: f.id }); } else openCard();
         return;
-      case 'duel': sendIf(S, 'duel_wager_request', { target: f.id, from: S.myId, fromName: S.myName, wager: 0 }); tell('duel'); return;
+      case 'duel': sendIf(S, 'duel_wager_request', { target: f.id, from: S.myId, fromName: S.myName, wager: 0 }); tell(SENT_WORD.duel); return;
       case 'friend':
         addFriend(S, f.id, f.name, (S && S.others && S.others[f.id] && S.others[f.id].color) || undefined);
         if (c.friends) sendIf(S, 'friend_request', { target: f.id, name: f.name });
-        tell('friend'); return;
+        tell(SENT_WORD.friend); return;
       case 'unfriend':
         if (friendRow && friendRow.srv && c.friends) sendIf(S, 'friend_remove', { fid: f.id });
-        removeFriend(S, f.id); tell('unfriend'); return;
+        removeFriend(S, f.id); tell(SENT_WORD.unfriend); return;
       case 'card': openCard(); return;
-      case 'mute': setMuted(S, f.id, true, f.name); tell('mute'); return;
-      case 'unmute': setMuted(S, f.id, false, f.name); tell('unmute'); return;
-      case 'block': setBlock(S, f.id, true, f.name); tell('block'); return;
-      case 'unblock': unblockPlayer(S, f.id); tell('unblock'); return;
+      case 'mute': setMuted(S, f.id, true, f.name); tell(SENT_WORD.mute); return;
+      case 'unmute': setMuted(S, f.id, false, f.name); tell(SENT_WORD.unmute); return;
+      case 'block': setBlock(S, f.id, true, f.name); tell(SENT_WORD.block); return;
+      case 'unblock': unblockPlayer(S, f.id); tell(SENT_WORD.unblock); return;
       case 'report': setReporting((v) => !v); return;
       default:
     }
   };
   const label = (a) => {
-    if (a.id === 'kick' && armed && armed.id === 'kick') return say(SAY, 'menus3Roster.act.kickSure');
-    return say(SAY, 'menus3Roster.act.' + a.id);
+    if (a.id === 'kick' && armed && armed.id === 'kick') return say(SAY, 'menus3Roster.actKickSure');
+    return wordOf(ACT_WORD, a.id);
   };
   return (
     <div className="m3-page m3-player" data-m3-player={f.id} data-m3-player-where={f.where}>
@@ -427,8 +463,8 @@ export function Menus3Player({ getS, id }) {
           <span>{say(SAY, 'menus3Roster.reportWhy')}</span>
           <div className="m3-pacts">
             {MENUS3_REPORT_REASONS.map((w) => (
-              <Ui2Action key={w} intent="danger" label={say(SAY, 'menus3Roster.why.' + w)} data-m3-report-why={w}
-                onClick={() => { reportPlayer(S, f.id, w); setReporting(false); tell('report'); }} />
+              <Ui2Action key={w} intent="danger" label={wordOf(WHY_WORD, w)} data-m3-report-why={w}
+                onClick={() => { reportPlayer(S, f.id, w); setReporting(false); tell(SENT_WORD.report); }} />
             ))}
           </div>
         </div>
