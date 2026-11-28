@@ -339,6 +339,7 @@ const FORMS = {
   'uikit': '1',
   'uploadicons': '0',
   'v17look': '0',
+  'v17wide': '0',
   'veildoor': '0',
   'warmonce': '0',
   'waves': '*',

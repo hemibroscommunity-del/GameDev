@@ -38,6 +38,7 @@ import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BAND_ASSEMBLY_MAX_W } from '../../../src/ui/mobile/sheet/sheetGeometry.js';   /* v2.3.4890: the band's one width */
+import { deskBlockW } from '../../../src/game/v17Wide.js';   /* v2.3.6842: a computer's block beside the keys list (card UI4 PR 3) */
 export const lane = 'full';
 
 /* pictures for the PR and the owner (tools/qa/mp/out/, not committed) */
@@ -498,7 +499,8 @@ async function centredChecks(P, rec, { label }) {
   const ok = (b, want, W) => !!b && Math.abs(b.w - want) <= 2 && Math.abs(b.x - (W - b.w) / 2) <= 2;
   for (const [w, h] of [[1920, 1080], [1280, 720]]) {
     const { rest, open } = await at(w, h);
-    const want = Math.min(BAND_MAX_W, rest.playW || w);
+    /* v2.3.6842 (card UI4 PR 3): on a computer's band the block is 840 only where the band holds it and the keys list, else 480 (game/v17Wide.js deskBlockW) */
+    const want = Math.min(deskBlockW(rest.playW || w, BAND_MAX_W, true), rest.playW || w);
     /* v2.3.4172: the band itself is the WORLD's width now, centred with it
        (the owner on #1386: "Make the edge of the dashboard stop at the black
        bars width"; mp-bandshots measures its edges against the canvas) */
