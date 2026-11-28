@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dd05f6f9178b712f2186bc24d6c0f531ffac45bf",
+  "tree": "12dbb7a1166a476d1f05f0b5bcb5c044c8047ae4",
+  "committedAt": "2026-11-28T05:06:30-08:00",
+  "subject": "Merge pull request #2440 from hemibroscommunity-del/claude/mn-bag",
+  "files": 9510,
+  "bytes": 1131943569,
+  "listingSha256": "7053a8e2fe989d9ce94062b25648d53170065c019421f1f45fb3bb7bdd045086",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
