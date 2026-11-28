@@ -32,6 +32,7 @@ import { Menus3Bag } from './Menus3Bag.jsx';
 import { Menus3Power, powerDot } from './Menus3Power.jsx';   /* v2.3.6862: Bro · Power (card MN step 5) */
 import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 7) */
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
+import { Menus3SettingsLazy } from '../lazyPanels.js';   /* v2.3.6869 (card MN step 12): Settings, its own script */
 import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
@@ -107,7 +108,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
   const sections = MENUS3[st.menu] || [];
   return createPortal(
     <div className="bt-menus3-layer" data-menus3-layer="">
-      <section className={ui2RootClass()} style={box} data-menus3-panel={shape} data-menus3-menu={st.menu} role="dialog" aria-label={menuWord(st.menu)}>
+      <section className={ui2RootClass()} style={box} data-menus3-panel={shape} data-menus3-menu={st.menu} role="dialog" aria-label={st.section === 'settings' ? say(SAY, 'menus3.settings') : menuWord(st.menu)}>
         <div style={HEAD} data-menus3-head="">
           {deep ? (
             <>
@@ -117,6 +118,8 @@ export function Menus3Panel({ rpgState, stateRef }) {
               </button>
               <span className="m3-title" data-menus3-title="">{pageTitle(top)}</span>
             </>
+          ) : st.section === 'settings' ? (
+            <span className="m3-title" data-menus3-title="">{say(SAY, 'menus3.settings')}</span>   /* v2.3.6869: the wireframe's header, its title and X */
           ) : sections.map((s) => (
             <button key={s} type="button" className={'u2-raised u2-ctl' + (s === st.section ? ' is-selected' : '')} style={TAB}
               data-menus3-tab={s} aria-pressed={s === st.section} {...frameTap(() => menus3Bus.section(s))}>
@@ -135,6 +138,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
           {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
+          {st.section === 'settings' ? <Menus3SettingsLazy getS={getS} top={top} /> : null}
         </div>
       </section>
     </div>,

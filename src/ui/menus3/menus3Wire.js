@@ -51,7 +51,9 @@ export const menus3Bus = {
   /* v2.3.6862: `rail` the section's own page's place to open on (Power's lane, from the weapon bar) */
   open(menu, section, rail) {
     const sec = section || null;
-    _panel = Object.freeze({ open: true, menu: menu || 'bro', section: sec, nav: navStart(sec, rail == null ? null : rail) });
+    /* v2.3.6869 (card MN step 12): Settings is no dock menu's (the router's menu null): no tabs, its title */
+    const m = menu || (sec === 'settings' ? null : 'bro');
+    _panel = Object.freeze({ open: true, menu: m, section: sec, nav: navStart(sec, rail == null ? null : rail) });
     stamp(); emit();
   },
   /* a header tab: a built section starts its own page; one not built yet goes
@@ -137,6 +139,8 @@ export function menus3Go(entry, ctx) {
   /* one menu at a time: today's band goes when the panel opens, the panel when a road opens the band */
   if (r.road === 'panel') {
     if (_panel.open && _panel.menu === r.menu && entry.indexOf('dock.') === 0) { menus3Close('dock'); return true; }
+    /* v2.3.6869 (card MN step 12): the gear toggles Settings, as the wireframe's does */
+    if (_panel.open && _panel.section === 'settings' && entry === 'hud.gear') { menus3Close('gear'); return true; }
     if (bandShown()) { try { dashboardPanelBus.go({ type: 'close' }); } catch (e) { /* no band */ } }
   } else if (_panel.open) {
     menus3Bus.close();

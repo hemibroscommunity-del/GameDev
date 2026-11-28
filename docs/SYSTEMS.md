@@ -392,6 +392,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: menus3Nav, menus3Bag
 - **Files**: `src/game/`: menus3Power
 - **Files**: `src/game/`: menus3Quests
+- **Files**: `src/game/`: menus3Settings
 - **Files**: `src/game/`: hudCorner
 - **Files**: `src/game/`: topGold
 - **Files**: `src/game/`: v17Wide
