@@ -18,6 +18,17 @@
 }
 .ui2 .u2-rk-tile { min-width: 0; touch-action: manipulation; }
 .ui2.u2-rk-tiles .u2-tile-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* v2.3.6846 (the owner, 2026-11-28: "Leaderboards menu cuts off headers"): a door's word is never cut.
+   Upright, a word too wide for its tile ("Points placed", "Combat level" at 390 and under, "Woodcutting" at 375
+   and under) spilled past the tile or lost its end: the words' box now holds to the tile, and the word wraps
+   onto a second line, at its space first, then where the phone hyphenates it ("Wood-cutting"), else at any
+   letter -- never clipped, never smaller, the same five across (no more rows to scroll).  Sideways (one row of
+   compact doors) keeps its one line. */
+.ui2.u2-rk-tiles:not(.is-short) .u2-tile-words { max-width: 100%; }
+.ui2.u2-rk-tiles:not(.is-short) .u2-tile-label {
+  white-space: normal; overflow: visible; text-overflow: clip; text-align: center;
+  overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto;
+}
 .ui2.u2-rk-tiles:not(.is-short) .u2-tile.is-primary .u2-tile-art { width: 40px; height: 40px; }
 
 /* ── a board: its choice, its heads, the list (the pinned copy over its foot), the foot's line ── */
@@ -33,6 +44,13 @@
   font-size: var(--ui2-fs-small); font-weight: 700; letter-spacing: 0.04em; color: var(--ui2-text-muted);
 }
 .ui2 .u2-rk-heads .u2-rk-place { text-align: center; }
+/* v2.3.6846 (the owner, 2026-11-28: "Leaderboards menu cuts off headers"): the heads' row is 18 px and clips,
+   but the face column's empty head took a row's 30 px face box and the Rank head a row's 15 px number, so the
+   grid's row stood 30 px tall inside the 18 px strip and every head sat low, its foot cut ("Player" read
+   "Plaver") at every size, worse under the larger words of ?v17look.  The heads keep their own size: the face
+   head no height of its own, the Rank head the heads' word like Player and Level. */
+.ui2 .u2-rk-heads .u2-rk-face { height: auto; }
+.ui2 .u2-rk-heads .u2-rk-place { font-size: inherit; }
 .ui2 .u2-rk-zone { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .ui2 .u2-rk-list {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
