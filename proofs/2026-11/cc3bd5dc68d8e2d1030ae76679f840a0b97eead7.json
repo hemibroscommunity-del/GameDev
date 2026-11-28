@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cc3bd5dc68d8e2d1030ae76679f840a0b97eead7",
+  "tree": "85d7cf6d684f9ae895c35bdb10b2210ec6ab3f57",
+  "committedAt": "2026-11-28T10:27:29-08:00",
+  "subject": "Merge pull request #2451 from hemibroscommunity-del/claude/mn-chat",
+  "files": 9547,
+  "bytes": 1132477273,
+  "listingSha256": "ef9bc6e3a3fbf03eab95b37378f5c20e75118fa6aca215d74c43767be3c2ec75",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
