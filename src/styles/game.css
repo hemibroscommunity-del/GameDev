@@ -7303,7 +7303,12 @@ html.bt-one-band:not(.bt-band-side) [data-band-box="page"]{width:100%}
    the moment it folds.  The two touch zones go too: a drag on the world does
    not start a walk under a page you are reading.  Lane D's controls are not
    edited for this: each is found by the hook it already carries. */
-html.bt-band-side-open :is([data-joyzone], .bt-joystick-zone, .bt-rjoy-zone, [data-sprint], [data-ride], [data-quickeat],
+/* v2.3.6860 (card MN step 1): the new menus' panel layer (menus3/Menus3Panel.jsx):
+   the play area above the band's resting row, the dock; only its box takes a tap */
+.bt-menus3-layer{position:fixed;left:0;right:0;top:0;bottom:var(--dash-h,0px);pointer-events:none;z-index:40}
+/* v2.3.6860 (card MN step 1): and upright under ?menus3 while a menu is open
+   (menus3Wire.js `bt-menus3-hide-ctl`; the owner's decision 1) */
+:is(html.bt-band-side-open, html.bt-menus3-hide-ctl) :is([data-joyzone], .bt-joystick-zone, .bt-rjoy-zone, [data-sprint], [data-ride], [data-quickeat],
   [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round],
   [data-padhousing]){
   /* v2.3.6640: + the controller's housings (PadHousings.jsx); v2.3.6641: its one shell */

@@ -193,6 +193,7 @@ const FORMS = {
   'manual': '*',
   'mappin': '0',
   'memalarm': '0',
+  'menus3': '0',
   'movementreset': '0',
   'musicdecode': '',
   'narrow': '',

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { chromeSilenced, guardActive, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
+import { menus3On } from '../menus3/menus3Switch.js';   /* v2.3.6860 */
+import { menus3Go } from '../menus3/menus3Wire.js';   /* v2.3.6860 */
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
@@ -276,6 +278,9 @@ export function WorldChatFeed() {
       if (!inShell(e.clientX, e.clientY)) return;         /* finished off the feed */
       if (guardActive()) return;
       swallowTapClick(e);   /* v2.3.4172: the same, for a tap on the feed */
+      /* v2.3.6860 (card MN step 1): under ?menus3 the chat lines open People · Chat
+         (today's chat box, the router's road); the header still folds the feed */
+      if (menus3On()) { menus3Go('hud.chatLines'); return; }
       toggle();
     };
     const off = () => { from = null; };

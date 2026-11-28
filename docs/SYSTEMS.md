@@ -388,6 +388,7 @@ The screens: BroTown.jsx, the band and its panels, windows, banners.
 - **Files**: `src/game/`: uiRoles, kitRules
 - **Files**: `src/game/`: menuTile, gearGeometry
 - **Files**: `src/game/`: charHud
+- **Files**: `src/game/`: menus3Panel, menus3Router, menus3Close
 - **Files**: `src/game/`: hudCorner
 - **Files**: `src/game/`: topGold
 - **Files**: `src/game/`: v17Wide

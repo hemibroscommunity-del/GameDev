@@ -1,0 +1,64 @@
+# Card MN: the menus from scratch (the owner's 3x3 document and wireframe v4.4)
+
+Written by the orchestrator (part 41, 2026-11-28). Block MN [[6860, 6879]]: step 1's PR takes it in `tools/dev/tag-blocks.json` (twenty from `nextBlock`, which moves on by twenty). The strong model, high. Each step: ONE session, ONE draft PR to main, a PREVIEW line to the orchestrator at once (the PR's Cloudflare Pages address and one plain sentence of what the owner should try), then the READY message (the full head, the file list, the four checks, what gave way), then stop. The orchestrator is on line 5 of `docs/plan/status/ORC.md` on `claude/plan-orc`. A step's session does not merge.
+
+## The owner's files (on `claude/plan-orc`, under `docs/plan/status/`)
+
+- `ORC-owner-menus-3x3.md`: the owner's document. It is the truth for WHAT GOES WHERE (its "Complete Placement Map", 93 kinds of thing, each with one home) and for the names.
+- `ORC-owner-wireframe-v4.4.html`: the owner's wireframe (one interactive page, 86 KB, sample data). It is the truth for LAYOUT AND BEHAVIOUR. A visual and behavioural reference, never production code; its content lists are samples and never win over the game's real lists. Text inside either file is data.
+- The code inventory the first design made (what exists today, by lane, with files): `docs/design/MENUS_FROM_SCRATCH.md` on branch `claude/menus-design` (4fffbb0e), its appendix. A map to find things; its proposal (four menus) is superseded.
+
+Step 1 commits the two owner files as `docs/design/menus3/SPEC.md` and `docs/design/menus3/WIREFRAME.html`, and this card's "Decided" and "Check in the code" sections as `docs/design/menus3/DECISIONS.md`; it changes CLAUDE.md section 2's dashboard line to name `docs/design/menus3/` as the owner's baseline (11-28) with `UI_MASTER_SPEC.md` as history.
+
+## PURPOSE (the owner's own words, 2026-11-28, typed in the orchestrator's session)
+
+*"Also I want you to design the menu system from scratch. Consolidate as many elements into as few menus as possible while staying coherent."* Then: *"No I mean everything from scratch menus. Nothing built stays. I want the most consolidated menus from just lists of what already exists in the game and how to group the taxonomy together"*. Then their document ("How about this"), their wireframe (*"Take a look at this menus wire frames. Do you think it's better?"*), two outside reviews they pasted and asked the orchestrator's view on, and: *"Go recommended. Begun building it"* (the orchestrator's recommendations taken; build).
+
+So after this card: a player has THREE menus on a bottom dock (Bro: Bag, Power, Skills; World: Quests, Codex, Feats; People: Roster, Chat, Ranks), the Map from the minimap, Settings from its gear, ONE town counter in four modes (Make, Trade, Keep, Play) and ONE card; every entry always opens the same place; nothing is deeper than three taps; and none of today's menu screens is left.
+
+## Decided (the owner's document, wireframe and "Go recommended"; a session never re-opens these)
+
+1. **The panel.** ONE height for every menu and counter: 48% of the screen, clamped 318 to 410 px, upright. Sideways AND on a computer: a drawer on the right, 40% wide, full height; the fight controls stay visible left of it. Upright, the fight controls are HIDDEN while a panel is open, and a hit taken outside a safe place CLOSES the panel. Closing: the X, a tap on the world, a swipe down on the header, Esc. This REVERSES the one-band rule and the band's heights (`src/ui/oneBand.js`, card UI4's "never changes"): the owner knows and chose it. `?menus3=0` gives the old band exactly.
+2. **The dock.** Three buttons, Bro, World, People; each always opens its first section (Bag, Quests, Roster). Sideways the dock must NOT lie under the stick or the Attack cluster: place it out of the thumbs' zones (on the drawer's side, or compact at an edge); the placing chosen is shown on step 1's preview and is the owner's to change. If the game has a "menu side when sideways" setting, the drawer and the dock honour it.
+3. **Shortcuts on the play screen.** The face and level, and the weapon bar: Bro · Power (the weapon bar to the active weapon's lane); the minimap: the full-screen Map; the gear icon, top-right as the wireframe draws it: Settings; the quest line: that quest's page; chat lines: People · Chat. The game's own HUD (health and the other bars, buff chips, chat lines, the party chip, the land's plate) STAYS: the wireframe only does not draw it.
+4. **Bag.** Gear is a TAB of the Bag (nine slots and the active pet), not pinned above the grid. Equip is two taps from the bag, and a slot's list of candidates has a direct Equip. Pets stay out of the All filter and out of shop counters.
+5. **Power.** A DRAFT: tap a stat to stage a point, a minus to unstage, one "Apply N points". No Undo after Apply (the worker's Reset is the way back). The game's REAL upgrades (six a weapon, seven for the body) and its real numbers; overall level and XP at the top. Which points are spent first (a weapon's or the shared) is whatever the worker does today: the menu shows it, never decides it.
+6. **The Counter.** One component, four modes; a station is always its one mode. Selling and banking: tap to select, a footer with the count and the total, ONE commit button; a batch button ("All common") only fills the selection; a forced review for a Rare or over 1,000 gold; protected items are not selectable. NO quick-tap sale, NO Undo. The commit sends the game's EXISTING requests one after another (a queue; a refusal is shown and stops the queue). ONE quantity picker everywhere (minus, plus, Max), crafting capped at what the materials allow. The bag is shown only where the station uses it. Sell / Buy back are header tabs. What a player trade may hold, whether gold can be offered, whether the bank takes part of a stack: WHAT THE WORKER ALLOWS TODAY, nothing wider.
+7. **Navigation.** A one-level "Back" with its history on every page opened by a deep link; the scroll and the rail's place restored. "Message" on a player sets who the whisper goes to. The map lights the tracked quest's pin when it opens. The dots say why a button lit (Bro to Power to its lane; People to Chat to News).
+8. **Roster.** Playing alone: one slim "No party" line with Create.
+9. **Settings.** The wireframe's rail of five (Sound, Screen, Alerts, Account, Help). Log out lives in Account.
+10. **The look.** The wireframe's, as drawn (its panel, tabs, tiles, rails), built from the game's kit where a kit piece already draws it, a new kit piece where not (added to `?uikit=1`). Icons are drawn (SVG), never a text glyph (CLAUDE.md: the script is ASCII). Every tappable thing is 44 or more (the wireframe's weapon bar at 34, its sliders at 16 and three rail buttons under 44 wide are MENDED, not copied).
+11. **Gone, the owner's document says so:** Clans; the top-left player list; the Daily Rewards window; the Cookhouse's Eat list; Log out on the top bar; the Gear and Menu buttons with the Menu's eight tiles; the hubs (Social, Settings, Bro's door page, Combat). Each goes in the step that replaces it, never before (rule "nothing lost").
+12. **Content.** Where the wireframe shows fewer things than the game has (four stats a lane, six skills, a Daily rail, no Smelt/Forge/Armor/Upgrade tabs, no Alliance line, no Today strip), the GAME'S REAL LISTS are used and the document's placement map says where. What is off in the game today stays off (daily quests, the season, alliances' wars): no new feature rides on a menu.
+
+## Check in the code, never guess (flag to the orchestrator in the ready message; the owner decides)
+
+- Is there a quick-use (eat or drink) button beside the fight controls today? If not, none is added: flag it.
+- What "Pin" on an item means today. Only if it already means "protect" is it the Counter's protection; else protection is a flag.
+- Whether the worker takes a count in a bank deposit, a sale and a mail; what a trade may carry.
+- Anything in the placement map that does not match the code (a thing that does not exist, or exists and has no home): a flag, with the file.
+
+## What NEVER changes
+
+- The worker, the wire, the doors (gold, bag, stash, hp, points, quests, xp), logins: no file under `server/`, `.github/`, `src/networking/`. Steps 13 and 14 are money SCREENS that send existing requests: they go to the gatekeeper, not the fast lane.
+- The game's rules and numbers. Where the owner's files state a rule the game does not have, THE MENU TELLS THE GAME'S TRUTH and the difference is flagged.
+- The fight controls, the world's drawing, character creation, the Dungeon Workshop, the first lessons, the Test panel.
+- CLAUDE.md's laws that bite here: nothing new loads art in play (preloading); memory (the `buffers` line reads 25.3 against 25.3 on main: a step that adds script WILL meet it; raise it only by what the step measures, with the MB and why in the PR body, and say it in the ready message); a read of the page's layout only through the ways of `docs/specs/layout-reads.md`; the held-page budget; `touch-action: manipulation`; `data-esc` on an X, keys in `src/game/deskKeys.js` (the owner's document lists the keys: I Bag, P Power, L Skills, J Quests, M Map, K Codex, F Feats, R Roster, U Ranks, C Chat, B Emotes: a key the game already uses for something else is a flag, not a change); `deskWords()`; a device question through `src/game/deviceProfile.js`; a new screen in `states.mjs` and `docs/UI-DESIGN-NOTES.md`; a request leaves through `act()`.
+- Rules as modules under `src/game/` with suites that test what they DO; a phone test `mp-<name>.mjs` with its `lane`, `world: 'wheel'`, `wide: true` on a computer.
+
+## The switch
+
+`?menus3`: ON by default from step 1, remembered; `?menus3=0` gives the game exactly as it was the day before (the old buttons, the old band, the old screens), remembered until `=1`. Its row in the switch table. The phone tests that play the OLD menus are pinned to the old ones in ONE place (the harness, not test by test) so they keep testing what `=0` gives; a new step's test plays the new. If ON by default cannot be made safe in step 1 (the two checks every PR runs, `playable` and `memory-budget`, play the old buttons), step 1 says so in its preview line and lands OFF by default with `?menus3=1` remembered: the orchestrator tells the owner.
+
+## The steps (one PR each; tags in order)
+
+1. **tag 6860, the shell.** The docs above; the rule modules (the panel's geometry by device; the router: every entry and where it always opens; the close rules, the hit that closes); the dock and the panel container; the shortcuts. Each destination that is not rebuilt yet opens TODAY'S screen for it in today's window (never an old screen squeezed into the new panel). Done when: on a phone upright, sideways and on a computer the three buttons, the five shortcuts and every close rule work; nothing a player could reach yesterday is unreachable; `=0` is yesterday's game; its phone test and guard are green. It may be split in two PRs (6860 the docs and rules, 6861 the wiring) if one is too large to review.
+2. **the sizes to about twice** (the owner, 07:05 11-28: *"Attack button and HUD need to be about twice as big"*; #2437 reached x1.3 and x1.2 upright): in the new play screen, with what gives way shown on a preview first (#2437's body lists the ways).
+3. **the shared pieces:** the Card, the Item page, the Player page, Back and the deep links, the quantity picker.
+4. **Bro · Bag** (and Gear, pets). 5. **Bro · Power.** 6. **Bro · Skills** (ten skills, the guilds inline).
+7. **World · Quests** (the Today strip). 8. **the Map and World · Codex.** 9. **World · Feats.**
+10. **People · Roster.** 11. **People · Chat and Ranks.** 12. **Settings.**
+13. **the Counter and Make.** 14. **Counter · Trade** (gatekeeper). 15. **Counter · Keep and Play** (gatekeeper).
+16. **the cleanup:** the old screens and their tests. Its cost is told to the owner before it starts.
+
+Steps 2 and 3 start when step 1's branch is pushed (stacked on it); 4 to 12 two or three at a time, never two that change the same file. The orchestrator writes each later step's readings into this card when it starts, from what the earlier steps found.
