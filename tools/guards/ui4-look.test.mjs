@@ -8,8 +8,9 @@
  * the kit root, `.ui2-v17` (src/ui/kit/shine.js), ON by default; `?v17look=0`
  * takes the class away and must draw the game exactly as the day before.
  *
- * This suite reads the SYNTAX TREE of every style sheet under src/ui/ (postcss,
- * the parser the build itself runs) and of src/ui/kit/shine.js (@babel/parser,
+ * This suite reads the RULES of every style sheet under src/ui/ (the shared
+ * reader, tools/guards/lib/cssRules.mjs: selector lists and declarations, not
+ * a pattern of text) and the SYNTAX TREE of src/ui/kit/shine.js (@babel/parser,
  * as ui4-roles does), and fails:
  *
  *   L1  a rule of the look not wholly under `.ui2.ui2-v17` (one selector of a
@@ -43,11 +44,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { cssRules } from './lib/cssRules.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const require = createRequire(import.meta.url);
-const postcss = require('postcss');
-const babel = require('@babel/parser');
+/* the parser of JavaScript, from the root's install or the server's (the server's test run has only its
+   own: ui4-roles loads it the same way); the style sheets by the shared rule reader (no postcss there) */
+let babel = null;
+for (const pkg of ['package.json', 'server/package.json']) {
+  try { babel = createRequire(new URL('../../' + pkg, import.meta.url))('@babel/parser'); break; } catch (e) { /* the next */ }
+}
+if (!babel) { console.log('FAIL 0. @babel/parser loads (npm install in the root or server/)'); process.exit(1); }
 const SHINE = path.join(ROOT, 'src/ui/kit/shine.js');
 const KIT_CSS = 'src/ui/kit/ui2.css';
 
@@ -73,18 +79,18 @@ function sheets() {
 const SCOPE = /^\.ui2\.ui2-v17(?![\w-])/;
 const COMMIT_TOKENS = /var\(--ui2-v17-commit\)|var\(--ui2-gold-|#E4BA68|var\(--ui2-text-gold\)|var\(--ui2-brass-highlight\)/i;
 
-/** every rule of the sheets: { file, i (its order), sel: [...], decl: { prop: value } } */
+/** every rule of the sheets: { file, i (its order), sel: [...], decl: { prop: value } } (keyframes' steps
+    are not read: the reader skips an at-rule that is not a media, supports, container or layer block) */
 function rulesOf(css) {
   const out = [];
   let i = 0;
+  const split = (v) => { const r = []; let d = 0; let buf = ''; for (const ch of v) { if (ch === '(' || ch === '[') d++; if (ch === ')' || ch === ']') d--; if (ch === ',' && d === 0) { r.push(buf); buf = ''; } else buf += ch; } r.push(buf); return r.map((x) => x.trim()).filter(Boolean); };
   for (const file of Object.keys(css)) {
-    const tree = postcss.parse(css[file], { from: file });
-    tree.walkRules((r) => {
-      if (r.parent && r.parent.type === 'atrule' && /keyframes/.test(r.parent.name)) return;
+    for (const r of cssRules(css[file])) {
       const decl = {};
-      r.walkDecls((d) => { decl[d.prop] = d.value; });
-      out.push({ file, i: i++, sel: r.selectors.map((s) => s.trim()), decl });
-    });
+      for (const d of r.decls) decl[d.prop] = d.value;
+      out.push({ file, i: i++, sel: split(r.sel), decl });
+    }
   }
   return out;
 }
