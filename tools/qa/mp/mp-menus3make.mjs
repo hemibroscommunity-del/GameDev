@@ -126,7 +126,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await tap(P, '[data-menus3-make-go]', true);
       const b2 = await H.waitFor(P, (S) => { const R = S.rpg || {}; return { bar: (R.inventory || {}).bar_copper || 0, torsos: (R.armorStash || []).length }; }, (v) => v.bar === before.bar - 10 && v.torsos === before.torsos + 2, { timeout: 25000, label: 'two torsos' }).catch(() => null);
       rec.ok('upright: Forge 2: two torsos, one after another (bars -10)', !!b2, { before, b2 });
-      await P.page.waitForTimeout(800);
+      await P.page.waitForFunction(() => { const el = document.querySelector('[data-menus3-make-line]'); return !!el && el.getAttribute('data-menus3-make-line') !== 'working'; }, null, { timeout: 8000 }).catch(() => {});
       const line = await attr(P, '[data-menus3-make-line]', 'data-menus3-make-line');
       rec.ok('upright: the run said "Made 2 of 2."', line === 'done', line);
       await shot(P, 'upright-made');

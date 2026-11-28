@@ -254,17 +254,18 @@ function useMakeQueue(S, lvl) {
   const job = React.useRef(null);
   const timer = React.useRef(0);
   const qRef = React.useRef(q);
-  qRef.current = q;
+  /* the queue's one copy is the ref, written with the state (a check between two renders reads the latest) */
+  const put = (x) => { qRef.current = x; setQ(x); };
   const lvlSeen = React.useRef(lvl);
   const popup = (text, color) => { try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 34, text, color || C.brass); } catch (e) { /* popup only */ } };
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = 0; } };
   const sendNext = (cur) => {
     const j = job.current;
-    if (!j || !S.channel) { setQ(makeRefused(cur)); return; }
+    if (!j || !S.channel) { put(makeRefused(cur)); return; }
     const r = makeSend(cur, j.row.sig());
-    if (r.count == null) { setQ(r.q); return; }
-    try { j.row.send(r.count); } catch (e) { setQ(makeRefused(r.q)); return; }
-    setQ(r.q);
+    if (r.count == null) { put(r.q); return; }
+    try { j.row.send(r.count); } catch (e) { put(makeRefused(r.q)); return; }
+    put(r.q);
     startSmithing(S, j.row.workMs(r.count), j.row.kind);
     clear();
     timer.current = setTimeout(() => {
@@ -273,29 +274,38 @@ function useMakeQueue(S, lvl) {
       if (!now.on || !now.waiting) return;
       const jj = job.current;
       if (jj && jj.row.fail) { popup(jj.row.fail, C.bad); cue('forgeFail'); }
-      setQ(makeRefused(now));
+      put(makeRefused(now));
     }, MAKE_WAIT_MS);
   };
-  /* every new reading of the character: has the send in flight landed? */
-  React.useEffect(() => {
+  /* has the send in flight landed?  Asked at every new reading of the character, and while a
+     send waits every 300 ms too: the panel's copy of the character can trail the game's on a slow
+     phone, and the queue reads the game's own (S.rpg), only while a make is in flight */
+  const check = () => {
     const cur = qRef.current;
     const j = job.current;
-    if (cur.on && cur.waiting && j) {
-      const r = makeRead(cur, j.row.sig());
-      if (r.then !== 'wait') {
-        clear();
-        if (j.row.done) popup(j.row.done);
-        /* the anvil's ring, as today: a smelt, the armour and a hardening are heard from their own answers */
-        if (j.row.kind !== 'smelt' && j.row.kind !== 'armor' && j.row.kind !== 'harden') cue('forge');
-        if (r.then === 'landed') sendNext(r.q); else setQ(r.q);
-      }
-    }
+    if (!(cur.on && cur.waiting && j)) return;
+    const r = makeRead(cur, j.row.sig());
+    if (r.then === 'wait') return;
+    clear();
+    if (j.row.done) popup(j.row.done);
+    /* the anvil's ring, as today: a smelt, the armour and a hardening are heard from their own answers */
+    if (j.row.kind !== 'smelt' && j.row.kind !== 'armor' && j.row.kind !== 'harden') cue('forge');
+    if (r.then === 'landed') sendNext(r.q); else put(r.q);
+  };
+  React.useEffect(() => {
+    check();
+    const j = job.current;
     if (lvl > lvlSeen.current) {
       /* smelting and the armour celebrate from their own receipts (wsClient); the rest here, as today */
       if (!(j && (j.row.kind === 'smelt' || j.row.kind === 'armor'))) { try { celebrateLifeSkillLevel(S, 'blacksmithing', lvl, lvlSeen.current); } catch (e) { /* visual */ } }
     }
     lvlSeen.current = lvl;
   });
+  React.useEffect(() => {
+    if (!q.waiting) return undefined;
+    const t = setInterval(check, 300);
+    return () => clearInterval(t);
+  }, [q]);
   /* leaving the bench: nothing more is sent (the send in flight is the worker's) */
   React.useEffect(() => () => { clear(); qRef.current = makeCut(qRef.current); }, []);
   const start = (row, n) => {
