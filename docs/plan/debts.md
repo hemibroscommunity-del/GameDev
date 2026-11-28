@@ -932,6 +932,60 @@ v17-wide plants RED.
   `?ui2=0` / `?oneband=0` rings the old rail's Bro (`BottomDashboard.jsx`:619)
   beside a Quests button.
 
+## The fast lane read at sitting 75 (finish.md part 8 rule 4; v2.3.6880)
+
+Seven merges read on the top model at main 46740533; condition 1 held for
+each. The BUGS IN BEHAVIOUR are mends owed on main (the list's top, the
+orchestrator's): `Menus3Power.jsx`:165-185 (a late point re-sent by the
+next Apply), `menus3Wire.js`:190-199 with `dashNav.js`:115 (the ticket
+reopens Quests after the band's Menu), `deskKeys.js`:76-80 (I, P, L, K, U, O
+open today's pages beside the panel), `Menus3Gear.jsx`:44 and
+`WorldMapOverlay.jsx`:225 (z 45 over the drawer's 40, `game.css`:7308; by
+reading), `bigHud.js`:64 (`swValue`, never `sw()`: `?padskin=0` still
+grows), `Menus3Power.jsx`:272-280 (a stale "refused" note). No card named a
+dodge for any of the seven; every plant below is the review's own.
+
+- UI4 (#2435, Combat): green in combat-v17 and combat-hub: `WeaponPage.jsx`
+  `plus={self}` and `attrTemplate.jsx` `plus || mark === 'weapon'` (a "+" at
+  zero points); `SharedPage.jsx` rule words fixed to `ruleEvery` under
+  onelevel; `SharedPage.jsx` openAttr spending with no preview;
+  `Object.assign` of the held weapon's pool into `shared`;
+  `CombatHub.jsx` `doors[0]` as the Shared door; `attrTemplate.jsx`
+  `onOpen.bind(null, attrs[0].key)`; `InfoPopup.jsx` computed `gold[...]`.
+  The guard reads the callee, never what a page passes. Cosmetic:
+  `InfoPopup.jsx` Spend drawn solid gold while disabled.
+- UI4 (#2437, `?bighud`): green in big-hud: `padSpot.js`:57 `bigAttack(...)`
+  moved above the off return (`=0` still grows Attack; check 4 a regex);
+  `HudArt.jsx` `'--bt-charhud-' + 'height'` (the chips under the bigger HUD);
+  `HudArt.jsx` `partyLeft` at today's 8 + 176 + 8 sideways. The grown Attack
+  is 2 px over the band (was 11 inside), unheld.
+- PAD (#2438, `?comboaim`): green in combo-aim: `playerActions.js`:181
+  `comboMon(S, bowRangeMult(...))` (the staff ranged by the bow's
+  multiplier; no case has them differ). Unproven: the last target by reach
+  alone, no wall test (`comboAim.js`:124).
+- MN (#2439, shell): green in menus3-rules: `dashMinBus.quiet` set before
+  the off return; `menus3Hit` arguments swapped; People's road to Ranks;
+  `menus3On` with `||`; the X without `data-esc` (esc-front, desk-keys too).
+  The page wiring (`menus3Wire.js`, `menus3Hit.js`, `menus3Switch.js`) is
+  held only by the phone tests.
+- MN (#2440, Bag): green in menus3-bag: equip `{ activate: true }`; the
+  Weapons count counting holes; `findEntry` by `startsWith`; a header tab
+  reopening where left. camera-follow's allow (`camera-follow.test.mjs`:206)
+  narrow, but no suite reads what `menus3CamShift` returns (plant "shift
+  always": green); gear-socket's allow (`gear-socket.test.mjs`:45) narrow,
+  no K2b twin for the Bag (the tile dropping `kit`: green).
+- MN (#2441, Quests): green in menus3-quests: the quest line's push moved
+  before open; the ticket inverted; the Daily door whenever farm orders are
+  on; J to the new panel without `?menus3`. deskKeys' import of
+  `@/ui/menus3/menus3Wire.js`: cosmetic (three `@/ui` imports before it, no
+  suite imports the file, no cycle).
+- MN (#2442, Power): green in menus3-power: a double `prog3_allocate`
+  (alias, built name, `Object.assign`); unmount no longer cutting the queue;
+  `queueStart` ignoring `Q.on`. The suite's `queueStep`
+  (`src/game/menus3Power.js`:224, checks 5g-5k) is not the page's queue:
+  no node suite holds the real one. menus3-bag 7c's dropped half is held by
+  menus3-power 7b: honest.
+
 ## Found (no card's debt)
 
 - FOR THE OWNER (72), a bug on `main` today: the phone's gear bag

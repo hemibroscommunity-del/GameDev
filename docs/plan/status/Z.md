@@ -1,24 +1,34 @@
 card: Z
-branch: claude/plan-z-sitting-74
-prs: card UI4's stack in ONE line (four PRs, one merge); this PR (tag 5668, Z's block 5660 to 5679), the last line
+branch: claude/plan-z-sitting-75
+prs: this PR (tag 6880, Z's fifth block 6880 to 6899: its four older ones used up), the only line
 state: ready
 
-## Done (sitting 74, main 351c4be2; 11-28's first sitting)
-- Rehearsed gatekeeper.mjs on tree 2a6f1865 (main + kit, look, the shared
-  base, bro, gear, and the mend of bro and gear): precheck 0 FAIL 1 WARN,
-  switches-thrown --whole, claims-gain --whole, build, questline, heldsweep
-  PASS. Phone: ui2bro 26/26, ui2frame 34/34, membudget 12/12 (199.8 MB);
-  oneband 54/56 and deskwide 27/35, the same FAIL lines on main.
-- Reviewed on the top model: PR 1's card dodges all RED; PRs 2, 4, 6 name
-  no dodges, the review's green plants are card UI4's next jobs; no bug in
-  behaviour. mp-ui2bro 9 and mp-ui2frame's changes read honest.
-- Read (fast lane, rule 4): #2428, #2430, #2434: no bug in behaviour.
-## The list (merge commits; the mend by the orchestrator, precheck before its push)
-1 UI4: mend on `claude/plan-ui4-gear` (merge #2432's head; 7 files both
-sides, bro then gear; switches/systems --write: tree d66cd390); retarget
-#2429, #2431, #2432, #2433 to main; merge #2433 (tree 2a6f1865); GitHub
-marks the other three merged. 2 Z (5668).
-Held: none. No deploy.
+## Done (sitting 75, main 46740533; 11-28's second sitting, a READING)
+- No PR open: nothing listed, nothing rehearsed.
+- Read the fast lane's seven merges on the top model (finish.md part 8
+  rule 4): #2435 UI4 Combat, #2438 `?comboaim`, #2437 `?bighud`, card MN's
+  #2439 shell, #2440 Bag, #2441 Quests, #2442 Power. Condition 1 held for
+  each (their `server/` files only suites importing `src/game` rules).
+## BUGS IN BEHAVIOUR, mends owed on main (the orchestrator's)
+1 MN Power: `src/ui/menus3/Menus3Power.jsx`:165-185: a point the worker
+  takes after the 3 s wait is called refused and stays in the draft; the
+  next Apply sends it again (two spent for one staged; the free Reset undoes).
+2 MN Quests: `src/ui/menus3/menus3Wire.js`:190-199 (`dashNav.js`:115): a
+  quest's link to Codex, the band's "Menu", then X: the Quests panel reopens.
+3 MN keys: `src/game/deskKeys.js`:76-80: I (the Bro button wears it), P, L,
+  K, U, O open today's pages with the new panel still open (card MN flagged P).
+4 MN drawer (sideways, computer; by reading): `Menus3Gear.jsx`:44 and
+  `WorldMapOverlay.jsx`:225 at z 45 over the panel layer's 40
+  (`game.css`:7308): the gear over the Bag; a click under the minimap opens
+  the World map.
+5 UI4 `?bighud`: `src/game/bigHud.js`:64 reads `swValue`, never `sw()`:
+  with `?padskin=0` the HUD still grows (`switches.js`:372 NEEDS unread).
+6 MN Power (minor): `Menus3Power.jsx`:272-280: a timeout after leaving
+  shows a stale "refused" note on the next opening.
+## Judged debts
+deskKeys' UI import cosmetic; the Bag's pictures main's own; camera-follow
+and gear-socket allows narrow; systems.mjs lines and menus3-bag 7c honest;
+Power's queue: no double send by a tap, a render, a reconnect or leaving.
 ## Found
-- debts.md: the PRs of sitting 74 (card UI4's next jobs), the fast lane
-  read at 74; QuestCoach.jsx:780 still owed on main.
+- debts.md (75): the green plants, a line a card. QuestCoach.jsx:780
+  (sitting 73) not re-read.
