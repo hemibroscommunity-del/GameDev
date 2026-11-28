@@ -631,7 +631,12 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   const _oldCombat = (/(?:^|&)manual=/.test(query) || /(?:^|&)manual=/.test(_env)) ? '' : 'manual=0';
   /* v2.3.5223 (card O PR 3): the scenario's lane (and `govern=1` where it asks), unless the query names its own */
   const _laneQ = laneParts([query, _env].filter(Boolean).join('&'), _lane, _govern);
-  const _q = [guest ? 'guest=1' : '', query, _env, _laneQ, _world, _narrow, _noSpin, _oldCombat].filter(Boolean).join('&');
+  /* v2.3.6860 (card MN step 1): the owner's new menus are on by default (src/ui/menus3/menus3Switch.js),
+     and the scenarios written before them press the old Gear and Menu buttons, so a scenario plays the
+     old menus (`menus3=0`, yesterday's game) unless it names `menus3=` itself: the ONE place they are
+     pinned (card MN "The switch"); mp-menus3shell plays the new. */
+  const _oldMenus = (/(?:^|&)menus3=/.test(query) || /(?:^|&)menus3=/.test(_env)) ? '' : 'menus3=0';
+  const _q = [guest ? 'guest=1' : '', query, _env, _laneQ, _world, _narrow, _noSpin, _oldCombat, _oldMenus].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
      page somewhere else (mp-originlock: a copy of the game on another site,
      its browser launched to find that name at 127.0.0.1) */

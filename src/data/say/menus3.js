@@ -1,0 +1,21 @@
+/* v2.3.6860: the new menus' own words (card MN step 1: the dock, the gear,
+   the panel's frame; docs/design/menus3/SPEC.md; docs/specs/player-words.md) */
+export const SAY = Object.freeze({
+  'menus3.bro': 'Bro',
+  'menus3.world': 'World',
+  'menus3.people': 'People',
+  'menus3.broAria': 'Bro: your bag, power and skills',
+  'menus3.worldAria': 'World: quests, codex and feats',
+  'menus3.peopleAria': 'People: your party, friends, chat and ranks',
+  'menus3.settings': 'Settings',
+  'menus3.close': 'Close',
+  'menus3.bag': 'Bag',
+  'menus3.power': 'Power',
+  'menus3.skills': 'Skills',
+  'menus3.quests': 'Quests',
+  'menus3.codex': 'Codex',
+  'menus3.feats': 'Feats',
+  'menus3.roster': 'Roster',
+  'menus3.chat': 'Chat',
+  'menus3.ranks': 'Ranks',
+});

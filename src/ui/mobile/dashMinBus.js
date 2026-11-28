@@ -48,12 +48,15 @@ const listeners = new Set();
 export const dashMinBus = {
   min: readMin(),
   sideways: false,
+  /* v2.3.6860 (card MN step 1): under ?menus3 the band rests on the dock for the
+     load and its fold is never written, so ?menus3=0 finds it as it was left */
+  quiet: false,
   stored: readMin,
   set(v) {
     const next = !!v;
     if (next === dashMinBus.min) return;
     dashMinBus.min = next;
-    if (!dashMinBus.sideways) {
+    if (!dashMinBus.sideways && !dashMinBus.quiet) {
       try { localStorage.setItem(MIN_KEY, next ? '1' : '0'); } catch (e) { /* private window */ }
     }
     for (const fn of listeners) fn(next);

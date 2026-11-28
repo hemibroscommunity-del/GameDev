@@ -44,6 +44,8 @@
  *     dim and marked "shut".
  */
 import React, { useEffect, useRef, useState } from 'react';
+import { menus3On } from './menus3/menus3Switch.js';   /* v2.3.6860 */
+import { Menus3Gear } from './menus3/Menus3Gear.jsx';   /* v2.3.6860 */
 import { createPortal } from 'react-dom';
 import { isWheelTrialZone, WHEELS } from '../game/worldTrial.js';
 import { wheelMapInfo, wheelOverviewLands, wheelHere, wheelLocalLands } from '../game/wheelTrial.js';
@@ -135,6 +137,12 @@ const INK = '#F4F0E7', BRASS = '#EAC675', HALO = 'rgba(11,22,27,0.92)';
    minimap's button (BroTown.jsx onMap).  The overlay hands its opener to this
    module while it is mounted; false when it is not (nothing to open). */
 let _openMap = null;
+/* v2.3.6860: the land plate's top, the minimap's map square's foot, kept by the
+   minimap beside its box (wheelMinimap.js __btWheelPlate; a field, no measuring) */
+function plateTop() {
+  try { const p = window.__btWheelPlate; return p && p.top > 0 ? p.top : 0; } catch (e) { return 0; }
+}
+
 export function openWorldMap() {
   if (!_openMap) return false;
   _openMap();
@@ -220,6 +228,10 @@ export function WorldMapOverlay({ stateRef }) {
             '--key-y': (rect.mark ? rect.mark.y : 73) + 'px' }}
         />
       )}
+      {/* v2.3.6860 (card MN step 1): the owner's gear, Settings, beside the
+          minimap as the wireframe draws it -- placed off the minimap's own
+          kept box (no new measuring); under ?menus3 only */}
+      {rect && !open && menus3On() ? <Menus3Gear left={rect.left} top={rect.top} h={rect.h} foot={plateTop()} /> : null}
       {open && <WorldMap stateRef={stateRef} onClose={() => setOpen(false)} />}
       <PinAskCard stateRef={stateRef} mapOpen={open} />{/* v2.3.4045: "You reached the blue pin", "Remove the red pin?" */}
     </>,

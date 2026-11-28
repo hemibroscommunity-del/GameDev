@@ -10,6 +10,7 @@ import { applyDeskWide } from './ui/deskWide.js';
 import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4072 */
 import { markLoad } from './game/loadTimes.js';   /* v2.3.5019: the load timer (the Test panel's "Loading times") */
 import { startBandSideways } from './ui/mobile/bandSideways.js';   /* v2.3.4152 */
+import { startMenus3 } from './ui/menus3/menus3Wire.js';   /* v2.3.6860: the owner's new menus (card MN step 1) */
 import { sw } from './game/switches.js';
 import './styles/game.css';
 
@@ -65,6 +66,7 @@ applyOneBand();
 /* v2.3.4152: a phone on its side rests the band folded, the controls step
    aside while it is open (src/ui/mobile/bandSideways.js) */
 startBandSideways();
+startMenus3();   /* v2.3.6860: after the band's sideways fold; ?menus3=0 does nothing */
 
 createRoot(document.getElementById('root')).render(<GameApp />);
 

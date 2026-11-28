@@ -31,6 +31,8 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashNavView, dashNavBackTo } from '@/game/dashNav.js';
 import { NAV_KEYS } from '@/game/deskKeys.js';
 import { SAY } from '@/data/say/dashFrame.js';
+import { menus3On } from '@/ui/menus3/menus3Switch.js';   /* v2.3.6860 */
+import { Menus3Dock } from '@/ui/menus3/Menus3Dock.jsx';   /* v2.3.6860 */
 import { say } from '@/game/say.js';
 
 /** A control's press: on the finger's lift (the band's way: BandClose,
@@ -79,6 +81,8 @@ export function DashHeader({ nav, titleOf, menuMark, foldHook = false }) {
 
   if (kind === 'closed') {
     const mark = menuMark || {};
+    /* v2.3.6860 (card MN step 1): the owner's dock, Bro World People, under ?menus3 */
+    if (menus3On()) return wrap(<Menus3Dock mark={mark} tap={frameTap} />);
     return wrap(
       <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
         <Ui2Tile size="primary" label={say(SAY, 'dashFrame.gear')} aria-label={say(SAY, 'dashFrame.gearAria')}
