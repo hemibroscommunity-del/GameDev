@@ -152,3 +152,52 @@
    count's words #F5CF83 bold and a tile's edge #BC9B60 (src/game/ui2Tokens.js UI2_V17) */
 .ui2.ui2-v17 .u2-at-line-v.is-gold, .ui2.ui2-v17 .u2-cb-pts.is-on, .ui2.ui2-v17 .u2-at-plus { color: var(--ui2-v17-priority-text); }
 .ui2.ui2-v17 .u2-raised.u2-wp-attr[data-attr-plus='1'] { border-color: var(--ui2-v17-priority-edge); }
+
+/* ═══ v2.3.6844 (card UI4 PR 5, `?v17combat`): V17:55's order, the upgrades first ═══
+   The owner, 02:10 UTC 2026-11-28: "Too confusing for first time player and doesn't use visuals
+   first."  Every rule here is under `.u2-cv` (the pages' root under the switch) or `.u2-cv-*` (its own
+   pieces): `?v17combat=0` draws today's pages, untouched.  Upright (src/game/combatV17.js V17_ROOM): the
+   points' line 14, the upgrades (two rows, at least 44 px each, the rest of the page), the row under
+   them 44 (the level and DPS; Shared's Max HP and Defense), two gaps of 4.  Sideways one row: the
+   upgrades (the line over the tiles) at the left, the rest to their right. */
+.ui2.u2-wp.u2-cv { gap: var(--ui2-space-s); }
+.ui2 .u2-cv-ups { flex: 1 1 auto; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--ui2-space-s); }
+.ui2 .u2-cv-grid { flex: 1 1 auto; min-height: 0; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(var(--ui2-size-touch), 1fr)); gap: var(--ui2-space-s); }
+.ui2 .u2-cv-grid.is-seven { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ui2 .u2-cv-grid.is-one { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: minmax(var(--ui2-size-touch), 1fr); }
+.ui2 .u2-cv-grid.is-seven.is-one { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+/* a tile: the game's picture over its name over what is placed; the "+" a corner cue while points wait */
+/* its words under the picture: pads 1 + 1, the gap 1, the name 13, the value 12 (combatV17.js V17_TILE_WORDS: 28) */
+.ui2 .u2-tile.u2-cv-up { position: relative; min-width: 0; min-height: var(--ui2-size-touch); padding: 1px var(--ui2-space-s); gap: 1px; justify-content: center; overflow: hidden; }
+.ui2 .u2-tile.u2-cv-up .u2-tile-art { image-rendering: pixelated; flex: 0 0 auto; }
+.ui2 .u2-tile.u2-cv-up .u2-tile-words { align-items: center; max-width: 100%; }
+.ui2 .u2-tile.u2-cv-up .u2-tile-label { font-size: var(--ui2-fs-label); line-height: 13px; white-space: nowrap; }
+.ui2 .u2-tile.u2-cv-up .u2-tile-sub { line-height: 12px; font-variant-numeric: tabular-nums; }
+.ui2 .u2-tile.u2-cv-up.is-cue::after { content: '+'; position: absolute; top: 2px; right: 5px; font-size: var(--ui2-fs-label); font-weight: 700; line-height: 1; color: var(--ui2-text-gold); pointer-events: none; }
+.ui2.ui2-v17 .u2-tile.u2-cv-up.is-cue::after { color: var(--ui2-v17-priority-text); }
+.ui2.ui2-v17 .u2-raised.u2-tile.u2-cv-up.is-cue { border-color: var(--ui2-v17-priority-edge); }
+/* the row under the upgrades: the level (its XP over the bar), then DPS (or Max HP) and the facts */
+.ui2 .u2-cv-foot { flex: 0 0 var(--ui2-size-touch); display: flex; gap: var(--ui2-space-s); min-width: 0; }
+.ui2 .u2-wp-level.u2-cv-level { flex: 0 1 150px; min-width: 100px; height: auto; flex-direction: column; align-items: stretch; justify-content: center; gap: var(--ui2-space-xs); padding: var(--ui2-space-xs) var(--ui2-space-l); }
+.ui2 .u2-cv-level .u2-wp-bar .u2-bar-top { justify-content: flex-start; }
+.ui2 .u2-cv-foot .u2-at-strip { flex: 1 1 auto; }
+.ui2 .u2-cv-foot .u2-wp-allstats { flex: 1 1 auto; }
+.ui2.u2-sp.u2-cv .u2-stat.u2-at-stat { flex: 0 0 auto; min-width: 104px; }
+.ui2.u2-sp.u2-cv .u2-facts.u2-at-facts { flex: 1 1 auto; }
+.ui2.u2-sp.u2-cv .u2-facts.u2-at-facts.is-wide { grid-template-columns: auto minmax(0, 1fr); }
+/* sideways: the line over the tiles, the level and DPS to their right */
+.ui2.u2-wp.u2-cv.is-side .u2-cv-ups { flex: 1 1 auto; gap: 0; }
+.ui2.u2-wp.u2-cv.is-side .u2-at-line { line-height: 13px; }
+.ui2.u2-wp.u2-cv.is-side .u2-at-line-k { font-size: var(--ui2-fs-small); }
+.ui2.u2-wp.u2-cv.is-side .u2-tile.u2-cv-up { padding: 1px var(--ui2-space-xs); gap: 0; }
+.ui2.u2-wp.u2-cv.is-side .u2-tile.u2-cv-up .u2-tile-label { font-size: var(--ui2-fs-small); line-height: 13px; }
+.ui2.u2-wp.u2-cv.is-side .u2-tile.u2-cv-up.is-cue::after { top: 1px; right: 3px; }
+.ui2.u2-wp.u2-cv.is-side .u2-wp-level.u2-cv-level { flex: 0 1 130px; min-width: 96px; }
+
+/* the hub under the switch: Bro's level tiles, and the Shared door with the seven pictures it opens */
+.ui2.u2-cv-hub .u2-lt.u2-cv-door { flex: 1 1 0; min-width: 0; }
+.ui2 .u2-tile.u2-cv-shared { flex: 1 1 0; min-width: 0; }
+.ui2 .u2-cv-sevens { display: flex; align-items: center; gap: var(--ui2-space-xs); min-width: 0; }
+.ui2 .u2-cv-seven { width: 18px; height: 18px; flex: 0 0 18px; object-fit: contain; image-rendering: pixelated; }
+.ui2 .u2-cv-shared-pts { margin-left: var(--ui2-space-m); font-weight: 700; color: var(--ui2-text-gold); white-space: nowrap; }
+.ui2.ui2-v17 .u2-cv-shared-pts { color: var(--ui2-v17-priority-text); }

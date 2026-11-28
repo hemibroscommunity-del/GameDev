@@ -259,7 +259,9 @@ const CHECKS = {
      the game's data, and no name of a pool's field or a points-per-level number */
   C9: (X) => {
     const ALLOW = {
-      hub: new Set(['@/game/combatHub.js:combatHubDoors', '@/game/combatHub.js:combatPools', '@/game/combatHub.js:combatLevel', '@/game/combatHub.js:hubArtSize']),
+      hub: new Set(['@/game/combatHub.js:combatHubDoors', '@/game/combatHub.js:combatPools', '@/game/combatHub.js:combatLevel', '@/game/combatHub.js:hubArtSize',
+        /* v2.3.6844 (card UI4 PR 5, `?v17combat`): the Shared door's seven pictures (their art only: no count) */
+        '@/game/combatHub.js:sharedAttributes']),
       page: new Set(['@/game/combatHub.js:combatPools', '@/game/combatHub.js:pointsWords', '@/game/combatHub.js:spendPool', '@/game/combatHub.js:weaponAttributes', '../../../data/prog3.js:prog3AtkMeta',
         /* v2.3.6686: DPS opens the stat tree's layer 0 (a page id and its entry's words, no count) */
         '@/game/combatHub.js:TREE_PAGES', '@/game/combatHub.js:treeSel',

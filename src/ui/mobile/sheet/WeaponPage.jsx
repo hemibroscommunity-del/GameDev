@@ -58,9 +58,14 @@ import { weaponProgress, weaponRoadmap } from '@/game/progression.js';
 import { prog3AtkMeta } from '../../../data/prog3.js';
 import { ui2RootClass } from '@/ui/kit/index.js';
 import { SummaryStrip, AttrGrid, AttrLine } from './attrTemplate.jsx';
+import { UpgradeGrid } from './attrTemplate.jsx';   /* v2.3.6844 (card UI4 PR 5): V17's order */
+import { v17CombatWanted, v17Shape, v17TileArt, v17FactsInRow } from '@/game/combatV17.js';
 import { SAY } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
 import './combatPage.css';
+
+/* v2.3.6844 (card UI4 PR 5): V17's order (the upgrades first) unless `?v17combat=0` on this device */
+const V17_COMBAT = v17CombatWanted();
 
 /* the supporting stats, in order: broStats.js's keys (never 'elem': no part of DPS) */
 export const WEAPON_SUPPORT = Object.freeze(['damage', 'aspd', 'crit', 'range']);
@@ -118,7 +123,7 @@ export function WeaponPage({ S, cat, who, live }) {
   const ww = WEAPON_WORD[cat] ? WEAPON_WORD[cat]() : '';
   const win = statWindow({
     R, buildCat: cat, stayRef, readOnly: !self, live: live || (() => S),
-    laneAvail: (c) => Number(pools[c]) || 0, sharedAvail: pools.shared,
+    laneAvail: (c) => Number(pools[c]) || 0, sharedAvail: pools.shared, commitRole: V17_COMBAT,
   });
   stayCheckRef.current = self ? win.stayCheck : null;
   const metaOf = Object.create(null);
@@ -131,8 +136,10 @@ export function WeaponPage({ S, cat, who, live }) {
     if (!lane) return;
     win.openStatInfo(st, lane, self ? win.spendFor(st, lane) : null);
   };
+  /* v2.3.6844 (card UI4 PR 5): what V17's order drew (its shape, the pictures' size, the room it read) */
+  let v17Probe = null;
   useEffect(() => {
-    try { window.__btWeaponPage = { cat, dps: val('dps'), points: avail, lv: prog.level, xp: prog.max ? 'max' : prog.xpNow + '/' + prog.xpNeed }; } catch (e) { /* no window */ }
+    try { window.__btWeaponPage = { cat, dps: val('dps'), points: avail, lv: prog.level, xp: prog.max ? 'max' : prog.xpNow + '/' + prog.xpNeed, v17: v17Probe }; } catch (e) { /* no window */ }
   });
   useEffect(() => () => { try { window.__btWeaponPage = null; } catch (e) { /* no window */ } }, []);
 
@@ -161,12 +168,15 @@ export function WeaponPage({ S, cat, who, live }) {
       {fold ? <AttrLine {...line} /> : null}
     </div>
   );
+  /* v2.3.6844 (card UI4 PR 5): under `?v17combat` the same ONE strip sits after the six and the level; its
+     four facts only where V17's row holds them (combatV17.js v17FactsInRow), else today's one door */
+  const v17Facts = V17_COMBAT ? v17FactsInRow(v17Shape(short), room.w) : false;
   /* row 2: the strip -- DPS the stat (it opens the tree), Damage, Attack speed, Crit chance, Range facts */
   const strip = (
-    <SummaryStrip wide={!short && room.w >= 560}
+    <SummaryStrip wide={V17_COMBAT ? v17Facts : !short && room.w >= 560}
       stat={{ v: val('dps'), k: say(SAY, 'combatHub.dps'), aria: say(SAY, 'combatHub.dpsTreeAria', { v: val('dps') }), data: { 'data-weapon-dps': val('dps') },
         onClick: () => dashboardPanelBus.go({ type: 'push', id: TREE_PAGES[0], sel: treeSel(cat, []), who: self ? undefined : who }) }}
-      facts={short && !wideSide ? null : WEAPON_SUPPORT.map((k) => ({ id: k, k: SUPPORT_WORD[k](), v: val(k), data: { 'data-weapon-stat': k } }))}
+      facts={(V17_COMBAT ? !v17Facts : short && !wideSide) ? null : WEAPON_SUPPORT.map((k) => ({ id: k, k: SUPPORT_WORD[k](), v: val(k), data: { 'data-weapon-stat': k } }))}
       more={{ words: say(SAY, 'combatHub.allStats'), onClick: () => infoPopupBus.open({ title: ww, body: WEAPON_SUPPORT.map((k) => SUPPORT_WORD[k]() + ': ' + val(k)).join('\n') }) }}
       data={{ 'data-weapon-support': '' }} />
   );
@@ -177,6 +187,34 @@ export function WeaponPage({ S, cat, who, live }) {
     aria: a.cap == null ? say(SAY, 'combatHub.attrAriaFree', { stat: a.label, pts: a.pts }) : say(SAY, 'combatHub.attrAria', { stat: a.label, pts: a.pts, cap: a.cap }),
   }));
   const grid = <AttrGrid line={fold ? null : line} attrs={attrsOf} mark="weapon" plus={attrPlus(avail, self)} onOpen={openAttr} grid={short ? 'is-one' : ''} />;
+
+  /* ═══ v2.3.6844 (card UI4 PR 5, `?v17combat`): V17:55's order on the one template ═══
+     The six and the points to spend FIRST (sheet/attrTemplate.jsx UpgradeGrid: each the game's picture
+     over its name), then the level and its XP, then the weapon's real damage: DPS, the stat that opens
+     the seven-page tree (unchanged): today's ONE strip, with the four facts where the row holds them,
+     else its one "All stats" door.  Upright the upgrades over that row; sideways one row, the upgrades at its left.
+     The road line ("Each Sword level gives 3 Sword points") stays in the level's words for a screen
+     reader: the row under the six has no room for it (said in the PR). */
+  if (V17_COMBAT) {
+    const shape = v17Shape(short);
+    const art = v17TileArt(room.h, shape === 'side');
+    v17Probe = { shape, art, factsIn: v17Facts, w: room.w, h: room.h, order: 'upgrades,progress,damage' };
+    const ups = <UpgradeGrid line={line} attrs={attrsOf} mark="weapon" plus={attrPlus(avail, self)} onOpen={openAttr} art={art} grid={shape === 'side' ? 'is-one' : ''} />;
+    const lvl = (
+      <div className="u2-group u2-wp-level u2-cv-level" data-weapon-level={prog.level} data-weapon-xp={prog.max ? 'max' : prog.xpNow + '/' + prog.xpNeed}>
+        <span className="u2-wp-lv">{say(SAY, 'combatHub.lv', { n: prog.level })}</span>
+        <span className="u2-bar u2-wp-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((prog.max ? 1 : prog.frac) * 100)} aria-label={xpWords + '. ' + roadWords}>
+          <span className="u2-bar-top"><b>{xpWords}</b></span>
+          <span className="u2-track"><span className="u2-fill" style={{ width: ((prog.max ? 1 : prog.frac) * 100).toFixed(1) + '%' }} /></span>
+        </span>
+      </div>
+    );
+    return (
+      <div ref={ref} className={ui2RootClass() + ' u2-wp u2-cv is-' + shape + (short ? ' is-short' : '')} data-weapon-page={cat} data-weapon-whose={self ? 'self' : 'other'} data-weapon-fold="0" data-cv-order="upgrades,progress,damage">
+        {shape === 'side' ? <div className="u2-wp-row is-one">{ups}{lvl}{strip}</div> : <>{ups}<div className="u2-cv-foot">{lvl}{strip}</div></>}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className={ui2RootClass() + ' u2-wp' + (short ? ' is-short' : '') + (fold ? ' is-fold' : '')} data-weapon-page={cat} data-weapon-whose={self ? 'self' : 'other'} data-weapon-fold={fold ? '1' : '0'}>

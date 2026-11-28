@@ -192,7 +192,8 @@ const popup = (P) => P.page.evaluate(() => {
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Combathub', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
+  /* v2.3.6844 (card UI4 PR 5): this plays TODAY'S hub and pages, ?v17combat=0's (mp-v17combat plays V17's order) */
+  const P = await H.newPlayer(browser, { name: 'Combathub', wsPort, webPort, world: 'wheel', viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'v17combat=0' });
   try {
     if (!(await inWorld(P, rec, 'phone'))) return;
     const myId = await H.readState(P, (S) => S.myId);
@@ -439,7 +440,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
   }
   /* a computer */
-  const C = await H.newPlayer(browser, { name: 'Combatdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, dpr: 2 });
+  const C = await H.newPlayer(browser, { name: 'Combatdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, dpr: 2, query: 'v17combat=0' });
   try {
     if (await inWorld(C, rec, 'computer')) {
       await H.dashOpen(C, 'broCombat');

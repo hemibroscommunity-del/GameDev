@@ -65,6 +65,10 @@ export const STAY_WAIT_MS = 3000;
 export function statWindow(ctx) {
   const { R, buildCat, laneAvail, sharedAvail, stayRef } = ctx;
   const readOnly = !!ctx.readOnly;
+  /* v2.3.6844 (card UI4 PR 5, `?v17combat`): Spend wears the kit's commit role (V17:45: "Commit: solid
+     gold #E4BA68, dark text #141D22; explicit effect"; its example "spend point"); only the pages under
+     the switch ask, so every other window keeps its own */
+  const commitRole = ctx.commitRole === true;
   /* the game's state now, as the host hands it (never reached for here: the open hand, grand plan 5.7) */
   const live = typeof ctx.live === 'function' ? ctx.live : () => null;
   const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
@@ -388,6 +392,7 @@ export function statWindow(ctx) {
            -- the highlighted tab above carries the same number. */
       };
       /* v2.3.6685: another player's page reads the window, never spends from it (step 9) */
+      if (commitRole) payload.commitRole = true;
       if (readOnly) { payload.readOnly = true; payload.action = undefined; if (payload.lanes) payload.lanes = { ...payload.lanes, onPick: null }; }
       infoPopupBus.open(payload);
     } catch (e) { /* an explainer must never block a spend */ }
