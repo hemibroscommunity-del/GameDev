@@ -27,7 +27,7 @@
  * section opens it yet: only the QA probe (`__btMenus3.panel(menu)`) does,
  * so its shape and its closes are tested before step 4 fills it. */
 import { menus3On } from './menus3Switch.js';
-import { menus3Route, MENUS3_BUILT, MENUS3_TODAY } from '../../game/menus3Router.js';
+import { menus3Route, MENUS3_BUILT, MENUS3_TODAY, MENUS3, MENUS3_DOCK } from '../../game/menus3Router.js';   /* v2.3.6876: + a section's menu (the keys) */
 import { menus3Shape, menus3CamOffset } from '../../game/menus3Panel.js';
 import { navStart, navPush, navBack, navKeep, navPrune, navTop, awayStep } from '../../game/menus3Nav.js';   /* v2.3.6861: the one Back (card MN step 4) */
 import { menus3CloseWhy } from '../../game/menus3Close.js';
@@ -182,13 +182,39 @@ export function menus3Go(entry, ctx) {
    too: with Power or Skills showing it goes to the Bag).  True when it went. */
 export function menus3Key(section) {
   if (!_on) return false;
-  if (section !== 'bag' && section !== 'power' && section !== 'skills') return false;
+  /* v2.3.6876 (card MN's keys): any built section of a dock menu (K the Codex, U the Ranks, C the Chat), its own menu */
+  const menu = MENUS3_DOCK.find((m) => MENUS3[m].indexOf(section) >= 0) || null;
+  if (!menu) return false;
   if (!isBuilt(section)) return false;
   if (_panel.open && _panel.section === section) { menus3Close('key'); return true; }
   _ticket = null;
+  _chatTicket = null;
   if (bandShown()) { try { dashboardPanelBus.go({ type: 'close' }); } catch (e) { /* no band */ } }
-  menus3Bus.open('bro', section);
+  menus3Bus.open(menu, section);
   return true;
+}
+
+/* ═══ v2.3.6876 (card MN's keys): C AND B UNDER ?menus3 ═══
+   C opened today's chat box: it opens People · Chat (the one chat box), C again shuts it, and the box
+   takes the typing (focused once the page is drawn: its script loads the first time).  B opened today's
+   emote picker, and still does: with the panel open it steps aside for the picker and comes back when the
+   picker shuts (the Chat smiley's way, menus3AwayChat). */
+export function menus3ChatKey() {
+  if (!_on || !menus3Key('chat')) return false;
+  if (_panel.open && _panel.section === 'chat' && typeof document !== 'undefined') {
+    let n = 0;
+    const tryFocus = () => {
+      const el = document.querySelector('[data-m3-cinput]');
+      if (el) { try { el.focus(); } catch (e) { /* no focus */ } return; }
+      if (++n < 30) setTimeout(tryFocus, 100);
+    };
+    setTimeout(tryFocus, 50);
+  }
+  return true;
+}
+export function menus3EmoteKey(open) {
+  if (!_on || !_panel.open || typeof open !== 'function') return false;
+  return menus3AwayChat(() => { open(); return true; });
 }
 
 /* ═══ v2.3.6867: M, THE MAP'S KEY (card MN step 8) ═══

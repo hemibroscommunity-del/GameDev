@@ -26,7 +26,7 @@ import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL
 import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z rides the skateboard */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
-import { menus3MapKey } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6867: M under ?menus3 (card MN step 8) */
+import { menus3MapKey, menus3ChatKey, menus3EmoteKey } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6867: M under ?menus3 (card MN step 8); v2.3.6876: C and B (card MN's keys) */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
 import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3994: E (or the right stick's tap) at the lagoon's chest */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -438,6 +438,7 @@ export function setupDesktopControls(S, deps) {
       /* C — open chat */
       if (e.code === 'KeyC' && !e.repeat) {
         e.preventDefault();
+        if (menus3ChatKey()) return;   /* v2.3.6876: under ?menus3 the one chat box, People · Chat (card MN's keys) */
         setChatOpen(true);
         setTimeout(function() {
           if (chatInputRef.current) chatInputRef.current.focus();
@@ -454,7 +455,10 @@ export function setupDesktopControls(S, deps) {
       if (e.code === 'KeyB' && !e.repeat) {
         e.preventDefault();
         var _emoteUi = typeof window !== 'undefined' ? window.__broLegacyUI : null;
-        if (_emoteUi && typeof _emoteUi.emotes === 'function' && emotesLive(S)) _emoteUi.emotes();
+        if (_emoteUi && typeof _emoteUi.emotes === 'function' && emotesLive(S)) {
+          /* v2.3.6876: under ?menus3 with the panel open, it steps aside for the picker (card MN's keys) */
+          if (!menus3EmoteKey(_emoteUi.emotes)) _emoteUi.emotes();
+        }
         return;
       }
 
