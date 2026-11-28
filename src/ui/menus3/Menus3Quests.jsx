@@ -99,10 +99,10 @@ function stripOf(S) {
 
 function chipWord(c) {
   switch (c.id) {
-    case 'spin': return say(SAY, 'menus3q.spin');
-    case 'streak': return say(SAY, 'menus3q.streak', { days: c.days });
-    case 'orders': return c.known ? say(SAY, 'menus3q.orders', { done: c.done, all: c.all }) : say(SAY, 'menus3q.ordersShort');
-    default: return say(SAY, 'menus3q.daily');
+    case 'spin': return say(SAY, 'menus3Quests.spin');
+    case 'streak': return say(SAY, 'menus3Quests.streak', { days: c.days });
+    case 'orders': return c.known ? say(SAY, 'menus3Quests.orders', { done: c.done, all: c.all }) : say(SAY, 'menus3Quests.ordersShort');
+    default: return say(SAY, 'menus3Quests.daily');
   }
 }
 
@@ -121,8 +121,8 @@ function TodayWords({ c, onSpin }) {
   if (c.id === 'spin') {
     return (
       <div className="m3-today-words" data-m3-today-words="spin">
-        <span className="m3-today-line">{c.avail ? say(SAY, 'menus3q.spinReady') : say(SAY, 'menus3q.spinSpent') + ' ' + loginSpinNextWords() + '.'}</span>
-        {c.avail ? <button type="button" className="u2-raised u2-ctl m3-today-go" data-m3-spin-go="" onClick={onSpin}>{say(SAY, 'menus3q.spinGo')}</button> : null}
+        <span className="m3-today-line">{c.avail ? say(SAY, 'menus3Quests.spinReady') : say(SAY, 'menus3Quests.spinSpent') + ' ' + loginSpinNextWords() + '.'}</span>
+        {c.avail ? <button type="button" className="u2-raised u2-ctl m3-today-go" data-m3-spin-go="" onClick={onSpin}>{say(SAY, 'menus3Quests.spinGo')}</button> : null}
       </div>
     );
   }
@@ -131,10 +131,10 @@ function TodayWords({ c, onSpin }) {
     const den = denWords(c.den, st);
     return (
       <div className="m3-today-words is-col" data-m3-today-words="streak">
-        <span className="m3-today-line"><b>{say(SAY_DR, 'dailyRewards.streak', { days: c.days })}</b>{' \u00B7 ' + say(SAY, 'menus3q.freezes', { fz: c.fz, max: c.fzMax })}</span>
+        <span className="m3-today-line"><b>{say(SAY_DR, 'dailyRewards.streak', { days: c.days })}</b>{' \u00B7 ' + say(SAY, 'menus3Quests.freezes', { fz: c.fz, max: c.fzMax })}</span>
         <span className="m3-today-sub">{(c.saved ? say(SAY_DR, 'dailyRewards.freezeSaved') : '') + say(SAY_DR, 'dailyRewards.streakHow')}</span>
         <span className="m3-today-sub">{say(SAY_DR, 'dailyRewards.freezeHow', { every: c.every })}</span>
-        {den ? <span className="m3-today-line" data-m3-den={c.den.state}><b>{say(SAY, 'menus3q.denHead')}</b>{': ' + den.head}</span> : null}
+        {den ? <span className="m3-today-line" data-m3-den={c.den.state}><b>{say(SAY, 'menus3Quests.denHead')}</b>{': ' + den.head}</span> : null}
         {den ? <span className="m3-today-sub">{den.sub}</span> : null}
       </div>
     );
@@ -143,15 +143,15 @@ function TodayWords({ c, onSpin }) {
     return (
       <div className="m3-today-words is-col" data-m3-today-words="orders">
         {c.known ? c.list.map((o, i) => (o.gone
-          ? <span key={i} className="m3-today-sub" data-m3-order={i}>{say(SAY, 'menus3q.orderGone')}</span>
+          ? <span key={i} className="m3-today-sub" data-m3-order={i}>{say(SAY, 'menus3Quests.orderGone')}</span>
           : (
             <span key={i} className="m3-today-line m3-order" data-m3-order={i} data-m3-order-done={o.done ? '1' : '0'}>
               {thumbFor(o.key) ? <img src={thumbFor(o.key)} alt="" draggable={false} className="m3-order-art" /> : null}
-              <span className="m3-order-name">{say(SAY, 'menus3q.order', { n: o.n, name: ITEM_NAMES[o.key] || o.key })}</span>
-              <span className="m3-today-sub">{o.done ? say(SAY, 'menus3q.orderDone') : say(SAY, 'menus3q.orderPay', { gold: o.gold, xp: o.xp })}</span>
+              <span className="m3-order-name">{say(SAY, 'menus3Quests.order', { n: o.n, name: ITEM_NAMES[o.key] || o.key })}</span>
+              <span className="m3-today-sub">{o.done ? say(SAY, 'menus3Quests.orderDone') : say(SAY, 'menus3Quests.orderPay', { gold: o.gold, xp: o.xp })}</span>
             </span>
           ))) : null}
-        <span className="m3-today-sub">{c.known ? say(SAY, 'menus3q.ordersAt') : c.old ? say(SAY, 'menus3q.ordersNew') : say(SAY, 'menus3q.ordersUnseen')}</span>
+        <span className="m3-today-sub">{c.known ? say(SAY, 'menus3Quests.ordersAt') : c.old ? say(SAY, 'menus3Quests.ordersNew') : say(SAY, 'menus3Quests.ordersUnseen')}</span>
       </div>
     );
   }
@@ -174,7 +174,7 @@ function TodayStrip({ S }) {
   };
   return (
     <div className="m3-today" data-m3-today={chips.map((c) => c.id).join(' ')}>
-      <div className="m3-rail" role="group" aria-label={say(SAY, 'menus3q.today')}>
+      <div className="m3-rail" role="group" aria-label={say(SAY, 'menus3Quests.today')}>
         {chips.map((c) => (
           <button key={c.id} type="button" className={'u2-raised u2-ctl m3-pill m3-chip' + (c.lit ? ' is-lit' : '') + (open === c.id ? ' is-selected' : '')}
             data-m3-chip={c.id} data-m3-lit={c.lit ? '1' : '0'} aria-expanded={c.id === 'daily' ? undefined : open === c.id} onClick={() => tap(c)}>
@@ -190,17 +190,17 @@ function TodayStrip({ S }) {
 
 /* ── THE RAIL AND ITS ROWS ── */
 function railWord(id, n) {
-  if (id === 'offers') return say(SAY, 'menus3q.railOffers', { n: n.offers });
-  if (id === 'done') return say(SAY, 'menus3q.railDone', { n: n.done });
-  return say(SAY, 'menus3q.railActive', { n: n.active });
+  if (id === 'offers') return say(SAY, 'menus3Quests.railOffers', { n: n.offers });
+  if (id === 'done') return say(SAY, 'menus3Quests.railDone', { n: n.done });
+  return say(SAY, 'menus3Quests.railActive', { n: n.active });
 }
 
 function MapButton({ S, qid, title }) {
   const p = pageOf(S, qid);
   if (!p || !p.where || p.where.map !== true) return null;
   return (
-    <button type="button" className="u2-raised u2-ctl m3-qmap" data-m3-qmap={qid} aria-label={say(SAY, 'menus3q.mapAria', { title })}
-      onClick={() => showQuestOnMap(p)}>{say(SAY, 'menus3q.map')}</button>
+    <button type="button" className="u2-raised u2-ctl m3-qmap" data-m3-qmap={qid} aria-label={say(SAY, 'menus3Quests.mapAria', { title })}
+      onClick={() => showQuestOnMap(p)}>{say(SAY, 'menus3Quests.map')}</button>
   );
 }
 
@@ -223,14 +223,14 @@ function QuestsRoot({ getS, top }) {
           hooks={{ 'data-m3-quest': r.id, 'data-m3-quest-rail': 'offers' }} />
         <MapButton S={S} qid={r.id} title={r.title} />
       </div>
-    )) : <Ui2Empty kind="absent" title={say(SAY, 'menus3q.noneOffers')} />;
+    )) : <Ui2Empty kind="absent" title={say(SAY, 'menus3Quests.noneOffers')} />;
   } else if (rail === 'done') {
     body = rails.done.length ? rails.done.map((r) => (
       <div key={r.id} className="m3-qrow">
         <QuestRow r={{ id: r.id, title: r.title, npc: (questById(r.id) || {}).npc || '' }} face={npcPortrait((questById(r.id) || {}).npc)} onOpen={() => open(r.id)}
           hooks={{ 'data-m3-quest': r.id, 'data-m3-quest-rail': 'done' }} />
       </div>
-    )) : <Ui2Empty kind="absent" title={say(SAY, 'menus3q.noneDone')} />;
+    )) : <Ui2Empty kind="absent" title={say(SAY, 'menus3Quests.noneDone')} />;
   } else {
     body = rails.active.length ? rails.active.map((r) => (
       <div key={r.id} className="m3-qrow">
@@ -238,12 +238,12 @@ function QuestsRoot({ getS, top }) {
           hooks={{ 'data-m3-quest': r.id, 'data-m3-quest-rail': 'active', 'data-m3-quest-ready': r.ready ? '1' : '0', 'data-m3-quest-track': r.tracked ? 'on' : 'off' }} />
         <MapButton S={S} qid={r.id} title={r.title} />
       </div>
-    )) : <Ui2Empty kind="absent" title={say(SAY, rails.n.offers ? 'menus3q.noneActive' : 'menus3q.noneActiveAll')} />;
+    )) : <Ui2Empty kind="absent" title={say(SAY, rails.n.offers ? 'menus3Quests.noneActive' : 'menus3Quests.noneActiveAll')} />;
   }
   return (
     <div className="m3-quests" data-m3-quests={rail}>
       <TodayStrip S={S} />
-      <div className="m3-rail" role="group" aria-label={say(SAY, 'menus3q.railAria')}>
+      <div className="m3-rail" role="group" aria-label={say(SAY, 'menus3Quests.railAria')}>
         {MENUS3_QUEST_RAIL.map((id) => (
           <button key={id} type="button" className={'u2-raised u2-ctl m3-pill' + (id === rail ? ' is-selected' : '')} data-m3-qrail={id}
             aria-pressed={id === rail} onClick={() => pick(id)}>{railWord(id, rails.n)}</button>
@@ -256,10 +256,10 @@ function QuestsRoot({ getS, top }) {
 
 /* ── A QUEST'S PAGE ── */
 function linkWord(l, page) {
-  if (l.kind === 'monster') return say(SAY, 'menus3q.inCodex', { name: (CODEX_ENTRIES[l.id] || {}).name || l.id });
-  if (l.kind === 'item') return say(SAY, 'menus3q.itemPage', { name: codexItemName({ key: l.key, name: ITEM_NAMES[l.key] }) || ITEM_NAMES[l.key] || l.key });
+  if (l.kind === 'monster') return say(SAY, 'menus3Quests.inCodex', { name: (CODEX_ENTRIES[l.id] || {}).name || l.id });
+  if (l.kind === 'item') return say(SAY, 'menus3Quests.itemPage', { name: codexItemName({ key: l.key, name: ITEM_NAMES[l.key] }) || ITEM_NAMES[l.key] || l.key });
   const place = page && page.where && page.where.text ? deskWords(page.where.text) : '';
-  return place ? say(SAY, 'menus3q.onMap', { place }) : say(SAY, 'menus3q.placeMap');
+  return place ? say(SAY, 'menus3Quests.onMap', { place }) : say(SAY, 'menus3Quests.placeMap');
 }
 
 function QuestOne({ R, getS, qid }) {
@@ -301,7 +301,7 @@ function QuestOne({ R, getS, qid }) {
         onTrack={onTrack} onMap={onMap} onRewards={onRewards} stepsRef={stepsRef} />
       {links.length ? (
         <div className="m3-qlinks" data-m3-qlinks={links.map((l) => l.kind).join(' ')}>
-          <span className="m3-counters-head">{say(SAY, 'menus3q.links')}</span>
+          <span className="m3-counters-head">{say(SAY, 'menus3Quests.links')}</span>
           {links.map((l, i) => (
             <button key={i} type="button" className="u2-raised u2-ctl m3-qlink" data-m3-qlink={l.kind} data-m3-qlink-of={l.id || l.key || ''} onClick={() => follow(l)}>
               <span className="m3-row-name">{linkWord(l, page)}</span>

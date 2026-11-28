@@ -72,8 +72,8 @@ function BackIcon() {
 function pageTitle(top) {
   if (!top) return '';
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
-  if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3q.quest');   /* v2.3.6863 */
-  if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3q.rewards');
+  if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
+  if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
   return sectionWord(top.section);
 }
 
