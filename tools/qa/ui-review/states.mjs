@@ -534,10 +534,18 @@ export const STATES = [
   /* tag 6787 (card UI3, PR 8): the same HUD in the owner's pictures of
      2026-11-26 (on by default; ?hudart=0 the panel above) */
   { id: 'hudart', group: 'The world (HUD)', title: 'The character HUD in the owner\'s pictures (upright)', views: ['portrait'],
-    about: 'Top left under the top bar, opposite the minimap, the owner\'s pictures: your face in a steel ring, your COMBAT level in the gold badge hanging under it, and to its right one steel bar: the weapon in your hand in its small ring, the green fill its progress to its next level, its LEVEL in the pill at the bar\'s right end; your name above the bar and "45 / 120" in it. A tap on the face opens Bro, on the bar that weapon\'s page. 184 x 52.',
+    about: 'Top left under the top bar, opposite the minimap, the owner\'s pictures: your face in a steel ring, your COMBAT level in the gold badge hanging under it, and to its right one steel bar: the weapon in your hand in its small ring, the green fill its progress to its next level, its LEVEL in the pill at the bar\'s right end; your name above the bar and "45 / 120" in it. A tap on the face opens Bro, on the bar that weapon\'s page. 184 x 52 under ?bighud=0 (bigger by default on a phone since tag 6847: bighud).',
     run: async ({ P }) => { await wait(P, 600); } },
   { id: 'hudart-side', group: 'The world (HUD)', title: 'The character HUD in the owner\'s pictures (sideways)', views: ['landscape'],
-    about: 'The same on a phone held sideways, every piece at 92 % (169 x 48); the quest line and the status chips under it, the party chip beside it, clear of the minimap.',
+    about: 'The same on a phone held sideways, every piece at 92 % (169 x 48); the quest line and the status chips under it, the party chip beside it, clear of the minimap. Since tag 6847 these sizes are ?bighud=0\'s (bighud below is the default on a phone).',
+    run: async ({ P }) => { await wait(P, 600); } },
+  /* tag 6847 (card UI4): the owner, 2026-11-28, "Attack button and HUD need to
+     be about twice as big" (game/bigHud.js; ?bighud=0 today's sizes) */
+  { id: 'bighud', group: 'The world (HUD)', title: 'The HUD and Attack, bigger (upright)', views: ['portrait'],
+    about: 'On a phone upright the character HUD (the face ring, the badge, the name, the weapon\'s bar) is drawn bigger, as wide as the room left of the minimap holds (at 390 wide 242 x 68, 1.32 times today\'s 184 x 52), and the controller\'s Attack button grows from its well as far as it stays clear of Jump or Block, the top row and the band (at 390 wide 71 px, 1.19 times today\'s 59), its touch box with it. Twice did not fit either way at 390: the owner\'s call (docs/UI-DESIGN-NOTES.md). ?bighud=0 gives today\'s sizes.',
+    run: async ({ P }) => { await wait(P, 600); } },
+  { id: 'bighud-side', group: 'The world (HUD)', title: 'The HUD and Attack, bigger (sideways)', views: ['landscape'],
+    about: 'The same held sideways: the HUD at twice today\'s sideways size where the room over the stick\'s lobe holds it, the party chip beside it, the status chips under it; Attack as far as its neighbours allow. ?bighud=0 gives today\'s.',
     run: async ({ P }) => { await wait(P, 600); } },
   /* v2.3.6786 (card UI3, PR 7): the gold on the top bar, between BroTown and
      the daily spin (ZoneHeader.jsx, game/topGold.js).  Every layout. */

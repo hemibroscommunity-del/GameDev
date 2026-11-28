@@ -292,6 +292,9 @@ export function noteCanvasCss(w, h) {
  *  playVw() is the window's column there (card PAD part 4).  Kept, never
  *  measured (docs/specs/layout-reads.md way 1). */
 export function canvasCssW() { return _cssW; }
+/** v2.3.6847 (card UI4): ...and its height, the same way (bigHud.js: the room
+ *  over the controller sideways).  Kept, never measured. */
+export function canvasCssH() { return _cssH; }
 /* ...and who wants to hear when it moves: resize() gives the canvas its
    width at the top of the frame AFTER a band fold's render (BroTown.jsx,
    v2.3.6281), so a control laid out in that render kept the old width till

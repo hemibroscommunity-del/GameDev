@@ -16,6 +16,7 @@ import { fineInput } from '@/game/deviceProfile.js';
 import { playVw } from '@/ui/mobile/playViewport.js';
 import { canvasCssW, watchCanvasCssW } from '@/game/renderRes.js';
 import { useState, useEffect, startTransition } from 'react';
+import { bigHudOn, bigAttack, BIG_HUD } from '@/game/bigHud.js';   /* v2.3.6847: Attack about twice as big (card UI4) */
 
 export function padLive() {
   return padOn(sw('padskin'), fineInput());   /* v2.3.6641: never on a computer (padSkin.js padOn) */
@@ -46,10 +47,23 @@ export function usePadWidth() {
   return w;
 }
 
+/* QA only: the last grown Attack, for mp-bighud (window.__btBigHud, HudArt.jsx) */
+let _lastGrow = null;
+export function padGrowSeen() { return _lastGrow; }
+
 /** the controller on this screen (padSkin padLayout), or null when off */
 export function padNow(isLandscape) {
   if (!padLive()) return null;
-  return padLayout(!!isLandscape, padWidth());
+  const L = padLayout(!!isLandscape, padWidth());
+  /* v2.3.6847 (card UI4): the owner, 2026-11-28, "Attack button and HUD need
+     to be about twice as big": Attack's well grows towards twice, as far as
+     it stays clear of its neighbours (game/bigHud.js bigAttack); every
+     control that asks here (its socket, the shell, the coach) sees the same.
+     `?bighud=0` today's layout untouched. */
+  if (!bigHudOn()) return L;
+  const G = bigAttack(L, BIG_HUD.WANT);
+  _lastGrow = G.grow || null;
+  return G;
 }
 
 export function padAnchor(name, isLandscape, today, fight) {

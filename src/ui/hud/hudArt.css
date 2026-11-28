@@ -46,8 +46,10 @@
 .bt-hudart__wring .bt-hudart__icon{position:absolute;display:block;object-fit:contain}
 /* a gain on another weapon: its "+N XP" under the bar's right end */
 .bt-hudart__pop{position:absolute;right:0;display:flex;align-items:center;gap:2px;white-space:nowrap}
-.bt-hudart__pop img{width:12px;height:12px;display:block}
-.bt-hudart__pop .bt-xp-gain{font-size:11px}
+/* v2.3.6847 (card UI4): bigger with the group under ?bighud (--ha-big, the
+   scale over today's; 1 when not set, so ?bighud=0 draws today's px) */
+.bt-hudart__pop img{width:calc(12px * var(--ha-big,1));height:calc(12px * var(--ha-big,1));display:block}
+.bt-hudart__pop .bt-xp-gain{font-size:calc(11px * var(--ha-big,1))}
 /* sideways (a short screen): the whole group at 92 % (UI3-hud's media query:
    with the one band html[data-orient] never says sideways) */
 @media (max-height:480px){.bt-hudart{--ha-k:.92}}
