@@ -27,7 +27,7 @@
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { dashMinBus } from '@/ui/mobile/dashMinBus.js';
 import { playIsLandscape } from '@/ui/mobile/playViewport.js';
-import { menus3Active, menus3Go } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6863: J opens World Quests in the new panel (card MN step 7) */
+import { menus3Active, menus3Go, menus3Key } from '@/ui/menus3/menus3Wire.js';   /* v2.3.6863: J opens World Quests in the new panel (card MN step 7); v2.3.6865: I, P, L Bro's three (step 6) */
 
 /** The dashboard's buttons (BottomDashboard RAIL_ITEMS ids) -> a letter.
     v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); `skills` keeps
@@ -38,6 +38,8 @@ import { menus3Active, menus3Go } from '@/ui/menus3/menus3Wire.js';   /* v2.3.68
 export const NAV_KEYS = Object.freeze({
   dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O', leaderboard: 'U',
 });
+/** v2.3.6865 (card MN step 6): under ?menus3, the page keys that open Bro's three sections. */
+const MENUS3_KEY_SECTION = Object.freeze({ dashboard: 'bag', hero: 'power', skills: 'skills' });
 /** The world map (WorldMapOverlay.jsx), from the Wheel's minimap. */
 export const MAP_KEY = 'M';
 /** v2.3.3776: the skateboard (ui/panels/RideButton.jsx): on and off, in
@@ -74,6 +76,9 @@ export function navKey(id) {
   /* v2.3.6863 (card MN step 7): under ?menus3 J is the World button's key (its dock button wears it):
      the new panel on Quests, J again closes it, as the button does */
   if (id === 'quests' && menus3Active() && menus3Go('dock.world')) return;
+  /* v2.3.6865 (card MN step 6): and I, P, L Bro's Bag, Power and Skills (the Bag and Power steps left
+     I and P on today's screens) */
+  if (menus3Active() && Object.prototype.hasOwnProperty.call(MENUS3_KEY_SECTION, id) && menus3Key(MENUS3_KEY_SECTION[id])) return;
   /* v2.3.6681: under the new frame (card UI2-frame's reading 7) I is Gear, O
      the Menu (resumed), and P, J, U, K, L open their pages as today; each
      pressed with its own up closes the dashboard (dashNav.js dashNavKey) */

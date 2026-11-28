@@ -129,3 +129,59 @@
 .m3-statrow { width: 100%; justify-content: space-between; }
 .m3-statrow-v { margin-left: auto; font-variant-numeric: tabular-nums; }
 .m3-body :is(.m3-lane, .m3-card-add, .m3-card-sub, .m3-statsline, .m3-clear, .m3-apply, .m3-focus-about, .m3-statrow) { border-radius: 8px; }
+/* ═══ v2.3.6865: BRO · SKILLS (card MN step 6) ═══
+   The wireframe v4.4's Skills: the ten as tiles three across in both shapes (66+ tall: the picture
+   30, the name 12.5/650, "Lv N" muted, a thin bar at 82%), a guild with its reward waiting as a row
+   over them (the name, its Claim 44 tall); a skill's page in blocks (level and XP, the unlocks and
+   their door, the guild inline, How it works).  The kit's control and well, the kit's gold. */
+.m3-skills { gap: 6px; }
+.m3-skills-total { display: flex; align-items: baseline; gap: 8px; padding: 2px 4px; font-size: 13px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-skills-total-v { font-size: 18px; color: var(--ui2-text-ivory, #F1F0E9); font-variant-numeric: tabular-nums; }
+.m3-skillgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.m3-skilltile { position: relative; min-width: 0; min-height: 66px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.m3-skilltile-art { width: 30px; height: 30px; object-fit: contain; display: block; pointer-events: none; }
+.m3-skilltile-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 650; }
+.m3-skilltile-lv { font-size: 11.5px; color: var(--ui2-text-muted, #BCC8CC); font-variant-numeric: tabular-nums; }
+.m3-skilltile .m3-skill-bar { width: 82%; height: 5px; margin-top: 2px; }
+.m3-skilltile-dot { position: absolute; top: 5px; left: 5px; margin: 0; }
+.m3-ready { display: flex; flex-direction: column; gap: 2px; }
+.m3-ready-row { display: flex; align-items: center; gap: 8px; padding: 0 0 0 4px; border-radius: 8px; background: var(--ui2-well, rgba(0,0,0,.18)); }
+.m3-ready-name { flex: 1 1 auto; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 4px; background: transparent; border: 0; color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.m3-ready-name > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-ready-claim, .m3-guild-claim { flex: none; min-height: 44px; min-width: 96px; padding: 0 12px; font-size: 13px; font-weight: 750; }
+.m3-ready-claim.is-ready, .m3-guild-claim.is-ready { border-color: var(--ui2-gold, #E4BA68); background: var(--ui2-gold, #E4BA68); color: #141D22; }
+.m3-ready-claim:disabled, .m3-guild-claim:disabled { opacity: .6; }
+.m3-skill { gap: 8px; }
+.m3-skill-head { display: flex; align-items: center; gap: 10px; }
+.m3-skill-art { width: 44px; height: 44px; object-fit: contain; flex: none; pointer-events: none; }
+.m3-skill-headwords { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.m3-skill-lv { font-size: 15px; }
+.m3-skill-headwords .m3-skill-bar { width: 100%; }
+.m3-skill-block { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-radius: 8px; background: var(--ui2-well, rgba(0,0,0,.18)); }
+.m3-skill-fact { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 2px 0; }
+.m3-skill-fact-k { flex: none; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-skill-fact-v { min-width: 0; text-align: right; }
+.m3-skill-door { min-height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border-radius: 8px; }
+.m3-guild-head { display: flex; flex-direction: column; }
+.m3-guild-name { font-size: 14px; }
+.m3-guild-sub, .m3-guild-qdesc { font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-guild-k { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-guild-rank { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.m3-guild-quest { display: flex; flex-direction: column; gap: 3px; padding: 6px 0; border-top: 1px solid var(--ui2-line, #4B6275); border-bottom: 1px solid var(--ui2-line, #4B6275); }
+.m3-guild-qhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.m3-guild-ready { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ui2-gold, #E4BA68); }
+.m3-guild-qtitle { font-size: 13px; }
+.m3-guild-quest .m3-guild-claim { align-self: stretch; margin-top: 4px; }
+.m3-guild-ranks, .m3-ladder { display: flex; flex-direction: column; gap: 2px; }
+.m3-guild-rung { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ui2-text-muted, #BCC8CC); padding: 2px 0; }
+.m3-guild-rung.is-got { color: var(--ui2-text-ivory, #F1F0E9); }
+.m3-guild-rung.is-next { color: var(--ui2-gold, #E4BA68); }
+.m3-guild-mark { flex: none; display: flex; }
+.m3-guild-rungname { flex: 1 1 auto; min-width: 0; }
+.m3-guild-ap, .m3-ladder-state { flex: none; font-size: 11.5px; color: var(--ui2-gold, #E4BA68); }
+.m3-ladder-state.is-later { color: var(--ui2-text-muted, #BCC8CC); }
+.m3-ladder { padding: 2px 4px; }
+.m3-guild-quote { margin: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-style: italic; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,.18); }
+.m3-guild-titles { display: flex; flex-direction: column; gap: 4px; }
+.m3-guild-titlelist { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+.m3-body :is(.m3-skilltile, .m3-ready-claim, .m3-guild-claim) { border-radius: 8px; }

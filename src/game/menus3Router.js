@@ -52,6 +52,7 @@ export const MENUS3_TODAY = Object.freeze({
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
+  'skills',   /* v2.3.6865 (card MN step 6): + Skills -- all three of Bro's sections are the panel's now */
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */

@@ -15,7 +15,8 @@
  * the header where the tabs were (src/game/menus3Nav.js: its history, the
  * rail and the scroll of the page under it given back).  Power and Skills
  * still open today's screens (menus3Wire.js menus3Bus.section).  Nothing is
- * drawn while it is shut. */
+ * drawn while it is shut.  v2.3.6865 (card MN step 6): + Skills (Menus3Skills.jsx):
+ * all three of Bro's sections are the panel's. */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { menus3Bus, menus3Close, menus3ShapeNow } from './menus3Wire.js';
@@ -32,6 +33,7 @@ import { Menus3Bag } from './Menus3Bag.jsx';
 import { Menus3Power, powerDot } from './Menus3Power.jsx';   /* v2.3.6862: Bro · Power (card MN step 5) */
 import { Menus3Quests } from './Menus3Quests.jsx';   /* v2.3.6863 (card MN step 7) */
 import { SAY as SAY_Q } from '@/data/say/menus3Quests.js';
+import { Menus3Skills, skillsDot, skillsTitle } from './Menus3Skills.jsx';   /* v2.3.6865 (card MN step 6) */
 import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
@@ -75,6 +77,7 @@ function pageTitle(top) {
   if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
   if (top.section === 'quests' && top.page === 'quest') return say(SAY_Q, 'menus3Quests.quest');   /* v2.3.6863 */
   if (top.section === 'quests' && top.page === 'rewards') return say(SAY_Q, 'menus3Quests.rewards');
+  if (top.section === 'skills') return skillsTitle(top) || sectionWord('skills');   /* v2.3.6865: the skill's name */
   return sectionWord(top.section);
 }
 
@@ -122,6 +125,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
               data-menus3-tab={s} aria-pressed={s === st.section} {...frameTap(() => menus3Bus.section(s))}>
               {sectionWord(s)}
               {s === 'power' && powerDot(rpgState, getS()) ? <i className="m3-dot" data-menus3-dot="power" aria-hidden="true" /> : null}
+              {s === 'skills' && skillsDot(rpgState) ? <i className="m3-dot" data-menus3-dot="skills" aria-hidden="true" /> : null}
             </button>
           ))}
           <button type="button" className="u2-raised u2-ctl is-round" style={X} data-menus3-x="" data-esc=""
@@ -135,6 +139,7 @@ export function Menus3Panel({ rpgState, stateRef }) {
           {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
           {st.section === 'power' ? <Menus3Power R={rpgState} getS={getS} top={top} root={st.nav ? st.nav[0] : null} /> : null}
           {st.section === 'quests' ? <Menus3Quests R={rpgState} getS={getS} top={top} /> : null}
+          {st.section === 'skills' ? <Menus3Skills R={rpgState} getS={getS} top={top} /> : null}
         </div>
       </section>
     </div>,

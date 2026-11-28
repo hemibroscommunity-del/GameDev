@@ -1017,6 +1017,39 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6865 (card MN step 6, `?menus3`): Bro · Skills in the new panel, and a skill's page with its guild */
+  { id: 'menus3-skills', group: 'Dashboard', title: 'The new menus: Bro, the Skills', about: 'The owner\'s new menus, step 6 (docs/design/menus3/): Bro\'s Skills tab (and L on a computer) opens the ten life skills in the new panel, three across as the wireframe draws them: each its picture, name, level and a thin XP bar, the brass dot of a level-up not yet looked at; Total level over them; a guild whose quest is done and waits for its reward is a row over the grid with its Claim (today\'s request).',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.panel('bro', 'skills'); });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  { id: 'menus3-skill', group: 'Dashboard', title: 'The new menus: a skill\'s page and its guild', about: 'The owner\'s new menus, step 6: a skill opens its page in the panel, Back top left and the skill\'s name: its level and the XP to the next, the next and latest unlock and All unlocks (the whole ladder, a page with Back); its guild inline as today\'s guild window tells it (the guildmaster, the rank and the way to the next, the guild quest with its reward and its one Claim, the ranks with their AP, the guildmaster\'s line, the titles earned); How it works (today\'s lines).',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.panel('bro', 'skills'); });
+      await wait(P, 1200);
+      await evalIn(P, () => { const t = document.querySelector('[data-m3-skill="fishing"]'); if (t) t.click(); });
+      await wait(P, 1000);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6862 (card MN step 5, `?menus3`): Bro · Power in the new panel, a draft staged */
   { id: 'menus3-power', group: 'Dashboard', title: 'The new menus: Bro, Power', about: 'The owner\'s new menus, step 5 (docs/design/menus3/): the face, the weapon bar and the Power tab open the new panel on Power. The overall level and XP at the top (and the free Reset, quiet, two taps); four lanes (Sword, Bow, Staff with their levels and XP; Body, the shared upgrades), a gold dot where points wait; the kinds of point told apart (the weapon\'s, the shared, a spare that buys anything); the lane\'s real upgrades as cards two across, a tap stages a point (its number now -> after), a minus beside it takes one back; the footer\'s stats line (DPS, or Max HP for the body: it opens the lane\'s real numbers, DPS its breakdown), the arrow that clears the draft and ONE "Apply N points". Nothing is sent before Apply.',
     run: async ({ P }) => {
