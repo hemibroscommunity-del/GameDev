@@ -879,6 +879,59 @@ list); the rest are each card's next jobs (plants green in its guard).
   (F7's data carries `n: {}`); AP from `rpg.achievementPoints ?? null`. Its
   merge of Life (c20a2470): nothing lost or doubled.
 
+## The PRs of sitting 74 (card UI4's stack; their next jobs; none holds)
+
+The card names its dodges for PR 1 only (all RED on c72125e7). The plants
+below are the review's own, read from the card's lines for PRs 2, 4 and 6:
+the next jobs of card UI4 (finish.md part 8), held to at the next review.
+- UI4-kit #2429 (ui4-roles.test): `intent={undefined}` counts as named;
+  `intent={COMMIT}` / `{'com'+'mit'}` with no handler; `onClick={noop}`,
+  `onClick={(()=>{}).bind(null)}`; an info fact given `{...tapProps}`; in the
+  kit, `const h = onClick; if (h) return <button>` (Facts.jsx); `import
+  {Ui2Action as Act}`; `Ui2LevelTile` with no handler (G3/R3; also green in
+  ui3-weights).
+- UI4-look #2431 (ui4-look.test L4, ui2-tokens.test): deleting
+  `.ui2.ui2-v17 .u2-bv-pts` (sheet/broV17.css:44) or `.u2-lt-cue`
+  (kit/levelTile.css) puts the point's cue back to commit gold (L4 lists
+  three selectors only); an unlisted `font-size: 11px` in broV17.css (suite
+  17 reads the list's form only); a gold `background-image`, `rgb(228,186,104)`,
+  `--ui2-v17-select-edge` as a go face; a V17 rule in src/styles/ (L reads
+  src/ui only); an inline `['--ui2-v17-'+'adjust']`; a spread copy of UI2_V17.
+- UI4-bro #2432 (bro-v17.test section 8 reads the rules, not the page): the
+  weapon tile pushing broCombat (BroV17.jsx:173); `say(SAY_CH,'charPage.'+
+  'combatLv')`, `{S.rpg.level}`, `{S.myName}`; `held={w.hand !== 'none'}`
+  (:171); `sharedHeadline(R).hp*1.4`; the strip skipping `journey` (:200).
+  LATENT (no road opens it before the directory's step 9): another player's
+  Bro draws the viewer's own DPS and Max HP (`factsOf(R, hand.held)` reads
+  S.rpg, BroV17.jsx:78-84, 121, 194) and drops "<name>'s Bro".
+- UI4-gear #2433 (ui4-gear.test F1/F2/F4/G3 by text): rows hand-rolled with
+  one Ui2Comparison head (GearPanels.jsx:251); `const why = !on && ..`
+  (:279); a later clamp rule in itemPage.css (F4 reads the first); the call
+  site passing `{v17:true}` (:401); `!on || !topGoldOn() && false`; the gap
+  span `display:none`; `lower={false}`; `intent={undefined}` on Equip;
+  `v17GearOn` forced `_on = true`.
+- Still green from sitting 71 (no mend claimed): `'u2-'+'raised'`
+  (ui3-weights), `.u2-bro-strip > *` (bro-hub).
+- mp-ui2bro 9 and mp-ui2frame: the stack's changes read honest (9 asks for
+  rankViews.jsx's face and "<name>'s Bro", runs on `v17bro=0`; ui2frame's
+  wait 6 s to 20 s, no assert touched).
+
+## The fast lane read at sitting 74 (finish.md part 8 rule 4)
+
+No bug in behaviour in #2428 (PAD part 14), #2430 (UI4-fit), #2434 (the
+Leaderboards' headers); condition 1 held for each; ranged-stick-lift and
+v17-wide plants RED.
+- UI4 (#2430): `docs/shots/v17fit-table.md` "entries a row" reads
+  "undefined (undefined)" in 70 of 98 rows (kept from a run before
+  `perRow`): re-run `mp-v17fit` whole. `src/ui/kit/UiKitPage.jsx`:48 reads
+  the unstepped `BAND_ASSEMBLY_MAX_W` (840 on a 1280 laptop, the game 480;
+  the `?uikit` page only).
+- Ranks (#2434): `tools/qa/mp/mp-ranksheads.mjs`:56-63 never flags a wrapped
+  door word spilling below its tile (sideways 72-82 px page; unverified).
+- STILL OWED on main (sitting 73): `QuestCoach.jsx`:780, step 5 under
+  `?ui2=0` / `?oneband=0` rings the old rail's Bro (`BottomDashboard.jsx`:619)
+  beside a Quests button.
+
 ## Found (no card's debt)
 
 - FOR THE OWNER (72), a bug on `main` today: the phone's gear bag
