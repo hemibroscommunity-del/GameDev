@@ -73,6 +73,15 @@ function pageTitle(top) {
   return sectionWord(top.section);
 }
 
+/* the page's scroll, read at the top of the next frame (docs/specs/layout-reads.md way 3), once a frame */
+let _scrollAsk = false;
+let _bodyEl = null;
+function keepScroll() {
+  if (_scrollAsk) return;
+  _scrollAsk = true;
+  beforeDraw(() => { _scrollAsk = false; if (_bodyEl) menus3Bus.keep({ scroll: _bodyEl.scrollTop }); });
+}
+
 export function Menus3Panel({ rpgState, stateRef }) {
   const [st, setSt] = useState(menus3Bus.state);
   useEffect(() => menus3Bus.subscribe(setSt), []);
@@ -114,9 +123,9 @@ export function Menus3Panel({ rpgState, stateRef }) {
             <XIcon />
           </button>
         </div>
-        <div ref={bodyRef} className="m3-body" style={{ flex: '1 1 auto', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        <div ref={(el) => { bodyRef.current = el; _bodyEl = el; }} className="m3-body" style={{ flex: '1 1 auto', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
           data-menus3-body={st.section || ''} data-menus3-page={top ? top.page : ''}
-          onScroll={(ev) => menus3Bus.keep({ scroll: ev.currentTarget.scrollTop })}>
+          onScroll={keepScroll}>
           {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
         </div>
       </section>

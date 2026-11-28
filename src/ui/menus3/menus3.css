@@ -37,7 +37,7 @@
 .m3-why { margin: 0 2px; font-size: 12px; color: var(--ui2-text-muted, #BCC8CC); }
 .m3-counters { display: flex; flex-direction: column; gap: 4px; }
 .m3-counters-head { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ui2-text-muted, #BCC8CC); margin-top: 4px; }
-.m3-counter { min-height: 44px; opacity: .55; text-align: left; padding: 4px 10px; }
+.m3-counter { display: flex; align-items: center; min-height: 44px; opacity: .55; padding: 4px 10px; border: 1px dashed var(--ui2-line, #4B6275); font-size: 13px; }
 .m3-foot { margin-top: auto; position: sticky; bottom: 0; padding-top: 6px; background: var(--ui2-page, #14232F); }
 .m3-foot > * { min-height: 44px; }
 .m3-row { flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 4px 8px; text-align: left; }

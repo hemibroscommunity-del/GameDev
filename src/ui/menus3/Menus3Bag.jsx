@@ -179,6 +179,14 @@ function PetsRail({ S, open }) {
   );
 }
 
+/* the rail's place, read at the top of the next frame (docs/specs/layout-reads.md way 3), once a frame */
+let _railAsk = false;
+function keepRailX(ref) {
+  if (_railAsk) return;
+  _railAsk = true;
+  beforeDraw(() => { _railAsk = false; const el = ref.current; if (el) BagRoot._railX = el.scrollLeft; });
+}
+
 /* ── the bag's own page: the rail and what it shows ── */
 function BagRoot({ R, S, top, open }) {
   const rail = railId(top.rail);
@@ -195,7 +203,7 @@ function BagRoot({ R, S, top, open }) {
   return (
     <div data-m3-bag={rail}>
       <div className="m3-rail" ref={railRef} role="tablist" aria-label={say(SAY, 'menus3.railAria')}
-        onScroll={(ev) => { BagRoot._railX = ev.currentTarget.scrollLeft; }}>
+        onScroll={() => keepRailX(railRef)}>
         {MENUS3_RAIL.map((id) => (
           <button key={id} type="button" role="tab" aria-selected={id === rail} className={'u2-raised u2-ctl m3-pill' + (id === rail ? ' is-selected' : '')}
             data-m3-rail={id} onClick={() => pick(id)}>{railWord(id, counts)}</button>
@@ -298,9 +306,10 @@ function ItemPage3({ R, arg }) {
         <div className="m3-counters" data-m3-counters={counters.map((c) => c.id).join(' ')}>
           <span className="m3-counters-head">{say(SAY, 'menus3.townOnly')}</span>
           {counters.map((c) => (
-            <button key={c.id} type="button" className="u2-raised u2-ctl m3-counter" disabled aria-disabled="true" data-m3-counter={c.id}>
-              {say(SAY, 'menus3.counterAt', { what: COUNTER_WORD[c.id](), where: c.where })}
-            </button>
+            /* not pressable here, so no raised face (ui3-weights): a line, greyed */
+            <span key={c.id} className="m3-counter" aria-disabled="true" data-m3-counter={c.id}>
+              {COUNTER_WORD[c.id]()}
+            </span>
           ))}
         </div>
       ) : null}

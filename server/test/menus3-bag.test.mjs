@@ -27,7 +27,8 @@
  *   7. THE ROAD: the Bro button and the I key's Bag are built (the panel),
  *      Power and Skills still today's screens. */
 import { MENUS3_NAV, navStart, navTop, navCanBack, navPush, navBack, navKeep, navPrune } from '../../src/game/menus3Nav.js';
-import { MENUS3_RAIL, MENUS3_RAIL_KINDS, MENUS3_SLOTS, railId, railEntries, railCounts, gridCols, slotCandidates, counterActions } from '../../src/game/menus3Bag.js';
+import { readFileSync } from 'node:fs';
+import { MENUS3_COUNTERS, MENUS3_RAIL, MENUS3_RAIL_KINDS, MENUS3_SLOTS, railId, railEntries, railCounts, gridCols, slotCandidates, counterActions } from '../../src/game/menus3Bag.js';
 import { menus3CamOffset, MENUS3_PANEL } from '../../src/game/menus3Panel.js';
 import { MENUS3_BUILT, menus3Route } from '../../src/game/menus3Router.js';
 import { followCamera } from '../../src/game/cameraFollow.js';
@@ -111,7 +112,9 @@ function check(name, cond, detail) {
   check('5b the craft by kind', ids(counterActions('ore', {}, 'item')).includes('smelt') && ids(counterActions('fish', {}, 'item')).includes('cook')
     && ids(counterActions('gem', {}, 'item')).includes('setGem') && ids(counterActions('wood', {}, 'item')).includes('harden'));
   check('5c the Bank for a bag item, never a spare piece', ids(counterActions('food', {}, 'item')).includes('bank') && !ids(counterActions('sword', {}, 'stashWeapon')).includes('bank'));
-  check('5d each says where', counterActions('ore', { sell: true }, 'item').every((c) => typeof c.where === 'string' && c.where.length > 3));
+  /* v2.3.6861: where each is done is the page's words (src/data/say/menus3.js), one a counter */
+  const said = readFileSync(new URL('../../src/data/say/menus3.js', import.meta.url), 'utf8');
+  check('5d each counter has its words, saying where', MENUS3_COUNTERS.every((c) => new RegExp("'menus3\\.counter" + c.id.charAt(0).toUpperCase() + c.id.slice(1) + "': '[^']* (at|the) ").test(said)));
 }
 
 /* ── 6. the camera ── */

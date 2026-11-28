@@ -95,19 +95,20 @@ export function slotCandidates(entries, slot) {
   return list.filter((e) => e && e.gcat === slot);
 }
 
-/* Where each counter's action is done (the town's own names: src/data's
-   buildings).  `kinds` the item kinds it takes; `card` an action flag the
-   item card already answers (its `actions.sell`). */
+/* The counters, each the item kinds it takes (`kinds`) or the item card's
+   own flag (`card`: its `actions.sell`); WHERE each is (the town's own names,
+   src/data's buildings) is the page's words (src/data/say/menus3.js
+   'menus3.counter<Id>'). */
 export const MENUS3_COUNTERS = Object.freeze([
-  Object.freeze({ id: 'sell', where: 'Diego’s Shop', card: 'sell' }),
-  Object.freeze({ id: 'smelt', where: 'the Blacksmith', kinds: Object.freeze(['ore']) }),
-  Object.freeze({ id: 'cook', where: 'the Cookhouse', kinds: Object.freeze(['fish']) }),
-  Object.freeze({ id: 'setGem', where: 'the Gem Works', kinds: Object.freeze(['gem']) }),
-  Object.freeze({ id: 'harden', where: 'the Woodworker', kinds: Object.freeze(['wood']) }),
-  Object.freeze({ id: 'bank', where: 'the Bank', any: true }),
+  Object.freeze({ id: 'sell', card: 'sell' }),
+  Object.freeze({ id: 'smelt', kinds: Object.freeze(['ore']) }),
+  Object.freeze({ id: 'cook', kinds: Object.freeze(['fish']) }),
+  Object.freeze({ id: 'setGem', kinds: Object.freeze(['gem']) }),
+  Object.freeze({ id: 'harden', kinds: Object.freeze(['wood']) }),
+  Object.freeze({ id: 'bank', any: true }),
 ]);
 
-/** The counter actions an entry has, each { id, where }, greyed on the Item
+/** The counter actions an entry has, each { id }, greyed on the Item
  *  page away from town.  `gcat` the entry's kind, `cardActions` the item
  *  card's own answer (resolveTarget's `actions`), `kind` the entry's ('item'
  *  or a spare list's). */
@@ -119,7 +120,7 @@ export function counterActions(gcat, cardActions, kind) {
     if (c.card) ok = !!a[c.card];
     else if (c.kinds) ok = kind === 'item' && c.kinds.indexOf(gcat) >= 0;
     else if (c.any) ok = kind === 'item';   /* the vault takes any bag key (server bank.js okKey); a spare piece is no bag key */
-    if (ok) out.push(Object.freeze({ id: c.id, where: c.where }));
+    if (ok) out.push(Object.freeze({ id: c.id }));
   }
   return out;
 }
