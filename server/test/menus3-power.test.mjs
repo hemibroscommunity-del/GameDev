@@ -28,7 +28,7 @@
  *      panel; the bar names the hand's lane. */
 import {
   POWER_LANES, powerLane, laneOfHeld, powerPools, powerWaiting, powerStartLane, draftOf, draftReplay, draftStage,
-  draftUnstage, draftClear, draftCount, draftPrune, draftDraws, draftSends, sendLanded, queueStep, statSteps, POWER_DRAFT_MAX,
+  draftUnstage, draftClear, draftCount, draftPrune, draftDraws, draftSends, draftLeft, sendLanded, queueStep, statSteps, POWER_DRAFT_MAX,
 } from '../../src/game/menus3Power.js';
 import { MENUS3_BUILT, menus3Route } from '../../src/game/menus3Router.js';
 
@@ -51,7 +51,7 @@ function C(pools, held, caps) {
     known: (l, s) => (l === 'body' ? BODY.includes(s) : ATK.includes(s)),
   };
 }
-const stageAll = (ctx, list) => { let d = draftClear(); const why = []; for (const [l, s] of list) { const r = draftStage(d, ctx, l, s); d = r.draft; why.push(r.why); } return { d, why }; };
+const stageAll = (ctx, list) => { let d = draftClear(); const why = []; for (const [l, s] of list) { const r = draftStage(d, ctx, l, s); d = r.draft; why.push(r.no); } return { d, why }; };
 const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
 
 /* ── 1. the lanes ── */
@@ -74,16 +74,16 @@ const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
 {
   const ctx = C({ by: { sword: 2 }, shared: 1 }, { 'sword|range': 3 }, { range: 5 });
   let r = draftStage(draftClear(), ctx, 'sword', 'range');
-  check('2a a stage the worker takes is added', r.why === null && r.draft.length === 1 && r.draft[0].lane === 'sword' && r.draft[0].stat === 'range');
+  check('2a a stage the worker takes is added', r.no === null && r.draft.length === 1 && r.draft[0].lane === 'sword' && r.draft[0].stat === 'range');
   r = draftStage(r.draft, ctx, 'sword', 'range');
-  check('2b ...again up to its cap', r.why === null && draftCount(r.draft, 'sword', 'range') === 2);
+  check('2b ...again up to its cap', r.no === null && draftCount(r.draft, 'sword', 'range') === 2);
   const r3 = draftStage(r.draft, ctx, 'sword', 'dmg');
-  check('2c out of the weapon\'s points: refused with "points", the draft as it was', r3.why === 'points' && r3.draft.length === 2, r3);
+  check('2c out of the weapon\'s points: refused with "points", the draft as it was', r3.no === 'points' && r3.draft.length === 2, r3);
   const ctx2 = C({ by: { sword: 9 } }, { 'sword|range': 3 }, { range: 5 });
   const a = stageAll(ctx2, [['sword', 'range'], ['sword', 'range'], ['sword', 'range']]);
   check('2d a stat at its cap is refused with "cap"', a.why.join() === ',,cap' && a.d.length === 2, a.why);
-  check('2e a stat of another lane is refused ("stat")', draftStage(draftClear(), ctx, 'body', 'range').why === 'stat' && draftStage(draftClear(), ctx, 'sword', 'hp').why === 'stat');
-  check('2f a forged lane or stat is refused', draftStage(draftClear(), ctx, 'axe', 'range').why === 'lane' && draftStage(draftClear(), ctx, 'sword', '').why === 'lane' && draftStage(draftClear(), ctx, 'sword', null).why === 'lane');
+  check('2e a stat of another lane is refused ("stat")', draftStage(draftClear(), ctx, 'body', 'range').no === 'stat' && draftStage(draftClear(), ctx, 'sword', 'hp').no === 'stat');
+  check('2f a forged lane or stat is refused', draftStage(draftClear(), ctx, 'axe', 'range').no === 'lane' && draftStage(draftClear(), ctx, 'sword', '').no === 'lane' && draftStage(draftClear(), ctx, 'sword', null).no === 'lane');
   const b = stageAll(C({ by: { sword: 5 }, shared: 5 }), [['sword', 'range'], ['body', 'hp'], ['sword', 'dmg'], ['sword', 'range'], ['body', 'hp']]).d;
   const u = draftUnstage(b, 'sword', 'range');
   check('2g the minus takes back the LAST of that stat', u.length === 4 && u.map((s) => s.stat).join() === 'range,hp,dmg,hp', u);
@@ -95,7 +95,7 @@ const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
   const forged = draftOf([{ lane: 'sword', stat: 'range' }, { lane: 'nope', stat: 'x' }, null, { lane: 'body' }, 'x']);
   check('2m a forged draft keeps only well-formed stages', forged.length === 1, forged);
   check('2n a draft has a bound', draftOf(Array.from({ length: POWER_DRAFT_MAX + 50 }, () => ({ lane: 'sword', stat: 'range' }))).length === POWER_DRAFT_MAX);
-  check('2o nothing staged with no points', draftStage(draftClear(), C({}), 'sword', 'range').why === 'points' && draftStage(draftClear(), C({}), 'body', 'hp').why === 'points');
+  check('2o nothing staged with no points', draftStage(draftClear(), C({}), 'sword', 'range').no === 'points' && draftStage(draftClear(), C({}), 'body', 'hp').no === 'points');
 }
 
 /* ── 3. the worker's order (server/src/prog3.js _handleProg3Allocate) ── */
@@ -110,10 +110,10 @@ const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
   check('3b a body upgrade draws a shared point first, then a spare', froms(d2, c2).join() === 'shared,spare', froms(d2, c2));
   /* a weapon point never buys the body, nor another weapon */
   const c3 = C({ by: { sword: 3 } });
-  check('3c a weapon\'s point never buys the body', draftStage(draftClear(), c3, 'body', 'hp').why === 'points');
-  check('3d ...nor another weapon', draftStage(draftClear(), c3, 'bow', 'range').why === 'points');
+  check('3c a weapon\'s point never buys the body', draftStage(draftClear(), c3, 'body', 'hp').no === 'points');
+  check('3d ...nor another weapon', draftStage(draftClear(), c3, 'bow', 'range').no === 'points');
   /* a shared point never buys a weapon */
-  check('3e a shared point never buys a weapon', draftStage(draftClear(), C({ shared: 4 }), 'sword', 'range').why === 'points');
+  check('3e a shared point never buys a weapon', draftStage(draftClear(), C({ shared: 4 }), 'sword', 'range').no === 'points');
   /* the spare is shared between lanes, in the staged order */
   const c4 = C({ by: { sword: 0 }, shared: 0, spare: 1 });
   const a4 = stageAll(c4, [['sword', 'range'], ['body', 'hp']]);
@@ -124,7 +124,7 @@ const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
   const c5 = C({ by: { sword: 1 }, shared: 1, spare: 1 });
   const d5 = stageAll(c5, [['sword', 'range'], ['sword', 'range'], ['body', 'hp']]).d;
   check('3h own first, spare next, the body\'s shared untouched', froms(d5, c5).join() === 'weapon,spare,shared', froms(d5, c5));
-  const L = draftReplay(d5, c5).left;
+  const L = draftLeft(d5, c5);
   check('3i the pools left after the draft', L.by.sword === 0 && L.shared === 0 && L.spare === 0, L);
   const dr = draftDraws(d5, c5);
   check('3j what each kind gives', dr.weapon.sword === 1 && dr.shared === 1 && dr.spare === 1 && dr.weapon.bow === 0, dr);
@@ -137,7 +137,7 @@ const froms = (d, ctx) => draftReplay(d, ctx).map((s) => s.from);
   const c7 = C({ by: { sword: 5 } }, { 'sword|luck': 4 }, { luck: 5 });
   const a7 = stageAll(c7, [['sword', 'luck'], ['sword', 'luck']]);
   check('3l the cap counts what is held and what is staged', a7.why.join() === ',cap', a7.why);
-  check('3m a cap of 0 refuses', draftStage(draftClear(), C({ by: { sword: 5 } }, {}, { range: 0 }), 'sword', 'range').why === 'cap');
+  check('3m a cap of 0 refuses', draftStage(draftClear(), C({ by: { sword: 5 } }, {}, { range: 0 }), 'sword', 'range').no === 'cap');
 }
 
 /* ── 4. the prune ── */

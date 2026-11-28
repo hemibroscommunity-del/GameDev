@@ -99,10 +99,17 @@ export function draftOf(d) {
  *       cap(lane, stat) the most it may hold (the worker's bound), known(lane, stat)
  *       whether the stat is one of that lane's (optional: all are) }
  * Returns a frozen array, one a stage: { lane, stat, from: 'weapon' | 'shared' | 'spare' | null,
- *   why: null | 'points' | 'cap' | 'stat' }.  `from` null is a stage the worker would refuse.
- * The pools left after it are `left` on the array.
+ *   no: null | 'points' | 'cap' | 'stat' }.  `from` null is a stage the worker would refuse.
+ * The pools left after it: draftLeft.
  */
 export function draftReplay(draft, ctx) {
+  return replayRun(draft, ctx).out;
+}
+/** The pools left after the draft (powerPools' shape). */
+export function draftLeft(draft, ctx) {
+  return replayRun(draft, ctx).left;
+}
+function replayRun(draft, ctx) {
   const c = ctx || {};
   const P = powerPools(c.pools);
   const by = { sword: P.by.sword, bow: P.by.bow, staff: P.by.staff };
@@ -115,31 +122,29 @@ export function draftReplay(draft, ctx) {
     const have = num(typeof c.pts === 'function' ? c.pts(s.lane, s.stat) : 0) + (placed[key] || 0);
     const capV = typeof c.cap === 'function' ? Number(c.cap(s.lane, s.stat)) : Infinity;
     const cap = Number.isFinite(capV) ? Math.max(0, Math.floor(capV)) : Infinity;
-    let from = null, why = null;
-    if (!known) why = 'stat';
-    else if (have >= cap) why = 'cap';
+    let from = null, no = null;
+    if (!known) no = 'stat';
+    else if (have >= cap) no = 'cap';
     else if (s.lane === 'body') {
-      if (shared > 0) { shared--; from = 'shared'; } else if (spare > 0) { spare--; from = 'spare'; } else why = 'points';
-    } else if (by[s.lane] > 0) { by[s.lane]--; from = 'weapon'; } else if (spare > 0) { spare--; from = 'spare'; } else why = 'points';
+      if (shared > 0) { shared--; from = 'shared'; } else if (spare > 0) { spare--; from = 'spare'; } else no = 'points';
+    } else if (by[s.lane] > 0) { by[s.lane]--; from = 'weapon'; } else if (spare > 0) { spare--; from = 'spare'; } else no = 'points';
     if (from) placed[key] = (placed[key] || 0) + 1;
-    out.push(Object.freeze({ lane: s.lane, stat: s.stat, from, why }));
+    out.push(Object.freeze({ lane: s.lane, stat: s.stat, from, no }));
   }
-  const left = powerPools({ by, shared, spare });
-  Object.defineProperty(out, 'left', { value: left, enumerable: false });
-  return Object.freeze(out);
+  return { out: Object.freeze(out), left: powerPools({ by, shared, spare }) };
 }
 
-/** Stage one point on `stat` of `lane`: { draft, why }.  A stage the worker
- *  would refuse is not added (`why` says: 'points', 'cap', 'stat', 'lane'). */
+/** Stage one point on `stat` of `lane`: { draft, no }.  A stage the worker
+ *  would refuse is not added (`no` says: 'points', 'cap', 'stat', 'lane'). */
 export function draftStage(draft, ctx, lane, stat) {
   const d = draftOf(draft);
-  if (!powerLane(lane) || typeof stat !== 'string' || !stat) return { draft: d, why: 'lane' };
-  if (d.length >= POWER_DRAFT_MAX) return { draft: d, why: 'points' };
+  if (!powerLane(lane) || typeof stat !== 'string' || !stat) return { draft: d, no: 'lane' };
+  if (d.length >= POWER_DRAFT_MAX) return { draft: d, no: 'points' };
   const next = Object.freeze(d.concat([Object.freeze({ lane, stat })]));
   const r = draftReplay(next, ctx);
   const last = r[r.length - 1];
-  if (!last.from) return { draft: d, why: last.why };
-  return { draft: next, why: null };
+  if (!last.from) return { draft: d, no: last.no };
+  return { draft: next, no: null };
 }
 
 /** Take back the LAST point staged on `stat` of `lane` (the minus).  None staged: no change. */

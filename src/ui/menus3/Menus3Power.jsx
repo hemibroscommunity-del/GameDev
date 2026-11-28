@@ -35,7 +35,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { act } from '@/game/actions.js';
 import {
   POWER_LANES, POWER_WEAPONS, powerPools, powerWaiting, powerStartLane, draftOf, draftReplay, draftStage,
-  draftUnstage, draftClear, draftCount, draftPrune, draftSends, sendLanded, statSteps,
+  draftUnstage, draftClear, draftCount, draftPrune, draftSends, draftLeft, sendLanded, statSteps,
 } from '@/game/menus3Power.js';
 import { weaponProgress } from '@/game/progression.js';
 import { combatLevel, weaponAttributes, sharedAttributes } from '@/game/combatHub.js';
@@ -58,6 +58,7 @@ import { menus3Bus } from './menus3Wire.js';
 import { SAY } from '@/data/say/menus3.js';
 import { SAY as SAY_H } from '@/data/say/combatHub.js';
 import { say } from '@/game/say.js';
+import { deskWords } from '@/game/deskWords.js';   /* "tap" reads "click" on a computer */
 
 /* ── the words, each key written out (the say guard reads them) ── */
 const LANE_WORD = {
@@ -209,7 +210,7 @@ function laneStats(R, lane) {
     const keys = BRO_STAT_GROUPS.filter((g) => g.id !== 'offense').reduce((a, g) => a.concat(g.keys), []);
     let hp = '—';
     try { hp = String(toDisplayHp(Number(R.maxHp) || 100)); } catch (e) { hp = '—'; }
-    return [{ key: 'maxhp', label: say(SAY, 'menus3.statsHp'), info: 'Max HP', value: hp }]
+    return [{ key: 'maxhp', label: say(SAY, 'menus3.statsHp'), info: say(SAY, 'menus3.statsHp'), value: hp }]
       .concat(keys.map((k) => rows.find((r) => r.key === k)).filter(Boolean));
   }
   const rows = broWeaponStats(R, lane).rows;
@@ -278,7 +279,7 @@ export function Menus3Power({ R, getS, top, root }) {
   }, []);
 
   const replay = draftReplay(_draft, ctx);
-  const left = replay.left;
+  const left = draftLeft(_draft, ctx);
   const waitLeft = powerWaiting(left);
   const total = replay.filter((s) => s.from).length;
 
@@ -310,9 +311,9 @@ export function Menus3Power({ R, getS, top, root }) {
     if (busy) return;
     const r = draftStage(_draft, ctx, lane, stat);
     _focus = { lane, stat };
-    if (r.why) {
+    if (r.no) {
       const word = (upgradesOf(RR, lane).find((u) => u.key === stat) || {}).label || stat;
-      _note = r.why === 'cap' ? { kind: 'why', text: say(SAY, 'menus3.whyCap', { stat: word }) }
+      _note = r.no === 'cap' ? { kind: 'why', text: say(SAY, 'menus3.whyCap', { stat: word }) }
         : { kind: 'why', text: say(SAY, 'menus3.whyPoints', { stat: word, kind: lane === 'body' ? say(SAY, 'menus3.kindShared') : say(SAY, 'menus3.kindWeapon', { w: laneWord(lane) }) }) };
     } else { _draft = r.draft; _note = null; }
     bump();
@@ -414,7 +415,7 @@ export function Menus3Power({ R, getS, top, root }) {
         </button>
         <button type="button" className={'u2-raised u2-ctl m3-apply' + (total ? ' is-ready' : '')} data-m3-apply={total} disabled={busy || !total} onClick={apply}>
           {busy ? say(SAY, 'menus3.applying', { i: Math.min(Q.items.length, Q.i + 1), n: Q.items.length })
-            : total === 1 ? say(SAY, 'menus3.applyOne') : total > 1 ? say(SAY, 'menus3.applyN', { n: total }) : say(SAY, 'menus3.tapToAdd')}
+            : total === 1 ? say(SAY, 'menus3.applyOne') : total > 1 ? say(SAY, 'menus3.applyN', { n: total }) : deskWords(say(SAY, 'menus3.tapToAdd'))}
         </button>
       </div>
     </div>
@@ -424,14 +425,16 @@ export function Menus3Power({ R, getS, top, root }) {
 /* the kinds of point told apart: the lane's own kind and the spares, now, and after the draft */
 function pointsLine(lane, pools, left) {
   const out = [];
-  const one = (kind, n, m, key, keyAfter, vars) => {
-    if (n <= 0) return;
-    const drawn = m !== n;
-    out.push({ kind, n, after: drawn ? m : null, text: drawn ? say(SAY, keyAfter, { ...vars, n, m }) : say(SAY, key, { ...vars, n }) });
-  };
-  if (lane === 'body') one('shared', pools.shared, left.shared, 'menus3.ptsShared', 'menus3.ptsSharedAfter', {});
-  else one('weapon', pools.by[lane], left.by[lane], 'menus3.ptsWeapon', 'menus3.ptsAfter', { w: laneWord(lane) });
-  one('spare', pools.spare, left.spare, 'menus3.ptsSpare', 'menus3.ptsSpareAfter', {});
+  const push = (kind, n, m, text) => { if (n > 0) out.push({ kind, n, after: m !== n ? m : null, text }); };
+  if (lane === 'body') {
+    const n = pools.shared, m = left.shared;
+    push('shared', n, m, m !== n ? say(SAY, 'menus3.ptsSharedAfter', { n, m }) : say(SAY, 'menus3.ptsShared', { n }));
+  } else {
+    const n = pools.by[lane], m = left.by[lane], w = laneWord(lane);
+    push('weapon', n, m, m !== n ? say(SAY, 'menus3.ptsAfter', { w, n, m }) : say(SAY, 'menus3.ptsWeapon', { w, n }));
+  }
+  const n = pools.spare, m = left.spare;
+  push('spare', n, m, m !== n ? say(SAY, 'menus3.ptsSpareAfter', { n, m }) : say(SAY, 'menus3.ptsSpare', { n }));
   return out;
 }
 
@@ -490,7 +493,7 @@ function ResetButton({ S }) {
   };
   return (
     <button type="button" className={'u2-ctl m3-reset' + (armed ? ' is-armed' : '')} data-m3-reset={armed ? 'armed' : 'idle'} onClick={press}>
-      {say(SAY, armed ? 'menus3.resetArmed' : 'menus3.resetPoints')}
+      {deskWords(say(SAY, armed ? 'menus3.resetArmed' : 'menus3.resetPoints'))}
     </button>
   );
 }
