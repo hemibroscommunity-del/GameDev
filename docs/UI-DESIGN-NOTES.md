@@ -2873,6 +2873,43 @@ Screens: menus3-roster, menus3-player
 
 Sources: src/game/menus3Roster.js, menus3Router.js (MENUS3_BUILT, `hud.partyChip`, `game.players`), src/ui/menus3/Menus3Roster.jsx, Menus3Panel.jsx, menus3Wire.js (menus3AwayChat, menus3ChatShut), menus3.css, src/ui/panels/PartyHUD.jsx (the chip), src/ui/BroTown.jsx (playersOpen, the Saloon's and the Hall's doors, the chat's shutting), src/ui/mobile/sheet/friendsModel.js (addFriend), src/data/say/menus3Roster.js; server/test/menus3-roster.test.mjs; tools/qa/mp/mp-menus3roster.mjs.
 
+## The new menus' Counter and Make: the Blacksmith (v2.3.6872, card MN step 13)
+Screens: menus3-counter
+
+**What it is for:** one shape for every town station (decided 6: *"One component, four modes; a station is always its one mode"*), and the first mode, Make, at the Blacksmith: what today's Blacksmith window lets a player make, in the new panel, with the one quantity picker.
+
+**Decisions, and why:**
+- **The station's door opens the Counter** (under `?menus3`): every bench opens through today's window setter (its door, its keeper Blacksmith Bro, the test levers), so the gate is on the setter once (`menus3Wire.js menus3StationGate`, rule `src/game/menus3Counter.js counterStation`): the Blacksmith opens the panel as the Counter; the Woodworker, the Gem Works and the Cookhouse still open today's windows until they are built (v2.3.6873: the Woodworker and the Cookhouse are, the next section). `?menus3=0`: today's window, untouched.
+- **The header carries the station, its mode and the gold** ("Blacksmith · Make", a drawn coin, the X with `data-esc`); no dock tabs (a counter is no menu's).
+- **Today's tabs on the rail**, each on today's cap (Smelt, Forge, Armor, Upgrade, Amulet only to someone holding gold for it, Salvage), the tab remembered for the load, as today's bench remembers its own.
+- **A tap SELECTS a recipe** (the SPEC's Quick-Tap is overruled by decided 6): its row is today's row (picture, name, every cost as have/need, the lock that names the one thing missing, its chips), lit with the kit's selected state, dimmed when it cannot be made now.
+- **The foot**: the whole order's costs (each cost times the number), the ONE quantity picker (`menus3/Menus3Qty.jsx`, rule `src/game/menus3Qty.js`: minus, plus, Max, every button 44 x 44, capped at the fewest makes any cost allows and, for a blade, the weapon bag's room), and one commit ("Forge 3"). No Undo.
+- **A number over one is today's request sent one after another** (the queue, `menus3Counter.js`): each waits for the character to change, a silence (today's 3.5 s) is today's refusal word and stops the rest, said in one line ("Could not forge. Made 2 of 5; the rest was not sent."). The smelter's request already takes a count (today's "Smelt all"), so a smelt is that one request, in pieces of the worker's 50.
+- **One at a time where today is one**: Harden (each a gamble with its own answer), taking a gem out, crafting an amulet (a new amulet REPLACES the worn one: a queue would burn the first). The foot says "One at a time".
+- **Salvage is today's tab, as it is**: its two taps ("Sure?") are its review; nothing in it takes a number.
+- **The bag is not shown**: decided 6 shows it only where the station uses it; at a bench every material is on the recipe's own row.
+
+**Flagged to the owner:** the SPEC's "Repeat Last" is not built (the bench would have to remember the last make: state the worker does not have); its "lit-item auto-sort" has nothing to sort (no bag at a bench). The Woodworker, the Gem Works and the Cookhouse (and the Cookhouse's Eat list, decided 11) wait for the next step. The recipes' pictures load as today's bench's do, when it opens.
+
+Sources: src/game/menus3Counter.js, menus3Qty.js; src/ui/menus3/Menus3Counter.jsx, Menus3Make.jsx, Menus3Qty.jsx, Menus3Panel.jsx (the header), menus3Wire.js (menus3StationGate), menus3.css; src/ui/panels/buildings/SmithyPanel.jsx (SalvageTab, weaponIcon, TYPE_LABEL shared); server/test/menus3-counter.test.mjs; tools/qa/mp/mp-menus3make.mjs.
+
+## The new menus' Counter and Make: the Woodworker and the Cookhouse (v2.3.6873, card MN step 13b)
+Screens: menus3-woodworker, menus3-cookhouse
+
+**What it is for:** the same Make as the Blacksmith's, at the two benches after it: what today's Woodworker and Cookhouse let a player make, in the Counter's one order (pick, how many, one commit), every request today's.
+
+**Decisions, and why:**
+- **One body for every bench**: the Blacksmith's Make (its queue, its rows, its foot) moved as it was to `menus3/Menus3Bench.jsx`; a bench is a description (its tabs on today's caps, its rows, what it says above them, which makes it celebrates and rings). The Blacksmith reads exactly as before.
+- **The Woodworker**: today's five tabs on today's caps (Bow, Staff; Hardened on `hardenedwood`, Upgrade on `harden`, Traps on `trapcraft`; `woodTabs`), every row today's (the wood or the hardened wood and the gold, the wearing gate's lock, the XP; the NEXT wood as the goal). A bow or a staff is today's `forge_weapon` one after another, capped by the weapon bag's room as the Blacksmith's Forge. The hardened wood and the traps already take a count (today's "All" and "x10"), so a number is that ONE request, in pieces of the worker's 50. A hardening is one at a time (a roll, its own answer). Its holding line, its "Hold a bow or a staff" and its Box Trap line with no-logs words are today's.
+- **The Cookhouse**: one list (no rail: one tab), the recipes the worker cooks (`cookShown`: with `caps.meals` the first `caps.cookRows`), each with today's tier, what the dish does, how many you carry, its herbs have / need read today's way (`cookHave`: any bag key that names the herb) and its level lock; today's lines on top (what it cooks, the campfire for raw fish, the meals' rule). A number is today's `cook_recipe { recipeIdx, carry: true }` one after another.
+- **The Counter asks and waits; it predicts nothing**: today's Cookhouse put the dish in the bag before the worker answered; here each cook waits for the worker's bag, so a refusal is seen and stops the rest (the Blacksmith's rule, and the server's authority). When one lands it says today's "+1 Herb Bread", plays today's sound, sets today's flag and tells a Cooking level.
+- **The Eat list is gone** (the owner's document, decided 11): a cooked fish is eaten from the bag (its page's Eat, the same request).
+
+**Flagged to the owner:** against a worker that cooks the old instant buffs (none deployed), the Counter cooks one at a time and does not predict the buff's timer on the phone as today's window did; the Gem Works (Cut gems, Set gems) is not built yet and opens today's window.
+
+Sources: src/game/menus3Counter.js (woodTabs, cookShown, cookHave); src/ui/menus3/Menus3Bench.jsx, Menus3Make.jsx, Menus3Wood.jsx, Menus3Cook.jsx, Menus3Counter.jsx, Menus3Panel.jsx (the header); src/ui/panels/buildings/TrapsTab.jsx (NAMES shared); server/test/menus3-counter.test.mjs §6-7; tools/qa/mp/mp-menus3benches.mjs.
+
+
 ## The new menus' Chat and Ranks (v2.3.6870, card MN step 11)
 Screens: menus3-chat, menus3-ranks
 

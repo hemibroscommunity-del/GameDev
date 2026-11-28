@@ -75,11 +75,12 @@ const GOLDBAR = '/icons/ui/cur-goldbar.webp';
 const NUGGET = '/icons/ui/cur-nugget.webp';
 const GEM = '/icons/ui/cur-gem.webp';
 
-const weaponIcon = (type, tierKey) => {
+/* v2.3.6872: shared with the Counter's Make (menus3/Menus3Make.jsx): one copy */
+export const weaponIcon = (type, tierKey) => {
   const base = type === 'greatsword' ? '/icons/items/great-sword.webp' : '/icons/items/sword.webp';
   return { src: assetUrl(metalIconPath(base, weaponMaterial(type, tierKey))), fallback: base };
 };
-const TYPE_LABEL = { greatsword: say(SAY, 'smithy.typeGreatsword'), sword: say(SAY, 'smithy.typeSword') };
+export const TYPE_LABEL = { greatsword: say(SAY, 'smithy.typeGreatsword'), sword: say(SAY, 'smithy.typeSword') };
 
 export function SmithyPanel({ rpgState, stateRef }) {
   const S = stateRef.current || {};
@@ -537,7 +538,8 @@ function carriedPieces(R) {
 }
 function refOf(p) { return p.field === 'weaponStash' ? { field: p.field, idx: p.idx, sig: p.sig } : { field: p.field, gid: p.gid }; }
 
-function SalvageTab({ S, R, inv }) {
+/* v2.3.6872: the Counter's Make shows this very tab (menus3/Menus3Make.jsx) */
+export function SalvageTab({ S, R, inv }) {
   const last = React.useSyncExternalStore(salvageBus.subscribe, salvageBus.get, salvageBus.get);
   const openedAt = React.useRef(Date.now());
   const [armed, setArmed] = React.useState(null);   /* the row waiting for its second tap */
