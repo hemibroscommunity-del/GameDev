@@ -57,6 +57,7 @@ export const MENUS3_BUILT = Object.freeze(['bag',
   'feats',   /* v2.3.6868 (card MN step 9): + World's Feats (F stays the Element Burst: no key) */
   'settings',   /* v2.3.6869 (card MN step 12): + Settings, from the gear (no menu of the dock's) */
   'roster',
+  'chat', 'ranks',   /* v2.3.6870 (card MN step 11): + People's Chat and Ranks */
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */

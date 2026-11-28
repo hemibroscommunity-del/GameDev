@@ -38,6 +38,7 @@ import { rewardsWaiting } from '@/game/dailyRewards.js';          /* v2.3.3140: 
 import { codexFreshCount } from '@/game/monsterCodex.js';        /* v2.3.3215: a page with something new marks the Codex's button */
 import { clanPartyOn } from '@/game/alliance.js';              /* v2.3.3526: the clan page is headed Party once clans are parties */
 import { getState } from './dash/common.js';                    /* v2.3.3526 */
+import { chatPeopleDot } from '../menus3/menus3People.js';   /* v2.3.6870 (card MN step 11) */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { bagLife, startBagLife } from './dash/bagLife.js'; /* v2.3.2815: the bag's small motions */
@@ -2040,7 +2041,8 @@ export const BottomDashboard = () => {
             "included in that container on that whole right side"). */}
         {/* v2.3.6681: the new frame's one header in the row's place (dash/DashHeader.jsx) */}
         {/* v2.3.6697: with the handle gone the header's Gear (folded) and Close (shown) wear the fold's hook (foldHook) */}
-        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={marks ? marks.menu : null} foldHook={!land && !bandGripOn()} />}
+        {ui2 && <DashHeader nav={dashboardPanelBus.nav()} titleOf={titleOf} menuMark={marks ? marks.menu : null} foldHook={!land && !bandGripOn()}
+          peopleDot={chatPeopleDot(Sb).dock /* v2.3.6870: the new menus' People, its reason Chat's (card MN step 11) */} />}
         {!land && !ui2 && (
           <BandClose min={dashMin} expanded={mode === 'expanded'} hook={foldHook(dashMin, land)}
             h={navButtonSize(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844).h} />

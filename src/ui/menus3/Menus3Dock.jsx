@@ -33,9 +33,11 @@ const DOCK = [
 
 /* `tap` is the band header's own press (DashHeader.jsx frameTap), handed in so
    the two files do not import each other */
-export function Menus3Dock({ mark, tap }) {
+/* v2.3.6870 (card MN step 11): `people` People's dot (menus3People.js chatPeopleDot: a friend's message, the news) */
+export function Menus3Dock({ mark, tap, people }) {
   const side = bandSideways();
   const m = mark || {};
+  const peopleLit = !!people;
   return (
     <div data-menus3-dockrow={side ? 'side' : 'row'}
       style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center', justifyContent: side ? 'center' : 'stretch' }}>
@@ -44,7 +46,8 @@ export function Menus3Dock({ mark, tap }) {
           data-menus3-dock={d.id} data-key={d.key}
           /* the Menu's marks (points, a ready quest, requests) ride Bro until
              each section's own dot arrives (decided 7) */
-          badge={d.id === 'bro' ? m.count : undefined} dot={d.id === 'bro' ? m.dot : undefined} glow={d.id === 'bro' ? m.glow : undefined}
+          badge={d.id === 'bro' ? m.count : undefined} dot={d.id === 'bro' ? m.dot : d.id === 'people' ? peopleLit || undefined : undefined}
+          data-menus3-dock-dot={d.id === 'people' && peopleLit ? 'chat' : undefined} glow={d.id === 'bro' ? m.glow : undefined}
           style={side ? { flex: '0 0 96px', height: 44 } : { flex: '1 1 0', height: 44 }}
           {...tap(() => menus3Go(d.entry))} />
       ))}
