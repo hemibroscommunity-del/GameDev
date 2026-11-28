@@ -22,10 +22,12 @@
    Upright, a word too wide for its tile ("Points placed", "Combat level" at 390 and under, "Woodcutting" at 375
    and under) spilled past the tile or lost its end: the words' box now holds to the tile, and the word wraps
    onto a second line, at its space first, then where the phone hyphenates it ("Wood-cutting"), else at any
-   letter -- never clipped, never smaller, the same five across (no more rows to scroll).  Sideways (one row of
-   compact doors) keeps its one line. */
-.ui2.u2-rk-tiles:not(.is-short) .u2-tile-words { max-width: 100%; }
-.ui2.u2-rk-tiles:not(.is-short) .u2-tile-label {
+   letter -- never clipped, never smaller, the same five across (no more rows to scroll).  Sideways, the one
+   row of compact doors gave each word about 25 px beside its picture ("W...", "Fi..." on Life Skills at
+   844 x 390): there a door stands its picture above its word, as upright, and the word wraps the same way. */
+.ui2.u2-rk-tiles.is-short .u2-tile.is-compact { flex-direction: column; justify-content: center; gap: 2px; padding: var(--ui2-space-xs); }
+.ui2.u2-rk-tiles .u2-tile-words { max-width: 100%; }
+.ui2.u2-rk-tiles .u2-tile-label {
   white-space: normal; overflow: visible; text-overflow: clip; text-align: center;
   overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto;
 }

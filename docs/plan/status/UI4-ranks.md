@@ -1,7 +1,7 @@
 card: UI4-ranks
 branch: claude/ui4-ranks-headers
-prs: (draft, 6846)
-state: working
+prs: #2434 (6846, ready)
+state: ready
 
 ## Done
 The owner, 01:40 UTC 2026-11-28, on a phone: "Leaderboards menu cuts off headers."
@@ -16,6 +16,8 @@ The owner, 01:40 UTC 2026-11-28, on a phone: "Leaderboards menu cuts off headers
     kept; flagged.
 - **The mend** (`src/ui/mobile/dash/ranksUi2.css` only): the heads keep their own size; a door's word
   wraps to a second line inside its tile (never smaller, still five across).
+- Sideways (844 x 390) the one row of compact doors cut every life word to "W...": the door now stands its
+  picture above its word there, the word wrapping the same way.
 - **The test**: `tools/qa/mp/mp-ranksheads.mjs` (lane full), every page of Ranks at 390 x 844,
   375 x 667, 320 x 568, 430 x 932, 844 x 390.
 

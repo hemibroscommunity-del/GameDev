@@ -13,7 +13,7 @@
  * it, or over a neighbour in the header row.  Also: no header word under the
  * screen's smallest word (11 px), no control under 44 x 44.
  * Run: node tools/qa/mp/run.mjs ranksheads  (QUERY=... adds URL switches,
- * e.g. QUERY=v17look=0).  Pictures: tools/qa/out/ranksheads/*.png (dpr 2; git-ignored).
+ * e.g. QUERY=v17look=0; SIZES=844x390 one size).  Pictures: tools/qa/out/ranksheads/*.png (dpr 2; git-ignored).
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -131,7 +131,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ['feats', async () => tapSel('[data-ranks-ui2="landing"] [data-rank-tile="feats"]')],
       ['spin', async () => { await tapSel('[data-ranks-ui2="landing"] [data-rank-tile="feats"]'); await tapSel('[data-rank-tile="spin"]'); }],
     ];
-    for (const sz of SIZES) {
+    const only = (process.env.SIZES || '').split(',').filter(Boolean);   /* SIZES=844x390 plays one size while you work */
+    for (const sz of SIZES.filter((z) => !only.length || only.includes(z.id))) {
       await A.page.setViewportSize({ width: sz.width, height: sz.height });
       await A.page.waitForTimeout(1500);
       for (const [pg, go] of PAGES) {
