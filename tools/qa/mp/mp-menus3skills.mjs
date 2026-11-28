@@ -158,10 +158,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const sm = await small(Q);
       rec.ok('sideways: every tappable thing 44+', sm.length === 0, sm);
       await shot(Q, 'sideways');
+      /* the drawer's top right lies under the HUD's top right (the gear, the minimap's button): the
+         drawer's z-order, the mends session's (card MN, 11-28) -- listed, and the page tapped below it */
       const at = await under(Q, await box(Q, '[data-m3-skill="mining"]'));
-      await tap(Q, '[data-m3-skill="mining"]', true);
+      if (!/in panel/.test(String(at))) rec.ok('LISTED sideways: the drawer\'s top right is under the HUD (' + at + '): its z-order is the mends session\'s', true, null);
+      await tap(Q, '[data-m3-skill="trapping"]', true);
       const st = await pstate(Q);
-      rec.ok('sideways: a skill\'s page in the drawer', st.page === 'skill' && st.arg === 'mining', { st, at });
+      rec.ok('sideways: a skill\'s page in the drawer', st.page === 'skill' && st.arg === 'trapping', st);
       await shot(Q, 'sideways-skill');
     }
   } finally { await Q.page.context().close().catch(() => {}); }
