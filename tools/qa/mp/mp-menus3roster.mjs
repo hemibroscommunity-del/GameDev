@@ -175,12 +175,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } catch (e) { rec.ok('upright: ran', false, String(e).slice(0, 200)); }
 
   /* ── 2. sideways: a third player; the first in Nearby ── */
-  await H.nudge(A).catch(() => {});
   const S2 = await H.newPlayer(browser, { name: 'Rostside', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true, query: 'menus3=1' });
   try {
     await H.enterWorld(S2);
     await ready(S2);
-    await H.waitFor(S2, (S) => Object.keys(S.others || {}).length, (n) => n >= 1, { timeout: 30000, label: 'sees the first' }).catch(() => null);
+    await H.waitMutualSight(A, S2).catch(() => null);   /* a newcomer sees a player once both move (joinPair's way) */
     const ps = await openPeople(S2, true);
     const pb = await box(S2, '[data-menus3-panel]');
     rec.ok('sideways: People opens the drawer, 40% wide on the right, on Roster', ps.open && ps.section === 'roster' && !!pb && Math.abs(pb.w - Math.round(844 * 0.4)) <= 3 && Math.abs(pb.x + pb.w - 844) <= 3, { ps, pb });
@@ -198,12 +197,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } finally { await S2.page.context().close().catch(() => {}); }
 
   /* ── 3. a computer ── */
-  await H.nudge(A).catch(() => {});
   const D = await H.newPlayer(browser, { name: 'Rostdesk', wsPort, webPort, world: 'wheel', viewport: { width: 1280, height: 800 }, wide: true, query: 'menus3=1' });
   try {
     await H.enterWorld(D);
     await ready(D);
-    await H.waitFor(D, (S) => Object.keys(S.others || {}).length, (n) => n >= 1, { timeout: 30000, label: 'sees the first' }).catch(() => null);
+    await H.waitMutualSight(A, D).catch(() => null);
     let ps = await openPeople(D, false);
     await D.page.waitForFunction(() => !!document.querySelector('[data-m3-player-row]'), null, { timeout: 60000 }).catch(() => {});
     const first = (await attrs(D, '[data-m3-player-row]', 'data-m3-player-row'))[0] || null;
