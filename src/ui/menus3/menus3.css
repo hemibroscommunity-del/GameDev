@@ -168,3 +168,4 @@ html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visi
 .m3f-rec-v.is-gold { color: var(--ui2-gold, #E4BA68); }
 .m3f-medal-art { width: 56px; height: 56px; flex: none; object-fit: contain; pointer-events: none; }
 .m3f-medal-art.is-locked { filter: grayscale(1); opacity: .55; }
+.m3f-link { border: 1px solid var(--ui2-line, #4B6275); }

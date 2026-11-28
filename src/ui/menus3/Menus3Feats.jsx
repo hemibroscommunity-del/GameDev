@@ -227,7 +227,7 @@ function Records({ R, S }) {
         </>
       ) : null}
       {chain ? (
-        <a className="u2-raised u2-ctl m3f-row" href={chain.explorer} target="_blank" rel="noopener noreferrer" data-m3f-chain="">
+        <a className="m3f-row m3f-link" href={chain.explorer} target="_blank" rel="noopener noreferrer" data-m3f-chain="">
           <span className="m3-row-name">{say(SAY_J, 'journey.chainLevel', { level: chain.level })}</span><Chev />
         </a>
       ) : null}
@@ -306,11 +306,11 @@ function MedalOne({ getS, id }) {
         </span>
       </div>
       <Ui2Facts>
-        <Ui2Fact k={say(SAY_F, 'feats.fTier')} v={featsWord(m.tier)} />
-        <Ui2Fact k={say(SAY_F, 'feats.fAp')} v={String(m.ap)} gold />
-        <Ui2Fact k={say(SAY_F, 'feats.fEarned')} v={m.got ? m.on : say(SAY_F, 'feats.notYet')} none={!m.got} />
-        <Ui2Fact k={say(SAY_F, 'feats.fHow')} v={m.how} className="is-wrap" />
-        {m.progress ? <Ui2Fact k={say(SAY_F, 'feats.fSoFar')} v={m.progress} /> : null}
+        <Ui2Fact intent="info" k={say(SAY_F, 'feats.fTier')} v={featsWord(m.tier)} />
+        <Ui2Fact intent="info" k={say(SAY_F, 'feats.fAp')} v={String(m.ap)} gold />
+        <Ui2Fact intent="info" k={say(SAY_F, 'feats.fEarned')} v={m.got ? m.on : say(SAY_F, 'feats.notYet')} none={!m.got} />
+        <Ui2Fact intent="info" k={say(SAY_F, 'feats.fHow')} v={m.how} className="is-wrap" />
+        {m.progress ? <Ui2Fact intent="info" k={say(SAY_F, 'feats.fSoFar')} v={m.progress} /> : null}
       </Ui2Facts>
       {b ? (
         <div className="m3-foot">
