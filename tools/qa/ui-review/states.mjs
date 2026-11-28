@@ -1051,6 +1051,39 @@ export const STATES = [
       await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
       await wait(P, 1500);
     } },
+  /* v2.3.6867 (card MN step 8, `?menus3`): World, the Codex in the new panel, and a monster's page */
+  { id: 'menus3-codex', group: 'Dashboard', title: 'The new menus: World, the Codex', about: 'The owner\'s new menus, step 8 (docs/design/menus3/): World\'s Codex tab (and the NEW MONSTER card) opens the Codex in the new panel. Today\'s Codex is what it holds: the six kinds on a rail of pills (Monsters, Items, Resources, Townsfolk, Lands, Pets; Monsters chosen), how many are met, and the monsters as tiles four across (the picture, the name, the land; a monster not met dimmed as ???, NEW in the corner). A kind with no pages yet says so; Pets has its door to the pet journal.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.panel('world', 'codex'); });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
+  { id: 'menus3-cxmonster', group: 'Dashboard', title: 'The new menus: a monster\'s Codex page', about: 'The owner\'s new menus, step 8: a monster\'s tile opens its page inside the panel, Back top left: today\'s showcase (the monster in its idle strip, its essentials) and its four doors, Combat, Loot, Habitat and Story, each a page of the panel; a drop on Loot opens its item\'s page (Drops from, Found from). A quest\'s links open the same pages over the quest, Back the quest.',
+    run: async ({ P }) => {
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '1');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+      await P.page.waitForFunction(() => !!(window.__btMenus3 && document.querySelector('[data-menus3-dock]')), null, { timeout: 60000 }).catch(() => {});
+      await wait(P, 2000);
+      await evalIn(P, () => { window.__btMenus3.panel('world', 'codex'); });
+      await wait(P, 1200);
+      await evalIn(P, () => { const t = document.querySelector('[data-m3-cx]'); if (t) t.click(); });
+      await wait(P, 1500);
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { try { const x = document.querySelector('[data-menus3-x]'); if (x) x.click(); } catch (e) { /* shut */ } });
+      const u = new URL(P.page.url()); u.searchParams.set('menus3', '0');
+      await P.page.goto(u.toString(), { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await wait(P, 1500);
+    } },
   /* v2.3.6865 (card MN step 6, `?menus3`): Bro · Skills in the new panel, and a skill's page with its guild */
   { id: 'menus3-skills', group: 'Dashboard', title: 'The new menus: Bro, the Skills', about: 'The owner\'s new menus, step 6 (docs/design/menus3/): Bro\'s Skills tab (and L on a computer) opens the ten life skills in the new panel, three across as the wireframe draws them: each its picture, name, level and a thin XP bar, the brass dot of a level-up not yet looked at; Total level over them; a guild whose quest is done and waits for its reward is a row over the grid with its Claim (today\'s request).',
     run: async ({ P }) => {

@@ -60,9 +60,11 @@ const dropOpts = (S) => ({ shared: killRollLive(S), crack: !!(S && S._serverCaps
 function lootOf(S, kind) {
   return lootPage(kind, { ...dropOpts(S), nameOf: codexItemName });
 }
+/* v2.3.6867 (card MN step 8): the same call for the new panel's Codex (menus3/Menus3Codex.jsx) */
+export { lootOf as codexLoot };
 
 /* ── the showcase ── */
-function Showcase({ kind }) {
+function Showcase({ kind, onDoor }) {
   const S = codexS();
   const counts = codexCounts(S, kind);
   const met = codexMet(counts[0]);
@@ -79,7 +81,7 @@ function Showcase({ kind }) {
     <div ref={ref} className={ui2RootClass('u2-cxs')} data-codex-show={kind} data-cx-known={m.met ? 1 : 0}>
       <Ui2Showcase short={short} figure={figure}
         locked={m.met ? null : <Ui2Empty kind="locked" title={m.title} why={m.why} how={m.home} />}
-        doors={m.met ? m.doors.map((d) => ({ id: d.id, label: d.label, summary: d.summary, onClick: () => openCodexDoor(d.page, kind), attrs: { 'data-cx-door': d.id } })) : []}
+        doors={m.met ? m.doors.map((d) => ({ id: d.id, label: d.label, summary: d.summary, onClick: () => (onDoor ? onDoor(d.page) : openCodexDoor(d.page, kind)), attrs: { 'data-cx-door': d.id } })) : []}
         facts={m.met ? m.essentials : []} />
     </div>
   );
@@ -130,7 +132,7 @@ function Combat({ kind }) {
 }
 
 /* ── Loot: plain rows, one chance each ── */
-function Loot({ top }) {
+function Loot({ top, onRow }) {
   const kind = top.kind;
   const S = codexS();
   const [n] = codexCounts(S, kind);
@@ -139,6 +141,7 @@ function Loot({ top }) {
   const rows = page.rows;
   const name = monsterShowcase(kind, { counts: [n, 0] }).title;
   const open = (r) => {
+    if (onRow) { onRow(r, name); return; }   /* v2.3.6867: the new panel's own page */
     keepCodexRow(top, r.id);
     openItemPage({ from: 'codex', R: (S && S.rpg) || {}, key: r.key, kind, monster: name, drop: r });
   };
@@ -199,8 +202,8 @@ function Story({ kind }) {
 }
 
 /* ── Found from: every monster that drops the item on the page under it ── */
-function Found() {
-  const key = codexFoundKey();
+function Found({ itemKey, onSource }) {
+  const key = itemKey !== undefined ? itemKey : codexFoundKey();
   const S = codexS();
   const rows = key ? lootSources(key, { ...dropOpts(S), metOf: (k) => codexMet(codexCounts(S, k)[0]) }) : [];
   return (
@@ -208,12 +211,17 @@ function Found() {
       <Ui2Facts>
         {rows.map((r) => (
           <Ui2Fact key={r.kind} data-cx-source={r.kind} k={r.name + ' · ' + r.land} v={r.chance}
-            onClick={r.met ? () => openCodexMonster(r.kind) : undefined} />
+            onClick={r.met ? () => (onSource ? onSource(r.kind) : openCodexMonster(r.kind)) : undefined} />
         ))}
       </Ui2Facts>
     </div>
   );
 }
+
+/* v2.3.6867 (card MN step 8): the same pages for the new menus' panel (menus3/Menus3Codex.jsx), which
+   hands each its monster and its own openers (a door, a row, a source: pages of the panel, its one
+   Back); without them each is today's frame page, unchanged */
+export { Showcase as CodexShowcase, Combat as CodexCombat, Loot as CodexLoot, Habitat as CodexHabitat, Story as CodexStory, Found as CodexFound };
 
 /** The Codex's frame pages (PANELS codexMonster ... codexFound). */
 export function CodexDoorPage() {

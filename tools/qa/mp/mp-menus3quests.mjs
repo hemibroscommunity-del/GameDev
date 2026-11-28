@@ -4,8 +4,8 @@
  * Quests"): the World button opens the new panel on Quests, always; the
  * Today strip with only what the game has; the rail Active | On offer | Done
  * from the game's REAL quests (no Daily); a quest's page with Back, Track,
- * Show on map (over the panel) and Rewards; a monster's link opens today's
- * Codex page and its Back comes back to the quest; the quest line opens
+ * Show on map (over the panel) and Rewards; a monster's link opens the new
+ * Codex's page (v2.3.6867) and its Back comes back to the quest; the quest line opens
  * that quest's page.
  *
  *   1. UPRIGHT (390 x 844, touch), a character seeded on the worker (test
@@ -18,8 +18,8 @@
  *      tappable thing in the panel 44 x 44 or more; Done's rows, a done
  *      quest's page, Back to Done as it was; a ready quest's page (Ready,
  *      its links: the Codex's slime, the item, the place), Track, Rewards
- *      and Back; the monster's link -> today's Codex page -> its Back -> the
- *      panel again on the quest; Show on map -> the map OVER the panel ->
+ *      and Back; the monster's link -> the new Codex's page in the panel
+ *      (v2.3.6867) -> Back -> the quest; Show on map -> the map OVER the panel ->
  *      its close -> the quest; the quest line (its road, QuestCard's) ->
  *      that quest's page -> Back -> the rail; a tap on the world closes it;
  *   2. SIDEWAYS (844 x 390): the drawer 40% on the right; a quest's page
@@ -185,17 +185,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
         ps = await pstate(P);
         rec.ok('upright: Back returns to the quest', ps.page === 'quest' && ps.arg === 'tut_1', ps);
       }
-      /* the monster's link: today's Codex page, and its Back brings the panel back on the quest */
+      /* the monster's link: v2.3.6867 (card MN step 8) the NEW Codex's page, in the panel on the quest's history; its Back is the quest */
       if (await box(P, '[data-m3-qlink="monster"]')) {
         await tap(P, '[data-m3-qlink="monster"]', true);
         await P.page.waitForTimeout(800);
         const bt = await bandTop(P);
         ps = await pstate(P);
-        rec.ok('upright: the monster\'s link opens today\'s Codex page (the panel shut behind it)', !ps.open && !!bt && bt.shown && bt.top === 'codexMonster', { bt, ps });
-        await tap(P, '[data-dash-frame] [data-dash-ctl="back"]', true);
+        rec.ok('upright: the monster\'s link opens the new Codex\'s page in the panel', ps.open && ps.section === 'quests' && ps.page === 'cxMonster' && !(bt && bt.shown), { bt, ps });
+        await tap(P, '[data-menus3-back]', true);
         await P.page.waitForTimeout(600);
         ps = await pstate(P);
-        rec.ok('upright: its Back: the panel again, on the quest', ps.open && ps.section === 'quests' && ps.page === 'quest' && ps.arg === 'tut_1', { ps, bt: await bandTop(P) });
+        rec.ok('upright: its Back: the quest', ps.open && ps.section === 'quests' && ps.page === 'quest' && ps.arg === 'tut_1', { ps, bt: await bandTop(P) });
       } else rec.ok('upright: the monster\'s link drawn', false, QQ && QQ.links);
       /* Show on map: the map over the panel; its close is back on the quest */
       if (await box(P, '[data-journal-map]')) {
