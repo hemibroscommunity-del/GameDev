@@ -33,7 +33,7 @@
  *
  * No DOM here (node tests it: tools/guards/big-hud.test.mjs).
  */
-import { readerFor, pageAddress, swValue } from './switches.js';
+import { readerFor, pageAddress, sw, swValue } from './switches.js';
 
 export const BIG_HUD = Object.freeze({
   /* the owner's "about twice" */
@@ -59,15 +59,24 @@ export const BIG_HUD = Object.freeze({
 /* ═══ THE SWITCH: on unless `?bighud=0` (remembered under BIG_HUD_KEY; `?bighud=1` forgets) ═══ */
 export const BIG_HUD_KEY = 'bt_bighud';
 
-/** Are the bigger Attack and HUD wanted on this device?  `search`, `store` for tests. */
+/** Are the bigger Attack and HUD wanted on this device?  `search`, `store` for tests.
+ *  v2.3.6848 (the gatekeeper's sitting 75): the switch table's NEEDS row
+ *  (bighud needs hudart and padskin) is asked too, through sw() as every
+ *  switch with a NEEDS row is read: with the HUD's art or the controller's
+ *  skin off (`?hudart=0`, `?padskin=0`, or `?hud=0` under hudart) the HUD
+ *  does not grow, for that visit only (nothing remembered).  It read only
+ *  swValue('bighud') before, so `?padskin=0` still grew it. */
 export function bigHudWanted(search, store) {
-  const v = search == null ? swValue('bighud') : readerFor(search).swValue('bighud');
+  const r = search == null ? null : readerFor(search);
+  const v = r ? r.swValue('bighud') : swValue('bighud');
+  const thrown = r ? r.sw('bighud') : sw('bighud');
   let ls = store;
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
   if (v === '0' || v === '1') {
     try { if (ls) { if (v === '0') ls.setItem(BIG_HUD_KEY, '0'); else ls.removeItem(BIG_HUD_KEY); } } catch (e) { /* the address still decides this visit */ }
-    return v === '1';
+    if (v === '0') return false;
   }
+  if (thrown) return false;   /* off through what it needs (its own `=0` is handled above) */
   try { return !(ls && ls.getItem(BIG_HUD_KEY) === '0'); } catch (e) { return true; }
 }
 

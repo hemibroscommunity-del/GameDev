@@ -6,7 +6,8 @@
  * about twice as big."  What src/game/bigHud.js DOES (run in node) and how
  * the page wires it (by its text):
  *   1. the switch: on by default, `?bighud=0` off and remembered, `?bighud=1`
- *      forgets;
+ *      forgets; v2.3.6848: off with what it needs off (`?padskin=0`,
+ *      `?hudart=0`: the switch table's NEEDS row), for that visit only;
  *   2. hudScale: off, today's (1, sideways .92); on, never under today's,
  *      never over twice, never wider than the room left of the minimap (its
  *      132 and 8 px of air) at 390, 375, 320 and sideways; twice where the
@@ -53,6 +54,12 @@ function behave(M) {
     if (M.bigHudWanted('', ls) !== false) bad.push('1 off not remembered on the next visit');
     if (M.bigHudWanted('?bighud=1', ls) !== true || ls.m.has(M.BIG_HUD_KEY)) bad.push('1 ?bighud=1 does not forget');
     if (M.bigHudWanted('', null) !== true) bad.push('1 no storage: not on');
+    /* v2.3.6848: the switch table's NEEDS row (bighud needs hudart, padskin) is asked: off for the visit, nothing remembered */
+    const ln = store();
+    if (M.bigHudWanted('?padskin=0', ln) !== false) bad.push('1 ?padskin=0 (a need) does not turn it off');
+    if (M.bigHudWanted('?hudart=0', ln) !== false) bad.push('1 ?hudart=0 (a need) does not turn it off');
+    if (M.bigHudWanted('?bighud=1&padskin=0', ln) !== false) bad.push('1 ?bighud=1 overrules a need it lacks');
+    if (ln.m.has(M.BIG_HUD_KEY) || M.bigHudWanted('', ln) !== true) bad.push('1 a need\'s off was remembered past its visit');
   } catch (e) { bad.push('1 threw ' + e.message); }
   /* 2. the HUD's scale */
   try {
