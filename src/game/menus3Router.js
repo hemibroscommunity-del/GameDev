@@ -45,6 +45,11 @@ export const MENUS3_TODAY = Object.freeze({
   settings: Object.freeze({ road: 'page', page: 'settingsHub' }),
 });
 
+/* v2.3.6861 (card MN step 4): the sections whose new page exists, the page's
+   `ctx.built` (menus3Wire.js menus3Go): the Bag first.  Power and Skills,
+   tabs of the same panel, still open today's screens until their steps. */
+export const MENUS3_BUILT = Object.freeze(['bag']);
+
 /* Every entry: the dock's three, the five shortcuts on the play screen. */
 export const MENUS3_ENTRIES = Object.freeze({
   'dock.bro': Object.freeze({ menu: 'bro', section: 'bag' }),

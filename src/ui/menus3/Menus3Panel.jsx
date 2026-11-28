@@ -9,12 +9,14 @@
  * presses it, as every window's); a swipe down on the header, a tap on the
  * world and a hit outside a safe place close it (menus3Wire.js).
  *
- * Step 1 fills no section, so nothing a player presses opens it: the router
- * sends every entry to today's screen (src/game/menus3Router.js `built`).
- * Only the QA probe opens it (`__btMenus3.panel('bro')`), so its shape and
- * its closes are tested before step 4 puts the Bag in it.  Nothing is drawn
- * while it is shut. */
-import { useEffect, useState } from 'react';
+ * Step 1 filled no section; v2.3.6861 (card MN step 4) puts the Bag in it
+ * (menus3/Menus3Bag.jsx): the Bro button opens it, always on the Bag.  A
+ * page opened inside it (an item, a slot, a pet) puts a one-level Back in
+ * the header where the tabs were (src/game/menus3Nav.js: its history, the
+ * rail and the scroll of the page under it given back).  Power and Skills
+ * still open today's screens (menus3Wire.js menus3Bus.section).  Nothing is
+ * drawn while it is shut. */
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { menus3Bus, menus3Close, menus3ShapeNow } from './menus3Wire.js';
 import { panelCss } from '@/game/menus3Panel.js';
@@ -23,11 +25,17 @@ import { SAY } from '@/data/say/menus3.js';
 import { say } from '@/game/say.js';
 import { frameTap } from '@/ui/mobile/dash/DashHeader.jsx';
 import { ui2RootClass } from '@/ui/kit/shine.js';
+import { navCanBack, navTop } from '@/game/menus3Nav.js';   /* v2.3.6861 */
+import { beforeDraw } from '@/game/framePacer.js';
+import { gearCell } from '@/ui/mobile/dash/itemCategory.js';
+import { Menus3Bag } from './Menus3Bag.jsx';
+import './menus3.css';
 
 const BOX = { position: 'absolute', display: 'flex', flexDirection: 'column', pointerEvents: 'auto', touchAction: 'manipulation',
   background: 'var(--ui2-page, #193145)', borderTop: '2px solid var(--ui2-edge, #b89b63)', boxShadow: '0 -5px 16px rgba(0,0,0,.45)' };
 const HEAD = { display: 'flex', alignItems: 'center', gap: 4, minHeight: 48, padding: '2px 4px', flex: '0 0 auto', touchAction: 'manipulation' };
 const TAB = { flex: '1 1 0', minHeight: 44, minWidth: 44 };
+const BACK = { flex: '0 0 auto', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', gap: 4, padding: '0 10px' };
 const X = { flex: '0 0 44px', width: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
 /* the words, each key written out (the say guard reads them) */
@@ -50,10 +58,35 @@ function XIcon() {
   );
 }
 
-export function Menus3Panel() {
+/* the Back, drawn */
+function BackIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M9 2 L4 7 L9 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+/* a page's title in the header (the item's own name is on its page) */
+function pageTitle(top) {
+  if (!top) return '';
+  if (top.page === 'slot') { const c = gearCell(top.arg); return c ? c.label : ''; }
+  return sectionWord(top.section);
+}
+
+export function Menus3Panel({ rpgState, stateRef }) {
   const [st, setSt] = useState(menus3Bus.state);
   useEffect(() => menus3Bus.subscribe(setSt), []);
+  const bodyRef = useRef(null);
+  const top = st.nav ? navTop(st.nav) : null;
+  const pageKey = top ? top.page + '|' + (top.arg || '') + '|' + st.nav.length : '';
+  /* v2.3.6861: a page's scroll given back (Back), at the top of a frame: no measuring */
+  useEffect(() => {
+    const y = top ? top.scroll : 0;
+    beforeDraw(() => { const el = bodyRef.current; if (el) el.scrollTop = y; });
+  }, [pageKey]);   /* the page's key alone: a redraw of the same page keeps where it was scrolled */
   if (!st.open || typeof document === 'undefined') return null;
+  const getS = () => (stateRef && stateRef.current) || null;
+  const deep = !!(st.nav && navCanBack(st.nav));
   const shape = menus3ShapeNow();
   const box = Object.assign({}, BOX, panelCss(shape));
   if (shape === 'drawer') { box.borderTop = 'none'; box.borderLeft = BOX.borderTop; }
@@ -62,7 +95,15 @@ export function Menus3Panel() {
     <div className="bt-menus3-layer" data-menus3-layer="">
       <section className={ui2RootClass()} style={box} data-menus3-panel={shape} data-menus3-menu={st.menu} role="dialog" aria-label={menuWord(st.menu)}>
         <div style={HEAD} data-menus3-head="">
-          {sections.map((s) => (
+          {deep ? (
+            <>
+              <button type="button" className="u2-raised u2-ctl" style={BACK} data-menus3-back=""
+                aria-label={say(SAY, 'menus3.back')} {...frameTap(() => menus3Bus.back())}>
+                <BackIcon /><span>{say(SAY, 'menus3.back')}</span>
+              </button>
+              <span className="m3-title" data-menus3-title="">{pageTitle(top)}</span>
+            </>
+          ) : sections.map((s) => (
             <button key={s} type="button" className={'u2-raised u2-ctl' + (s === st.section ? ' is-selected' : '')} style={TAB}
               data-menus3-tab={s} aria-pressed={s === st.section} {...frameTap(() => menus3Bus.section(s))}>
               {sectionWord(s)}
@@ -73,7 +114,11 @@ export function Menus3Panel() {
             <XIcon />
           </button>
         </div>
-        <div style={{ flex: '1 1 auto', overflow: 'auto' }} data-menus3-body={st.section || ''} />
+        <div ref={bodyRef} className="m3-body" style={{ flex: '1 1 auto', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+          data-menus3-body={st.section || ''} data-menus3-page={top ? top.page : ''}
+          onScroll={(ev) => menus3Bus.keep({ scroll: ev.currentTarget.scrollTop })}>
+          {st.section === 'bag' ? <Menus3Bag R={rpgState} getS={getS} top={top} /> : null}
+        </div>
       </section>
     </div>,
     document.body,

@@ -356,3 +356,6 @@ export function PetsSubPage({ getS }) {
   if (top.id === 'petsAll') return <All key={top.key} getS={getS} top={top} />;
   return <One key={top.key} getS={getS} id={top.sel} />;
 }
+
+/* v2.3.6861 (card MN step 4): one pet's page, the same, in the new menus' Bag (menus3/Menus3Bag.jsx) */
+export { One as PetOne };
