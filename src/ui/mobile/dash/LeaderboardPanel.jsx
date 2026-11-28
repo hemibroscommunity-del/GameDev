@@ -721,6 +721,13 @@ const Divider = ({ row }) => (
   </span>
 );
 
+/** v2.3.6870 (card MN step 11): the parts the new Ranks' standings read (the same as RanksUi2's below,
+ *  whose line ranks-mount.test plants on), for the new menus' People · Ranks (menus3/Menus3Ranks.jsx). */
+export function ui2RankParts(S, fishWant) {
+  return { me: { id: (S && S.myId) || '' }, useRows: useRankRows, fishWant: fishWant || null,
+    valueOf: (board, r) => valueOfRow(board, r, powerVersion(S)), emptyOf: (board) => emptyOf(board, false) };
+}
+
 export const LeaderboardPanel = () => {
   const S = getState();
   const list = boardList(S);

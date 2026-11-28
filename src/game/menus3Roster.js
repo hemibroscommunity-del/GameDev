@@ -145,6 +145,8 @@ export const MENUS3_PLAYER_ACTS = Object.freeze(['message', 'invite', 'kick', 't
  *    f.name        their name (a whisper is by name, no spaces)
  *    f.inMyParty, f.iLead, f.friend, f.friendSrv, f.muted, f.blocked,
  *    f.lawless     (a block is refused where the land is lawless: the card's)
+ *    f.rowCard     v2.3.6870: opened from a ranks row, whose own card (today's
+ *                  Character page, fed only by the row) is the Player card
  *  Returns [{ id, face: 'commit' | 'go' | 'danger', two }]: `two` a two-tap. */
 export function playerActs(f) {
   const x = f || {};
@@ -161,7 +163,7 @@ export function playerActs(f) {
   if (here && !x.blocked) add('duel', 'commit');
   if (x.friend) add('unfriend', 'danger');
   else if (!x.blocked) add('friend', 'commit');
-  if (here) add('card', 'go');
+  if (here || x.rowCard) add('card', 'go');   /* v2.3.6870: or a ranks row's own card (today's Character page) */
   if (caps.chatMute) add(x.muted ? 'unmute' : 'mute', 'danger');
   if (x.blocked) add('unblock', 'commit');
   else if (!x.lawless) add('block', 'danger');

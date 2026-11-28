@@ -144,7 +144,7 @@ function check(name, cond, detail) {
 
 /* ── 8. the road ── */
 {
-  check('8a Roster is built', MENUS3_BUILT.indexOf('roster') >= 0 && MENUS3_BUILT.indexOf('chat') < 0 && MENUS3_BUILT.indexOf('ranks') < 0);
+  check('8a Roster is built', MENUS3_BUILT.indexOf('roster') >= 0);   /* v2.3.6870: Chat and Ranks too (menus3-chat.test) */
   const ctx = { built: MENUS3_BUILT };
   const p = menus3Route('dock.people', ctx);
   check('8b People opens the panel on Roster', p.road === 'panel' && p.menu === 'people' && p.section === 'roster', p);
@@ -152,7 +152,7 @@ function check(name, cond, detail) {
   check('8c the party chip opens Roster', c.road === 'panel' && c.section === 'roster', c);
   const l = menus3Route('game.players', ctx);
   check('8d the old player list\'s doors: Roster on Nearby', l.road === 'panel' && l.section === 'roster' && l.seg === 'nearby', l);
-  check('8e Chat still today\'s', menus3Route('hud.chatLines', ctx).road === 'chat');
+  check('8e the chat lines open People · Chat (v2.3.6870)', menus3Route('hud.chatLines', ctx).road === 'panel' && menus3Route('hud.chatLines', ctx).section === 'chat');
   let h = navStart('roster', 'friends');
   h = navPush(h, 'player', 'z', { rail: 'friends', scroll: 30 });
   check('8f a row\'s page over the Roster', navTop(h).page === 'player' && navTop(h).arg === 'z');

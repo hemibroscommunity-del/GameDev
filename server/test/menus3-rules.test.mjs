@@ -178,7 +178,7 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
   check('5f off: startMenus3 returns before any listener or fold', start.indexOf('if (!_on) return;') > 0
     && start.indexOf('if (!_on) return;') < start.indexOf('addEventListener') && start.indexOf('if (!_on) return;') < start.indexOf('dashMinBus.set'));
   check('5g the fold is never written under the switch', /if \(!dashMinBus\.sideways && !dashMinBus\.quiet\)/.test(src('src/ui/mobile/dashMinBus.js')));
-  check('5h the dock only under the switch', /if \(menus3On\(\)\) return wrap\(<Menus3Dock mark=\{mark\} tap=\{frameTap\} \/>\)/.test(src('src/ui/mobile/dash/DashHeader.jsx')));
+  check('5h the dock only under the switch', /if \(menus3On\(\)\) return wrap\(<Menus3Dock mark=\{mark\} tap=\{frameTap\}( people=\{peopleDot\})? \/>\)/   /* v2.3.6870: + People's dot */.test(src('src/ui/mobile/dash/DashHeader.jsx')));
   check('5i the chat lines\' road only under the switch', /if \(menus3On\(\)\) \{ menus3Go\('hud\.chatLines'\); return; \}\s*\n\s*toggle\(\);/.test(src('src/ui/mobile/WorldChatFeed.jsx')));
   check('5j the gear only under the switch', /menus3On\(\) \? <Menus3Gear/.test(src('src/ui/WorldMapOverlay.jsx')));
 }

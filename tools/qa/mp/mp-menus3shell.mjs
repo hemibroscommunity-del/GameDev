@@ -208,7 +208,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(700);
       const r = await P.page.evaluate(() => window.__btMenus3.route());
       const chatBox = await P.page.evaluate(() => !!document.querySelector('textarea, input[type="text"][maxlength], [data-chat-input], .bt-chat-input'));
-      rec.ok('upright: the chat lines\' road opens the chat box', r && r.road === 'chat' && chatBox, { r, chatBox });
+      /* v2.3.6870 (card MN step 11): the chat box is People · Chat in the panel */
+      rec.ok('upright: the chat lines\' road opens the chat box', r && r.road === 'panel' && r.section === 'chat' && chatBox, { r, chatBox });
       await P.page.keyboard.press('Escape').catch(() => {});
       await P.page.waitForTimeout(400);
 

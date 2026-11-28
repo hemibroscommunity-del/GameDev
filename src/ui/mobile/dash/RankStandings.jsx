@@ -186,13 +186,17 @@ const RECORD_FIRST = { spin: 'wins', flip: 'wins', fish: 'minnow' };
  * parts   LeaderboardPanel's: { me, useRows, valueOf, emptyOf }
  * getS    the game's state, read when drawn (handed: QuestsPanel's way)
  */
-export function RankStandings({ board, choice: kept, parts, getS }) {
+/* v2.3.6870 (card MN step 11): `nav`, the new menus' People · Ranks (menus3/Menus3Ranks.jsx), which
+   holds the list in its own panel: { scroll (the list's kept scroll), keep(sel) (a choice kept), open(row,
+   o) (a row's tap) } in place of the frame's; left out, the frame's as before */
+export function RankStandings({ board, choice: kept, parts, getS, nav }) {
   const kind = board.kind || null;
   const record = Object.prototype.hasOwnProperty.call(RECORD_FIRST, kind);
   const okChoice = kind === 'fish' ? FISH_SPECIES.some((f) => f.id === kept) : SIDES.includes(kept);
   const [choice, setChoice] = useState(record ? (okChoice ? kept : RECORD_FIRST[kind]) : null);
   const top = dashNavView(dashboardPanelBus.nav()).top;
-  const [listRef, scroll] = useListScroll(top && top.id === 'ranksBoard' ? top.scroll : 0);
+  const [listRef, scroll] = useListScroll(nav ? (nav.scroll || 0) : top && top.id === 'ranksBoard' ? top.scroll : 0);
+  useEffect(() => { if (nav && nav.onScroll) nav.onScroll(scroll); }, [scroll]);   /* v2.3.6870: the panel keeps it for Back */
   const [roomRef, room] = useRoom();
   const [zoneRef, zone] = useRoom();
   const src = useSource(kind, parts, board.id, choice, getS);
@@ -205,6 +209,7 @@ export function RankStandings({ board, choice: kept, parts, getS }) {
   const you = youRow(src.rows, meId, key);
   const keepChoice = (c) => {
     setChoice(c);
+    if (nav) { nav.keep(board.id + ':' + c); return; }   /* v2.3.6870 */
     const t = dashNavView(dashboardPanelBus.nav()).top;
     if (t && t.id === 'ranksBoard') dashboardPanelBus.go({ type: 'keep', key: t.key, sel: board.id + ':' + c });
   };
@@ -224,6 +229,7 @@ export function RankStandings({ board, choice: kept, parts, getS }) {
   const open = (r) => {
     const o = ranksOpens({ kind: 'row', row: r, meId, key, board: { label, value: src.value(r) } });
     if (!o) return;
+    if (nav) { nav.open(r, o); return; }   /* v2.3.6870: the panel's Player page */
     const t = dashNavView(dashboardPanelBus.nav()).top;
     if (t && t.id === o.id && (!o.who || (t.who && t.who.id === o.who.id))) return;   /* a second tap of the same row */
     dashboardPanelBus.go({ type: 'push', id: o.id, sel: o.sel, who: o.who || undefined });

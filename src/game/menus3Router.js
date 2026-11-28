@@ -54,6 +54,7 @@ export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
   'roster',
+  'chat', 'ranks',   /* v2.3.6870 (card MN step 11): + People's Chat and Ranks */
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */
