@@ -136,3 +136,16 @@
    they stand aside (visibility: never hit, their rects kept); with no panel open nothing
    moves.  The map itself (z 9200) still opens OVER the panel from a quest's Show on map. */
 html.bt-menus3-drawer-open :is([data-world-map-open], [data-menus3-gear]) { visibility: hidden !important; pointer-events: none !important; }
+/* v2.3.6867 (card MN step 8): World · Codex -- the wireframe v4.4's Codex: the kinds on the Bag's
+   rail (44 tall), the monsters four across in the Bag's tiles (66 tall), a NEW mark in a corner, a
+   monster not met dimmed; a monster's page and its doors are today's (codexUi2.css), filling the
+   panel's body so their own measuring (useRoom) reads the panel's room */
+.m3-codex { display: flex; flex-direction: column; gap: 2px; }
+.m3-cx-met { margin: 0 2px 4px; }
+.m3-cx-tile { position: relative; }
+.m3-cx-tile.is-dim { opacity: .62; }
+.m3-cx-land { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--ui2-text-muted, #BCC8CC); }
+.m3-cx-new { position: absolute; top: 3px; right: 4px; font-size: 9.5px; font-weight: 800; letter-spacing: .05em; color: var(--ui2-gold, #E4BA68); }
+.m3-cx-empty { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.m3-cx { min-height: 100%; display: flex; flex-direction: column; }
+.m3-cx-fill { flex: 1 1 auto; min-height: 260px; display: flex; flex-direction: column; }

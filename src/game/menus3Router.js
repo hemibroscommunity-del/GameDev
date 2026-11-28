@@ -52,6 +52,7 @@ export const MENUS3_TODAY = Object.freeze({
 export const MENUS3_BUILT = Object.freeze(['bag',
   'quests',
   'power',   /* v2.3.6862 (card MN step 5): + Power */
+  'codex',   /* v2.3.6867 (card MN step 8): + World's Codex (Feats still today's) */
 ]);
 
 /* Every entry: the dock's three, the five shortcuts on the play screen. */
@@ -65,6 +66,8 @@ export const MENUS3_ENTRIES = Object.freeze({
   'hud.gear': Object.freeze({ menu: null, section: 'settings' }),
   'hud.questLine': Object.freeze({ menu: 'world', section: 'quests', quest: 'line' }),
   'hud.chatLines': Object.freeze({ menu: 'people', section: 'chat' }),
+  /* v2.3.6867 (card MN step 8): the NEW MONSTER card's tap, the Codex on that monster (SPEC.md: "deep-links directly to Codex entry") */
+  'card.newMonster': Object.freeze({ menu: 'world', section: 'codex' }),
 });
 
 /* The owner's keys: what each opens, and whether the game already uses it. */

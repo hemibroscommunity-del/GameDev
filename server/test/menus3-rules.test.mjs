@@ -79,7 +79,10 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
     const r = menus3Route(e, { held: 'ranged' });
     check('2d ' + e + ' opens ' + want[e].join('/'), r && r.menu === want[e][0] && r.section === want[e][1], r);
   }
-  check('2e every entry is named here', Object.keys(MENUS3_ENTRIES).length === 3 + 6);
+  /* v2.3.6867 (card MN step 8): + the NEW MONSTER card's tap, World · Codex (menus3-codex.test 3b) */
+  const r7 = menus3Route('card.newMonster');
+  check('2d card.newMonster opens world/codex', r7 && r7.menu === 'world' && r7.section === 'codex', r7);
+  check('2e every entry is named here', Object.keys(MENUS3_ENTRIES).length === 3 + 6 + 1);
   /* the same answer whatever was open before (rule 1, deterministic) */
   for (const e of Object.keys(MENUS3_ENTRIES)) {
     const a = JSON.stringify(menus3Route(e, { held: 'melee' }));
