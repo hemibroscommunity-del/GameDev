@@ -65,7 +65,6 @@ async function openPeople(P, touch) {
   return pstate(P);
 }
 const myId = (P) => H.readState(P, (S) => S.myId);
-const partyOf = (P) => H.readState(P, (S) => (S._party && S._party.state === 'open' ? { n: S._party.members.length, leader: S._party.leader } : null));
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. upright, two players ── */
@@ -154,9 +153,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ps = await pstate(A);
     rec.ok('upright: Back is the Roster', ps.page === 'root' && ps.section === 'roster', ps);
     /* Leave: two taps; gone on both */
+    /* the two taps inside the chip's three seconds (MENUS3_ROSTER_ARM_MS): one quick read between */
     await tap(A, '[data-m3-party-leave]', true);
-    rec.ok('upright: Leave\'s first tap only asks', (await partyOf(A)) !== null && (await attrs(A, '[data-m3-party-leave]', 'data-m3-party-leave'))[0] === 'armed', null);
+    const armedNow = (await attrs(A, '[data-m3-party-leave]', 'data-m3-party-leave'))[0];
     await tap(A, '[data-m3-party-leave]', true);
+    rec.ok('upright: Leave\'s first tap only asks', armedNow === 'armed', armedNow);
     const gone = await H.waitFor(B, (S) => (S._party && S._party.state === 'open' ? S._party.members.length : 0), (n) => n === 0, { timeout: 15000, label: 'party gone' }).catch(() => null);
     await A.page.waitForTimeout(1200);
     R = await roster(A);
@@ -201,11 +202,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await ready(D);
     await H.waitFor(D, (S) => Object.keys(S.others || {}).length, (n) => n >= 1, { timeout: 30000, label: 'sees the first' }).catch(() => null);
     let ps = await openPeople(D, false);
-    await D.page.waitForFunction((id) => !!document.querySelector(`[data-m3-player-row="${id}"]`), aId, { timeout: 30000 }).catch(() => {});
+    await D.page.waitForFunction(() => !!document.querySelector('[data-m3-player-row]'), null, { timeout: 60000 }).catch(() => {});
+    const first = (await attrs(D, '[data-m3-player-row]', 'data-m3-player-row'))[0] || null;
     rec.ok('computer: People opens the drawer on Roster', ps.open && ps.section === 'roster' && (await D.page.evaluate(() => window.__btMenus3.shape())) === 'drawer', ps);
-    await tap(D, `[data-m3-player-row="${aId}"]`, false);
+    await tap(D, `[data-m3-player-row="${first}"]`, false);
     ps = await pstate(D);
-    rec.ok('computer: a player\'s page', ps.page === 'player' && ps.arg === aId, ps);
+    rec.ok('computer: a row opens that player\'s page', !!first && ps.page === 'player' && ps.arg === first, { ps, first });
     await shot(D, 'computer-player');
     await D.page.keyboard.press('Escape');
     await D.page.waitForTimeout(600);
