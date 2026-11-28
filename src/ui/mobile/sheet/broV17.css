@@ -37,7 +37,7 @@
 .ui2 .u2-bv-strip .u2-fact-k { flex: 0 0 auto; max-width: 100%; }
 .ui2 .u2-bv-strip .u2-fact-v { text-align: center; }
 /* the key a computer's letter wears (game.css [data-key]::after, bottom right) keeps clear of the word */
-.ui2 .u2-bv-entry[data-key] { padding-right: 16px; }
+.ui2 .u2-bv-entry.u2-tile.is-compact[data-key] { padding-right: 16px; }
 .ui2.u2-bv.is-side .u2-bv-strip .u2-fact, .ui2.u2-bv.is-side .u2-bv-entry { min-height: 44px; }
 
 /* V17's look: the points' cue the priority colour, never commit gold (V17:20) */
