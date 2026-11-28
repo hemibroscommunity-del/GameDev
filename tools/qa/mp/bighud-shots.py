@@ -10,7 +10,7 @@ with its label.
 """
 import os
 import tempfile
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 RAW = os.environ.get('BT_BIGHUD_RAW') or os.path.join(tempfile.gettempdir(), 'bighud-raw')
@@ -20,14 +20,18 @@ OUT = os.path.join(ROOT, 'docs', 'shots', 'bighud-before-after.png')
 def pair(size):
     a = Image.open(os.path.join(RAW, size + '-before.png')).convert('RGB')
     b = Image.open(os.path.join(RAW, size + '-after.png')).convert('RGB')
-    gap, head = 24, 56
+    gap, head = 24, 64
     w, h = a.width + b.width + gap, max(a.height, b.height) + head
     im = Image.new('RGB', (w, h), (16, 22, 30))
     im.paste(a, (0, head))
     im.paste(b, (a.width + gap, head))
     d = ImageDraw.Draw(im)
-    d.text((12, 14), size + '  before (?bighud=0)', fill=(240, 240, 233))
-    d.text((a.width + gap + 12, 14), size + '  after (the default)', fill=(240, 240, 233))
+    try:
+        f = ImageFont.load_default(size=30)
+    except TypeError:
+        f = None
+    d.text((12, 14), size + '  before (?bighud=0)', fill=(240, 240, 233), font=f)
+    d.text((a.width + gap + 12, 14), size + '  after (the default)', fill=(240, 240, 233), font=f)
     return im
 
 

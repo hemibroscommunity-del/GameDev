@@ -542,7 +542,7 @@ export const STATES = [
   /* tag 6847 (card UI4): the owner, 2026-11-28, "Attack button and HUD need to
      be about twice as big" (game/bigHud.js; ?bighud=0 today's sizes) */
   { id: 'bighud', group: 'The world (HUD)', title: 'The HUD and Attack, bigger (upright)', views: ['portrait'],
-    about: 'On a phone upright the character HUD (the face ring, the badge, the name, the weapon\'s bar) is drawn bigger, as wide as the room left of the minimap holds (at 390 wide 242 x 68, 1.32 times today\'s 184 x 52), and the controller\'s Attack button grows from its well as far as it stays clear of Jump or Block, the top row and the band (at 390 wide 71 px, 1.19 times today\'s 59), its touch box with it. Twice did not fit either way at 390: the owner\'s call (docs/UI-DESIGN-NOTES.md). ?bighud=0 gives today\'s sizes.',
+    about: 'On a phone upright the character HUD (the face ring, the badge, the name, the weapon\'s bar) is drawn bigger, as wide as the room left of the minimap holds (at 390 wide 241 x 68, 1.31 times today\'s 184 x 52), and the controller\'s Attack button grows from its well as far as it stays clear of Jump or Block, the top row and the band (at 390 wide 71 px, 1.20 times today\'s 59), its touch box with it. Twice did not fit either way at 390: the owner\'s call (docs/UI-DESIGN-NOTES.md). ?bighud=0 gives today\'s sizes.',
     run: async ({ P }) => { await wait(P, 600); } },
   { id: 'bighud-side', group: 'The world (HUD)', title: 'The HUD and Attack, bigger (sideways)', views: ['landscape'],
     about: 'The same held sideways: the HUD at twice today\'s sideways size where the room over the stick\'s lobe holds it, the party chip beside it, the status chips under it; Attack as far as its neighbours allow. ?bighud=0 gives today\'s.',
