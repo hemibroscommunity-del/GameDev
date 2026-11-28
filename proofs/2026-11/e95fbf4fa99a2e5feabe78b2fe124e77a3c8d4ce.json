@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e95fbf4fa99a2e5feabe78b2fe124e77a3c8d4ce",
+  "tree": "a942b51ae511701370ad4b81e44230227dc324fb",
+  "committedAt": "2026-11-28T08:46:45-08:00",
+  "subject": "Merge pull request #2447 from hemibroscommunity-del/claude/mn-roster",
+  "files": 9524,
+  "bytes": 1132225241,
+  "listingSha256": "33e2349e6b7efa60feecfdae4c3d357b1a401235380fdd9a3ee432617e4c05af",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
