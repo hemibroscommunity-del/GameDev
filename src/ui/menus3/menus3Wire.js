@@ -174,10 +174,30 @@ export function menus3Go(entry, ctx) {
         menus3Bus.open(r.menu, r.section, r.lane != null ? r.lane : (r.seg || null));   /* v2.3.6862: Power's lane from the weapon bar; v2.3.6864: the Roster's segment an entry names */
         /* v2.3.6863: the quest line opens THAT quest's page, its Back the Quests' own page */
         if (r.section === 'quests' && ctx && typeof ctx.quest === 'string' && ctx.quest) menus3Bus.push('quest', ctx.quest);
+        /* v2.3.6867: the NEW MONSTER card's tap: the Codex takes the card's ask as it draws (takeCodexOpen), as today's */
         return true;
       default: return false;
     }
   } catch (e) { return false; }
+}
+
+/* ═══ v2.3.6867: M, THE MAP'S KEY (card MN step 8) ═══
+   The owner's M opens the World map, as the minimap does: under ?menus3 the
+   new panel shuts as the map opens (one menu at a time, the minimap's road);
+   M with the map up closes it, the panel left as it was (a quest's Show on
+   map opens the map OVER the panel).  `toggle` the map's own
+   (WorldMapOverlay.jsx toggleWorldMap); its answer is returned. */
+export function menus3MapKey(toggle) {
+  if (typeof toggle !== 'function') return false;
+  let was = false;
+  try { was = !!document.querySelector('[data-world-map]'); } catch (e) { was = false; }
+  const ok = toggle();
+  if (ok && _on && !was && _panel.open) {
+    _ticket = null;
+    _lastRoute = menus3Route('hud.minimap', { built: MENUS3_BUILT });
+    menus3Bus.close();
+  }
+  return ok;
 }
 
 /* ═══ v2.3.6863: A DEEP LINK TO TODAY'S PAGE, AND THE WAY BACK (card MN step 7, World · Quests) ═══

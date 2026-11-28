@@ -46,6 +46,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { menus3On } from './menus3/menus3Switch.js';   /* v2.3.6860 */
 import { Menus3Gear } from './menus3/Menus3Gear.jsx';   /* v2.3.6860 */
+import { menus3Go } from './menus3/menus3Wire.js';   /* v2.3.6867: the minimap is the new menus' Map entry (card MN step 8) */
+import { mapLit, mapEdge, MENUS3_MAP } from '../game/menus3Map.js';   /* v2.3.6867: the tracked quest lit on opening */
 import { createPortal } from 'react-dom';
 import { isWheelTrialZone, WHEELS } from '../game/worldTrial.js';
 import { wheelMapInfo, wheelOverviewLands, wheelHere, wheelLocalLands } from '../game/wheelTrial.js';
@@ -220,6 +222,9 @@ export function WorldMapOverlay({ stateRef }) {
               try { const mm = window.__btMinimap; c = miniPinAt(mm && mm.mapPins, e.clientX - rect.left, e.clientY - rect.top, rect.k || 1); } catch (er) { c = null; }
               if (c) { pinAskOpen('remove', c); return; }
             }
+            /* v2.3.6867 (card MN step 8): under ?menus3 the minimap is the router's Map entry: the new
+               panel shuts first (one menu at a time), then this map opens (menus3Wire.js road 'map') */
+            if (menus3On() && menus3Go('hud.minimap')) return;
             setOpen(true);
           }}
           style={{ position: 'fixed', left: rect.left, top: rect.top, width: rect.w, height: rect.h, zIndex: 45,
@@ -322,6 +327,8 @@ function WorldMap({ stateRef, onClose }) {
          resize still redraws at once (dirty). */
       if (!dirty.current && t - last < (pk === lastP ? 120 : MAP_MOVE_MS)) return;
       lastP = pk; last = t; dirty.current = false;
+      /* v2.3.6867 (card MN step 8): under ?menus3 the tracked quest's star is lit from the first frame (menus3Map.js) */
+      if (V.litAt == null) V.litAt = menus3On() ? t : -1;
       const { w, h, dpr } = size();
       /* v2.3.3898: opened at home before the worker named the buildings
          (the town's middle stood in): once their doors are known, and while
@@ -345,7 +352,7 @@ function WorldMap({ stateRef, onClose }) {
       setPartyShown((o) => (o === ps ? o : ps));
       const qs = !!(out && out.more && out.more.questPins > 0);
       setPinsShown((o) => (o === qs ? o : qs));
-      try { window.__btWorldMap = { open: true, zoom: V.zoom, rel: V.zoom / spanK(map), cx: Math.round(V.cx), cy: Math.round(V.cy), ...out }; } catch (e) { /* no page */ }
+      try { window.__btWorldMap = { open: true, zoom: V.zoom, rel: V.zoom / spanK(map), cx: Math.round(V.cx), cy: Math.round(V.cy), litShown: !!V.litShown, ...out }; } catch (e) { /* no page */ }
     };
     raf = requestAnimationFrame(loop);
     const onResize = () => { dirty.current = true; };
@@ -918,6 +925,22 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
     starAt(g, qx, qy, 9);
     more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3522: + whose road */
+    /* v2.3.6867 (card MN step 8, "Decided" 7): the map LIGHTS the tracked quest's star as it opens -- a gold
+       ring pulsing round it for its first seconds, at the map's edge toward it while it is off the screen
+       (src/game/menus3Map.js).  Only under ?menus3 (V.litAt -1 otherwise): ?menus3=0 draws today's map */
+    const lit = V && V.litAt >= 0 ? mapLit(V.litAt, t) : null;
+    const at = lit ? mapEdge(qx, qy, w, h, MENUS3_MAP.EDGE) : null;
+    if (lit && at) {
+      g.save();
+      g.globalAlpha = lit.alpha;
+      g.beginPath(); g.arc(at.x, at.y, lit.r, 0, Math.PI * 2);
+      g.lineWidth = 5; g.strokeStyle = HALO; g.stroke();
+      g.lineWidth = 3; g.strokeStyle = C_STAR; g.stroke();
+      if (at.edge) starAt(g, at.x, at.y, 7);
+      g.restore();
+      V.litShown = true;
+      more.questLit = { x: Math.round(at.x), y: Math.round(at.y), edge: at.edge };
+    }
   }
   /* ═══ v2.3.3766: THE BOARD'S PINS (game/mapPins.js) ═══
      ...and v2.3.3879's own pin, purple.  v2.3.4045: ONE pair of pins, blue

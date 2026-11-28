@@ -21,7 +21,7 @@
  *      place only where the game maps it; an offer its place alone; a done
  *      quest none;
  *   4. THE ROAD: World opens the panel on Quests (built); the quest line is
- *      World · Quests; Codex still today's (v2.3.6868: Feats built);
+ *      World · Quests; the Codex and Feats the panel's too (v2.3.6867, v2.3.6868: card MN steps 8, 9);
  *   5. v2.3.6866, A LINK'S WAY BACK (the gatekeeper's sitting 75): played on
  *      the band's own state (src/game/dashNav.js) -- only the arrival's own
  *      Back brings the panel back; the band's Menu (its root wipes the
@@ -122,7 +122,7 @@ function check(name, cond, detail) {
   check('4b World opens the panel on Quests, always', r.road === 'panel' && r.menu === 'world' && r.section === 'quests');
   const q = menus3Route('hud.questLine', { built: MENUS3_BUILT, quest: 'tut_1' });
   check('4c the quest line: World · Quests in the panel', q.road === 'panel' && q.section === 'quests');
-  check('4d Codex still today\'s (v2.3.6868: Feats is built, card MN step 9)', !MENUS3_BUILT.includes('codex'));
+  check('4d the Codex and Feats are the panel\'s (v2.3.6867, v2.3.6868: card MN steps 8, 9)', MENUS3_BUILT.includes('codex') && MENUS3_BUILT.includes('feats'));
 }
 
 /* ── 5. a link's way back (v2.3.6866) ── */

@@ -36,6 +36,9 @@ let _getS = () => null;
 /** The game's state, by the getter the opener handed over. */
 export function codexS() { try { return _getS() || null; } catch (e) { return null; } }
 
+/** v2.3.6867 (card MN step 8): the new panel's Codex hands its getter over as it draws (its pages read codexS) */
+export function codexUseS(getS) { if (typeof getS === 'function') _getS = getS; }
+
 /** Open a monster's showcase (`getS`: the opener's getter of the game's state). */
 export function openCodexMonster(kind, getS) {
   if (!Object.prototype.hasOwnProperty.call(CODEX_ENTRIES, kind)) return;
